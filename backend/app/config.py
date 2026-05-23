@@ -11,16 +11,34 @@ class Config:
     
     # AI and Search API keys
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "")
     
     # Separated Agent LLM API configuration (defaults to Gemini/Agent/OpenAI keys)
-    AGENT_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("AGENT_API_KEY", os.getenv("OPENAI_API_KEY", "")))
-    AGENT_API_BASE = os.getenv("GEMINI_BASE_URL", os.getenv("AGENT_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")))
-    AGENT_MODEL = os.getenv("GEMINI_MODEL", os.getenv("NEXT_PUBLIC_AGENT_MODEL", "gpt-4o-mini"))
+    # Using explicit truthy fallbacks to avoid empty string overrides
+    AGENT_API_KEY = (
+        os.getenv("GEMINI_API_KEY", "").strip() or 
+        os.getenv("AGENT_API_KEY", "").strip() or 
+        os.getenv("OPENAI_API_KEY", "").strip()
+    )
+    AGENT_API_BASE = (
+        os.getenv("GEMINI_BASE_URL", "").strip() or 
+        os.getenv("AGENT_API_BASE", "").strip() or 
+        os.getenv("OPENAI_API_BASE", "").strip() or 
+        "https://api.openai.com/v1"
+    )
+    AGENT_MODEL = (
+        os.getenv("GEMINI_MODEL", "").strip() or 
+        os.getenv("NEXT_PUBLIC_AGENT_MODEL", "").strip() or 
+        "gpt-4o-mini"
+    )
     
     # Separated Embedding API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
-    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-    EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
+    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
+    EMBEDDING_API_BASE = (
+        os.getenv("EMBEDDING_API_BASE", "").strip() or 
+        os.getenv("OPENAI_API_BASE", "").strip() or 
+        "https://api.openai.com/v1"
+    )
     
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
