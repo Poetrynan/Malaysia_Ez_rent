@@ -334,4 +334,71 @@ supabase/migrations/
 
 ---
 
+## 十一、AI 大模型切换指南
+
+后端采用 **OpenAI 兼容协议（OpenAI-Compatible API）**，切换模型提供商**只需修改 3 个环境变量，零代码改动**。
+
+### 需要修改的环境变量
+
+| 变量名 | 作用 | 当前值 |
+|--------|------|--------|
+| `OPENAI_API_KEY` | 模型 API 密钥 | SiliconFlow 的 `sk-xxx` |
+| `OPENAI_API_BASE` | 兼容 OpenAI 格式的接口端点 | `https://api.siliconflow.cn/v1` |
+| `NEXT_PUBLIC_AGENT_MODEL` | 调用的模型名称 | `deepseek-ai/DeepSeek-V3` |
+
+> 修改位置：Render 后端控制台 → Environment，或本地 `backend/.env`。修改后 Render 会自动重启服务。
+
+### 各提供商切换示例
+
+**OpenAI 官方：**
+```
+OPENAI_API_KEY=sk-proj-xxxxxx
+OPENAI_API_BASE=https://api.openai.com/v1
+NEXT_PUBLIC_AGENT_MODEL=gpt-4o
+```
+
+**DeepSeek 官方：**
+```
+OPENAI_API_KEY=sk-xxxxxx
+OPENAI_API_BASE=https://api.deepseek.com/v1
+NEXT_PUBLIC_AGENT_MODEL=deepseek-chat
+```
+
+**阿里通义千问（DashScope）：**
+```
+OPENAI_API_KEY=sk-xxxxxx
+OPENAI_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+NEXT_PUBLIC_AGENT_MODEL=qwen-plus
+```
+
+**月之暗面 Kimi（Moonshot）：**
+```
+OPENAI_API_KEY=sk-xxxxxx
+OPENAI_API_BASE=https://api.moonshot.cn/v1
+NEXT_PUBLIC_AGENT_MODEL=moonshot-v1-8k
+```
+
+**智谱 GLM（ZhipuAI）：**
+```
+OPENAI_API_KEY=xxxxxx.xxxxxx
+OPENAI_API_BASE=https://open.bigmodel.cn/api/paas/v4
+NEXT_PUBLIC_AGENT_MODEL=glm-4-plus
+```
+
+### ⚠️ 注意事项：Tool Calling 兼容性
+
+本项目的 AI Agent 依赖 **Function Calling / Tool Use** 能力来调用 6 个工具（房源搜索、通勤计算、租约查询、汇率换算、假期查询、网页搜索）。切换模型前务必确认新模型支持 `tools` 参数。
+
+| ✅ 确认支持 Tool Calling 的模型 | ❌ 不支持的模型 |
+|------|------|
+| GPT-4o / GPT-4o-mini | 部分开源小模型（如 Llama 3 原版） |
+| DeepSeek-V3 / DeepSeek-Chat | 一些早期或轻量级模型 |
+| Qwen-Plus / Qwen-Max | — |
+| GLM-4-Plus | — |
+| Moonshot-v1 | — |
+
+如果新模型不支持 Tool Calling，Agent 会在运行时报错，不会静默返回假数据。
+
+---
+
 *由 Antigravity AI 辅助生成 · Malaysia Ez Rent Project*
