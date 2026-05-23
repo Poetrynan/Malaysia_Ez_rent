@@ -348,3 +348,127 @@ def check_my_own_rental_status(user_id: str) -> Dict[str, Any]:
         },
         "payment_records": MOCK_PAYMENT_RECORDS
     }
+
+
+def convert_currency_frankfurter(amount: float = 1.0, from_currency: str = "MYR", to_currency: str = "CNY") -> Dict[str, Any]:
+    """
+    Convert a specific amount of money from one currency to another using Frankfurter API.
+    Supports currencies like MYR, CNY, USD, SGD, GBP, AUD, etc.
+    """
+    from_currency = from_currency.upper().strip()
+    to_currency = to_currency.upper().strip()
+    
+    if from_currency == to_currency:
+        return {
+            "success": True,
+            "base": from_currency,
+            "quote": to_currency,
+            "amount": amount,
+            "converted_amount": amount,
+            "rate": 1.0
+        }
+
+    # Try api.frankfurter.dev first, then fallback to api.frankfurter.app
+    urls = [
+        f"https://api.frankfurter.dev/v2/rate/{from_currency}/{to_currency}",
+        f"https://api.frankfurter.app/latest?from={from_currency}&to={to_currency}"
+    ]
+    
+    for url in urls:
+        try:
+            response = httpx.get(url, timeout=5.0)
+            if response.status_code == 200:
+                data = response.json()
+                rate = None
+                if "rate" in data:
+                    rate = float(data["rate"])
+                elif "rates" in data and to_currency in data["rates"]:
+                    rate = float(data["rates"][to_currency])
+                
+                if rate is not None:
+                    return {
+                        "success": True,
+                        "date": data.get("date"),
+                        "base": from_currency,
+                        "quote": to_currency,
+                        "amount": amount,
+                        "converted_amount": round(amount * rate, 2),
+                        "rate": rate
+                    }
+        except Exception as e:
+            print(f"[Warning] Frankfurter API error for URL {url}: {e}")
+            continue
+
+    # Fallback to local hardcoded estimates if offline
+    mock_rates = {
+        ("MYR", "CNY"): 1.63,
+        ("CNY", "MYR"): 0.61,
+        ("MYR", "USD"): 0.23,
+        ("USD", "MYR"): 4.40,
+        ("MYR", "SGD"): 0.31,
+        ("SGD", "MYR"): 3.25,
+        ("MYR", "GBP"): 0.18,
+        ("GBP", "MYR"): 5.55
+    }
+    pair = (from_currency, to_currency)
+    if pair in mock_rates:
+        rate = mock_rates[pair]
+        return {
+            "success": True,
+            "base": from_currency,
+            "quote": to_currency,
+            "amount": amount,
+            "converted_amount": round(amount * rate, 2),
+            "rate": rate,
+            "is_mock": True
+        }
+        
+    return {
+        "success": False,
+        "error": "Failed to fetch exchange rate and no local fallback exists for this pair."
+    }
+
+
+def get_malaysia_holidays(year: int = 2026) -> Dict[str, Any]:
+    """
+    Get the list of public holidays in Malaysia for a specific year using Nager.Date API.
+    Helps students check if a government office, bank, or university is closed.
+    """
+    url = f"https://date.nager.at/api/v3/PublicHolidays/{year}/MY"
+    try:
+        response = httpx.get(url, timeout=5.0)
+        if response.status_code == 200:
+            holidays = response.json()
+            # Clean up output structure to make it context-friendly for LLM
+            formatted_holidays = []
+            for h in holidays:
+                formatted_holidays.append({
+                    "date": h.get("date"),
+                    "english_name": h.get("name"),
+                    "local_name": h.get("localName"),
+                    "global_holiday": h.get("global"),
+                    "states": h.get("counties")
+                })
+            return {
+                "success": True,
+                "year": year,
+                "total_holidays": len(formatted_holidays),
+                "holidays": formatted_holidays
+            }
+    except Exception as e:
+        print(f"[Warning] Nager.Date API error: {e}")
+
+    # Local fallback for some major public holidays in Malaysia if offline
+    return {
+        "success": True,
+        "year": year,
+        "is_mock": True,
+        "holidays": [
+            {"date": f"{year}-01-01", "english_name": "New Year's Day", "local_name": "Tahun Baru", "global_holiday": False, "states": ["MY-10", "MY-14"]},
+            {"date": f"{year}-05-01", "english_name": "Labour Day", "local_name": "Hari Pekerja", "global_holiday": True, "states": None},
+            {"date": f"{year}-08-31", "english_name": "National Day", "local_name": "Hari Kebangsaan", "global_holiday": True, "states": None},
+            {"date": f"{year}-09-16", "english_name": "Malaysia Day", "local_name": "Hari Malaysia", "global_holiday": True, "states": None},
+            {"date": f"{year}-12-25", "english_name": "Christmas Day", "local_name": "Hari Krismas", "global_holiday": True, "states": None}
+        ]
+    }
+

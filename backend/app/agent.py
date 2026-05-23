@@ -7,6 +7,8 @@ from app.tools import (
     calculate_commute,
     get_web_realtime_info,
     check_my_own_rental_status,
+    convert_currency_frankfurter,
+    get_malaysia_holidays,
     openai_client,
     supabase_service_client
 )
@@ -268,6 +270,36 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                     "required": ["user_id"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "convert_currency_frankfurter",
+                "description": "Convert currency exchange rate (e.g. MYR to CNY, USD to MYR) for a specified amount.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount": {"type": "number", "default": 1.0, "description": "The amount to convert."},
+                        "from_currency": {"type": "string", "default": "MYR", "description": "3-letter source currency ISO code (e.g., MYR, CNY, USD)."},
+                        "to_currency": {"type": "string", "default": "CNY", "description": "3-letter target currency ISO code (e.g., CNY, MYR, USD)."}
+                    },
+                    "required": ["amount", "from_currency", "to_currency"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_malaysia_holidays",
+                "description": "Retrieve public holidays in Malaysia for a specific year.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "year": {"type": "integer", "default": 2026, "description": "The calendar year (e.g. 2026)."}
+                    },
+                    "required": ["year"]
+                }
+            }
         }
     ]
 
@@ -282,7 +314,9 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "2. When suggesting a property, follow up by invoking the calculate_commute tool to show specific travel durations.\n"
                 "3. If the user asks about their lease, due rent, or payment checks, run check_my_own_rental_status immediately with the user's ID.\n"
                 "4. Answer clearly in Chinese, with structured formatting.\n"
-                "5. When calling calculate_commute, ALWAYS extract the exact 'lat' and 'lng' values from the search results returned by search_internal_db for the property, and use those as 'origin_lat' and 'origin_lng' respectively. DO NOT guess or hallucinate these values."
+                "5. When calling calculate_commute, ALWAYS extract the exact 'lat' and 'lng' values from the search results returned by search_internal_db for the property, and use those as 'origin_lat' and 'origin_lng' respectively. DO NOT guess or hallucinate these values.\n"
+                "6. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
+                "7. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays."
             )
         },
         {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}
@@ -397,6 +431,16 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             elif tool_name == "check_my_own_rental_status":
                 # Ensure we pass the actual user_id from context for compliance checks
                 result_data = check_my_own_rental_status(user_id=user_id)
+            elif tool_name == "convert_currency_frankfurter":
+                result_data = convert_currency_frankfurter(
+                    amount=tool_args.get("amount", 1.0),
+                    from_currency=tool_args.get("from_currency", "MYR"),
+                    to_currency=tool_args.get("to_currency", "CNY")
+                )
+            elif tool_name == "get_malaysia_holidays":
+                result_data = get_malaysia_holidays(
+                    year=tool_args.get("year", 2026)
+                )
 
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})
             await asyncio.sleep(0.5)
