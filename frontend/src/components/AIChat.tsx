@@ -26,9 +26,30 @@ export default function AIChat() {
   const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [userId, setUserId] = useState<string>('tenant-123');
+
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
     fetch(`${apiUrl}/`).then(r => r.json()).then(d => { if (d.status === 'online') setBackendStatus('online'); }).catch(() => {});
+    
+    const resolveUser = async () => {
+      try {
+        const { supabase, isMockDatabase } = await import('@/lib/supabase');
+        if (!isMockDatabase) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setUserId(user.id);
+            localStorage.setItem('ez_tenant_id', user.id);
+          }
+        } else {
+          const stored = localStorage.getItem('ez_tenant_id');
+          if (stored) setUserId(stored);
+        }
+      } catch (e) {
+        console.error('Error resolving user in AIChat:', e);
+      }
+    };
+    resolveUser();
   }, []);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -121,14 +142,14 @@ export default function AIChat() {
     const aid = `msg-a-${Date.now()}`;
     setMessages(p => [...p, { id: uid, role: 'user', content: userText }]);
     setMessages(p => [...p, { id: aid, role: 'assistant', content: '', thoughts: [], toolCalls: [] }]);
-    const userId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+    const activeUserId = userId || localStorage.getItem('ez_tenant_id') || 'tenant-123';
 
     if (backendStatus === 'online') {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
         const res = await fetch(`${apiUrl}/api/chat`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: userText, user_id: userId })
+          body: JSON.stringify({ query: userText, user_id: activeUserId })
         });
         if (!res.body) throw new Error('no body');
         const reader = res.body.getReader();
