@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-23 (UTC+8)
-> 状态：**前端可跑 · 后端已连接真实 DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage · 房源/租约支持删除 · 支付凭证审核功能完成 · 收款码上传/共享/持久化完成 · RLS 策略全面修复 · 意见箱功能完成**
+> 状态：**前端可跑 · 后端已连接真实 DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage · 房源/租约支持删除 · 支付凭证审核功能完成 · 收款码上传/共享/持久化完成 · RLS 策略全面修复 · 意见箱功能完成 · Vercel & Render 云端生产环境部署完成**
 
 ---
 
@@ -151,6 +151,7 @@ Malaysia_Ez_rent/
 | 37 | editor 管理员无法上传收款码（RLS 仅允许 super_admin） | 新增 `Admins can update payment QR` 策略，允许任意管理员更新收款码（全系统共享） |
 | 38 | 收款码刷新后丢失 | 上传时同步存 localStorage，加载时优先数据库、fallback 到 localStorage |
 | 39 | 删除收款码无确认提示 | 加 `confirm()` 弹窗："确定删除收款码？" |
+| 40 | 部署时环境变量混乱，AIChat写死localhost导致线上失效 | 清理前后端 .env 文件，修改 AIChat.tsx 动态读取 NEXT_PUBLIC_AGENT_API_URL |
 
 ---
 
@@ -183,8 +184,8 @@ Malaysia_Ez_rent/
 
 ### 长期（生产部署）
 
-- [ ] **Vercel 部署前端**：`git push` → Vercel 自动构建
-- [ ] **Railway/Render 部署后端**：FastAPI 容器化
+- [x] **Vercel 部署前端**：`git push` → Vercel 自动构建
+- [x] **Railway/Render 部署后端**：FastAPI 容器化
 - [x] **Supabase RLS 策略**：已启用，admin_users / users / units / leases / payment_records 均已配置
 
 ---
