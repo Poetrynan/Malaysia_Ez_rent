@@ -78,7 +78,7 @@ Malaysia_Ez_rent/
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航，角色判断（查 admin_users 表），flex 布局修复 |
 | `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、配套设施展示、同小区推荐），联系管理员弹窗，**合租功能**（Whole Unit 显示入住人数/备注/意向者列表，其他房型直接"我要租"），图片从 Supabase Storage 读取 |
-| `AIChat.tsx` | ✅ 完成 | AI 对话界面，ReAct 思维链展示，SSE 流式调用真实 Agent + 离线模拟器降级 |
+| `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格 + 支付弹窗（管理员收款码 + 手机扫码上传凭证），已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
@@ -97,8 +97,8 @@ Malaysia_Ez_rent/
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | `main.py` | ✅ 完成 | FastAPI + CORS，SSE `/api/chat` 端点 |
-| `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；Mock 模拟器延迟优化 |
-| `tools.py` | ✅ 完成 | 4 个工具：语义数据库检索、通勤计算、Tavily 网络搜索、租约状态查询 |
+| `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；System Prompt 加入规则限制，禁止对用户念出或复述 ID。 |
+| `tools.py` | ✅ 完成 | 6 个工具：数据库检索、通勤计算、Tavily 网页搜索、租约查询、Frankfurter 实时汇率换算、Nager.Date 假期查询。 |
 | `config.py` | ✅ 完成 | 环境变量统一管理 |
 | `run.py` | ✅ 完成 | uvicorn 热重载启动，监听 `127.0.0.1:8000` |
 
@@ -154,6 +154,10 @@ Malaysia_Ez_rent/
 | 40 | 部署时环境变量混乱，AIChat写死localhost导致线上失效 | 清理前后端 .env 文件，修改 AIChat.tsx 动态读取 NEXT_PUBLIC_AGENT_API_URL |
 | 41 | 生产构建报错：AdminPanel.tsx 中 place.geometry 可能为 undefined | 修改 `AdminPanel.tsx` 逻辑，使用可选链 `place.geometry?.location?.lat()` 以及默认值，成功通过打包编译 |
 | 42 | 安全隐患：backend/.env 包含高权限 key 被 Git 跟踪 | 根目录新增 `.gitignore` 并执行 git rm --cached，确保敏感密钥不上传 Github，仅留本地和 Render 环境变量中 |
+| 43 | 前端 AIChat 输出原始 `##` Markdown | 在 `AIChat.tsx` 增加零依赖简易原生 Markdown 渲染，支持三级标题、加粗、无序列表及行内代码渲染。 |
+| 44 | AI 对话查询租约报默认 tenant-123 数据错配 | 修复 `page.tsx` 和 `AIChat.tsx` 的 ID 传递链。现在真实登录用户的 Supabase UUID 会秒同步本地 `ez_tenant_id` 缓存，并在退出登录时清空。 |
+| 45 | AI 念出或复述后台 UUID / tenant-123 乱码 | 后端 `agent.py` 添加第 8 条全局 Prompt 指导，严禁大模型对用户暴露和复述 ID 字符串。 |
+| 46 | 智能 Agent 功能单一、无假期/汇率工具 | `tools.py` 新增并集成 Frankfurter 汇率换算与 Nager.Date 马来西亚公休假期查询。 |
 
 ---
 
@@ -173,7 +177,7 @@ Malaysia_Ez_rent/
 - [x] **房源/租约删除**：管理员可删除已登记房源和租约，硬删除同步清理 Storage 和关联数据
 - [x] **登录页白色简洁设计**：去除黑色/紫色 AI 风格，改为白色背景
 - [x] **管理员 Tab 闪现修复**：role 初始值 null，加载完成前不显示任何导航
-- [ ] **AIChat 完整流程测试**：房源搜索 → 地图渲染、租约查询 → 台账渲染（真实 Agent）
+- [x] **AIChat 完整流程测试**：房源搜索 → 地图渲染、租约查询 → 台账渲染（真实 Agent）
 - [ ] **PropertyListings 数据刷新**：Admin 添加房源后，学生端列表自动刷新（目前需手动刷新页面）
 
 ### 中期（接入真实服务）
