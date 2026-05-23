@@ -35,6 +35,82 @@ export default function AIChat() {
 
   const toggleThoughts = (id: string) => setCollapsedThoughts(p => ({ ...p, [id]: !p[id] }));
 
+  // Helper to parse simple markdown to JSX elements
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      // 1. Headers
+      if (line.startsWith('### ')) {
+        return (
+          <h4 key={index} style={{ fontSize: '0.95rem', fontWeight: 700, margin: '8px 0 4px 0', color: 'var(--text-h)' }}>
+            {renderInlineMarkdown(line.slice(4))}
+          </h4>
+        );
+      }
+      if (line.startsWith('## ')) {
+        return (
+          <h3 key={index} style={{ fontSize: '1.05rem', fontWeight: 700, margin: '12px 0 6px 0', color: 'var(--text-h)' }}>
+            {renderInlineMarkdown(line.slice(3))}
+          </h3>
+        );
+      }
+      if (line.startsWith('# ')) {
+        return (
+          <h2 key={index} style={{ fontSize: '1.15rem', fontWeight: 700, margin: '16px 0 8px 0', color: 'var(--text-h)' }}>
+            {renderInlineMarkdown(line.slice(2))}
+          </h2>
+        );
+      }
+
+      // 2. Unordered lists
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        return (
+          <li key={index} style={{ marginLeft: '16px', listStyleType: 'disc', margin: '4px 0', color: 'var(--text-body)' }}>
+            {renderInlineMarkdown(line.slice(2))}
+          </li>
+        );
+      }
+
+      // 3. Regular lines
+      return (
+        <p key={index} style={{ margin: '2px 0', minHeight: '1em', color: 'var(--text-body)', wordBreak: 'break-word' }}>
+          {renderInlineMarkdown(line)}
+        </p>
+      );
+    });
+  };
+
+  const renderInlineMarkdown = (text: string) => {
+    // Regex matches bold (**bold**) and inline code (`code`)
+    const regex = /(\*\*.*?\*\*|`.*?`)/g;
+    const parts = text.split(regex);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} style={{ fontWeight: 700, color: 'var(--text-h)' }}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code
+            key={i}
+            style={{
+              padding: '2px 5px',
+              background: 'var(--primary-light)',
+              color: 'var(--primary)',
+              borderRadius: '4px',
+              fontFamily: 'monospace',
+              fontSize: '0.82rem',
+              border: '1px solid var(--glass-border)'
+            }}
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isGenerating) return;
@@ -197,7 +273,9 @@ export default function AIChat() {
                       )}
                     </div>
                   )}
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                  <div className="markdown-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {renderMarkdown(m.content)}
+                  </div>
                   {m.role === 'assistant' && m.uiComponent && (
                     <div>
                       {m.uiComponent.component === 'MapAndCard' && <MapAndCard {...m.uiComponent.props} />}
