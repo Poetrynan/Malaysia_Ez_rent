@@ -334,19 +334,22 @@ supabase/migrations/
 
 ---
 
-## 十一、AI 大模型切换指南
+## 十一、AI 大模型与向量模型切换指南
 
-后端采用 **OpenAI 兼容协议（OpenAI-Compatible API）**，切换模型提供商**只需修改 3 个环境变量，零代码改动**。
+后端采用 **OpenAI 兼容协议（OpenAI-Compatible API）**，已支持**将 Agent 对话大脑与 Embedding 向量检索模型进行 API 密钥和 Base URL 的物理拆离**。您可以分别配置它们，也可以只配置一组通用设置。
 
-### 需要修改的环境变量
+### 核心配置环境变量
 
-| 变量名 | 作用 | 当前值 |
-|--------|------|--------|
-| `OPENAI_API_KEY` | 模型 API 密钥 | SiliconFlow 的 `sk-xxx` |
-| `OPENAI_API_BASE` | 兼容 OpenAI 格式的接口端点 | `https://api.siliconflow.cn/v1` |
-| `NEXT_PUBLIC_AGENT_MODEL` | 调用的模型名称 | `deepseek-ai/DeepSeek-V3` |
+| 变量分类 | 变量名 | 作用与示例 | 默认回退 |
+|--------|--------|------------|--------|
+| **全局/嵌入配置** | `OPENAI_API_KEY` | 用于 Embedding 向量检索的密钥 (如 SiliconFlow) | 必填 (若使用真实向量检索) |
+| | `OPENAI_API_BASE` | 向量模型的 API Base 地址 | 默认为 `https://api.openai.com/v1` |
+| | `AI_EMBEDDING_MODEL` | 向量生成模型名称 (如 `BAAI/bge-large-zh-v1.5`) | 默认为 `text-embedding-3-small` |
+| **独立 Agent 配置** | `AGENT_API_KEY` | 对话大脑专属 API Key | 若留空，自动回退到 `OPENAI_API_KEY` |
+| | `AGENT_API_BASE` | 对话大脑专属 API Base 地址 | 若留空，自动回退到 `OPENAI_API_BASE` |
+| | `NEXT_PUBLIC_AGENT_MODEL` | 对话大脑模型名称 (如 `deepseek-ai/DeepSeek-V3`) | 默认为 `gpt-4o-mini` |
 
-> 修改位置：Render 后端控制台 → Environment，或本地 `backend/.env`。修改后 Render 会自动重启服务。
+> 修改位置：Render 后端控制台 → Environment，或本地 `backend/.env`。修改后服务会自动重启。
 
 ### 各提供商切换示例
 

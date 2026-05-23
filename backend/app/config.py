@@ -11,6 +11,16 @@ class Config:
     
     # AI and Search API keys
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+    
+    # Separated Embedding API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
+    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+    EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
+    
+    # Separated Agent LLM API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
+    AGENT_API_KEY = os.getenv("AGENT_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+    AGENT_API_BASE = os.getenv("AGENT_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
+    
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
     
@@ -21,7 +31,7 @@ class Config:
         
     @classmethod
     def is_openai_enabled(cls) -> bool:
-        return bool(cls.OPENAI_API_KEY)
+        return bool(cls.AGENT_API_KEY or cls.OPENAI_API_KEY)
         
     @classmethod
     def is_tavily_enabled(cls) -> bool:
@@ -36,7 +46,8 @@ class Config:
         print("====== Malaysia Ez Rent Backend Config ======")
         print(f"Supabase URL configured: {bool(cls.SUPABASE_URL)}")
         print(f"Supabase Service Role configured: {bool(cls.SUPABASE_SERVICE_ROLE_KEY)}")
-        print(f"OpenAI API Key configured: {bool(cls.OPENAI_API_KEY)}")
+        print(f"Agent API Key configured: {bool(cls.AGENT_API_KEY)} (Base: {cls.AGENT_API_BASE})")
+        print(f"Embedding API Key configured: {bool(cls.EMBEDDING_API_KEY)} (Base: {cls.EMBEDDING_API_BASE})")
         print(f"Tavily API Key configured: {bool(cls.TAVILY_API_KEY)}")
         print(f"Google Maps API Key configured: {bool(cls.GOOGLE_MAPS_API_KEY)}")
         print(f"Running Mode: {'REAL API' if cls.is_supabase_enabled() and cls.is_openai_enabled() else 'LOCAL MOCK/DEMO MODE'}")

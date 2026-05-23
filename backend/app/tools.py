@@ -19,11 +19,22 @@ except ImportError:
 from app.mock_data import COMMUNITIES, UNITS, UNIVERSITIES, MOCK_LEASES, MOCK_PAYMENT_RECORDS
 
 # Initialize clients if keys are present
-openai_client = None
-import os
-if Config.is_openai_enabled():
-    base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-    openai_client = OpenAI(api_key=Config.OPENAI_API_KEY, base_url=base_url)
+embedding_client = None
+if Config.EMBEDDING_API_KEY:
+    try:
+        embedding_client = OpenAI(api_key=Config.EMBEDDING_API_KEY, base_url=Config.EMBEDDING_API_BASE)
+    except Exception as e:
+        print(f"[Warning] Could not init embedding client: {e}.")
+
+agent_client = None
+if Config.AGENT_API_KEY:
+    try:
+        agent_client = OpenAI(api_key=Config.AGENT_API_KEY, base_url=Config.AGENT_API_BASE)
+    except Exception as e:
+        print(f"[Warning] Could not init agent client: {e}.")
+
+# Keep openai_client alias for compatibility
+openai_client = agent_client
 
 supabase_client: Optional[Client] = None
 if Config.is_supabase_enabled():
@@ -42,17 +53,17 @@ if Config.SUPABASE_URL and Config.SUPABASE_SERVICE_ROLE_KEY and "your-supabase-s
 
 
 def get_embedding(text: str) -> List[float]:
-    """Generates embedding using OpenAI or returns mock vector."""
-    if openai_client:
+    """Generates embedding using embedding_client or returns mock vector."""
+    if embedding_client:
         try:
-            model = os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
-            response = openai_client.embeddings.create(
+            model = os.getenv("AI_EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
+            response = embedding_client.embeddings.create(
                 input=[text],
                 model=model
             )
             return response.data[0].embedding
         except Exception as e:
-            print(f"Error calling OpenAI embedding API: {e}")
+            print(f"Error calling embedding API: {e}")
     # Fallback to random/mock vector of 1536 dims
     import random
     random.seed(hash(text))
