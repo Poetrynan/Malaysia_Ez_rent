@@ -152,6 +152,8 @@ Malaysia_Ez_rent/
 | 38 | 收款码刷新后丢失 | 上传时同步存 localStorage，加载时优先数据库、fallback 到 localStorage |
 | 39 | 删除收款码无确认提示 | 加 `confirm()` 弹窗："确定删除收款码？" |
 | 40 | 部署时环境变量混乱，AIChat写死localhost导致线上失效 | 清理前后端 .env 文件，修改 AIChat.tsx 动态读取 NEXT_PUBLIC_AGENT_API_URL |
+| 41 | 生产构建报错：AdminPanel.tsx 中 place.geometry 可能为 undefined | 修改 `AdminPanel.tsx` 逻辑，使用可选链 `place.geometry?.location?.lat()` 以及默认值，成功通过打包编译 |
+| 42 | 安全隐患：backend/.env 包含高权限 key 被 Git 跟踪 | 根目录新增 `.gitignore` 并执行 git rm --cached，确保敏感密钥不上传 Github，仅留本地和 Render 环境变量中 |
 
 ---
 
