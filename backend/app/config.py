@@ -13,13 +13,14 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
     
+    # Separated Agent LLM API configuration (defaults to Gemini/Agent/OpenAI keys)
+    AGENT_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("AGENT_API_KEY", os.getenv("OPENAI_API_KEY", "")))
+    AGENT_API_BASE = os.getenv("GEMINI_BASE_URL", os.getenv("AGENT_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")))
+    AGENT_MODEL = os.getenv("GEMINI_MODEL", os.getenv("NEXT_PUBLIC_AGENT_MODEL", "gpt-4o-mini"))
+    
     # Separated Embedding API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
     EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", os.getenv("OPENAI_API_KEY", ""))
     EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
-    
-    # Separated Agent LLM API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
-    AGENT_API_KEY = os.getenv("AGENT_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-    AGENT_API_BASE = os.getenv("AGENT_API_BASE", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
     
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
@@ -46,7 +47,7 @@ class Config:
         print("====== Malaysia Ez Rent Backend Config ======")
         print(f"Supabase URL configured: {bool(cls.SUPABASE_URL)}")
         print(f"Supabase Service Role configured: {bool(cls.SUPABASE_SERVICE_ROLE_KEY)}")
-        print(f"Agent API Key configured: {bool(cls.AGENT_API_KEY)} (Base: {cls.AGENT_API_BASE})")
+        print(f"Agent API Key configured: {bool(cls.AGENT_API_KEY)} (Base: {cls.AGENT_API_BASE}, Model: {cls.AGENT_MODEL})")
         print(f"Embedding API Key configured: {bool(cls.EMBEDDING_API_KEY)} (Base: {cls.EMBEDDING_API_BASE})")
         print(f"Tavily API Key configured: {bool(cls.TAVILY_API_KEY)}")
         print(f"Google Maps API Key configured: {bool(cls.GOOGLE_MAPS_API_KEY)}")

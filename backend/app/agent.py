@@ -331,9 +331,8 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         await asyncio.sleep(0.5)
 
         try:
-            import os
             response = openai_client.chat.completions.create(
-                model=os.getenv("NEXT_PUBLIC_AGENT_MODEL", "gpt-4o-mini"),
+                model=Config.AGENT_MODEL,
                 messages=messages,
                 tools=tools_definitions,
                 tool_choice="auto"
