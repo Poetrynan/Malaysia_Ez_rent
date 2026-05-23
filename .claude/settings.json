@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill //F //PID 36436)",
+      "Bash(rm -rf .next)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('Video:', typeof l.Video, 'Star:', typeof l.Star\\)\")",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('SlidersHorizontal:', typeof l.SlidersHorizontal, 'Tag:', typeof l.Tag\\)\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css?v=1779380918846\")",
+      "Bash(taskkill //F //PID 42792)",
+      "Bash(taskkill //F //PID 15636)",
+      "Bash(mkdir -p \"c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/mobile-upload/[id]\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Administrator\\Desktop\\Malaysia_Ez_rent\\frontend\\src\\app\\mobile-upload"
+    ]
+  }
+}
