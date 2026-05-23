@@ -245,12 +245,172 @@ supabase db dump --project-id 旧项目ID > backup.sql
 
 **注意：** 如果只手动导出业务表（不导 `auth.users`），用户重新注册后 UUID 会变，旧的租约、账单数据就断链了。所以一定要用 CLI 完整迁移。
 
+### Q: 房源图片存在哪里？为什么不用 base64 直接存数据库？
+**A:** 图片上传到 **Supabase Storage**（类似 S3 的对象存储），数据库只存图片的公开 URL。
+
+| 方式 | 存什么 | 适合 |
+|------|--------|------|
+| base64 存数据库 | 几百 KB 的文本塞进字段 | ❌ 膨胀数据库、查询慢、有大小限制 |
+| Supabase Storage | 文件存对象存储，数据库只存 URL | ✅ 生产级方案，CDN 加速 |
+
+项目里的 Storage Bucket：`unit-media`，存储内容：
+- 房源图片：`{unitId}/0.jpg`, `{unitId}/1.jpg`, ...
+- 管理员收款码：`qr/{userId}.png`
+
+所有人可查看（公开 Bucket），只有登录用户可上传/删除（RLS 策略，`TO authenticated`）。
+
+### Q: Storage RLS 策略怎么配？为什么不能用 `EXISTS (SELECT FROM admin_users)`？
+**A:** Storage 的 RLS 和普通表不一样。`storage.objects` 表的上下文里，`auth.uid()` 可以用，但跨表子查询（如 `EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())`）**可能失败**，因为 Storage 的 RLS 执行环境和普通表不同。
+
+| 策略写法 | 效果 | 推荐 |
+|----------|------|------|
+| `EXISTS (SELECT 1 FROM admin_users WHERE ...)` | 可能报错或不生效 | ❌ |
+| `TO authenticated USING (bucket_id = 'unit-media')` | 所有登录用户可操作 | ✅ |
+
+应用层（前端代码）已经做了管理员校验——只有进入管理端的用户才能上传，所以 Storage RLS 不需要重复检查。
+
+### Q: admin_users 的 RLS 策略为什么不能用 `FOR ALL`？
+**A:** PostgreSQL 中，`FOR ALL` 策略覆盖 **SELECT + INSERT + UPDATE + DELETE** 四种操作。如果你用一条 `FOR ALL` 策略：
+
+```sql
+-- ❌ 危险：这条策略同时控制读和写
+CREATE POLICY "super admin manage" ON admin_users FOR ALL
+  USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid() AND role = 'super_admin'));
+```
+
+问题：普通用户（学生）想读管理员联系方式（SELECT），但 `FOR ALL` 策略要求 `role = 'super_admin'`，学生读不到 → **登录流程崩溃**（首页查 admin_users 失败）。
+
+正确做法：**拆成四条独立策略**：
+
+```sql
+-- ✅ 所有人可读
+CREATE POLICY "anyone read" ON admin_users FOR SELECT USING (true);
+
+-- ✅ 只有超级管理员可增删改
+CREATE POLICY "super admin insert" ON admin_users FOR INSERT
+  WITH CHECK (EXISTS (...));
+CREATE POLICY "super admin update" ON admin_users FOR UPDATE
+  USING (EXISTS (...));
+CREATE POLICY "super admin delete" ON admin_users FOR DELETE
+  USING (EXISTS (...));
+
+-- ✅ 所有管理员可更新收款码（全系统共享）
+CREATE POLICY "admin update QR" ON admin_users FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+```
+
+### Q: 收款码是每个管理员各自的还是全系统共享？
+**A:** **全系统共享。** 不管哪个管理员上传的，所有管理员和学生看到的是同一个收款码。
+
+| 角色 | 能做什么 |
+|------|---------|
+| 任意管理员（editor / super_admin） | 上传、替换、删除收款码 |
+| 学生 | 查看收款码，扫码付款 |
+
+收款码存储在 `admin_users.payment_qr_code` 字段。前端查询时取第一条非空记录（`.not('payment_qr_code', 'is', null).limit(1).single()`），所以所有人看到同一个码。
+
+上传流程：
+1. 文件上传到 Supabase Storage `qr/{userId}.png`
+2. 公开 URL 写入 `admin_users.payment_qr_code`
+3. 同步缓存到 `localStorage`（防止数据库读取失败时丢失）
+
+### Q: 删除数据是真的从数据库删掉吗？
+**A:** **是的，硬删除。** 管理员删除房源或租约时，数据会从数据库彻底删除：
+
+| 删除对象 | 同步清理的内容 |
+|----------|--------------|
+| 房源（unit） | Storage 里的图片文件 |
+| 租约（lease） | 关联的 payment_records + 恢复 unit 状态为 available |
+
+所有删除操作都有确认弹窗，防止误操作。
+
+### Q: 租客取消意向是删除还是标记？
+**A:** **软删除**——把 `tenant_interests.status` 改为 `'left'`，数据保留在数据库里。
+
+- 学生端：查询时过滤 `.neq('status', 'left')`，看不到已取消的
+- 管理员端：可以看到所有状态（interested / confirmed / left），方便追溯历史
+
+为什么不用硬删除？因为管理员需要知道"这个人曾经来过又走了"，有助于判断房间热度。
+
+### Q: 房源类型不同，合租逻辑有什么区别？
+**A:**
+
+| 房型 | 逻辑 | 按钮行为 |
+|------|------|----------|
+| Studio / Master Room / Medium Room / Small Room | 单人入住，直接租 | 点"我要租"直接表达意向，无备注，无合租列表 |
+| Whole Unit | 多人合租 | 显示入住人数、备注输入（自我介绍 & 室友期望）、其他意向者列表 |
+
+管理员可以在 AdminPanel 设置每个 Unit 的最大入住人数（`max_occupants`）。
+
+### Q: 配套设施怎么用？
+**A:** 管理员创建小区时可以勾选配套设施（健身房、游泳池、洗衣房、自习室、停车位、安保、WiFi、便利店），数据存为 `communities.amenities TEXT[]` 数组。学生在房源详情页可以看到该小区的配套设施列表。
+
+### Q: 什么是"双模式架构"？Live 和 Mock 有什么区别？
+**A:** 项目支持两种运行模式，代码自动检测：
+
+| 模式 | 数据源 | 判断条件 | 用途 |
+|------|--------|----------|------|
+| **Live** | Supabase 云数据库 | 用户已登录（`supabase.auth.getUser()` 成功） | 真实使用、部署上线 |
+| **Mock** | 浏览器 localStorage | 用户未登录或 Supabase 不可用 | 本地演示、无需注册即可体验 |
+
+每个数据操作都有两条路径：
+```typescript
+if (isLive) {
+  // 写入 Supabase
+} else {
+  // 写入 localStorage
+}
+```
+
+这样的好处：开发者可以直接打开页面体验完整功能，不需要先注册 Supabase 账号。连接真实数据库后，所有操作自动切换到 Supabase。
+
+### Q: 租约的押金怎么计算？可以自定义吗？
+**A:** 可以。管理员创建租约时，分别设置安全押金和水电押金的月数（支持小数如 0.5）：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `security_deposit_months` | 2 | 安全押金月数 |
+| `utility_deposit_months` | 0.5 | 水电押金月数 |
+
+总押金 = 月租 × (安全月数 + 水电月数)。学生端会显示明细，如"安全押金 (2 个月) RM 2,000"。
+
+### Q: 管理员怎么创建租约并关联租客？
+**A:** 创建租约时，选择一个可用房间后：
+
+1. **有已确认的意向租客**：下拉框自动列出该房间的已确认租客（显示姓名 + 邮箱），直接选择
+2. **没有意向租客**：手动输入租客的 UUID（在 Supabase 后台 → Authentication → Users 可以找到）
+3. **Mock 模式**：自动用 `tenant-{timestamp}` 兜底，不需要真实 UUID
+
+租客 UUID 必须是合法的 `auth.users` UUID，否则数据库会报 `invalid input syntax for type uuid`。
+
+### Q: 学生支付流程是什么？收款码在哪里？
+**A:** 学生点击未缴费的月份后，弹窗分两个区域：
+
+| 区域 | 显示内容 | 来源 |
+|------|----------|------|
+| 上方 | 管理员的 DuitNow / Touch'n Go 收款码 | `admin_users.payment_qr_code`（管理员在"收款设置" tab 上传） |
+| 下方 | 手机扫码上传转账截图的二维码 | 生成指向 `/mobile-upload/{paymentId}` 的 QR |
+
+流程：学生扫码付款 → 截图 → 手机扫码上传截图 → 管理员审核（批准/驳回）→ 状态更新。
+
+如果管理员没上传收款码，弹窗会提示"管理员尚未上传收款码，请联系管理员"。
+
+### Q: 管理端台账怎么操作？已缴费能改回来吗？
+**A:** 可以。管理员点击台账格子可以切换状态：
+- **待缴 → 已缴**：直接点击
+- **已缴 → 待缴**：再次点击即可回退
+- **待审核**：点击后弹出审核弹窗（查看截图、批准/驳回）
+
+台账按时间顺序排列（1月、2月、3月...），不会把已缴的挤到后面。
+
 ### Q: 数据库加字段会丢数据吗？
-**A:** **不会。** 用 `ALTER TABLE ... ADD COLUMN` 加字段是安全操作，已有数据不受影响。大厂规范是永远用迁移脚本（`ALTER TABLE`），不删表重建。
 
 项目里的迁移脚本放在 `supabase/migrations/` 目录下，按编号管理：
 - `001_add_admin_contact.sql` — 给 admin_users 加联系方式字段
 - `002_limit_admins_and_ui.sql` — 限制管理员最多 5 人
+- `003_corenting.sql` — 合租功能（units.max_occupants + tenant_interests 表）
+- `004_unit_media.sql` — 图片存储 + 配套设施 + 收款码 + 押金月数（units.media_urls + communities.amenities + admin_users.payment_qr_code + leases.security/utility_deposit_months）
+- `005_feedback.sql` — 意见箱（feedback 表 + RLS 策略）
 
 ### Q: 超级管理员不注册，可以在数据库帮他注册吗？
 **A:** 可以，但要分两步：
@@ -286,6 +446,29 @@ VALUES ('用户的UUID', '用户邮箱@gmail.com', '张房东', '+60123456789', 
 **A:** **5 人。** 用触发器 `limit_admin_count` 实现，插入第 6 人时会报错。以后想改数字，修改触发器里的 `>= 5` 即可。
 
 Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB、月活用户 50K 等）。
+
+### Q: 意见箱怎么用？
+
+**A:** 学生可以在 StudentPortal 底部的"意见箱"区域提交意见或建议。提交后：
+
+| 角色 | 能做什么 |
+|------|---------|
+| 学生 | 提交意见、查看自己的历史意见、查看管理员回复 |
+| 管理员 | 在 AdminPanel 的"意见" tab 查看所有意见、回复、标记已处理、删除 |
+
+**数据库表**：`feedback`（`005_feedback.sql` 迁移）
+
+| 字段 | 说明 |
+|------|------|
+| `user_id` | 提交学生的 UUID |
+| `content` | 意见内容 |
+| `status` | `pending`（待处理）/ `resolved`（已处理）|
+| `admin_reply` | 管理员回复（可选）|
+| `resolved_at` | 处理时间 |
+
+**RLS 策略**：学生只能插入和查看自己的意见；管理员可以查看、更新、删除所有意见。
+
+**未处理提醒**：管理端"意见" tab 会显示未处理意见的数量角标。
 
 ---
 
@@ -371,9 +554,10 @@ Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB�
 
 | 步骤 | 做什么 | 状态 |
 |------|--------|------|
-| 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器） | 待执行 |
-| 2️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | 待测试 |
-| 3️⃣ | 在 `admin_users` 表手动添加管理员 | 按需做 |
+| 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
+| 2️⃣ | 运行 `supabase/migrations/004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
+| 3️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 4️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
 
 ---
 

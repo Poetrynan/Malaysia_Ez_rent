@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, X, Smartphone } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, X, Smartphone, QrCode } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { isMockDatabase } from '@/lib/supabase';
 import { useApp } from '@/lib/ThemeProvider';
 
 interface Payment {
@@ -33,8 +34,45 @@ export default function LeaseLedgerCard({
   const { t, lang } = useApp();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [adminQR, setAdminQR] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const channelRef = useRef<any>(null);
+
+  // Fetch admin payment QR code
+  useEffect(() => {
+    if (isMockDatabase) {
+      const saved = localStorage.getItem('ez_admin_qr_code');
+      if (saved) setAdminQR(saved);
+    } else {
+      (async () => {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabaseClient = createClient();
+          const { data, error } = await supabaseClient
+            .from('admin_users')
+            .select('payment_qr_code')
+            .not('payment_qr_code', 'is', null)
+            .limit(1)
+            .single();
+          if (error) {
+            console.error('[QR Fetch] Error:', error.message);
+            // Fallback to localStorage
+            const saved = localStorage.getItem('ez_admin_qr_code');
+            if (saved) setAdminQR(saved);
+            return;
+          }
+          if (data?.payment_qr_code) {
+            setAdminQR(data.payment_qr_code);
+            localStorage.setItem('ez_admin_qr_code', data.payment_qr_code);
+          }
+        } catch (err: any) {
+          console.error('[QR Fetch] Exception:', err?.message);
+          const saved = localStorage.getItem('ez_admin_qr_code');
+          if (saved) setAdminQR(saved);
+        }
+      })();
+    }
+  }, []);
 
   const formatMonth = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -129,8 +167,9 @@ export default function LeaseLedgerCard({
           return (
             <div
               key={p.id}
-              onClick={() => setSelectedPayment(p)}
+              onClick={() => { if (!p.paid) setSelectedPayment(p); }}
               className={`payment-cell ${p.paid ? 'paid' : 'unpaid'}`}
+              style={{ cursor: p.paid ? 'default' : 'pointer' }}
             >
               <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                 {formatMonth(p.billing_month)}
@@ -149,7 +188,7 @@ export default function LeaseLedgerCard({
       {/* Payment Modal */}
       {selectedPayment && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ width: 400, textAlign: 'left' }}>
+          <div className="modal-content" style={{ width: 520, textAlign: 'left', overflow: 'hidden' }}>
             {/* Close button */}
             <button
               onClick={() => setSelectedPayment(null)}
@@ -188,26 +227,46 @@ export default function LeaseLedgerCard({
                 )}
               </div>
             ) : (
-              /* No evidence yet — show QR code + waiting state */
-              <div style={{ textAlign: 'center' }}>
-                {/* QR Code */}
-                <div style={{ background: 'white', padding: 12, borderRadius: 12, display: 'inline-block', marginBottom: 16 }}>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getMobileUrl(selectedPayment.id))}`}
-                    alt="QR Code"
-                    style={{ width: 180, height: 180, display: 'block' }}
-                  />
+              /* No evidence yet — show payment QR + upload QR side by side */
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                {/* Left: Admin Payment QR Code (DuitNow / Touch'n Go) */}
+                <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('paymentTitle')}</div>
+                  {adminQR ? (
+                    <>
+                      <div style={{ background: 'white', padding: 8, borderRadius: 12, display: 'inline-block', marginBottom: 8, border: '1px solid var(--glass-border)' }}>
+                        <img src={adminQR} alt="Payment QR" style={{ width: '100%', maxWidth: 160, height: 'auto', display: 'block', objectFit: 'contain' }} />
+                      </div>
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: 0 }}>{t('duitnowWarning')}</p>
+                    </>
+                  ) : (
+                    <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                      {t('noPaymentQR')}
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)', marginBottom: 16 }}>
-                  <Smartphone size={14} style={{ color: 'var(--primary)' }} />
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-body)' }}>{t('scanToUploadDesc')}</span>
-                </div>
+                {/* Divider */}
+                <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--glass-border)', margin: '0 4px' }} />
 
-                {/* Waiting indicator */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('waitingForUpload')}</span>
+                {/* Right: Mobile Upload QR Code */}
+                <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('scanToUpload')}</div>
+                  <div style={{ background: 'white', padding: 8, borderRadius: 12, display: 'inline-block', marginBottom: 8, border: '1px solid var(--glass-border)' }}>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(getMobileUrl(selectedPayment.id))}`}
+                      alt="Upload QR"
+                      style={{ width: '100%', maxWidth: 160, height: 'auto', display: 'block' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)', marginBottom: 8 }}>
+                    <Smartphone size={13} style={{ color: 'var(--primary)' }} />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-body)' }}>{t('scanToUploadDesc')}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '4px 0' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t('waitingForUpload')}</span>
+                  </div>
                 </div>
               </div>
             )}

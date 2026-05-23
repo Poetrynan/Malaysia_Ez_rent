@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-23 (UTC+8)
-> 状态：**前端可跑 · 后端已连接真实 DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 管理员联系方式从数据库读取 · 迁移脚本规范管理 · 支付凭证审核功能完成**
+> 状态：**前端可跑 · 后端已连接真实 DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage · 房源/租约支持删除 · 支付凭证审核功能完成 · 收款码上传/共享/持久化完成 · RLS 策略全面修复 · 意见箱功能完成**
 
 ---
 
@@ -17,6 +17,8 @@ Malaysia_Ez_rent/
 │   │   │   ├── globals.css       # 全局 CSS 变量、动画、组件样式（含 Toast 动画）
 │   │   │   ├── login/
 │   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录界面（Mock/Live自适应）
+│   │   │   ├── mobile-upload/
+│   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证专属页面
 │   │   │   └── auth/
 │   │   │       └── callback/
 │   │   │           └── route.ts  # Supabase OAuth 回调处理器
@@ -31,6 +33,12 @@ Malaysia_Ez_rent/
 │   │       ├── supabase.ts       # Supabase 客户端（含完整 LocalStorage Mock）
 │   │       ├── ThemeProvider.tsx  # 主题/语言 Context Provider
 │   │       └── i18n.ts           # 中英双语翻译字典
+│   │   ├── utils/
+│   │   │   └── supabase/         # @supabase/ssr 服务端/中间件工具
+│   │   │       ├── client.ts
+│   │   │       ├── middleware.ts
+│   │   │       └── server.ts
+│   │   └── middleware.ts         # Next.js 路由中间件，处理 Auth 状态和重定向
 │   ├── next.config.ts            # allowedDevOrigins 配置
 │   ├── .env.local                # 环境变量（Supabase/DeepSeek/Google Maps/Tavily）
 │   └── package.json
@@ -46,11 +54,18 @@ Malaysia_Ez_rent/
 │   ├── run.py            # uvicorn 启动入口
 │   └── requirements.txt
 │
+├── docs/              # 项目文档
+│   ├── auth-redirect-explained.md # Supabase Auth 重定向配置详解
+│   └── deployment-guide.md        # 部署指南
+│
 └── supabase/          # 数据库 Schema（PostgreSQL + pgvector）
     ├── schema.sql        # 完整 Schema（含 auth 触发器、管理员上限触发器、RLS 策略）
     └── migrations/       # 增量迁移脚本（不删表，安全加字段）
         ├── 001_add_admin_contact.sql   # admin_users 加联系方式 + super_admin RLS
-        └── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
+        ├── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
+        ├── 003_corenting.sql           # 合租功能（入住人数 + 意向名单）
+        ├── 004_unit_media.sql          # 房源图片、配套设施、收款码、押金配置
+        └── 005_feedback.sql            # 学生意见箱 (feedback 表 + RLS 策略)
 ```
 
 ---
@@ -62,19 +77,19 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航，角色判断（查 admin_users 表），flex 布局修复 |
-| `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、同小区推荐），联系管理员弹窗（从数据库读取联系方式，折叠展开）|
+| `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、配套设施展示、同小区推荐），联系管理员弹窗，**合租功能**（Whole Unit 显示入住人数/备注/意向者列表，其他房型直接"我要租"），图片从 Supabase Storage 读取 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，ReAct 思维链展示，SSE 流式调用真实 Agent + 离线模拟器降级 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
-| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格 + DuitNow 模拟支付弹窗 |
-| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细，下一笔待缴 |
-| `AdminPanel.tsx` | ✅ 完成 | 房源管理 + 单元管理 + 租约创建 + 收租核查表格 + **管理员管理面板**（super_admin 专属，添加/删除管理员，最多 5 人）+ **支付凭证审核**（查看截图、批准/驳回、备注，Live/Mock 双模式数据源，空状态提示）|
+| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格 + 支付弹窗（管理员收款码 + 手机扫码上传凭证），已缴费不可点击 |
+| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
+| `AdminPanel.tsx` | ✅ 完成 | 房源管理（含配套设施勾选、图片上传至 Supabase Storage）+ 单元管理 + 租约创建（从已确认意向租客中选人、可配置押金月数）+ 收租核查（按时间排序、点击切换已缴/待缴）+ **管理员管理**（super_admin 专属）+ **支付凭证审核**（截图、批准/驳回/删除凭证、备注）+ **合租管理**（确认/移除租客、查看备注）+ **房源/租约删除**（硬删除，同步清理 Storage 和关联数据）+ **收款设置**（上传/删除 DuitNow 收款码，全系统共享，localStorage 缓存防丢失）+ **意见箱管理**（查看/回复/标记已处理/删除，未处理数量角标提醒）|
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
 | `i18n.ts` | ✅ 完成 | 中英双语翻译，修复重复 `perMonth` 属性 |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
 | `globals.css` | ✅ 完成 | 暗色玻璃风格 CSS，全套设计 Token，动画系统（包含 Toast 弹出与下滑动画） |
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载（不再用 CSS `@import`）|
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
-| `login/page.tsx` | ✅ 完成 | Google OAuth + Magic Link 双登录按钮，Google 彩色图标，分隔线 UI，Mock/Live 自适应 |
+| `login/page.tsx` | ✅ 完成 | Google OAuth + Magic Link 双登录，白色简洁设计，Mock/Live 自适应 |
 | `auth/callback/route.ts` | ✅ 完成 | 处理 Supabase OAuth 返回的 Code 交换 Session 回调路由 |
 
 ### 后端 (FastAPI)
@@ -114,6 +129,28 @@ Malaysia_Ez_rent/
 | 15 | SQL 迁移脚本约束冲突 | 先更新现有数据再加 CHECK 约束，避免 `23514` 错误 |
 | 16 | AdminPanel Live 模式读不到数据 | `loadAll` 改为自动检测模式：Live 从 Supabase 读，Mock 从 localStorage 读 |
 | 17 | 待审核区无数据时整个区域隐藏 | 改为始终显示，无数据时提示"暂无待审核的支付凭证" |
+| 18 | 管理员 Tab 闪现（学生登录后可见约 1 秒） | `role` 初始值改为 `null`，加载完成前显示 spinner |
+| 19 | UUID 格式错误 `invalid input syntax for type uuid` | Live 模式用 `crypto.randomUUID()` 生成 ID |
+| 20 | 图片上传后刷新丢失（显示 picsum 假图） | 改为上传至 Supabase Storage，URL 存入 `units.media_urls` |
+| 21 | QR 码 base64 直接存数据库（几百 KB 文本） | 改为上传至 Supabase Storage `qr/` 目录，数据库只存 URL |
+| 22 | `cancelInterest` 硬删除，管理员看不到历史 | 改为软删除（`update status = 'left'`） |
+| 23 | PropertyListings 管理员联系方式/租客意向无 mock 模式读取 | 加 localStorage 回退分支 |
+| 24 | 创建租约 `tenant_id` 硬编码 `'tenant-123'`，UUID 格式报错 | 改为管理员从已确认意向租客中选择，或手动输入 UUID |
+| 25 | 管理端台账点击已缴费后无法切回待缴 | `markPaid` 改为 `togglePaid`，支持双向切换 |
+| 26 | 管理端台账支付记录顺序混乱 | 按 `billing_month` 时间排序 |
+| 27 | 学生端已缴费格子还能点击弹出支付弹窗 | `p.paid` 时 `onClick` 不触发 |
+| 28 | 学生端支付弹窗不显示管理员收款码 | 弹窗上方显示管理员 DuitNow/Touch'n Go 收款码，下方显示上传凭证二维码 |
+| 29 | 押金硬编码 2 个月 / 0.5 个月 | 改为管理员可配置月数（支持 0.5），存入 `leases.security_deposit_months` / `utility_deposit_months` |
+| 30 | 押金明细标签重复显示"（2个月）" | i18n 标签去掉固定月数，由模板动态拼接 |
+| 31 | AdminPanel 初始加载不读 interests | `loadFromSupabase` / `loadFromLocalStorage` 同时加载 interests |
+| 32 | 切换 tab 不刷新数据 | leases tab 切换时调用 `loadAll()` 刷新 |
+| 33 | `Multiple GoTrueClient instances` 冲突 | `@/lib/supabase` 和 `@/utils/supabase/client` 各创建一个客户端，`client.ts` 改为复用 `@/lib/supabase` 的实例 |
+| 34 | `admin_users` 查询返回 400（列不存在） | `display_name`/`phone`/`whatsapp`/`wechat_id`/`payment_qr_code` 列合并到 `004_unit_media.sql` 迁移 |
+| 35 | Storage RLS `EXISTS admin_users` 策略上传失败 | 改为 `TO authenticated` 策略，应用层做管理员校验 |
+| 36 | `admin_users` 的 `FOR ALL` RLS 策略覆盖 SELECT，导致无法登录 | 拆成 SELECT/INSERT/UPDATE/DELETE 四条独立策略 |
+| 37 | editor 管理员无法上传收款码（RLS 仅允许 super_admin） | 新增 `Admins can update payment QR` 策略，允许任意管理员更新收款码（全系统共享） |
+| 38 | 收款码刷新后丢失 | 上传时同步存 localStorage，加载时优先数据库、fallback 到 localStorage |
+| 39 | 删除收款码无确认提示 | 加 `confirm()` 弹窗："确定删除收款码？" |
 
 ---
 
@@ -127,6 +164,12 @@ Malaysia_Ez_rent/
 - [x] **联系管理员弹窗**：从数据库读取联系方式，折叠展开 UI
 - [x] **数据库迁移脚本**：`supabase/migrations/` 目录，ALTER TABLE 安全加字段
 - [x] **支付凭证审核**：管理员可查看学生上传的转账截图，批准/驳回，填写备注；待审核数量角标提醒
+- [x] **合租功能**：Whole Unit 支持多人入住，学生表达意向 + 备注，管理员确认/移除；单房间直接"我要租"
+- [x] **配套设施**：小区支持勾选健身房、游泳池、洗衣房等，学生端详情展示
+- [x] **图片上传至 Supabase Storage**：房源图片、QR 码不再存 base64，改为 Storage + URL
+- [x] **房源/租约删除**：管理员可删除已登记房源和租约，硬删除同步清理 Storage 和关联数据
+- [x] **登录页白色简洁设计**：去除黑色/紫色 AI 风格，改为白色背景
+- [x] **管理员 Tab 闪现修复**：role 初始值 null，加载完成前不显示任何导航
 - [ ] **AIChat 完整流程测试**：房源搜索 → 地图渲染、租约查询 → 台账渲染（真实 Agent）
 - [ ] **PropertyListings 数据刷新**：Admin 添加房源后，学生端列表自动刷新（目前需手动刷新页面）
 
@@ -196,20 +239,42 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 | 表名 | 说明 |
 |------|------|
 | `users` | 学生用户（手机号 + 头像），auth 触发器自动创建 |
-| `admin_users` | 管理员账号（姓名、电话、WhatsApp、微信号，最多 5 人）|
-| `communities` | 小区/公寓楼（含经纬度）|
-| `units` | 房间单元（类型、租金、状态、pgvector 向量）|
-| `leases` | 租约合同（租客 ID、单元 ID、起止日期、押金）|
+| `admin_users` | 管理员账号（姓名、电话、WhatsApp、微信号、收款二维码，最多 5 人）|
+| `communities` | 小区/公寓楼（含经纬度、配套设施 amenities[]）|
+| `units` | 房间单元（类型、租金、状态、最大入住人数、图片 URL 数组、pgvector 向量）|
+| `leases` | 租约合同（租客 ID、单元 ID、起止日期、押金、安全押金月数、水电押金月数）|
 | `payment_records` | 每月账单记录（paid 状态、支付日期、凭证 URL、审核状态）|
+| `tenant_interests` | 合租意向（unit_id、user_id、note 备注、status: interested/confirmed/left）|
 | `universities` | 马来西亚大学 GPS 坐标 |
 | `agent_conversations` | AI 对话历史记录 |
+| `feedback` | 学生意见箱（user_id、content、status: pending/resolved、admin_reply、resolved_at） |
 
 触发器：
 - `on_auth_user_created` — 新用户注册自动创建 users 记录
 - `limit_admin_count` — 管理员上限 5 人
 - `after_lease_insert` — 创建租约自动生成月账单
 
+Storage Bucket：
+- `unit-media` — 房源图片 + 管理员收款码（公开访问，管理员可上传/删除）
+
 迁移脚本：`supabase/migrations/` 目录，按编号管理，不删表重建
+
+| 文件 | 内容 |
+|------|------|
+| `001_add_admin_contact.sql` | admin_users 加联系方式字段 + super_admin RLS |
+| `002_limit_admins_and_ui.sql` | 管理员上限 5 人触发器 |
+| `003_corenting.sql` | 合租功能：units.max_occupants + tenant_interests 表（含 note） |
+| `004_unit_media.sql` | **完整迁移**：admin_users 联系方式 + 收款码 + units.media_urls + communities.amenities + leases 押金月数 + Storage bucket + 全部 RLS 策略 |
+| `005_feedback.sql` | 意见箱：feedback 表（user_id、content、status、admin_reply）+ RLS 策略（学生插入/查看自己的，管理员查看/更新/删除所有） |
+
+迁移原则：
+- 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
+- 用 `IF NOT EXISTS` / `IF EXISTS` 防止重复执行报错
+- 先更新现有数据，再加约束（避免 `23514` 约束冲突）
+- 每次迁移后同步更新 `schema.sql`（保持 schema 文件 = 最终状态）
+- RLS 策略用 `DROP POLICY IF EXISTS` + `CREATE POLICY`，可反复运行
+- Storage RLS 用 `TO authenticated`，避免 `EXISTS (SELECT FROM admin_users)` 子查询在 Storage 上下文失败
+- `FOR ALL` 策略会覆盖 SELECT，拆成 INSERT/UPDATE/DELETE 各一条更安全
 
 ---
 
@@ -220,7 +285,10 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 ```bash
 supabase/migrations/
 ├── 001_add_admin_contact.sql   # admin_users 加联系方式字段 + super_admin RLS
-└── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
+├── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
+├── 003_corenting.sql           # 合租功能：units.max_occupants + tenant_interests 表（含 note）
+├── 004_unit_media.sql          # 图片存储：units.media_urls + Storage Bucket + amenities + payment_qr_code
+└── 005_feedback.sql            # 意见箱：feedback 表 + RLS 策略
 ```
 
 迁移原则：

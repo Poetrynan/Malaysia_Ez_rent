@@ -7,16 +7,22 @@ import {
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown
 } from 'lucide-react';
+import { isMockDatabase } from '@/lib/supabase';
+
+const AMENITIES_MAP: Record<string, string> = {
+  gym: '🏋️ Gym', pool: '🏊 Pool', laundry: '👕 Laundry', study: '📚 Study Room',
+  parking: '🅿️ Parking', security: '🔒 24h Security', wifi: '📶 WiFi', mart: '🛒 Mini Mart',
+};
 
 import MapAndCard from './MapAndCard';
 import { useApp } from '@/lib/ThemeProvider';
 
 interface Unit {
   id: string; community_id: string; unit_number: string;
-  room_type: string; rent: number; status: string; description: string;
+  room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
 }
 interface Community {
-  id: string; name: string; address: string; lat: number; lng: number;
+  id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
 }
 interface UnitWithCommunity extends Unit { community: Community | null; }
 
@@ -32,7 +38,8 @@ const FACILITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 // Load real uploaded images; fall back to picsum placeholder
-const getUnitImages = (unitId: string): string[] => {
+const getUnitImages = (unitId: string, mediaUrls?: string[]): string[] => {
+  if (mediaUrls && mediaUrls.length > 0) return mediaUrls;
   try {
     const stored = JSON.parse(localStorage.getItem('ez_unit_media') || '{}');
     if (stored[unitId]?.images?.length > 0) return stored[unitId].images;
@@ -54,6 +61,8 @@ interface AdminContact {
   email: string;
 }
 
+interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
+
 export default function PropertyListings() {
   const { t } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
@@ -67,27 +76,130 @@ export default function PropertyListings() {
   const [showContact, setShowContact] = useState(false);
   const [admins, setAdmins] = useState<AdminContact[]>([]);
   const [expandedAdmin, setExpandedAdmin] = useState<number | null>(null);
+  const [interests, setInterests] = useState<TenantInterest[]>([]);
+  const [myInterest, setMyInterest] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState('');
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [expandedNote, setExpandedNote] = useState<string | null>(null);
 
   useEffect(() => {
-    const allUnits: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-    const allCommunities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-    setUnits(allUnits.map(u => ({
-      ...u,
-      community: allCommunities.find(c => c.id === u.community_id) || null,
-    })));
+    if (isMockDatabase) {
+      const allUnits: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+      const allCommunities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+      setUnits(allUnits.map(u => ({
+        ...u,
+        community: allCommunities.find(c => c.id === u.community_id) || null,
+      })));
+    } else {
+      (async () => {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const [unitRes, commRes] = await Promise.all([
+            supabase.from('units').select('*'),
+            supabase.from('communities').select('*'),
+          ]);
+          const allUnits: Unit[] = unitRes.data || [];
+          const allCommunities: Community[] = commRes.data || [];
+          setUnits(allUnits.map(u => ({
+            ...u,
+            community: allCommunities.find(c => c.id === u.community_id) || null,
+          })));
+        } catch {}
+      })();
+    }
 
-    // Fetch admin contacts from Supabase
-    (async () => {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('admin_users')
-          .select('display_name, phone, whatsapp, wechat_id, email');
-        if (data) setAdmins(data as AdminContact[]);
-      } catch {}
-    })();
+    // Fetch admin contacts
+    if (isMockDatabase) {
+      const stored = JSON.parse(localStorage.getItem('ez_admin_contacts') || '[]');
+      setAdmins(stored.length > 0 ? stored : [{ display_name: '管理员', phone: '+6012-345 6789', whatsapp: '+6012-345 6789', wechat_id: null, email: 'admin@ezrent.my' }]);
+    } else {
+      (async () => {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data } = await supabase
+            .from('admin_users')
+            .select('display_name, phone, whatsapp, wechat_id, email');
+          if (data) setAdmins(data as AdminContact[]);
+        } catch {}
+      })();
+    }
+
+    // Fetch tenant interests
+    if (isMockDatabase) {
+      const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+      const active = all.filter(i => i.status !== 'left');
+      setInterests(active);
+      const mine = active.find(i => i.user_id === 'tenant-123');
+      if (mine) setMyInterest(mine.unit_id);
+    } else {
+      (async () => {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+          if (data) {
+            setInterests(data);
+            const mine = data.find((i: TenantInterest) => i.user_id === user.id && i.status !== 'left');
+            if (mine) setMyInterest(mine.unit_id);
+          }
+        } catch {}
+      })();
+    }
   }, []);
+
+  const expressInterest = async (unitId: string) => {
+    if (isMockDatabase) {
+      const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+      const newI: TenantInterest = { id: `i-${Date.now()}`, unit_id: unitId, user_id: 'tenant-123', email: 'student@ezrent.my', full_name: 'Alex Lim', note: noteInput.trim(), status: 'interested', created_at: new Date().toISOString() };
+      localStorage.setItem('ez_interests', JSON.stringify([...all, newI]));
+      setInterests(prev => [...prev, newI]);
+      setMyInterest(unitId);
+      setNoteInput(''); setShowNoteInput(false);
+      return;
+    }
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('tenant_interests').insert({
+        unit_id: unitId, user_id: user.id, email: user.email || '',
+        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+        note: noteInput.trim(),
+      });
+      if (error) { console.error(error); return; }
+      setMyInterest(unitId);
+      setNoteInput(''); setShowNoteInput(false);
+      const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+      if (data) setInterests(data);
+    } catch (e) { console.error(e); }
+  };
+
+  const cancelInterest = async () => {
+    if (!myInterest) return;
+    if (isMockDatabase) {
+      const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+      const updated = all.map(i => (i.unit_id === myInterest && i.user_id === 'tenant-123') ? { ...i, status: 'left' } : i);
+      localStorage.setItem('ez_interests', JSON.stringify(updated));
+      setInterests(updated.filter(i => i.status !== 'left'));
+      setMyInterest(null);
+      return;
+    }
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('tenant_interests').update({ status: 'left' }).eq('unit_id', myInterest).eq('user_id', user.id);
+      setMyInterest(null);
+      const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+      if (data) setInterests(data);
+    } catch {}
+  };
 
   const filtered = useMemo(() => {
     let res = [...units];
@@ -194,7 +306,7 @@ export default function PropertyListings() {
             {/* Image gallery */}
             <div style={{ position: 'relative', height: 260, background: '#0B1622', overflow: 'hidden' }}>
               {(() => {
-                const imgs = getUnitImages(selected.id);
+                const imgs = getUnitImages(selected.id, selected.media_urls);
                 const vid = getUnitVideo(selected.id);
                 return (
                   <>
@@ -299,6 +411,148 @@ export default function PropertyListings() {
                 </div>
               </div>
 
+              {/* Community Amenities from DB */}
+              {selected.community?.amenities && selected.community.amenities.length > 0 && (
+                <div>
+                  <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>配套设施</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {selected.community.amenities.map((key: string) => {
+                      const amenity = AMENITIES_MAP[key];
+                      return (
+                        <span key={key} style={{
+                          fontSize: '0.78rem', padding: '5px 12px', borderRadius: 8,
+                          background: 'rgba(37,99,235,0.08)', color: 'var(--primary)',
+                          border: '1px solid rgba(37,99,235,0.15)',
+                        }}>
+                          {amenity || key}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Rent / Co-renting */}
+              <div>
+                {(() => {
+                  const unitInterests = interests.filter(i => i.unit_id === selected.id && i.status !== 'left');
+                  const confirmed = unitInterests.filter(i => i.status === 'confirmed').length;
+                  const max = selected.max_occupants || 1;
+                  const isFull = confirmed >= max;
+                  const hasMyInterest = myInterest === selected.id;
+                  const isWholeUnit = selected.room_type === 'Whole Unit';
+
+                  // Non–Whole Unit: simple rent button
+                  if (!isWholeUnit) {
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {!hasMyInterest && !isFull && (
+                          <button onClick={() => expressInterest(selected.id)} style={{
+                            padding: '10px 24px', borderRadius: 8, border: 'none',
+                            background: 'var(--primary)', color: 'white',
+                            fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>{t('coRentJoin')}</button>
+                        )}
+                        {hasMyInterest && (
+                          <button onClick={cancelInterest} style={{
+                            padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
+                            background: 'transparent', color: 'var(--danger)',
+                            fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>{t('coRentCancel')}</button>
+                        )}
+                        {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
+                      </div>
+                    );
+                  }
+
+                  // Whole Unit: full co-renting flow
+                  return (
+                    <>
+                      <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                          {t('coRentOccupancy')}: <strong style={{ color: 'var(--text-h)' }}>{confirmed}/{max}</strong>
+                        </span>
+                        {!hasMyInterest && !isFull && !showNoteInput && (
+                          <button onClick={() => setShowNoteInput(true)} style={{
+                            padding: '8px 18px', borderRadius: 8, border: 'none',
+                            background: 'var(--primary)', color: 'white',
+                            fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>{t('coRentJoin')}</button>
+                        )}
+                        {hasMyInterest && (
+                          <button onClick={cancelInterest} style={{
+                            padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
+                            background: 'transparent', color: 'var(--danger)',
+                            fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>{t('coRentCancel')}</button>
+                        )}
+                        {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
+                      </div>
+
+                      {/* Note input */}
+                      {showNoteInput && !hasMyInterest && (
+                        <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
+                          <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('coRentNoteLabel')}</label>
+                          <textarea className="form-textarea" rows={3} value={noteInput} onChange={e => setNoteInput(e.target.value)}
+                            placeholder={t('coRentNotePlaceholder')}
+                            style={{ resize: 'vertical', fontSize: '0.82rem', marginBottom: 8 }} />
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => expressInterest(selected.id)} style={{
+                              padding: '7px 16px', borderRadius: 6, border: 'none', background: 'var(--primary)',
+                              color: 'white', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            }}>{t('coRentSubmit')}</button>
+                            <button onClick={() => { setShowNoteInput(false); setNoteInput(''); }} style={{
+                              padding: '7px 16px', borderRadius: 6, border: '1px solid var(--glass-border)',
+                              background: 'transparent', color: 'var(--text-muted)',
+                              fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit',
+                            }}>{t('coRentNoteSkip')}</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {unitInterests.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {unitInterests.map(i => (
+                            <div key={i.id}>
+                              <div onClick={() => setExpandedNote(expandedNote === i.id ? null : i.id)} style={{
+                                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                                borderRadius: expandedNote === i.id ? '8px 8px 0 0' : 8,
+                                background: 'rgba(255,255,255,0.04)',
+                                border: i.status === 'confirmed' ? '1px solid rgba(22,163,74,0.2)' : '1px solid var(--glass-border)',
+                                cursor: i.note ? 'pointer' : 'default', transition: 'all 0.15s',
+                              }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)' }}>
+                                  {(i.full_name || i.email)[0]?.toUpperCase()}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{i.full_name || i.email.split('@')[0]}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{i.email}</div>
+                                </div>
+                                {i.note && <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: expandedNote === i.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
+                                <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6,
+                                  background: i.status === 'confirmed' ? 'rgba(22,163,74,0.12)' : 'rgba(59,130,246,0.1)',
+                                  color: i.status === 'confirmed' ? '#16A34A' : 'var(--primary)',
+                                }}>{i.status === 'confirmed' ? t('coRentConfirmed') : t('coRentInterested')}</span>
+                              </div>
+                              {expandedNote === i.id && i.note && (
+                                <div style={{
+                                  padding: '10px 12px 10px 50px', fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.6,
+                                  background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderTop: 'none',
+                                  borderRadius: '0 0 8px 8px',
+                                }}>
+                                  {i.note}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
               {/* Commute map */}
               {selected.community && (
                 <div>
@@ -327,7 +581,7 @@ export default function PropertyListings() {
                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', cursor: 'pointer', transition: 'all 0.2s' }}
                         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}>
-                        <img src={getUnitImages(u.id)[0]} alt="" style={{ width: 56, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                        <img src={getUnitImages(u.id, u.media_urls)[0]} alt="" style={{ width: 56, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-h)' }}>{u.unit_number} · {u.room_type}</div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>RM {u.rent.toLocaleString()}{t('perMonth')}</div>
@@ -479,7 +733,7 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
       {/* Image */}
       <div style={{ position: 'relative', height: 190, overflow: 'hidden', background: '#0B1622' }}>
         <img
-          src={getUnitImages(unit.id)[0]}
+          src={getUnitImages(unit.id, unit.media_urls)[0]}
           alt={unit.room_type}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
           onError={(e: any) => { e.target.style.display = 'none'; }}

@@ -12,7 +12,7 @@ import { useApp } from '@/lib/ThemeProvider';
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
   const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin'>('listings');
-  const [role, setRole] = useState<'student' | 'admin'>('student');
+  const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
 
@@ -32,10 +32,9 @@ export default function Home() {
       }
       // Restore role from localStorage
       const savedRole = localStorage.getItem('ez_user_role') as 'student' | 'admin' | null;
-      if (savedRole) {
-        setRole(savedRole);
-        setActiveTab(savedRole === 'admin' ? 'admin' : 'listings');
-      }
+      const finalRole = savedRole || 'student';
+      setRole(finalRole);
+      setActiveTab(finalRole === 'admin' ? 'admin' : 'listings');
       setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
     } else {
       const checkSession = async () => {
@@ -75,6 +74,17 @@ export default function Home() {
     }
     window.location.href = '/login';
   };
+
+  if (role === null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-base)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 32, height: 32, border: '3px solid var(--glass-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('loadingApp')}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">

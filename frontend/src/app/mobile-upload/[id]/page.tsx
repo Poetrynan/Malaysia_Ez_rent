@@ -48,24 +48,61 @@ export default function MobileUploadPage({ params }: { params: Promise<{ id: str
     loadPayment();
   }, [paymentId]);
 
-  const loadPayment = () => {
-    const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
-    const p = payments.find(x => x.id === paymentId);
-    if (!p) { setError('Payment not found'); return; }
-    setPayment(p);
+  const loadPayment = async () => {
+    if (isMockDatabase) {
+      // Mock mode: read from localStorage
+      const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+      const p = payments.find(x => x.id === paymentId);
+      if (!p) { setError('Payment not found'); return; }
+      setPayment(p);
+      if (p.evidence_url) { setDone(true); return; }
+      const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const l = leases.find(x => x.id === p.lease_id);
+      if (l) {
+        setLease(l);
+        const units: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+        const communities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+        const u = units.find(x => x.id === l.unit_id);
+        if (u) {
+          const c = communities.find(x => x.id === u.community_id);
+          setUnitInfo(`${c?.name || ''} · ${u.unit_number}`);
+        }
+      }
+    } else {
+      // Live mode: read from Supabase
+      try {
+        const { data: p, error: pErr } = await supabase
+          .from('payment_records')
+          .select('*')
+          .eq('id', paymentId)
+          .single();
+        if (pErr || !p) { setError('Payment not found'); return; }
+        setPayment(p);
+        if (p.evidence_url) { setDone(true); return; }
 
-    if (p.evidence_url) { setDone(true); return; }
-
-    const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
-    const l = leases.find(x => x.id === p.lease_id);
-    if (l) {
-      setLease(l);
-      const units: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-      const communities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-      const u = units.find(x => x.id === l.unit_id);
-      if (u) {
-        const c = communities.find(x => x.id === u.community_id);
-        setUnitInfo(`${c?.name || ''} · ${u.unit_number}`);
+        const { data: l } = await supabase
+          .from('leases')
+          .select('id, monthly_rent, unit_id')
+          .eq('id', p.lease_id)
+          .single();
+        if (l) {
+          setLease(l);
+          const { data: u } = await supabase
+            .from('units')
+            .select('unit_number, community_id')
+            .eq('id', l.unit_id)
+            .single();
+          if (u) {
+            const { data: c } = await supabase
+              .from('communities')
+              .select('name')
+              .eq('id', u.community_id)
+              .single();
+            setUnitInfo(`${c?.name || ''} · ${u.unit_number}`);
+          }
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load payment');
       }
     }
   };
@@ -82,23 +119,44 @@ export default function MobileUploadPage({ params }: { params: Promise<{ id: str
     setError('');
 
     try {
-      // Mock mode: convert to data URL and save directly
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      if (isMockDatabase) {
+        // Mock mode: convert to data URL and save to localStorage
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+        const idx = payments.findIndex(x => x.id === paymentId);
+        if (idx !== -1) {
+          payments[idx].evidence_url = dataUrl;
+          payments[idx].status = 'pending_review';
+          localStorage.setItem('ez_payments', JSON.stringify(payments));
+        }
+      } else {
+        // Live mode: upload to Supabase Storage, then update DB
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `evidence/${paymentId}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('unit-media')
+          .upload(path, file, { upsert: true });
+        if (uploadErr) { setError(uploadErr.message); setUploading(false); return; }
 
-      // Update payment record
-      await supabase
-        .from('payment_records')
-        .update({ evidence_url: dataUrl, status: 'pending_review' })
-        .eq('id', paymentId);
+        const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
+        const url = urlData?.publicUrl;
+        if (!url) { setError('Failed to get upload URL'); setUploading(false); return; }
+
+        const { error: dbErr } = await supabase
+          .from('payment_records')
+          .update({ evidence_url: url, status: 'pending_review' })
+          .eq('id', paymentId);
+        if (dbErr) { setError(dbErr.message); setUploading(false); return; }
+      }
 
       setDone(true);
-    } catch (err) {
-      setError('Upload failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -157,11 +215,6 @@ export default function MobileUploadPage({ params }: { params: Promise<{ id: str
             </div>
             <p style={{ fontSize: '1rem', fontWeight: 600, color: '#F0F6FF', marginBottom: 8 }}>上传成功！</p>
             <p style={{ fontSize: '0.82rem', color: '#6B7A99' }}>请返回电脑查看，房东将在 24 小时内审核。</p>
-            {payment?.evidence_url && (
-              <div style={{ marginTop: 20, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <img src={payment.evidence_url} alt="Evidence" style={{ width: '100%', display: 'block' }} />
-              </div>
-            )}
           </div>
         ) : (
           <div>
