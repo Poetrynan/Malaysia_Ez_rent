@@ -524,13 +524,13 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
           fields: ['name', 'formatted_address', 'geometry']
         },
         (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
-          if (status === window.google!.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
+          if (status === window.google!.maps.places.PlacesServiceStatus.OK && place) {
             setCommunityForm(f => ({
               ...f,
               name: place.name || s.main_text,
               address: place.formatted_address || s.description,
-              lat: String(place.geometry.location.lat()),
-              lng: String(place.geometry.location.lng())
+              lat: String(place.geometry?.location?.lat() || 3.06341),
+              lng: String(place.geometry?.location?.lng() || 101.60977)
             }));
           }
         }
