@@ -317,7 +317,9 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "5. When calling calculate_commute, ALWAYS extract the exact 'lat' and 'lng' values from the search results returned by search_internal_db for the property, and use those as 'origin_lat' and 'origin_lng' respectively. DO NOT guess or hallucinate these values.\n"
                 "6. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
                 "7. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
-                "8. NEVER print, repeat or mention the raw User ID (such as 'tenant-123' or UUID strings) in your conversational responses or greetings unless the user explicitly asks 'What is my User ID?' or 'What is my ID?'."
+                "8. NEVER print, repeat or mention the raw User ID (such as 'tenant-123' or UUID strings) in your conversational responses or greetings unless the user explicitly asks 'What is my User ID?' or 'What is my ID?'.\n"
+                "9. If check_my_own_rental_status returns has_active_lease=False, tell the user clearly that no active lease was found under their account. Do NOT fabricate or guess any lease details.\n"
+                "10. NEVER invent or hallucinate property names, rent amounts, unit numbers, or payment records. Only report data that was explicitly returned by a tool."
             )
         },
         {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}

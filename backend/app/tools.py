@@ -293,61 +293,57 @@ def check_my_own_rental_status(user_id: str) -> Dict[str, Any]:
     """
     print(f"[Tool: check_my_own_rental_status] Fetching rental status for user: {user_id}")
     
-    if supabase_service_client:
-        try:
-            # 1. Fetch active lease
-            lease_res = supabase_service_client.table("leases")\
-                .select("*, units(*, communities(*))")\
-                .eq("tenant_id", user_id)\
-                .eq("status", "active")\
-                .execute()
-                
-            if not lease_res.data:
-                return {"has_active_lease": False, "message": "No active lease found for this user ID."}
-                
-            lease = lease_res.data[0]
-            lease_id = lease["id"]
+    if not supabase_service_client:
+        print("[Tool: check_my_own_rental_status] WARNING: supabase_service_client is None! Cannot query real data.")
+        return {
+            "has_active_lease": False,
+            "message": "Database service client is not available. Please check backend SUPABASE_SERVICE_ROLE_KEY configuration.",
+            "debug_info": "supabase_service_client is None"
+        }
+    
+    try:
+        # 1. Fetch active lease
+        lease_res = supabase_service_client.table("leases")\
+            .select("*, units(*, communities(*))")\
+            .eq("tenant_id", user_id)\
+            .eq("status", "active")\
+            .execute()
             
-            # 2. Fetch payment records
-            payment_res = supabase_service_client.table("payment_records")\
-                .select("*")\
-                .eq("lease_id", lease_id)\
-                .order("billing_month", desc=False)\
-                .execute()
-                
-            return {
-                "has_active_lease": True,
-                "lease_details": {
-                    "lease_id": lease_id,
-                    "community_name": lease["units"]["communities"]["name"],
-                    "unit_number": lease["units"]["unit_number"],
-                    "room_type": lease["units"]["room_type"],
-                    "start_date": lease["start_date"],
-                    "end_date": lease["end_date"],
-                    "monthly_rent": lease["monthly_rent"],
-                    "deposit_amount": lease["deposit_amount"]
-                },
-                "payment_records": payment_res.data or []
-            }
-        except Exception as e:
-            print(f"Error querying Supabase Service Role: {e}")
-
-    # Mock fallback for demonstration user "tenant-123"
-    # Even if they pass a different UUID, we'll respond with mock active lease to make demo outstanding
-    return {
-        "has_active_lease": True,
-        "lease_details": {
-            "lease_id": MOCK_LEASES[0]["id"],
-            "community_name": MOCK_LEASES[0]["community_name"],
-            "unit_number": MOCK_LEASES[0]["unit_number"],
-            "room_type": "Studio",
-            "start_date": MOCK_LEASES[0]["start_date"],
-            "end_date": MOCK_LEASES[0]["end_date"],
-            "monthly_rent": MOCK_LEASES[0]["monthly_rent"],
-            "deposit_amount": MOCK_LEASES[0]["deposit_amount"]
-        },
-        "payment_records": MOCK_PAYMENT_RECORDS
-    }
+        if not lease_res.data:
+            print(f"[Tool: check_my_own_rental_status] No active lease found for user_id={user_id}")
+            return {"has_active_lease": False, "message": f"No active lease found for this user. (Queried user_id: {user_id[:8]}...)"}
+            
+        lease = lease_res.data[0]
+        lease_id = lease["id"]
+        
+        # 2. Fetch payment records
+        payment_res = supabase_service_client.table("payment_records")\
+            .select("*")\
+            .eq("lease_id", lease_id)\
+            .order("billing_month", desc=False)\
+            .execute()
+            
+        return {
+            "has_active_lease": True,
+            "lease_details": {
+                "lease_id": lease_id,
+                "community_name": lease["units"]["communities"]["name"],
+                "unit_number": lease["units"]["unit_number"],
+                "room_type": lease["units"]["room_type"],
+                "start_date": lease["start_date"],
+                "end_date": lease["end_date"],
+                "monthly_rent": lease["monthly_rent"],
+                "deposit_amount": lease["deposit_amount"]
+            },
+            "payment_records": payment_res.data or []
+        }
+    except Exception as e:
+        print(f"[Tool: check_my_own_rental_status] ERROR querying Supabase: {e}")
+        return {
+            "has_active_lease": False,
+            "message": f"Error querying database: {str(e)}",
+            "debug_info": f"Exception during Supabase query for user_id={user_id[:8]}..."
+        }
 
 
 def convert_currency_frankfurter(amount: float = 1.0, from_currency: str = "MYR", to_currency: str = "CNY") -> Dict[str, Any]:
