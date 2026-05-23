@@ -26,7 +26,12 @@ export default function AIChat() {
   const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [userId, setUserId] = useState<string>('tenant-123');
+  const [userId, setUserId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ez_tenant_id') || 'tenant-123';
+    }
+    return 'tenant-123';
+  });
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';

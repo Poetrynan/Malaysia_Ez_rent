@@ -58,6 +58,7 @@ export default function Home() {
         setRole(activeRole);
         setActiveTab(activeRole === 'admin' ? 'admin' : 'listings');
         setUserEmail(user.email || '');
+        localStorage.setItem('ez_tenant_id', user.id);
       };
       checkSession();
     }
@@ -66,6 +67,7 @@ export default function Home() {
   const handleLogout = async () => {
     localStorage.removeItem('ez_logged_in');
     localStorage.removeItem('ez_user_role');
+    localStorage.removeItem('ez_tenant_id');
     document.cookie = "ez_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     if (!isMockDatabase) {
       const { createClient } = await import('@/utils/supabase/client');
