@@ -1,0 +1,23 @@
+# Node dependencies
+node_modules/
+.next/
+out/
+build/
+
+# Python dependencies
+.venv/
+__pycache__/
+*.pyc
+
+# Environment variables (Sensitive keys!)
+.env.local
+.env
+backend/.env
+frontend/.env.local
+*.env
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
