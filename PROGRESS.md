@@ -192,25 +192,32 @@ Malaysia_Ez_rent/
 
 ## 五、环境变量配置
 
+> ⚠️ **安全警告**：由于含有高权限密钥和个人凭证，包含具体值的 `.env` 和 `.env.local` 配置文件**已被 `.gitignore` 过滤屏蔽，不会上传至 GitHub**。在云端生产环境部署（如 Vercel 和 Render）时，请必须在平台控制台以环境变量形式安全配置。
+
 ### 前端 (`frontend/.env.local`)
 
 | 变量名 | 当前值 | 用途 |
 |--------|--------|------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://legiyebykxmztaewlmhv.supabase.co` | Supabase 项目 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 已配置 | Supabase 公开 Key |
-| `NEXT_PUBLIC_AGENT_API_URL` | `http://localhost:8000` | FastAPI 服务地址 |
-| `NEXT_PUBLIC_AGENT_MODEL` | `deepseek-ai/DeepSeek-V3` | AI 模型名称 |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | 已配置 | Google Maps |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://legiyebykxmztaewlmhv.supabase.co` | Supabase 云项目域名端点 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 已配置 | 客户端匿名 API Key（浏览器安全公开） |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 同上（已配置） | 部分 SSR/中间件组件习惯命名的相同 anon key |
+| `NEXT_PUBLIC_AGENT_API_URL` | `http://localhost:8000` | 后端 Python FastAPI 服务的连接接口 |
+| `NEXT_PUBLIC_AGENT_MODEL` | `deepseek-ai/DeepSeek-V3` | 前端界面展示的 AI 驱动大脑名称 |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | 已配置 | 谷歌地图前端 JS 渲染和 Places 输入建议 Key |
 
-### 后端 (`backend/.env`)
+### 后端 (`backend/.env` — 云端部署在 Render 的 Environment 环境变量组中配置)
 
 | 变量名 | 当前值 | 用途 |
 |--------|--------|------|
-| `OPENAI_API_KEY` | 已配置（SiliconFlow） | AI 模型 API |
-| `OPENAI_API_BASE` | `https://api.siliconflow.cn/v1` | API 端点 |
-| `NEXT_PUBLIC_AGENT_MODEL` | `deepseek-ai/DeepSeek-V3` | 模型名称 |
-| `TAVILY_API_KEY` | 已配置 | 联网搜索 |
-| `GOOGLE_MAPS_API_KEY` | 已配置 | 通勤计算 |
+| `NEXT_PUBLIC_SUPABASE_URL` | 同前端 | Supabase 项目地址 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 同前端 | 客户端公开 Key |
+| `SUPABASE_SERVICE_ROLE_KEY` | 已配置（安全特权密钥） | **管理员超级权限 Key**（后端 Agent 查真实用户租约与记录日志时绕过 RLS 策略） |
+| `GOOGLE_MAPS_API_KEY` | 已配置 | 后台根据 GPS 坐标做通勤距离计算的 Key |
+| `OPENAI_API_KEY` | 已配置（SiliconFlow） | 后台 AI 对话驱动大模型的密钥 |
+| `OPENAI_API_BASE` | `https://api.siliconflow.cn/v1` | 兼容 OpenAI 格式的第三方接口端点 |
+| `NEXT_PUBLIC_AGENT_MODEL` | `deepseek-ai/DeepSeek-V3` | 推理大脑模型名称 |
+| `AI_EMBEDDING_MODEL` | `BAAI/bge-large-zh-v1.5` | 房源描述语义检索使用的向量模型 |
+| `TAVILY_API_KEY` | 已配置 | Tavily 联网搜索 API Key（Agent 实时检索校车/政策用） |
 
 ---
 

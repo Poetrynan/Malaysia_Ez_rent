@@ -561,6 +561,20 @@ Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB�
 
 ---
 
+### Q: NEXT_PUBLIC_SUPABASE_ANON_KEY 和 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 为什么是一样的？
+**A:** 它们本质上都是指 Supabase 项目提供的 `anon` `public` 客户端公开密钥。不同库对它的命名习惯不同：
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`：Supabase 前端 SDK 的常规命名，在前端 API 初始化时使用。
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`：Supabase SSR 验证框架组件（如 `@supabase/ssr`）及中间件模板的习惯命名。
+
+为了兼容代码中这两种不同命名形式的调用，在配置文件中它们配置为相同的值。
+
+### Q: 为什么项目没有直接把本地带有真实秘钥的 backend/.env 提交到 GitHub？
+**A:** **安全起见。** `SUPABASE_SERVICE_ROLE_KEY` 具有绕过数据库 RLS（行级安全）策略的最高权限，可以任意删除和篡改数据，绝对不能提交到 GitHub（公开泄露会导致数据库被黑）。
+- 我们在根目录的 `.gitignore` 中忽略了 `backend/.env`，使得包含真实密钥的本地配置文件只保留在电脑本地。
+- 在 **Render** 的高级设置中，我们以环境变量的形式单独安全地配置了 `SUPABASE_SERVICE_ROLE_KEY`，云端服务运行时会自动读取。
+
+---
+
 ## 8. 本地开发时手机扫码打不开网页
 
 ### 问题
