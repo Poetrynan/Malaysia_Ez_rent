@@ -92,6 +92,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     }
   }, [defaultTab]);
   const [adminQR, setAdminQR] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
   // ── Properties state ──
@@ -210,7 +211,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     setReviewingPayment(null);
     setAdminNote('');
     loadAll();
-    showToast(t('reviewApproved'), 'success');
+    showToast(lang === 'zh' ? '审核已通过！可在下方“有效租约 & 收租核查表”展开该租约查看详情。' : 'Review approved! You can expand this lease in the "Active Leases" table below to check details.', 'success');
   };
 
   const rejectPayment = async (paymentId: string) => {
@@ -240,7 +241,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     setReviewingPayment(null);
     setAdminNote('');
     loadAll();
-    showToast(t('rejected'), 'warning');
+    showToast(lang === 'zh' ? '审核已驳回！可在下方“有效租约 & 收租核查表”展开该租约查看详情。' : 'Review rejected! You can expand this lease in the "Active Leases" table below to check details.', 'warning');
   };
 
   const clearEvidence = async (paymentId: string) => {
@@ -283,7 +284,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     showToast(t('evidenceCleared'), 'success');
   };
 
-  const pendingCount = leases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
+  const visibleUnits = adminRole === 'super_admin'
+    ? units
+    : units.filter(u => u.agent_id === currentUserId);
+
+  const visibleLeases = adminRole === 'super_admin'
+    ? leases
+    : leases.filter(l => l.unitData?.agent_id === currentUserId);
+
+  const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
 
   // ── Feedback state ──
   interface FeedbackItem { id: string; user_id: string; content: string; status: string; admin_reply: string | null; created_at: string; user_name?: string; unit_info?: string; }
@@ -470,6 +479,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setIsLive(true);
+        setCurrentUserId(user.id);
         loadFromSupabase(supabase);
         // Load QR code and profile from admin_users
         const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('*').eq('id', user.id).maybeSingle();
@@ -492,6 +502,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       }
     } catch {}
     setIsLive(false);
+    setCurrentUserId('admin-123');
     loadFromLocalStorage();
     const savedQR = localStorage.getItem('ez_admin_qr_code');
     if (savedQR) setAdminQR(savedQR);
@@ -598,6 +609,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           rent: nestedUnit.rent,
           status: nestedUnit.status,
           description: nestedUnit.description ?? '',
+          agent_id: nestedUnit.agent_id,
         } : u.find(x => x.id === lease.unit_id);
         const communityData: Community | undefined = nestedUnit?.communities ? {
           id: nestedUnit.communities.id,
@@ -1581,8 +1593,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                   <th style={{ textAlign: 'center' }}></th>
                 </tr></thead>
                 <tbody>
-                  {units.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>{t('noUnits')}</td></tr>}
-                  {units.map(u => {
+                  {visibleUnits.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>{t('noUnits')}</td></tr>}
+                  {visibleUnits.map(u => {
                     const c = communities.find(x => x.id === u.community_id);
                     const unitImages = u.media_urls && u.media_urls.length > 0
                       ? u.media_urls
@@ -1660,9 +1672,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
               <div className="form-group">
                 <label>{t('colProperty')}</label>
-                <select className="form-select" value={leaseForm.unit_id} onChange={e => { const u = units.find(x => x.id === e.target.value); setLeaseForm(f => ({ ...f, unit_id: e.target.value, tenant_id: '', monthly_rent: u ? String(u.rent) : f.monthly_rent })); }}>
+                <select className="form-select" value={leaseForm.unit_id} onChange={e => { const u = visibleUnits.find(x => x.id === e.target.value); setLeaseForm(f => ({ ...f, unit_id: e.target.value, tenant_id: '', monthly_rent: u ? String(u.rent) : f.monthly_rent })); }}>
                   <option value="">{t('selectUnit')}</option>
-                  {units.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name} · {u.unit_number} ({u.room_type})</option>; })}
+                  {visibleUnits.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name} · {u.unit_number} ({u.room_type})</option>; })}
                 </select>
               </div>
               <div className="form-group">
@@ -1712,7 +1724,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
-                {leases.map(l =>
+                {visibleLeases.map(l =>
                   (l.payments || [])
                     .filter(p => p.status === 'pending_review' && p.evidence_url)
                     .map(p => (
@@ -1805,9 +1817,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           {/* Leases Table */}
           <div className="glass-card" style={{ display: leasesView === 'ledger' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('leasesTitle')}</h3>
-            {leases.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>{t('noLeases')}</p>}
+            {visibleLeases.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>{t('noLeases')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
-            {leases.map(l => {
+            {visibleLeases.map(l => {
               const isExpanded = expandedLease === l.id;
               const { unit, community } = resolveLeaseUnit(l, units, communities);
               const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
@@ -1848,7 +1860,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                           const cellBorder = p.paid ? 'var(--success)' : isPending ? 'var(--warning)' : isRejected ? 'var(--danger)' : 'var(--danger)';
                           return (
                             <div key={p.id} onClick={() => {
-                              if (isPending) { setReviewingPayment(p); setAdminNote(''); }
+                              if (p.evidence_url) { setReviewingPayment(p); setAdminNote(p.admin_notes || ''); }
                               else togglePaid(p.id, p.paid);
                             }} className="ledger-cycle-cell"
                               style={{ background: cellBg, borderColor: cellBorder, cursor: 'pointer' }}>
@@ -2183,8 +2195,16 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               <Eye size={18} style={{ color: 'var(--primary)' }} />
               {t('reviewTitle')}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {t('reviewMonth')}：{fmtMonth(reviewingPayment.billing_month)}
+              <span className="status-badge" style={{
+                fontSize: '0.7rem',
+                padding: '2px 8px',
+                background: reviewingPayment.paid ? 'var(--success-light)' : reviewingPayment.status === 'rejected' ? 'var(--danger-light)' : 'rgba(245,158,11,0.12)',
+                color: reviewingPayment.paid ? 'var(--success)' : reviewingPayment.status === 'rejected' ? 'var(--danger)' : 'var(--warning)',
+              }}>
+                {reviewingPayment.paid ? t('approved') : reviewingPayment.status === 'rejected' ? t('rejected') : t('pendingReview')}
+              </span>
             </p>
 
             {/* Evidence image */}
