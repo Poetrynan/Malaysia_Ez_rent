@@ -5,7 +5,10 @@
 ALTER TABLE units ADD COLUMN IF NOT EXISTS bedrooms INT DEFAULT 1;
 ALTER TABLE units ADD COLUMN IF NOT EXISTS bathrooms INT DEFAULT 1;
 
--- 2. Update match_units RPC function to return bedrooms and bathrooms columns
+-- 2. Drop the existing function first (required because the return table type changed)
+DROP FUNCTION IF EXISTS match_units(vector, double precision, integer, character varying, numeric);
+
+-- 3. Update match_units RPC function to return bedrooms and bathrooms columns
 CREATE OR REPLACE FUNCTION match_units (
     query_embedding VECTOR(1536),
     match_threshold FLOAT,
