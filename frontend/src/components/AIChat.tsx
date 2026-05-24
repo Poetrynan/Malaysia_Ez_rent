@@ -244,7 +244,7 @@ export default function AIChat() {
       await new Promise(r => setTimeout(r, 900));
       const units = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_units') || '[]') : [];
       const communities = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_communities') || '[]') : [];
-      const unit = units[0] || { id: 'u1-uuid', community_id: 'c1-uuid', room_type: 'Studio', rent: 2500, description: '阳光城公寓 Studio，步行可达 Monash 大学。' };
+      const unit = units[0] || { id: 'u1-uuid', community_id: 'c1-uuid', room_type: 'Studio', rent: 2500, description: 'Sunway Geo 公寓 Studio，步行可达 Monash 大学。' };
       const community = communities.find((c: any) => c.id === unit.community_id) || { name: 'Sunway Geo Residences', lat: 3.06341, lng: 101.60977 };
       setToolResult(0, [unit]);
       await new Promise(r => setTimeout(r, 700));
