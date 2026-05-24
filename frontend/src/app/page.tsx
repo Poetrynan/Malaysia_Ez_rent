@@ -95,7 +95,7 @@ export default function Home() {
         <div>
           {/* Logo */}
           <div className="logo-section">
-            <div className="logo-icon">Ez</div>
+            <img src="/logo.png" alt="Malaysia Ez Rent" className="logo-img" />
             <div>
               <div className="logo-text">{t('appName')}</div>
               <div className="logo-tagline">{t('appTagline')}</div>

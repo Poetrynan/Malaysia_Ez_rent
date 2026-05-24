@@ -131,15 +131,13 @@ h1,h2,h3,h4,h5 { color: var(--text-h); font-weight: 700; letter-spacing: -0.02em
   overflow-y: auto;
 }
 
-.logo-section { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; padding: 0 8px; }
-.logo-icon {
-  background: var(--gradient-primary);
-  width: 38px; height: 38px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 1rem; color: white;
-  box-shadow: 0 4px 12px var(--primary-glow);
+.logo-section { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; padding: 0 8px; }
+.logo-img {
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
+  display: block;
+  object-fit: contain;
 }
 .logo-text { font-size: 1rem; font-weight: 700; color: var(--text-h); line-height: 1.2; }
 .logo-tagline { font-size: 0.7rem; color: var(--text-muted); font-weight: 400; }

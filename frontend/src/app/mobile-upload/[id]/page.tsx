@@ -202,9 +202,11 @@ export default function MobileUploadPage() {
       <div style={{ maxWidth: 420, margin: '0 auto', padding: '32px 20px' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)', width: 56, height: 56, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: 'var(--primary-glow) 0 4px 16px' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'white' }}>Ez</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Malaysia Ez Rent"
+            style={{ width: 72, height: 72, objectFit: 'contain', display: 'inline-block', marginBottom: 12 }}
+          />
           <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 6 }}>
             {done ? '上传成功' : '上传转账凭证'}
           </h1>

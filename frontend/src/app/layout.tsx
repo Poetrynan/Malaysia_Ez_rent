@@ -6,6 +6,7 @@ import Script from "next/script";
 export const metadata: Metadata = {
   title: "Malaysia Ez Rent | AI 智能租房助手",
   description: "马来西亚留学生 AI 智能租房系统 — 找房、通勤计算、租约台账一站式管理",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

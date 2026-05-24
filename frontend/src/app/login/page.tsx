@@ -86,11 +86,11 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            display: 'inline-flex', width: 48, height: 48, borderRadius: 12,
-            background: '#2563EB', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: '1.2rem', color: 'white', marginBottom: 14,
-          }}>Ez</div>
+          <img
+            src="/logo.png"
+            alt="Malaysia Ez Rent"
+            style={{ width: 88, height: 88, objectFit: 'contain', display: 'inline-block', marginBottom: 14 }}
+          />
           <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>
             Malaysia Ez Rent
           </div>

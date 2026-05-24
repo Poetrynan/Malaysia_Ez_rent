@@ -26,6 +26,29 @@ interface Payment { id: string; lease_id: string; billing_month: string; paid: b
 interface LeaseWithMeta extends Lease { unitData?: Unit; communityData?: Community; tenantName?: string; payments?: Payment[]; }
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
 
+function resolveLeaseUnit(
+  lease: LeaseWithMeta,
+  units: Unit[],
+  communities: Community[],
+) {
+  const unit = lease.unitData ?? units.find(u => u.id === lease.unit_id);
+  const community = lease.communityData ?? (unit ? communities.find(c => c.id === unit.community_id) : undefined);
+  return { unit, community };
+}
+
+function formatLeasePropertyLabel(
+  unit: Unit | undefined,
+  community: Community | undefined,
+  unknownLabel: string,
+) {
+  if (!unit && !community) return unknownLabel;
+  const parts: string[] = [];
+  if (community?.name) parts.push(community.name);
+  if (unit?.unit_number) parts.push(unit.unit_number);
+  if (unit?.room_type) parts.push(`(${unit.room_type})`);
+  return parts.join(' · ') || unknownLabel;
+}
+
 const MOCK_PLACES = [
   { name: 'Sunway Geo Residences', address: 'Jalan Lagoon Selatan, Bandar Sunway, 47500 Subang Jaya', lat: 3.06341, lng: 101.60977 },
   { name: 'Nadayu 28 Residences', address: 'Jalan PJS 11/7, Bandar Sunway, 47500 Subang Jaya', lat: 3.0698, lng: 101.6040 },
@@ -508,25 +531,65 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       const [commRes, unitRes, leaseRes, paymentRes, userRes, interestRes] = await Promise.all([
         supabase.from('communities').select('*'),
         supabase.from('units').select('*'),
-        supabase.from('leases').select('*'),
+        supabase.from('leases').select(`
+          *,
+          units (
+            id,
+            unit_number,
+            room_type,
+            community_id,
+            rent,
+            status,
+            description,
+            communities (
+              id,
+              name,
+              address,
+              lat,
+              lng
+            )
+          )
+        `),
         supabase.from('payment_records').select('*'),
         supabase.from('users').select('id, full_name'),
         supabase.from('tenant_interests').select('*'),
       ]);
       const c: Community[] = commRes.data || [];
       const u: Unit[] = unitRes.data || [];
-      const l: Lease[] = leaseRes.data || [];
+      const l: any[] = leaseRes.data || [];
       const p: Payment[] = paymentRes.data || [];
       const users: any[] = userRes.data || [];
       setCommunities(c);
       setUnits(u);
-      setLeases(l.map(lease => ({
-        ...lease,
-        unitData: u.find(x => x.id === lease.unit_id),
-        communityData: (() => { const un = u.find(x => x.id === lease.unit_id); return un ? c.find(x => x.id === un.community_id) : undefined; })(),
-        tenantName: users.find(x => x.id === lease.tenant_id)?.full_name || lease.tenant_id,
-        payments: p.filter(x => x.lease_id === lease.id),
-      })));
+      setLeases(l.map(row => {
+        const { units: nestedUnit, ...lease } = row as Lease & { units?: any };
+        const unitData: Unit | undefined = nestedUnit ? {
+          id: nestedUnit.id,
+          community_id: nestedUnit.community_id,
+          unit_number: nestedUnit.unit_number,
+          room_type: nestedUnit.room_type,
+          rent: nestedUnit.rent,
+          status: nestedUnit.status,
+          description: nestedUnit.description ?? '',
+        } : u.find(x => x.id === lease.unit_id);
+        const communityData: Community | undefined = nestedUnit?.communities ? {
+          id: nestedUnit.communities.id,
+          name: nestedUnit.communities.name,
+          address: nestedUnit.communities.address ?? '',
+          lat: nestedUnit.communities.lat ?? 0,
+          lng: nestedUnit.communities.lng ?? 0,
+        } : (() => {
+          const un = unitData ?? u.find(x => x.id === lease.unit_id);
+          return un ? c.find(x => x.id === un.community_id) : undefined;
+        })();
+        return {
+          ...lease,
+          unitData,
+          communityData,
+          tenantName: users.find(x => x.id === lease.tenant_id)?.full_name || lease.tenant_id,
+          payments: p.filter(x => x.lease_id === lease.id),
+        };
+      }));
       if (interestRes.data) setInterests(interestRes.data);
     } catch (e) { console.error('Failed to load from Supabase:', e); }
   };
@@ -1550,7 +1613,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                         <img src={p.evidence_url!} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--glass-border)' }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-h)' }}>{l.tenantName}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{l.communityData?.name} · {l.unitData?.unit_number} · {fmtMonth(p.billing_month)}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: 2 }}>
+                            {formatLeasePropertyLabel(
+                              ...(() => {
+                                const { unit, community } = resolveLeaseUnit(l, units, communities);
+                                return [unit, community, t('unknownUnit')] as const;
+                              })(),
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{fmtMonth(p.billing_month)}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--accent)' }}>RM {l.monthly_rent}</div>
@@ -1627,13 +1698,18 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
             {leases.map(l => {
               const isExpanded = expandedLease === l.id;
+              const { unit, community } = resolveLeaseUnit(l, units, communities);
+              const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
               return (
                 <div key={l.id} style={{ border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', marginBottom: 12, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)' }} onClick={() => setExpandedLease(isExpanded ? null : l.id)}>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>{l.tenantName}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>
+                        {propertyLabel}
+                      </div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                        {l.communityData?.name} · {l.unitData?.unit_number} · RM {l.monthly_rent}/mo · {l.start_date} → {l.end_date}
+                        RM {l.monthly_rent}/mo · {l.start_date} → {l.end_date}
                       </div>
                     </div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
