@@ -1492,7 +1492,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: e.target.value }))} /></div>
             </div>
             
-            <div className="form-group"><label>{t('landlordBankInfo') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder="e.g. Maybank 1234567890 Name" style={{ resize: 'vertical' }} /></div>
+            <div className="form-group"><label>{t('landlordBankInfo') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder={lang === 'zh' ? '如：银行名称、账号、户名' : 'e.g. Bank name, account number, account holder'} style={{ resize: 'vertical' }} /></div>
 
             {/* Landlord QR Code Upload */}
             <div className="form-group">
@@ -1947,7 +1947,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, border: '2px dashed var(--glass-border)', padding: 24, borderRadius: 12 }}>
             {adminQR ? (
               <div style={{ position: 'relative', width: 220, height: 220, padding: 8, background: 'white', borderRadius: 12, border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={adminQR} alt="DuitNow QR" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={adminQR} alt="Payment QR" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 <button onClick={removeQR}
                   style={{ position: 'absolute', top: -10, right: -10, background: 'var(--danger)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
                   <X size={14} />

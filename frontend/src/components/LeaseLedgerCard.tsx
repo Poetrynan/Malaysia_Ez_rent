@@ -224,7 +224,7 @@ export default function LeaseLedgerCard({
             <h3 style={{ fontSize: '1.05rem', marginBottom: 4, color: 'var(--text-h)' }}>{t('paymentTitle')}</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
               {t('paymentCycle')}：{formatMonth(selectedPayment.billing_month)} &nbsp;·&nbsp;
-              {t('paymentRent')}：RM {monthly_rent}
+              {(sortedPayments.length > 0 && selectedPayment.id === sortedPayments[0].id) ? t('paymentRent') : t('detailRent')}：RM {monthly_rent}
             </p>
 
             {/* Already has evidence — show preview */}

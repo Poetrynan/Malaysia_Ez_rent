@@ -142,11 +142,11 @@ export const translations = {
     // Payment
     paymentTitle: '缴纳租金',
     paymentCycle: '账期',
-    paymentRent: '由于这是首账单，可能包含押金',
-    payToAgent: '这是首月账单及押金，请支付给中介',
-    payToLandlord: '后续月租，请出账给房东',
+    paymentRent: '由于这是首月账单，须包含定金与押金',
+    payToAgent: '首月定金及押金，请通过银行转账支付给中介。',
+    payToLandlord: '后续月租，请银行转账给房东。',
     landlordBankInfo: '房东银行转账信息',
-    duitnowWarning: '请使用马来西亚银行 App（Maybank MAE / CIMB / Touch\'n Go 钱包）或微信/支付宝扫码支付。',
+    duitnowWarning: '请使用银行转账完成支付。',
     noPaymentQR: '管理员尚未上传收款码，请联系管理员。',
     paymentCancel: '取消',
     paymentConfirm: '确认已付款',
@@ -216,7 +216,7 @@ export const translations = {
     hideLedger: '收起台账 ▲',
     noLeases: '暂无租约记录',
     paymentSettings: '收款设置',
-    uploadQR: '上传收款二维码 (DuitNow / Touch \'n Go)',
+    uploadQR: '上传收款二维码',
     uploadQRHint: '上传后，学生在缴租支付弹窗中将看到并扫描此二维码，替换默认系统演示码。',
     qrPreview: '收款码预览',
     // Validation
@@ -232,7 +232,7 @@ export const translations = {
 
     // Cross-device evidence upload
     scanToUpload: '手机扫码上传凭证',
-    scanToUploadDesc: '请使用手机扫描下方二维码，上传您的 Maybank / 微信转账截图。',
+    scanToUploadDesc: '请用手机扫描下方二维码，上传银行转账截图。',
     waitingForUpload: '等待手机端上传…',
     uploadSuccess: '手机端上传成功！',
     evidencePreview: '凭证预览',
@@ -441,11 +441,11 @@ export const translations = {
 
     paymentTitle: 'Pay Rent',
     paymentCycle: 'Billing Cycle',
-    paymentRent: 'First month may include deposit',
-    payToAgent: 'First month & deposit, please pay the agent:',
-    payToLandlord: 'Subsequent rent, please pay the landlord:',
-    landlordBankInfo: 'Landlord Bank Info:',
-    duitnowWarning: 'Scan with Malaysian Bank apps (Maybank MAE, CIMB, Touch\'n Go eWallet), WeChat Pay, or Alipay.',
+    paymentRent: 'First month includes rent and both deposits',
+    payToAgent: 'First-month rent and deposit — pay the agent by bank transfer.',
+    payToLandlord: 'Subsequent monthly rent — pay the landlord by bank transfer.',
+    landlordBankInfo: 'Landlord bank transfer details',
+    duitnowWarning: 'Please complete payment by bank transfer.',
     noPaymentQR: 'Admin has not uploaded a payment QR code yet. Please contact the admin.',
     paymentCancel: 'Cancel',
     paymentConfirm: 'Confirm Paid',
@@ -514,7 +514,7 @@ export const translations = {
     hideLedger: 'Hide Ledger ▲',
     noLeases: 'No lease contracts yet.',
     paymentSettings: 'Payment Settings',
-    uploadQR: 'Upload Collection QR Code (DuitNow / Touch \'n Go)',
+    uploadQR: 'Upload collection QR code',
     uploadQRHint: 'Once uploaded, students will scan this custom QR code in their rent payment modal instead of the system demo code.',
     qrPreview: 'QR Code Preview',
     // Validation
@@ -530,7 +530,7 @@ export const translations = {
 
     // Cross-device evidence upload
     scanToUpload: 'Scan to Upload Evidence',
-    scanToUploadDesc: 'Use your phone to scan this QR code and upload your Maybank / WeChat transfer screenshot.',
+    scanToUploadDesc: 'Scan with your phone to upload your bank transfer screenshot.',
     waitingForUpload: 'Waiting for mobile upload…',
     uploadSuccess: 'Mobile upload received!',
     evidencePreview: 'Evidence Preview',
