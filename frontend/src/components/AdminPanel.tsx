@@ -36,6 +36,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
+  const [leasesView, setLeasesView] = useState<'overview' | 'interests' | 'ledger'>('overview');
 
   useEffect(() => {
     if (defaultTab) {
@@ -1080,7 +1081,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
             <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
           </button>
-          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); loadAll(); }}>
+          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('overview'); loadAll(); }}>
             <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
             {pendingCount > 0 && (
               <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
@@ -1465,8 +1466,20 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       {/* ── LEASES TAB ── */}
       {tab === 'leases' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6, width: 'fit-content' }}>
+            <button style={tabStyle(leasesView === 'overview')} onClick={() => setLeasesView('overview')}>
+              {t('leaseSubtabOverview')}
+            </button>
+            <button style={tabStyle(leasesView === 'interests')} onClick={() => setLeasesView('interests')}>
+              {t('leaseSubtabInterests')}
+            </button>
+            <button style={tabStyle(leasesView === 'ledger')} onClick={() => setLeasesView('ledger')}>
+              {t('leaseSubtabLedger')}
+            </button>
+          </div>
+
           {/* Create Lease */}
-          <div className="glass-card">
+          <div className="glass-card" style={{ display: leasesView === 'overview' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <PlusCircle size={16} style={{ color: 'var(--primary)' }} />{t('createLeaseTitle')}
             </h3>
@@ -1511,7 +1524,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           </div>
 
           {/* Pending Review Summary */}
-          <div className="glass-card" style={{ border: '1px solid var(--warning)', background: 'rgba(245,158,11,0.06)' }}>
+          <div className="glass-card" style={{ display: leasesView === 'overview' ? 'block' : 'none', border: '1px solid var(--warning)', background: 'rgba(245,158,11,0.06)' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} style={{ color: 'var(--warning)' }} />
               {t('reviewPending')}
@@ -1524,7 +1537,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 {t('noReviewPending')}
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
                 {leases.map(l =>
                   (l.payments || [])
                     .filter(p => p.status === 'pending_review' && p.evidence_url)
@@ -1552,12 +1565,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           </div>
 
           {/* Tenant Interests */}
-          {interests.filter(i => i.status !== 'left').length > 0 && (
+          {leasesView === 'interests' && (
             <div className="glass-card">
               <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <UserPlus size={16} style={{ color: 'var(--primary)' }} />{t('tenantInterests')}
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {interests.filter(i => i.status !== 'left').length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20, fontSize: '0.85rem' }}>{t('noInterests')}</p>
+              ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
                 {interests.filter(i => i.status !== 'left').map(i => {
                   const unit = units.find(u => u.id === i.unit_id);
                   const comm = unit ? communities.find(c => c.id === unit.community_id) : null;
@@ -1600,13 +1616,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                   );
                 })}
               </div>
+              )}
             </div>
           )}
 
           {/* Leases Table */}
-          <div className="glass-card">
+          <div className="glass-card" style={{ display: leasesView === 'ledger' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('leasesTitle')}</h3>
             {leases.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>{t('noLeases')}</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
             {leases.map(l => {
               const isExpanded = expandedLease === l.id;
               return (
@@ -1668,6 +1686,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}
