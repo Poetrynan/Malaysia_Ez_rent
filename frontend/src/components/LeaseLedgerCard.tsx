@@ -277,7 +277,7 @@ export default function LeaseLedgerCard({
 
                         {noLandlordInfo && (
                           <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--warning)', background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.78rem', marginBottom: 8 }}>
-                            {lang === 'zh' ? '房东暂未上传收款码或银行账户信息，请联系管理员。' : 'Landlord payment info is missing. Please contact admin.'}
+                            {t('landlordPaymentMissing')}
                           </div>
                         )}
 

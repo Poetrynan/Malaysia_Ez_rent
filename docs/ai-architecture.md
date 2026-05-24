@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-25 (UTC+8)
+Last updated: 2026-05-24 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -36,7 +36,7 @@ Malaysia_Ez_rent/
 │   │   ├── LeaseLedgerCard.tsx
 │   │   └── AdminPanel.tsx
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
-│   ├── src/lib/i18n.ts
+│   ├── src/lib/i18n.ts                 # zh/en; payment copy uses generic "bank transfer"
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
 │   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
 │   └── src/middleware.ts                # route guard with mobile-upload allowlist
@@ -44,7 +44,7 @@ Malaysia_Ez_rent/
 │   └── app/
 │       ├── main.py                      # FastAPI + SSE endpoints
 │       ├── agent.py                     # ReAct loop/tool-calling orchestration
-│       ├── tools.py                     # DB search, commute, web info, status checks
+│       ├── tools.py                     # commute, web info (no external listings), status helpers
 │       └── config.py
 ├── supabase/
 │   ├── schema.sql
@@ -72,18 +72,19 @@ Malaysia_Ez_rent/
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
-- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation (routes payments to listing agent QR code).
+- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Copy is generic **bank transfer** (no Maybank/DuitNow/WeChat/Alipay in payment UI).
 
 ### Admin path
 
 - `AdminPanel.tsx` includes:
   - communities/units CRUD
   - lease creation/deletion
-  - payment review (approve/reject/clear evidence with Toast feedback)
-  - admin profile/payment QR settings
+  - payment review (approve/reject/clear evidence with Toast feedback; **clear evidence deletes Storage object**)
+  - admin profile/payment QR settings (remove QR clears DB + Storage `qr/{adminId}.jpg`)
   - feedback handling
   - community delete for removing duplicate same-name communities
   - **Agent Separation**: Normal agents can only see and manage their own units, leases, and payment records. Super admins have full global access.
+  - **Unit save/delete**: removing images or deleting a unit triggers Storage cleanup for orphaned `media_urls` / `video_url` files.
 
 ### Privacy Constraints
 
@@ -112,21 +113,34 @@ Malaysia_Ez_rent/
   - Supports mock stream fallback and live tool-calling stream.
   - Emits SSE events (`thinking`, `tool_call`, `tool_result`, `text`, optional UI hints).
 
-### Tooling
+### Tooling (Live Agent: 4 tools)
 
 - `backend/app/tools.py`
-  - `search_internal_db`: vector-based unit search (Supabase RPC `match_units`). **Mock demo data only when Supabase is not configured** — never silently inject Sunway Geo when live DB is empty.
-  - `search_iproperty_listings`: Tavily search scoped to `iproperty.com.my` for external market listings when internal inventory is empty or user asks for iProperty.
   - `calculate_commute`: Google Maps Distance Matrix with geometric fallback.
-  - `get_web_realtime_info`: Tavily for policy/transit/general facts — **not** listing search.
-  - `check_my_own_rental_status`: service-role query for user lease/payment status.
+  - `get_web_realtime_info`: Tavily for policy/transit/general facts — **NOT for property listings**. Query excludes iProperty, PropertyGuru, SpeedHome, Mudah, iBilik, etc.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
+
+**Not exposed to Live Agent (by design):**
+
+- `search_internal_db` — legacy/Mock helper only; room browsing is **Property Listings tab**, not AI chat.
+- `check_my_own_rental_status` — lease/bills are **Student Portal tab**, not AI chat.
+- ~~`search_iproperty_listings`~~ — **removed / forbidden**. Never call Tavily for iProperty or any external rental site.
 
 ### Media compression (frontend)
 
 - `compressImage.ts`: Canvas JPEG — evidence, unit photos, admin QR.
 - `compressVideo.ts`: MediaRecorder WebM — max 1280×720, ~1.2 Mbps, skip if ≤12MB.
 - Live: images → `units.media_urls[]`; video → `units.video_url` (migration **009**).
+
+### Storage delete lifecycle (Live mode)
+
+| Action | DB | Storage `unit-media` |
+|--------|----|--------------------|
+| Admin clear evidence | clears `evidence_url`, status | removes `evidence/{paymentId}.jpg` |
+| Delete unit | deletes row | removes all `media_urls` + `video_url` objects |
+| Edit unit, remove image | updates `media_urls` | removes dropped URL objects |
+| Remove admin QR | `payment_qr_code = null` | removes `qr/{adminId}.jpg` |
+| Student | upload only | cannot delete evidence |
 
 ## 5) Database & Storage Architecture
 
@@ -196,15 +210,23 @@ Notes:
 ## 8) Payment Evidence End-to-End
 
 1. Student opens bill in `LeaseLedgerCard`.
-2. Right QR encodes `/mobile-upload/{payment_id}` (unique per bill).
-3. Mobile page fetches bill details through RPC `get_mobile_upload_info`.
-4. Image is compressed client-side and uploaded to Storage `evidence/`.
-5. RPC `submit_mobile_payment_evidence` sets `evidence_url` + `pending_review`.
-6. Admin reviews in `AdminPanel` and approves/rejects.
+2. **Left panel**: collection QR or landlord bank info — **month 1** uses listing agent QR; **month 2+** uses `landlord_qr_code` / `landlord_bank_info` (migration 013). Missing landlord info shows a warning; no agent QR fallback on later months.
+3. **Right QR** encodes `/mobile-upload/{payment_id}` (unique per bill).
+4. Mobile page fetches bill details through RPC `get_mobile_upload_info` (no `unit_number` exposed).
+5. Image is compressed client-side (`EVIDENCE_IMAGE_PRESET`) and uploaded to Storage `evidence/`.
+6. RPC `submit_mobile_payment_evidence` sets `evidence_url` + `pending_review`.
+7. Admin reviews in `AdminPanel`, approves/rejects, or **clear evidence** (DB + Storage).
+
+### Payment copy (i18n)
+
+Product strings intentionally say **bank transfer** / **银行转账**, not a specific bank or wallet brand:
+
+- `duitnowWarning`, `payToAgent`, `payToLandlord`, `scanToUploadDesc`, `uploadQR` in `frontend/src/lib/i18n.ts`
+- Admin contact fields may still show WeChat for **support contact**, separate from payment instructions.
 
 Important distinction:
 
-- Left QR = shared admin collection QR (same for everyone)
+- Left QR / bank block = where to pay (agent vs landlord by billing month)
 - Right QR = bill-specific upload QR (different for each payment record)
 
 ## 9) AI Development Guardrails
@@ -215,11 +237,10 @@ When extending this codebase, keep these invariants:
 - Keep live/mock parity for critical flows (`supabase.ts` mock branch).
 - Avoid direct anonymous table updates for sensitive tables; prefer narrow RPCs.
 - Keep upload paths and policies scoped by folder (`evidence/`) to limit blast radius.
+- When clearing media in admin flows, update **both** Postgres and Storage (see Storage delete lifecycle).
 - Maintain chronological sorting by `billing_month` in payment UIs.
-- For new room types, update:
-  - frontend enums (`ROOM_TYPES`)
-  - DB constraint migration
-  - any AI tool enum filters
+- Never scrape, link, or recommend third-party rental listings (iProperty, PropertyGuru, etc.).
+- For new room types, update frontend enums (`ROOM_TYPES`), DB constraint migration, and any legacy tool filters.
 
 ## 10) Known Operational Gotchas
 
@@ -228,6 +249,7 @@ When extending this codebase, keep these invariants:
   - DB disk: `Settings -> Usage -> Database size`
   - Files: `Storage -> unit-media size`
 - 503 in AI chat often means upstream model saturation, not local DB failure.
+- **External listing search is forbidden** — no iProperty/PropertyGuru via Tavily or any other path. Direct users to the Property Listings tab for inventory.
 - Local mobile QR testing requires LAN origin (`192.168.x.x`), not `localhost`.
 
 ## 11) Quick Dev Runbook

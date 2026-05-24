@@ -226,7 +226,8 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "5. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
                 "6. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
                 "7. NEVER print, repeat or mention raw User ID strings in your conversational responses.\n"
-                "8. DO NOT search for competitor rental listings or properties. When performing general web searches via get_web_realtime_info, Tavily will filter out competitor websites to avoid advertising other platforms."
+                "8. DO NOT search for rental listings anywhere — internal or external. External platforms (iProperty, PropertyGuru, SpeedHome, etc.) are **strictly forbidden**. If a user asks to find a room, direct them to the website's **Property Listings** tab only.\n"
+                "9. When using get_web_realtime_info, Tavily excludes competitor rental sites. Never scrape, link, or recommend third-party listing pages."
             )
         },
         {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}

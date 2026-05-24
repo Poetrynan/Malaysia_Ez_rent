@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-25 (UTC+8)
-> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩上传）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · Tavily/iProperty 外部搜房 · 学生端通勤联想输入建议 · Vercel & Render 部署**
+> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩 + 删除同步）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · **禁止外部搜房（iProperty 等）** · 缴租文案银行/微信/支付宝 · 首月付中介/后续付房东 · 学生端通勤联想 · Vercel & Render 部署**
 
 ---
 
@@ -26,7 +26,7 @@ Malaysia_Ez_rent/
 │   │   │   ├── PropertyListings.tsx # 房源卡片列表（iProperty 风格）+ 详情抽屉
 │   │   │   ├── AIChat.tsx        # AI 对话界面（SSE 流式 + 离线模拟器）
 │   │   │   ├── MapAndCard.tsx    # 房源卡片 + SVG 通勤路线地图
-│   │   │   ├── LeaseLedgerCard.tsx  # 租约台账 + DuitNow QR 支付弹窗
+│   │   │   ├── LeaseLedgerCard.tsx  # 租约台账 + 银行转账/收款码支付弹窗（首月→中介，后续→房东）
 │   │   │   ├── StudentPortal.tsx # 学生门户（圆形倒计时环 + 台账）
 │   │   │   └── AdminPanel.tsx    # 管理后台（房源/租约二级 Tab、收租核查表显示单元、小区删除、表单校验与 Toast）
 │   │   └── lib/
@@ -51,7 +51,7 @@ Malaysia_Ez_rent/
 │   ├── app/
 │   │   ├── main.py       # FastAPI 入口，CORS，SSE /api/chat 端点
 │   │   ├── agent.py      # ReAct Agent（真实流式 API + Mock 模拟器）
-│   │   ├── tools.py      # Agent 工具集（内部 DB 检索、通勤计算、Tavily 常识搜索）
+│   │   ├── tools.py      # Agent 工具集（Live 4 工具：通勤、Tavily 常识、汇率、假期；**禁止 iProperty 外部搜房**）
 │   │   ├── config.py     # 环境变量读取
 │   │   └── mock_data.py  # 离线 Mock 数据
 │   ├── .env              # 后端环境变量（从 frontend/.env.local 同步）
@@ -91,12 +91,12 @@ Malaysia_Ez_rent/
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息 + **意见箱** |
-| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（编辑/库存/意向/收租核查表），支持**房源级别房东银行信息录入/二维码压缩上传**、图片流式压缩、Storage上传、单元管理、小区无房源硬删除、租约创建、凭证审核等 |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab；房东银行/QR（013）；图片/视频压缩上传；**删除凭证/收款码/房源/编辑删图时同步删 Storage**；凭证审核 Toast |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
-| `i18n.ts` | ✅ 完成 | 中英双语翻译，修复重复 `perMonth` 属性 |
+| `i18n.ts` | ✅ 完成 | 中英双语；缴租/上传凭证文案统一为 **银行转账**（不写 Maybank/微信/支付宝/DuitNow 等具体渠道） |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
 | `globals.css` | ✅ 完成 | 设计 Token；**`app-container` 100vh + `.main-content` 滚动**；Logo / Toast 动画 |
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
@@ -111,7 +111,7 @@ Malaysia_Ez_rent/
 |------|------|------|
 | `main.py` | ✅ 完成 | FastAPI + CORS，SSE `/api/chat` 端点 |
 | `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；System Prompt 加入规则限制，禁止对用户念出或复述 ID。 |
-| `tools.py` | ✅ 完成 | 6 个工具：内部 DB 语义检索、通勤计算、Tavily 网页常识搜索（非 iProperty 爬虫）、租约查询、Frankfurter 汇率、Nager.Date 假期 |
+| `tools.py` | ✅ 完成 | Live Agent **4 工具**：通勤、Tavily 常识（**排除** iProperty/PropertyGuru 等）、汇率、假期；`search_internal_db` 仅 Mock/遗留，**禁止** `search_iproperty_listings` |
 | `config.py` | ✅ 完成 | 环境变量统一管理 |
 | `run.py` | ✅ 完成 | uvicorn 热重载启动，监听 `127.0.0.1:8000` |
 
@@ -181,8 +181,11 @@ Malaysia_Ez_rent/
 | 54 | 保存 Whole Unit 房型报 `units_room_type_check` | 数据库 CHECK 缺 `Whole Unit`；执行 `008_whole_unit_room_type.sql` 扩展约束 |
 | 55 | 房源缩略图无法点开大图 | 详情抽屉仅切换预览；新增 **Lightbox 全屏**（点击大图/缩略图，←/→/Esc） |
 | 56 | 看房视频未压缩且 Live 模式未上云 | 新增 `compressVideo.ts` + `units.video_url`（**009 迁移**）+ Storage 上传 |
-| 57 | AI 找房返回 Mock 演示房源 Sunway Geo | `search_internal_db` 在 Supabase 已连接时不再回退 Mock；空库时走 **Tavily → iProperty** |
+| 57 | AI 找房返回 Mock 演示房源 Sunway Geo | `search_internal_db` 在 Supabase 已连接时不再回退 Mock；**Live Agent 不再搜房**，引导用户用「房源列表」Tab |
+| 61 | 误接入 Tavily→iProperty 外部搜房 | **已禁止**；删除 `search_iproperty_listings`；Tavily 仅用于政策/交通常识，且排除竞品租房站 |
 | 58 | 支付界面自动兜底显示中介二维码 | 移除第二个月后的中介 QR 兜底，增加房东信息缺失的显性警告提示框。 |
+| 59 | 删除凭证/图片只清 DB 不清 Storage | `clearEvidence` / `removeQR` / 编辑房源删图 / `deleteUnit` 现同步 `storage.remove()` |
+| 60 | 缴租文案写死 Maybank/微信/支付宝 | `i18n.ts` 统一为「银行转账」；英文 *bank transfer*；上传凭证为「银行转账截图」 |
 
 ---
 
@@ -375,7 +378,9 @@ supabase/migrations/
 | 收租核查表看不到门牌号 | 旧版 UI 或未关联 unit | 刷新前端；若显示「单元信息缺失」则检查租约 `unit_id` |
 | Logo 上线要不要动数据库 | Logo 是 `frontend/public/logo.png` 静态文件 | **不用**；`git push` 后 Vercel 自动部署即可 |
 | 在租房源很多会挤占页面吗 | 已固定 `app-container` 高度 + `.main-content` 独立滚动 | 卡片增多时出现**右侧滚动条**，侧边栏/topbar 不动 |
+| 删除后 Storage 文件还在吗 | Live 模式管理员删除凭证/房源/收款码/编辑删图 | 会同步删 Storage；Mock 模式只清 localStorage |
 | 视频有没有压缩 | 有：`compressVideo.ts`（WebM，>12MB 触发） | Live 模式需跑 **`009_unit_video_url.sql`** 才有 `video_url` 字段 |
+| 支付凭证有没有压缩 | 有：`EVIDENCE_IMAGE_PRESET`（≤1080×2400 JPEG 80%） | 手机上传页 + Mock 模式均走 `compressImage` |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
 详见 `docs/auth-redirect-explained.md` 第 8–18 节。
@@ -438,7 +443,7 @@ NEXT_PUBLIC_AGENT_MODEL=glm-4-plus
 
 ### ⚠️ 注意事项：Tool Calling 兼容性
 
-本项目的 AI Agent 依赖 **Function Calling / Tool Use** 能力来调用 6 个工具（房源搜索、通勤计算、租约查询、汇率换算、假期查询、网页搜索）。切换模型前务必确认新模型支持 `tools` 参数。
+本项目的 AI Agent 依赖 **Function Calling / Tool Use** 能力。Live 模式当前暴露 **4 个工具**（通勤计算、网页常识、汇率换算、假期查询）。**找房/查账单不在 AI 范围内**，须引导用户使用页面 Tab。切换模型前务必确认新模型支持 `tools` 参数。
 
 | ✅ 确认支持 Tool Calling 的模型 | ❌ 不支持的模型 |
 |------|------|
@@ -459,26 +464,36 @@ Storage Bucket：
 
 ```
 PC 学生端点击某月账单 → 弹窗显示两个二维码
-    ├── 左：管理员 DuitNow 收款码（全系统共享，所有人相同）
+    ├── 左：收款二维码 / 房东银行转账信息（首月→中介 QR；后续月→房东 QR 或 bank info）
     └── 右：上传凭证码 → /mobile-upload/{payment_records.id}（每账单唯一 UUID）
               ↓
 手机浏览器打开（无需登录，middleware 放行 /mobile-upload/）
               ↓
-RPC get_mobile_upload_info(payment_id) 读取账单信息
+RPC get_mobile_upload_info(payment_id) 读取账单信息（不暴露门牌号）
               ↓
 客户端 compressImage 压缩截图 → Storage unit-media/evidence/{id}.jpg
               ↓
 RPC submit_mobile_payment_evidence → status = pending_review
               ↓
-管理端待审核列表显示缩略图 → 点开审核（自适应预览）→ 批准/驳回
+管理端待审核列表 → 批准/驳回；可「删除凭证」（DB + Storage 同步清除）
 ```
+
+### 缴租文案（i18n）
+
+产品文案统一为 **银行转账**，不绑定具体银行或第三方支付品牌：
+
+| 键 | 中文 | English |
+|----|------|---------|
+| `duitnowWarning` | 请使用银行转账完成支付。 | Please complete payment by bank transfer. |
+| `scanToUploadDesc` | 请用手机扫描下方二维码，上传银行转账截图。 | Scan with your phone to upload your bank transfer screenshot. |
+| `uploadQR` | 上传收款二维码 | Upload collection QR code |
 
 ### 两种二维码的区别（重要）
 
 | 二维码 | URL / 内容 | 是否唯一 | 用途 |
 |--------|-----------|---------|------|
-| **收款码**（左） | 管理员上传的 DuitNow/TNG 图片 URL | ❌ 全系统共享 | 学生扫码付款给房东 |
-| **上传凭证码**（右） | `{origin}/mobile-upload/{payment_uuid}` | ✅ **每个账单一条** | 学生扫码上传该月转账截图 |
+| **收款码**（左） | 中介/房东上传的收款 QR 或银行转账文字信息 | 首月共享中介码；后续月用房东信息 | 学生完成银行转账 |
+| **上传凭证码**（右） | `{origin}/mobile-upload/{payment_uuid}` | ✅ **每个账单一条** | 学生上传该月银行转账截图 |
 
 ### 必须在 Supabase 执行的迁移
 
@@ -519,21 +534,32 @@ RPC submit_mobile_payment_evidence → status = pending_review
 
 ### 找房用什么？
 
-| 用户问题类型 | 调用的工具 | 数据来源 |
+**AI 不找房。** 用户问「帮我找 Studio / 附近有什么房」时，Live Agent 直接引导去 **「房源列表」** Tab（管理员录入的平台库存）。
+
+| 用户问题类型 | Agent 行为 | 数据来源 |
 |-------------|-----------|---------|
-| 「帮我找 Monash 附近的 Studio」 | `search_internal_db` + `calculate_commute` | **Supabase 内部房源库**（管理员录入的 units） |
-| 「我的租约/账单怎么样了」 | `check_my_own_rental_status` | Supabase leases + payment_records（Service Role） |
-| 「马来西亚押金怎么退」「Sunway 有 shuttle 吗」 | `get_web_realtime_info` | **Tavily 通用网页搜索**（政策/交通/常识，**不是** iProperty 爬虫） |
+| 「帮我找 Monash 附近的 Studio」 | ❌ **不调用任何搜房工具** → 引导打开「房源列表」 | 仅 `PropertyListings.tsx` 展示 Supabase `units` |
+| 「我的租约/账单怎么样了」 | ❌ **不查库** → 引导打开「我的租约」 | `StudentPortal` / `LeaseLedgerCard` |
+| 「马来西亚押金怎么退」「Sunway 有 shuttle 吗」 | `get_web_realtime_info` | Tavily 常识搜索（**排除** iProperty/PropertyGuru 等竞品站） |
 | 「RM 1350 等于多少人民币」 | `convert_currency_frankfurter` | Frankfurter API |
+| 「从 XX 到莫纳什要多久」 | `calculate_commute` | Google Maps / 几何估算 |
 | 「2026 年马来西亚公共假期」 | `get_malaysia_holidays` | Nager.Date API |
 
-**结论：AI 不会主动去 iProperty / PropertyGuru 抓房源。** 推荐的房源只来自管理员在后台录入且 `status = available` 的记录。System Prompt 第 10 条禁止编造房源。
+**硬性禁止：** 不得通过 Tavily 或任何方式搜索/推荐 **iProperty、PropertyGuru、SpeedHome** 等外部租房平台链接。`get_web_realtime_info` 的 query 已带 `-site:iproperty.com.my` 等排除项。
 
-Tavily 仅在模型判断需要查「实时网页常识」时调用，与找房主路径分离。
+### Storage 删除生命周期（Live 模式）
+
+| 操作 | 数据库 | Storage `unit-media` |
+|------|--------|---------------------|
+| 管理员「删除凭证」 | 清空 `evidence_url` 等 | ✅ 删 `evidence/{paymentId}.jpg` |
+| 删除整套房源 | 删 `units` 行 | ✅ 删 `media_urls` + `video_url` 对应文件 |
+| 编辑房源时去掉某张图并保存 | 更新 `media_urls` | ✅ 删被移除的 URL 对应对象 |
+| 删除收款码 | `payment_qr_code = null` | ✅ 删 `qr/{adminId}.jpg` |
+| 学生端 | 只能上传凭证，**不能自行删除** | — |
 
 ### 503 错误说明
 
-若推理过程里工具已成功（如 `SEARCH_INTERNAL_DB`、`CALCULATE_COMMUTE`），但最终报：
+若推理过程里工具已成功（如 `CALCULATE_COMMUTE`、`GET_WEB_REALTIME_INFO`），但最终报：
 
 ```
 Error communicating with AI Brain: 503 - This model is currently experiencing high demand
@@ -618,6 +644,7 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
 | Whole Unit 房型 | ✅ `008_whole_unit_room_type.sql` |
 | 房源收款码与审核隔离 | ✅ `010_agent_qr_separation.sql` |
 | 门牌号可选化 | ✅ `011_optional_unit_number.sql` |
+| 房东收款信息（后续月租） | ✅ `013_landlord_payment_details.sql` |
 
 ---
 
@@ -625,7 +652,7 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
 
 ### 背景与逻辑
 房源是由不同的 Agent 挂载的。根据业务场景，首月租金等费用应当进入该挂牌 Agent 自己的钱包。因此：
-1. **收款码隔离**：在管理员保存/编辑房源时，系统自动在 `units.agent_id` 绑定当前操作的管理员。学生打开账单时，后台 RPC 自动查出该房源的挂牌 Agent 专属 DuitNow 收款码，优先展示；如果未绑定，则降级显示全局默认收款码。
+1. **收款码隔离**：房源绑定 `units.agent_id`；**首月**账单展示挂牌 Agent 收款码；**后续月**展示 `landlord_qr_code` / `landlord_bank_info`（013 迁移）。房东信息缺失时显示警告，**不再**误显示中介码。
 2. **列表数据过滤**：普通管理员（Agent 角色，`adminRole !== 'super_admin'`) 登录后台时，系统会自动对其进行界面过滤，使其**只看到自己录入名下的房源、租期账单、待审核凭证**。超级管理员（`super_admin`）具有全局最高可见与操作权。
 3. **随时追溯与清除凭证**：
    - 账单一旦被审核（Approved/Rejected），不会被物理删除，而是永久存储凭证 URL。

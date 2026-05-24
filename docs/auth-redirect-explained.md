@@ -739,23 +739,21 @@ app-container (height: 100vh, overflow: hidden)
 
 ## 14. AI 找房会不会去 iProperty？
 
-**不会。** 找房主路径：
+**不会，且严禁。** 当前 Live Agent **根本不搜房**：
 
 ```
 用户：「帮我找 Monash 附近的 Studio」
     ↓
-Agent 调用 search_internal_db
+Agent 不调用任何搜房工具
     ↓
-Supabase match_units（向量检索管理员录入的 units）
-    ↓
-可选：calculate_commute 算通勤
-    ↓
-LLM 组织语言回复
+回复：请直接使用上方导航 **「房源列表」** 页面筛选平台库存
 ```
 
-**Tavily**（`get_web_realtime_info`）只在查政策、交通、押金常识等网页信息时用，**不是** iProperty 房源爬虫。System Prompt 禁止 AI 编造未在工具结果中出现的房源。
+平台房源只来自管理员在 Supabase 录入的 `units`，由 **`PropertyListings.tsx`** 展示，**不是** AI Chat。
 
-若 Agent 报 `503 - model experiencing high demand`，是 LLM API 高峰期过载，与 Supabase / Tavily 无关；工具若已成功，稍后重试即可。
+**Tavily**（`get_web_realtime_info`）仅用于政策、交通、押金常识等；query 带 `-site:iproperty.com.my -site:propertyguru.com.my` 等，**禁止**爬取或推荐外部租房站。`search_iproperty_listings` 已从代码中删除。
+
+若 Agent 报 `503 - model experiencing high demand`，是 LLM API 高峰期过载，与 Supabase / Tavily 无关；稍后重试即可。
 
 ---
 

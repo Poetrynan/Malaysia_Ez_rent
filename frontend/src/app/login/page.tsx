@@ -181,7 +181,7 @@ export default function LoginPage() {
 
         {/* Feature tags */}
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['🏠 AI Search', '🗺️ Commute', '📋 Lease', '💳 Bank Transfer'].map(tag => (
+          {['🏠 AI Search', '🗺️ Commute', '📋 Lease', '💳 Bank · WeChat · Alipay'].map(tag => (
             <span key={tag} style={{
               fontSize: '0.68rem', padding: '3px 8px', borderRadius: 6,
               background: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0',
