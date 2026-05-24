@@ -111,6 +111,19 @@ export default function PropertyListings() {
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
+  const [submittingInterest, setSubmittingInterest] = useState(false);
+  const [interestFeedback, setInterestFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const refreshInterests = async (supabase: Awaited<ReturnType<typeof import('@/utils/supabase/client').createClient>>, userId?: string) => {
+    const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+    if (data) {
+      setInterests(data);
+      if (userId) {
+        const mine = data.find((i: TenantInterest) => i.user_id === userId && i.status !== 'left');
+        setMyInterest(mine ? mine.unit_id : null);
+      }
+    }
+  };
 
   const closeDetail = () => {
     setSelected(null);
@@ -206,54 +219,120 @@ export default function PropertyListings() {
     }
   }, []);
 
-  const expressInterest = async (unitId: string) => {
+  const expressInterest = async (unitId: string, noteOverride?: string) => {
+    const note = (noteOverride ?? noteInput).trim();
+    setInterestFeedback(null);
+
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
-      const newI: TenantInterest = { id: `i-${Date.now()}`, unit_id: unitId, user_id: 'tenant-123', email: 'student@ezrent.my', full_name: 'Alex Lim', note: noteInput.trim(), status: 'interested', created_at: new Date().toISOString() };
-      localStorage.setItem('ez_interests', JSON.stringify([...all, newI]));
-      setInterests(prev => [...prev, newI]);
+      const existingIdx = all.findIndex(i => i.unit_id === unitId && i.user_id === 'tenant-123');
+      let next = [...all];
+      if (existingIdx >= 0) {
+        next[existingIdx] = { ...next[existingIdx], note, status: 'interested' };
+      } else {
+        next.push({
+          id: `i-${Date.now()}`, unit_id: unitId, user_id: 'tenant-123', email: 'student@ezrent.my',
+          full_name: 'Alex Lim', note, status: 'interested', created_at: new Date().toISOString(),
+        });
+      }
+      localStorage.setItem('ez_interests', JSON.stringify(next));
+      setInterests(next.filter(i => i.status !== 'left'));
       setMyInterest(unitId);
-      setNoteInput(''); setShowNoteInput(false);
+      setNoteInput('');
+      setShowNoteInput(false);
+      setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
       return;
     }
+
+    setSubmittingInterest(true);
     try {
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error } = await supabase.from('tenant_interests').insert({
-        unit_id: unitId, user_id: user.id, email: user.email || '',
+      if (!user) {
+        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        return;
+      }
+
+      const profile = {
+        email: user.email || '',
         full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-        note: noteInput.trim(),
-      });
-      if (error) { console.error(error); return; }
-      setMyInterest(unitId);
-      setNoteInput(''); setShowNoteInput(false);
-      const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
-      if (data) setInterests(data);
-    } catch (e) { console.error(e); }
+        note,
+        status: 'interested' as const,
+      };
+
+      const { data: existing } = await supabase
+        .from('tenant_interests')
+        .select('id, status')
+        .eq('unit_id', unitId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        ({ error } = await supabase.from('tenant_interests').update(profile).eq('id', existing.id));
+      } else {
+        ({ error } = await supabase.from('tenant_interests').insert({
+          unit_id: unitId,
+          user_id: user.id,
+          ...profile,
+        }));
+      }
+
+      if (error) {
+        console.error('[expressInterest]', error);
+        setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+        return;
+      }
+
+      setNoteInput('');
+      setShowNoteInput(false);
+      setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
+      await refreshInterests(supabase, user.id);
+    } catch (e) {
+      console.error(e);
+      setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+    } finally {
+      setSubmittingInterest(false);
+    }
   };
 
   const cancelInterest = async () => {
     if (!myInterest) return;
+    setInterestFeedback(null);
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
       const updated = all.map(i => (i.unit_id === myInterest && i.user_id === 'tenant-123') ? { ...i, status: 'left' } : i);
       localStorage.setItem('ez_interests', JSON.stringify(updated));
       setInterests(updated.filter(i => i.status !== 'left'));
       setMyInterest(null);
+      setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
       return;
     }
+    setSubmittingInterest(true);
     try {
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('tenant_interests').update({ status: 'left' }).eq('unit_id', myInterest).eq('user_id', user.id);
+      const { error } = await supabase
+        .from('tenant_interests')
+        .update({ status: 'left' })
+        .eq('unit_id', myInterest)
+        .eq('user_id', user.id);
+      if (error) {
+        console.error('[cancelInterest]', error);
+        setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+        return;
+      }
       setMyInterest(null);
-      const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
-      if (data) setInterests(data);
-    } catch {}
+      setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
+      await refreshInterests(supabase, user.id);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingInterest(false);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -494,6 +573,8 @@ export default function PropertyListings() {
                 {(() => {
                   const unitInterests = interests.filter(i => i.unit_id === selected.id && i.status !== 'left');
                   const confirmed = unitInterests.filter(i => i.status === 'confirmed').length;
+                  const interested = unitInterests.filter(i => i.status === 'interested').length;
+                  const registered = confirmed + interested;
                   const max = selected.max_occupants || 1;
                   const isFull = confirmed >= max;
                   const hasMyInterest = myInterest === selected.id;
@@ -526,12 +607,15 @@ export default function PropertyListings() {
                   return (
                     <>
                       <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                          {t('coRentOccupancy')}: <strong style={{ color: 'var(--text-h)' }}>{confirmed}/{max}</strong>
+                          {t('coRentOccupancy')}: <strong style={{ color: 'var(--text-h)' }}>{registered}/{max}</strong>
+                          <span style={{ marginLeft: 6, fontSize: '0.75rem' }}>
+                            ({t('coRentOccupancyConfirmed')} {confirmed} · {t('coRentInterested')} {interested})
+                          </span>
                         </span>
                         {!hasMyInterest && !isFull && !showNoteInput && (
-                          <button onClick={() => setShowNoteInput(true)} style={{
+                          <button onClick={() => { setShowNoteInput(true); setInterestFeedback(null); }} disabled={submittingInterest} style={{
                             padding: '8px 18px', borderRadius: 8, border: 'none',
                             background: 'var(--primary)', color: 'white',
                             fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
@@ -547,6 +631,17 @@ export default function PropertyListings() {
                         {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                       </div>
 
+                      {interestFeedback && (
+                        <div style={{
+                          marginBottom: 12, padding: '10px 12px', borderRadius: 8, fontSize: '0.78rem',
+                          background: interestFeedback.type === 'success' ? 'rgba(22,163,74,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: interestFeedback.type === 'success' ? '#16A34A' : 'var(--danger)',
+                          border: `1px solid ${interestFeedback.type === 'success' ? 'rgba(22,163,74,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                        }}>
+                          {interestFeedback.msg}
+                        </div>
+                      )}
+
                       {/* Note input */}
                       {showNoteInput && !hasMyInterest && (
                         <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
@@ -555,14 +650,16 @@ export default function PropertyListings() {
                             placeholder={t('coRentNotePlaceholder')}
                             style={{ resize: 'vertical', fontSize: '0.82rem', marginBottom: 8 }} />
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <button onClick={() => expressInterest(selected.id)} style={{
+                            <button onClick={() => expressInterest(selected.id)} disabled={submittingInterest} style={{
                               padding: '7px 16px', borderRadius: 6, border: 'none', background: 'var(--primary)',
-                              color: 'white', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                            }}>{t('coRentSubmit')}</button>
-                            <button onClick={() => { setShowNoteInput(false); setNoteInput(''); }} style={{
+                              color: 'white', fontSize: '0.78rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                              opacity: submittingInterest ? 0.7 : 1,
+                            }}>{submittingInterest ? '…' : t('coRentSubmit')}</button>
+                            <button onClick={() => expressInterest(selected.id, '')} disabled={submittingInterest} style={{
                               padding: '7px 16px', borderRadius: 6, border: '1px solid var(--glass-border)',
-                              background: 'transparent', color: 'var(--text-muted)',
-                              fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit',
+                              background: 'transparent', color: 'var(--text-body)',
+                              fontSize: '0.78rem', cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                              opacity: submittingInterest ? 0.7 : 1,
                             }}>{t('coRentNoteSkip')}</button>
                           </div>
                         </div>
