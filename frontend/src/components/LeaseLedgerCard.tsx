@@ -260,8 +260,8 @@ export default function LeaseLedgerCard({
                   </div>
                   {(() => {
                     const isFirstMonth = sortedPayments.length > 0 && selectedPayment?.id === sortedPayments[0].id;
-                    const qrToShow = isFirstMonth ? adminQR : (landlord_qr_code || adminQR);
-                    // Use admin QR as fallback if no landlord QR
+                    const qrToShow = isFirstMonth ? adminQR : (landlord_qr_code || null);
+                    const noLandlordInfo = (!isFirstMonth && !landlord_qr_code && !landlord_bank_info);
 
                     return (
                       <>
@@ -269,11 +269,18 @@ export default function LeaseLedgerCard({
                           <div style={{ background: 'white', padding: 8, borderRadius: 12, display: 'inline-block', marginBottom: 8, border: '1px solid var(--glass-border)' }}>
                             <img src={qrToShow} alt="Payment QR" style={{ width: '100%', maxWidth: 160, height: 'auto', display: 'block', objectFit: 'contain' }} />
                           </div>
-                        ) : (
+                        ) : isFirstMonth ? (
                           <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: 8 }}>
                             {t('noPaymentQR')}
                           </div>
+                        ) : null}
+
+                        {noLandlordInfo && (
+                          <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--warning)', background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.78rem', marginBottom: 8 }}>
+                            {lang === 'zh' ? '房东暂未上传收款码或银行账户信息，请联系管理员。' : 'Landlord payment info is missing. Please contact admin.'}
+                          </div>
                         )}
+
                         {!isFirstMonth && landlord_bank_info && (
                           <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, padding: 8, marginTop: 8, textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>
                              <strong style={{ color: 'var(--text-h)' }}>{t('landlordBankInfo')}</strong><br/>

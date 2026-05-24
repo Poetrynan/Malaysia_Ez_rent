@@ -388,12 +388,12 @@ if (isLive) {
 
 | 区域 | 显示内容 | 来源 |
 |------|----------|------|
-| 上方 | 管理员的 DuitNow / Touch'n Go 收款码 | `admin_users.payment_qr_code`（管理员在"收款设置" tab 上传） |
+| 上方 | **收款信息（动态区分）**：<br> - **首月与押金（定金）**：显示中介（管理员）的收款码，提示“请将定金/首月租金扫给中介”。<br> - **第二个月及之后的租金**：显示房东的收款二维码或银行账户信息，提示“请将租金付给房东”。 | 首月取 `admin_users.payment_qr_code`，<br>后续取 `units.landlord_qr_code` / `landlord_bank_info`。 |
 | 下方 | 手机扫码上传转账截图的二维码 | 生成指向 `/mobile-upload/{paymentId}` 的 QR |
 
 流程：学生扫码付款 → 截图 → 手机扫码上传截图 → 管理员审核（批准/驳回）→ 状态更新。
 
-如果管理员没上传收款码，弹窗会提示"管理员尚未上传收款码，请联系管理员"。
+如果管理员或房东没上传对应收款码，弹窗会提示"尚未上传收款信息，请联系管理员"。
 
 ### Q: 管理端台账怎么操作？已缴费能改回来吗？
 **A:** 可以。管理员点击台账格子可以切换状态：
@@ -414,6 +414,7 @@ if (isLive) {
 - `006_bedrooms_bathrooms.sql` — units 加 bedrooms/bathrooms + match_units
 - `007_mobile_upload.sql` — 手机匿名上传凭证 RPC + Storage evidence/ 策略
 - `008_whole_unit_room_type.sql` — `units.room_type` 允许 `Whole Unit`（整租/合租）
+- `013_landlord_payment_details.sql` — 添加房东的收款二维码与银行账户，区分定金首月扫给中介，后续租金扫给房东。
 
 ### Q: 超级管理员不注册，可以在数据库帮他注册吗？
 **A:** 可以，但要分两步：

@@ -170,6 +170,7 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 11. `migrations/010_agent_qr_separation.sql`
 12. `migrations/011_optional_unit_number.sql`
 13. `migrations/012_remove_unit_number_display.sql`
+14. `migrations/013_landlord_payment_details.sql`
 
 Notes:
 
@@ -179,6 +180,7 @@ Notes:
 - `010_agent_qr_separation.sql` adds listing agent binding and routes payments to specific agent QR codes.
 - `011_optional_unit_number.sql` drops the `NOT NULL` constraint on `units.unit_number`.
 - `012_remove_unit_number_display.sql` updates `get_mobile_upload_info` RPC to return `room_type` instead of `unit_number` for privacy.
+- `013_landlord_payment_details.sql` adds `landlord_qr_code` and `landlord_bank_info` to `units` for splitting payments (Deposit/1st month rent to Agent, subsequent rents to Landlord).
 
 ## 7) Auth, Roles, and Access Model
 
