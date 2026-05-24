@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3 } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
+import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
@@ -709,11 +710,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           if (img.startsWith('http')) {
             uploadedUrls.push(img);
           } else {
-            const res = await fetch(img);
-            const blob = await res.blob();
-            const ext = blob.type.split('/')[1] || 'jpg';
-            const path = `${targetId}/${Date.now()}_${i}.${ext}`;
-            const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true });
+            const blob = await compressDataUrl(img, UNIT_IMAGE_PRESET);
+            const path = `${targetId}/${Date.now()}_${i}.jpg`;
+            const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
             if (uploadErr) { console.error('Upload error:', uploadErr); continue; }
             const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
             if (urlData?.publicUrl) uploadedUrls.push(urlData.publicUrl);
@@ -779,17 +778,18 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     }
   };
 
-  const handleImgFiles = (files: FileList | null) => {
+  const handleImgFiles = async (files: FileList | null) => {
     if (!files) return;
     const remaining = 9 - mediaImages.length;
     const toRead = Array.from(files).slice(0, remaining);
-    toRead.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        setMediaImages(prev => prev.length < 9 ? [...prev, e.target?.result as string] : prev);
-      };
-      reader.readAsDataURL(file);
-    });
+    for (const file of toRead) {
+      try {
+        const dataUrl = await compressImageToDataUrl(file, UNIT_IMAGE_PRESET);
+        setMediaImages(prev => (prev.length < 9 ? [...prev, dataUrl] : prev));
+      } catch (e) {
+        console.error('Image compress error:', e);
+      }
+    }
   };
 
   const handleVideoFile = (file: File | null) => {
@@ -806,8 +806,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { showToast('未登录', 'error'); setQrUploading(false); return; }
-        const path = `qr/${user.id}.png`;
-        const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, file, { upsert: true });
+        const path = `qr/${user.id}.jpg`;
+        const compressed = await compressImageFile(file, QR_IMAGE_PRESET);
+        const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
         if (uploadErr) { showToast(uploadErr.message, 'error'); setQrUploading(false); return; }
         const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
         const url = urlData?.publicUrl;
@@ -840,13 +841,13 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       } catch (err: any) { showToast(err.message || 'Upload failed', 'error'); }
       setQrUploading(false);
     } else {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const b64 = e.target?.result as string;
+      try {
+        const b64 = await compressImageToDataUrl(file, QR_IMAGE_PRESET);
         setAdminQR(b64);
         localStorage.setItem('ez_admin_qr_code', b64);
-      };
-      reader.readAsDataURL(file);
+      } catch (e) {
+        console.error('QR compress error:', e);
+      }
     }
   };
 
@@ -1866,7 +1867,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       {/* ── Payment Review Modal ── */}
       {reviewingPayment && (
         <div className="modal-overlay" onClick={() => { setReviewingPayment(null); setAdminNote(''); }}>
-          <div className="modal-content" style={{ width: 440, textAlign: 'left', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" style={{ width: 440, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => { setReviewingPayment(null); setAdminNote(''); }}
               style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
               <X size={18} />
@@ -1882,9 +1883,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
 
             {/* Evidence image */}
             {reviewingPayment.evidence_url ? (
-              <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: 16, cursor: 'pointer' }}
+              <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: 16, cursor: 'pointer', background: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                 onClick={() => setEvidencePreview(reviewingPayment.evidence_url!)}>
-                <img src={reviewingPayment.evidence_url} alt="evidence" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'contain', background: '#f5f5f5' }} />
+                <img src={reviewingPayment.evidence_url} alt="evidence" style={{ maxWidth: '100%', maxHeight: 'min(50vh, 420px)', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }} />
               </div>
             ) : (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--glass-border)', borderRadius: 10, marginBottom: 16 }}>
@@ -1924,8 +1925,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       {/* Evidence Preview Lightbox */}
       {evidencePreview && (
         <div className="modal-overlay" onClick={() => setEvidencePreview(null)} style={{ zIndex: 400 }}>
-          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-            <img src={evidencePreview} alt="凭证大图" style={{ maxWidth: '85vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 12, boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', maxWidth: 'min(420px, 92vw)', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <img src={evidencePreview} alt="凭证大图" style={{ maxWidth: 'min(420px, 92vw)', maxHeight: '85vh', width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 12, boxShadow: '0 24px 60px rgba(0,0,0,0.6)', display: 'block' }} />
             <button onClick={() => setEvidencePreview(null)}
               style={{ position: 'absolute', top: -12, right: -12, background: 'var(--danger)', border: 'none', color: 'white', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
               <X size={16} />

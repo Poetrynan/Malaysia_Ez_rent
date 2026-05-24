@@ -214,11 +214,11 @@ export default function LeaseLedgerCard({
                     {selectedPayment.status === 'approved' ? t('approved') : t('uploadSuccess')}
                   </span>
                 </div>
-                <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: 16 }}>
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: 16, background: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <img
                     src={evidenceUrl || selectedPayment.evidence_url || ''}
                     alt="Evidence"
-                    style={{ width: '100%', display: 'block' }}
+                    style={{ maxWidth: '100%', maxHeight: 'min(50vh, 420px)', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
                   />
                 </div>
                 {selectedPayment.status === 'pending_review' && (

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Upload, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
 import { supabase, isMockDatabase } from '@/lib/supabase';
 import { useApp } from '@/lib/ThemeProvider';
+import { compressImageFile, compressImageToDataUrl, EVIDENCE_IMAGE_PRESET } from '@/utils/compressImage';
 
 interface Payment {
   id: string;
@@ -146,13 +147,7 @@ export default function MobileUploadPage() {
 
     try {
       if (isMockDatabase) {
-        // Mock mode: convert to data URL and save to localStorage
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = await compressImageToDataUrl(file, EVIDENCE_IMAGE_PRESET);
         const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
         const idx = payments.findIndex(x => x.id === paymentId);
         if (idx !== -1) {
@@ -161,12 +156,11 @@ export default function MobileUploadPage() {
           localStorage.setItem('ez_payments', JSON.stringify(payments));
         }
       } else {
-        // Live mode: upload to Supabase Storage (anon-allowed under evidence/), then update via RPC
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-        const path = `evidence/${paymentId}.${ext}`;
+        const compressed = await compressImageFile(file, EVIDENCE_IMAGE_PRESET);
+        const path = `evidence/${paymentId}.jpg`;
         const { error: uploadErr } = await supabase.storage
           .from('unit-media')
-          .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
+          .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
         if (uploadErr) { setError(uploadErr.message); setUploading(false); return; }
 
         const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
