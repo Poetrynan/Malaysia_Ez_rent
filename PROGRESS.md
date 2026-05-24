@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-24 (UTC+8)
-> 状态：**前端可跑 · 后端已连接 Gemini/DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage（含客户端压缩）· 房源/租约支持删除 · 手机扫码上传支付凭证（007 迁移 + RPC）· 支付凭证审核 + 自适应预览 · 收款码上传/共享/持久化 · RLS 策略全面修复 · 意见箱功能完成 · Vercel & Render 云端生产环境部署完成**
+> 状态：**前端可跑 · 后端已连接 Gemini/DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage（含客户端压缩）· 房源/租约支持删除 · 手机扫码上传支付凭证（007 迁移 + RPC）· 支付凭证审核 + 自适应预览 · 收款码上传/共享/持久化 · RLS 策略全面修复 · 意见箱功能完成 · 品牌 Logo（图标版）· 收租核查表显示小区/门牌号 · Vercel & Render 云端生产环境部署完成**
 
 ---
 
@@ -12,11 +12,11 @@ Malaysia_Ez_rent/
 ├── frontend/          # Next.js 16.2 (App Router) — 学生端 + 管理端 SPA
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx          # 主入口，tab 路由切换，角色判断（admin_users 表），登出
-│   │   │   ├── layout.tsx        # SEO metadata，Google Fonts <link>，Google Maps Script
-│   │   │   ├── globals.css       # 全局 CSS 变量、动画、组件样式（含 Toast 动画）
+│   │   │   ├── page.tsx          # 主入口，tab 路由切换，角色判断（admin_users 表），登出，侧边栏 Logo
+│   │   │   ├── layout.tsx        # SEO metadata + favicon（/logo.png），Google Fonts，Google Maps Script
+│   │   │   ├── globals.css       # 全局 CSS 变量、动画、组件样式（含 Logo / Toast 动画）
 │   │   │   ├── login/
-│   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录界面（Mock/Live自适应）
+│   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录（图标 Logo + 产品名）
 │   │   │   ├── mobile-upload/
 │   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证（匿名 RPC + 图片压缩）
 │   │   │   └── auth/
@@ -28,7 +28,7 @@ Malaysia_Ez_rent/
 │   │   │   ├── MapAndCard.tsx    # 房源卡片 + SVG 通勤路线地图
 │   │   │   ├── LeaseLedgerCard.tsx  # 租约台账 + DuitNow QR 支付弹窗
 │   │   │   ├── StudentPortal.tsx # 学生门户（圆形倒计时环 + 台账）
-│   │   │   └── AdminPanel.tsx    # 管理后台（房源管理 + 租约 + 收租核查，表单红框校验与Toast）
+│   │   │   └── AdminPanel.tsx    # 管理后台（房源/租约二级 Tab、收租核查表显示单元、小区删除、表单校验与 Toast）
 │   │   └── lib/
 │   │       ├── supabase.ts       # Supabase 客户端（含完整 LocalStorage Mock）
 │   │       ├── ThemeProvider.tsx  # 主题/语言 Context Provider
@@ -40,6 +40,8 @@ Malaysia_Ez_rent/
 │   │   │   │   └── server.ts
 │   │   │   └── compressImage.ts  # 上传前 Canvas 压缩（凭证/房源/收款码）
 │   │   └── middleware.ts         # Next.js 路由中间件，处理 Auth 状态和重定向
+│   ├── public/
+│   │   └── logo.png              # 产品 Logo（圆形图标版，侧边栏/登录/上传页/favicon 共用）
 │   ├── next.config.ts            # allowedDevOrigins 配置
 │   ├── .env.local                # 环境变量（Supabase/DeepSeek/Google Maps/Tavily）
 │   └── package.json
@@ -56,7 +58,8 @@ Malaysia_Ez_rent/
 │   └── requirements.txt
 │
 ├── docs/              # 项目文档
-│   ├── auth-redirect-explained.md # Supabase Auth 重定向配置详解
+│   ├── auth-redirect-explained.md # Supabase Auth 重定向、手机上传、Logo 部署、Memory vs Storage
+│   ├── ai-architecture.md         # AI Agent 架构与后续开发指南
 │   └── deployment-guide.md        # 部署指南
 │
 └── supabase/          # 数据库 Schema（PostgreSQL + pgvector）
@@ -68,7 +71,8 @@ Malaysia_Ez_rent/
         ├── 004_unit_media.sql          # 房源图片、配套设施、收款码、押金配置
         ├── 005_feedback.sql            # 学生意见箱 (feedback 表 + RLS 策略)
         ├── 006_bedrooms_bathrooms.sql  # units 加 bedrooms/bathrooms + match_units 更新
-        └── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
+        ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
+        └── 008_whole_unit_room_type.sql # units.room_type 允许 Whole Unit（整租/合租）
 ```
 
 ---
@@ -79,22 +83,23 @@ Malaysia_Ez_rent/
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航，角色判断（查 admin_users 表），flex 布局修复 |
+| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
 | `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、配套设施展示、同小区推荐），联系管理员弹窗，**合租功能**（Whole Unit 显示入住人数/备注/意向者列表，其他房型直接"我要租"），图片从 Supabase Storage 读取 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗（管理员收款码 + **每账单唯一**上传凭证二维码），已缴费不可点击，凭证预览自适应高度 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
-| `AdminPanel.tsx` | ✅ 完成 | 房源管理（含配套设施勾选、**图片上传前压缩**、上传至 Supabase Storage）+ 单元管理 + 租约创建（从已确认意向租客中选人、可配置押金月数）+ 收租核查（按时间排序、点击切换已缴/待缴）+ **管理员管理**（super_admin 专属）+ **支付凭证审核**（截图自适应预览、批准/驳回/删除凭证、备注）+ **合租管理**（确认/移除租客、查看备注）+ **房源/租约删除**（硬删除，同步清理 Storage 和关联数据）+ **收款设置**（上传/删除 DuitNow 收款码，全系统共享，localStorage 缓存防丢失）+ **意见箱管理**（查看/回复/标记已处理/删除，未处理数量角标提醒）|
+| `AdminPanel.tsx` | ✅ 完成 | **房源/租约二级 Tab**（编辑/库存/意向/收租核查表）+ 房源管理（配套设施、**图片压缩**、Storage 上传）+ 单元管理 + **小区删除**（无房源时可删）+ 租约创建（意向租客选人、押金月数）+ **收租核查表独立显示小区·门牌号·房型**（Supabase JOIN + 兜底）+ 凭证审核 + 合租管理 + 硬删除 + 收款设置 + 意见箱 |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（`get_mobile_upload_info` / `submit_mobile_payment_evidence` RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 客户端压缩：凭证 ≤1080×2400 JPEG 80%、房源 ≤1920 JPEG 85%、收款码 800×800 JPEG 92% |
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
 | `i18n.ts` | ✅ 完成 | 中英双语翻译，修复重复 `perMonth` 属性 |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
-| `globals.css` | ✅ 完成 | 暗色玻璃风格 CSS，全套设计 Token，动画系统（包含 Toast 弹出与下滑动画） |
-| `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载（不再用 CSS `@import`）|
+| `globals.css` | ✅ 完成 | 暗色玻璃风格 CSS，全套设计 Token，**Logo 布局样式**（`.logo-section` / `.logo-img`），Toast 动画 |
+| `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
+| `public/logo.png` | ✅ 完成 | 圆形图标版品牌 Logo（源文件 `QQ20260524-170137.png`），**纯静态资源，不涉及数据库** |
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
-| `login/page.tsx` | ✅ 完成 | Google OAuth + Magic Link 双登录，白色简洁设计，Mock/Live 自适应 |
+| `login/page.tsx` | ✅ 完成 | Google OAuth + Magic Link 双登录，**图标 Logo + 产品名**，白色简洁设计，Mock/Live 自适应 |
 | `auth/callback/route.ts` | ✅ 完成 | 处理 Supabase OAuth 返回的 Code 交换 Session 回调路由 |
 
 ### 后端 (FastAPI)
@@ -169,6 +174,8 @@ Malaysia_Ez_rent/
 | 50 | 原图上传快速占满 Supabase Storage | 新增 `compressImage.ts`，凭证/房源/收款码上传前 Canvas 压缩为 JPEG |
 | 51 | Gemini API 高峰期 503 导致 Agent 无最终回复 | 工具调用已成功但 LLM 合成回复失败；属上游模型过载，需重试或换模型/加重试逻辑（待优化） |
 | 52 | 管理端同一门牌号重复录入多条房源 | `units` 表无唯一约束 + 保存按钮无防连点；误操作会 INSERT 重复行，需手动删除多余记录（待加防重复） |
+| 53 | 收租核查表头部不显示小区/门牌号 | 租约与 unit 关联不可靠且 UI 挤在一行；改为 Supabase `leases → units → communities` JOIN，**单独一行**显示 `小区 · 门牌 · (房型)` |
+| 54 | 保存 Whole Unit 房型报 `units_room_type_check` | 数据库 CHECK 缺 `Whole Unit`；执行 `008_whole_unit_room_type.sql` 扩展约束 |
 
 ---
 
@@ -293,6 +300,7 @@ Storage Bucket：
 | `005_feedback.sql` | 意见箱：feedback 表（user_id、content、status、admin_reply）+ RLS 策略（学生插入/查看自己的，管理员查看/更新/删除所有） |
 | `006_bedrooms_bathrooms.sql` | units 加 bedrooms/bathrooms 字段 + 更新 match_units RPC 返回值 |
 | `007_mobile_upload.sql` | **手机匿名上传凭证**：`get_mobile_upload_info(uuid)` + `submit_mobile_payment_evidence(uuid, text)` RPC；Storage `unit-media/evidence/` 匿名 INSERT/UPDATE 策略 |
+| `008_whole_unit_room_type.sql` | `units.room_type` CHECK 增加 `Whole Unit`，修复整租/合租房型保存报错 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -317,7 +325,8 @@ supabase/migrations/
 ├── 004_unit_media.sql          # 图片存储：units.media_urls + Storage Bucket + amenities + payment_qr_code
 ├── 005_feedback.sql            # 意见箱：feedback 表 + RLS 策略
 ├── 006_bedrooms_bathrooms.sql  # units bedrooms/bathrooms + match_units
-└── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
+├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
+└── 008_whole_unit_room_type.sql # Whole Unit 房型 CHECK 约束
 ```
 
 迁移原则：
@@ -348,9 +357,12 @@ supabase/migrations/
 | Memory usage 显示 ~400 MB 是不是数据库满了 | 这是 **RAM 内存**图表，不是磁盘；Postgres 缓存占 RAM 是正常现象 | 看 Settings → Usage 的 **Database size** 和 **Storage size**；详见 auth 文档第 14 节 |
 | Storage 配额涨太快 | 原图直传 | 已加 `compressImage.ts` 上传前压缩；旧大文件需手动清理 |
 | 同一门牌号出现多条重复房源 | `units` 无唯一约束 + 保存无防连点 | 删除多余行；改房源用「编辑」勿重复「新增」 |
+| Whole Unit 保存报 `units_room_type_check` | 未跑 `008_whole_unit_room_type.sql` | Supabase SQL Editor 执行 `008_whole_unit_room_type.sql` |
+| 收租核查表看不到门牌号 | 旧版 UI 或未关联 unit | 刷新前端；若显示「单元信息缺失」则检查租约 `unit_id` |
+| Logo 上线要不要动数据库 | Logo 是 `frontend/public/logo.png` 静态文件 | **不用**；`git push` 后 Vercel 自动部署即可 |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
-详见 `docs/auth-redirect-explained.md` 第 8–14 节。
+详见 `docs/auth-redirect-explained.md` 第 8–15 节。
 
 ---
 
@@ -529,6 +541,46 @@ WHERE payment_qr_code IS NOT NULL AND length(payment_qr_code) > 1000;
 Storage 占用：Dashboard → Storage → `unit-media`，可删测试文件。
 
 详见 `docs/auth-redirect-explained.md` 第 14 节。
+
+---
+
+## 十五、品牌 Logo 与前端部署（2026-05-24）
+
+### 文件位置
+
+| 文件 | 用途 |
+|------|------|
+| `frontend/public/logo.png` | 线上实际使用的 Logo（圆形图标版） |
+| `QQ20260524-170137.png`（项目根目录） | 源文件，可选提交 Git |
+
+### 引用位置
+
+- 侧边栏：`page.tsx` — 52×52 图标 + `appName` / `appTagline` 文字
+- 登录页：`login/page.tsx` — 88×88 图标 + 产品名
+- 手机上传页：`mobile-upload/[id]/page.tsx` — 72×72 图标
+- 浏览器标签：`layout.tsx` → `icons: { icon: "/logo.png" }`
+
+### 是否需要同步数据库？
+
+**不需要。** Logo 是纯前端静态资源 + 样式改动，与 Supabase 无关。
+
+### 如何上线
+
+```bash
+git add frontend/public/logo.png frontend/src/app/ ...
+git commit -m "品牌 Logo + 收租核查表显示单元"
+git push
+```
+
+Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览器强制刷新（Ctrl+F5）或清缓存。
+
+### 与 SQL 迁移的关系
+
+| 变更类型 | 是否需要 Supabase SQL |
+|---------|----------------------|
+| Logo / 前端 UI | ❌ 不需要 |
+| 手机上传凭证 | ✅ `007_mobile_upload.sql` |
+| Whole Unit 房型 | ✅ `008_whole_unit_room_type.sql` |
 
 ---
 

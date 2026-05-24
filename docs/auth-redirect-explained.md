@@ -411,6 +411,9 @@ if (isLive) {
 - `003_corenting.sql` — 合租功能（units.max_occupants + tenant_interests 表）
 - `004_unit_media.sql` — 图片存储 + 配套设施 + 收款码 + 押金月数（units.media_urls + communities.amenities + admin_users.payment_qr_code + leases.security/utility_deposit_months）
 - `005_feedback.sql` — 意见箱（feedback 表 + RLS 策略）
+- `006_bedrooms_bathrooms.sql` — units 加 bedrooms/bathrooms + match_units
+- `007_mobile_upload.sql` — 手机匿名上传凭证 RPC + Storage evidence/ 策略
+- `008_whole_unit_room_type.sql` — `units.room_type` 允许 `Whole Unit`（整租/合租）
 
 ### Q: 超级管理员不注册，可以在数据库帮他注册吗？
 **A:** 可以，但要分两步：
@@ -557,8 +560,9 @@ Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB�
 | 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
 | 2️⃣ | 运行 `supabase/migrations/004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
 | 3️⃣ | 运行 **`supabase/migrations/007_mobile_upload.sql`**（手机上传凭证 RPC） | ⚠️ 必做 |
-| 4️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 5️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 4️⃣ | 运行 **`supabase/migrations/008_whole_unit_room_type.sql`**（Whole Unit 房型） | ⚠️ 若后台保存整租报错则必做 |
+| 5️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 6️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
 
 > 完整清单见文档末尾 **「你现在需要做的事（更新于 2026-05-24）」** 一节。
 
@@ -806,6 +810,96 @@ Dashboard → **Storage → unit-media**，看 `evidence/`、`qr/` 各文件夹�
 
 ---
 
+## 15. 品牌 Logo 上线要不要动数据库？
+
+### 简单答案：**不用。**
+
+Logo 是纯前端静态资源，与 Supabase 无关：
+
+| 内容 | 位置 |
+|------|------|
+| 线上 Logo 文件 | `frontend/public/logo.png`（圆形图标版，源文件 `QQ20260524-170137.png`） |
+| 侧边栏 | `page.tsx` — 52×52 图标 + 产品名/副标题 |
+| 登录页 | `login/page.tsx` — 88×88 图标 + 文字 |
+| 手机上传页 | `mobile-upload/[id]/page.tsx` — 72×72 图标 |
+| 浏览器标签 favicon | `layout.tsx` → `icons: { icon: "/logo.png" }` |
+
+### 如何上线
+
+```bash
+git add frontend/public/logo.png frontend/src/app/ ...
+git commit -m "更新品牌 Logo"
+git push
+```
+
+**Vercel 会自动 build 并部署**，无需在 Supabase 执行任何 SQL。
+
+favicon 若浏览器仍显示旧图标：强制刷新（Ctrl+F5）或清除缓存。
+
+### 和 SQL 迁移别混
+
+| 变更 | 需要 Supabase SQL？ |
+|------|-------------------|
+| Logo / 前端样式 | ❌ 不需要 |
+| 手机扫码上传凭证 | ✅ `007_mobile_upload.sql` |
+| Whole Unit 房型保存 | ✅ `008_whole_unit_room_type.sql` |
+
+---
+
+## 16. 收租核查表为什么不显示门牌号？
+
+### 现象
+
+管理端 → 租约 → **收租核查表**，展开某条租约后，头部只有租客名 + 租金 + 日期，看不到是哪个 unit。
+
+### 原因（已修复）
+
+1. 租约与 `units` / `communities` 的关联在部分情况下未正确 JOIN
+2. 房源信息原先和租金、日期挤在同一行，不够醒目
+
+### 现在的展示格式
+
+```
+冯诗楠
+Nautica Lake Suites · B-12-08 (Studio)   ← 单独一行，蓝色加粗
+RM 1350/mo · 2026-03-01 → 2027-03-01
+```
+
+实现：`AdminPanel.tsx` 加载租约时使用 `leases → units → communities` 嵌套查询，渲染时用 `resolveLeaseUnit()` 兜底。
+
+### 若仍显示「单元信息缺失」
+
+说明该租约的 `unit_id` 为空，或对应房源已被删除。需在 Supabase 检查：
+
+```sql
+SELECT l.id, l.unit_id, u.unit_number, c.name
+FROM leases l
+LEFT JOIN units u ON u.id = l.unit_id
+LEFT JOIN communities c ON c.id = u.community_id
+WHERE l.status = 'active';
+```
+
+---
+
+## 17. Whole Unit 保存报 `units_room_type_check` 怎么办？
+
+前端 AdminPanel 已支持 **Whole Unit**（整租/合租），但旧数据库的 CHECK 约束可能只允许 4 种房型。
+
+**报错示例：**
+```
+new row for relation "units" violates check constraint "units_room_type_check"
+```
+
+**解决：** 在 Supabase SQL Editor 执行一次：
+
+```
+supabase/migrations/008_whole_unit_room_type.sql
+```
+
+该脚本把 `room_type` 允许值扩展为：`Studio`, `Master Room`, `Medium Room`, `Small Room`, **`Whole Unit`**。
+
+---
+
 ## 你现在需要做的事（更新于 2026-05-24）
 
 | 步骤 | 做什么 | 状态 |
@@ -813,11 +907,13 @@ Dashboard → **Storage → unit-media**，看 `evidence/`、`qr/` 各文件夹�
 | 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
 | 2️⃣ | 运行 `004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
 | 3️⃣ | 运行 **`007_mobile_upload.sql`**（手机匿名上传凭证 RPC + Storage evidence/ 策略） | ⚠️ **必做**，否则手机上传失败 |
-| 4️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 5️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
-| 6️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
-| 7️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+| 4️⃣ | 运行 **`008_whole_unit_room_type.sql`**（Whole Unit 房型 CHECK） | ⚠️ 保存整租报错时必做 |
+| 5️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 6️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 7️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
+| 8️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+| 9️⃣ | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push`，Vercel 自动部署 | ❌ **无需 SQL**，见第 15 节 |
 
 ---
 
-*文档更新：2026-05-24 · 含手机上传凭证、二维码区分、图片压缩、AI 数据来源、Memory vs Storage 说明*
+*文档更新：2026-05-24 · 含手机上传凭证、二维码区分、图片压缩、AI 数据来源、Memory vs Storage、Logo 部署、收租核查表单元显示、Whole Unit 迁移*

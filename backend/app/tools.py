@@ -1,5 +1,7 @@
 import json
 import httpx
+import re
+import os
 from typing import Optional, List, Dict, Any
 from app.config import Config
 import math
@@ -82,7 +84,8 @@ def search_internal_db(
     """
     print(f"[Tool: search_internal_db] Query: '{semantic_query}', RoomType: {room_type}, MaxPrice: {max_price}")
     
-    if Config.is_supabase_enabled() and supabase_client:
+    supabase_connected = Config.is_supabase_enabled() and supabase_client
+    if supabase_connected:
         try:
             embedding = get_embedding(semantic_query)
             params = {
@@ -96,12 +99,14 @@ def search_internal_db(
                 params["filter_max_rent"] = max_price
                 
             response = supabase_client.rpc("match_units", params).execute()
-            if response.data:
-                return response.data
+            results = response.data or []
+            print(f"[Tool: search_internal_db] Supabase returned {len(results)} unit(s)")
+            return results
         except Exception as e:
             print(f"Failed to query Supabase RPC match_units: {e}")
+            return []
             
-    # Mock fallback
+    # Mock fallback — ONLY when Supabase is not configured (local demo mode)
     results = []
     query_lower = semantic_query.lower()
     for unit in UNITS:
@@ -147,6 +152,105 @@ def search_internal_db(
     # Sort by similarity
     results = sorted(results, key=lambda x: x["similarity"], reverse=True)
     return results[:4]
+
+
+def _extract_myr_price(text: str) -> Optional[float]:
+    """Try to pull a monthly rent figure from listing snippet text."""
+    if not text:
+        return None
+    for pattern in (
+        r'RM\s*([\d,]+(?:\.\d{1,2})?)',
+        r'([\d,]+)\s*(?:/month|/ month|per month|pcm|monthly)',
+    ):
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            try:
+                return float(match.group(1).replace(',', ''))
+            except ValueError:
+                continue
+    return None
+
+
+def search_iproperty_listings(
+    query: str,
+    location: Optional[str] = None,
+    room_type: Optional[str] = None,
+    max_price: Optional[float] = None,
+    max_results: int = 5,
+) -> Dict[str, Any]:
+    """
+    Search iProperty.com.my rental listings via Tavily.
+    Used when internal inventory is empty or user wants external market listings.
+    """
+    print(f"[Tool: search_iproperty_listings] Query: '{query}', Location: {location}, RoomType: {room_type}, MaxPrice: {max_price}")
+
+    if not Config.is_tavily_enabled():
+        return {
+            "success": False,
+            "source": "iproperty.com.my",
+            "message": "TAVILY_API_KEY 未配置，无法联网搜索 iProperty。请在 backend/.env 配置 TAVILY_API_KEY。",
+            "listings": [],
+        }
+
+    parts = ["rent", "for rent", query]
+    if location:
+        parts.append(location)
+    if room_type:
+        parts.append(room_type)
+    if max_price:
+        parts.append(f"below RM {int(max_price)}")
+    search_query = " ".join(p for p in parts if p).strip()
+
+    payload = {
+        "api_key": Config.TAVILY_API_KEY,
+        "query": search_query,
+        "search_depth": "advanced",
+        "include_domains": ["iproperty.com.my", "www.iproperty.com.my"],
+        "max_results": max(3, min(max_results, 8)),
+        "include_answer": False,
+    }
+
+    try:
+        r = httpx.post("https://api.tavily.com/search", json=payload, timeout=20.0)
+        data = r.json()
+    except Exception as e:
+        print(f"Error calling Tavily iProperty search: {e}")
+        return {
+            "success": False,
+            "source": "iproperty.com.my",
+            "message": f"Tavily 搜索失败: {e}",
+            "listings": [],
+        }
+
+    raw_results = data.get("results") or []
+    listings: List[Dict[str, Any]] = []
+    for item in raw_results:
+        url = item.get("url") or ""
+        if "iproperty.com.my" not in url.lower():
+            continue
+        title = (item.get("title") or "").strip()
+        snippet = (item.get("content") or "").strip()
+        rent = _extract_myr_price(f"{title} {snippet}")
+        if max_price and rent and rent > float(max_price):
+            continue
+        listings.append({
+            "title": title or "iProperty 房源",
+            "url": url,
+            "snippet": snippet[:500],
+            "rent_myr": rent,
+            "room_type": room_type,
+            "source": "iproperty.com.my",
+            "is_external": True,
+        })
+
+    return {
+        "success": True,
+        "source": "iproperty.com.my",
+        "search_query": search_query,
+        "count": len(listings),
+        "listings": listings,
+        "note": "外部房源来自 iProperty，非本系统库存；请用户点击链接查看详情并自行联系中介/房东。",
+    }
 
 
 # Tool 2: calculate_commute

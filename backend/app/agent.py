@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Dict, Any, List
 from app.config import Config
 from app.tools import (
     search_internal_db,
+    search_iproperty_listings,
     calculate_commute,
     get_web_realtime_info,
     check_my_own_rental_status,
@@ -59,9 +60,31 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         await asyncio.sleep(0.8)
 
         if not db_results:
+            if Config.is_tavily_enabled():
+                yield sse_event({"type": "thinking", "step": "📡 内部库存为空，正在通过 Tavily 搜索 iProperty.com.my…"})
+                await asyncio.sleep(0.8)
+                loc = "Monash University Malaysia Sunway" if "monash" in query_lower else "Sunway Subang Jaya"
+                yield sse_event({"type": "tool_call", "tool_name": "search_iproperty_listings", "args": {"query": query, "room_type": room_type, "max_price": max_price, "location": loc}})
+                await asyncio.sleep(1.0)
+                iproperty_results = search_iproperty_listings(query, room_type=room_type, max_price=max_price, location=loc)
+                yield sse_event({"type": "tool_result", "tool_name": "search_iproperty_listings", "result": iproperty_results})
+                await asyncio.sleep(0.8)
+                listings = iproperty_results.get("listings") or []
+                if listings:
+                    intro = "系统内暂无匹配房源，以下是从 **iProperty.com.my** 搜到的外部市场房源（非本平台库存）：\n\n"
+                    for char in intro:
+                        yield sse_event({"type": "text", "delta": char})
+                        await asyncio.sleep(0.01)
+                    for i, item in enumerate(listings[:3], 1):
+                        rent_str = f"RM {item['rent_myr']}/月" if item.get("rent_myr") else "租金见详情页"
+                        block = f"{i}. **{item['title']}** — {rent_str}\n   🔗 {item['url']}\n   {item.get('snippet', '')[:120]}…\n\n"
+                        for char in block:
+                            yield sse_event({"type": "text", "delta": char})
+                            await asyncio.sleep(0.01)
+                    return
             yield sse_event({"type": "thinking", "step": "No matching rooms found in search results. Let's do a wider search or ask for clarification."})
             await asyncio.sleep(0.5)
-            yield sse_event({"type": "text", "delta": "抱歉，在系统内未找到完全符合条件的房源。建议您放宽预算或搜索其他户型！"})
+            yield sse_event({"type": "text", "delta": "抱歉，系统内暂无匹配房源。请管理员在后台录入房源，或配置 TAVILY_API_KEY 以搜索 iProperty 外部房源。"})
             return
 
         # Pick the top match
@@ -214,13 +237,30 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         {
             "type": "function",
             "function": {
+                "name": "search_iproperty_listings",
+                "description": "Search external rental listings on iProperty.com.my via Tavily web search. Use when search_internal_db returns no results, or when the user explicitly asks for iProperty/external/market listings.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "What the student is looking for (e.g. Studio near Monash)."},
+                        "location": {"type": "string", "description": "Area or city, e.g. Sunway, Subang Jaya, Bandar Sunway."},
+                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room", "Whole Unit"], "description": "Optional room type filter."},
+                        "max_price": {"type": "number", "description": "Optional maximum monthly rent in MYR."}
+                    },
+                    "required": ["query"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "search_internal_db",
-                "description": "Search the internal housing database using semantic vectors.",
+                "description": "Search THIS platform's internal housing inventory (admin-entered units in Supabase). Always call this first for rental search.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "semantic_query": {"type": "string", "description": "The description/preferences of housing needed by the student."},
-                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room"], "description": "Optional room type filter."},
+                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room", "Whole Unit"], "description": "Optional room type filter."},
                         "max_price": {"type": "number", "description": "Optional maximum rent limit in MYR."}
                     },
                     "required": ["semantic_query"]
@@ -247,7 +287,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             "type": "function",
             "function": {
                 "name": "get_web_realtime_info",
-                "description": "Search the live web for recent local transit, policies, and neighborhood facts in Malaysia.",
+                "description": "Search the live web for transit policies, deposit rules, neighborhood facts — NOT for property listings (use search_iproperty_listings for that).",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -319,7 +359,10 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "7. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
                 "8. NEVER print, repeat or mention the raw User ID (such as 'tenant-123' or UUID strings) in your conversational responses or greetings unless the user explicitly asks 'What is my User ID?' or 'What is my ID?'.\n"
                 "9. If check_my_own_rental_status returns has_active_lease=False, tell the user clearly that no active lease was found under their account. Do NOT fabricate or guess any lease details.\n"
-                "10. NEVER invent or hallucinate property names, rent amounts, unit numbers, or payment records. Only report data that was explicitly returned by a tool."
+                "10. NEVER invent or hallucinate property names, rent amounts, unit numbers, or payment records. Only report data explicitly returned by a tool.\n"
+                "11. For rental search: ALWAYS call search_internal_db first. If it returns an empty list OR the user asks for iProperty/external/market listings, call search_iproperty_listings.\n"
+                "12. Clearly label internal inventory vs external iProperty listings. External results must include the iProperty URL; say they are NOT managed by this platform.\n"
+                "13. Do NOT call calculate_commute for external iProperty listings unless you have verified lat/lng from internal search results."
             )
         },
         {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}
@@ -352,8 +395,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 yield sse_event({"type": "text", "delta": char})
                 await asyncio.sleep(0.01)
             
-            # Post-text check: if we mentioned a unit, append UI component for visual polish
-            # We look back in our context to see if search_internal_db was called
+            # Post-text UI map card — internal inventory only (has lat/lng)
             found_unit = None
             for msg in reversed(messages):
                 if msg.get("role") == "tool" and msg.get("name") == "search_internal_db":
@@ -421,6 +463,13 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                     semantic_query=tool_args.get("semantic_query", ""),
                     room_type=tool_args.get("room_type"),
                     max_price=tool_args.get("max_price")
+                )
+            elif tool_name == "search_iproperty_listings":
+                result_data = search_iproperty_listings(
+                    query=tool_args.get("query", ""),
+                    location=tool_args.get("location"),
+                    room_type=tool_args.get("room_type"),
+                    max_price=tool_args.get("max_price"),
                 )
             elif tool_name == "calculate_commute":
                 result_data = calculate_commute(

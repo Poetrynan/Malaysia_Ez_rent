@@ -107,9 +107,10 @@ Malaysia_Ez_rent/
 ### Tooling
 
 - `backend/app/tools.py`
-  - `search_internal_db`: vector-based unit search (Supabase RPC `match_units`) with fallback.
+  - `search_internal_db`: vector-based unit search (Supabase RPC `match_units`). **Mock demo data only when Supabase is not configured** — never silently inject Sunway Geo when live DB is empty.
+  - `search_iproperty_listings`: Tavily search scoped to `iproperty.com.my` for external market listings when internal inventory is empty or user asks for iProperty.
   - `calculate_commute`: Google Maps Distance Matrix with geometric fallback.
-  - `get_web_realtime_info`: Tavily web info (policy/transit/general facts), not external listing crawler.
+  - `get_web_realtime_info`: Tavily for policy/transit/general facts — **not** listing search.
   - `check_my_own_rental_status`: service-role query for user lease/payment status.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
 
