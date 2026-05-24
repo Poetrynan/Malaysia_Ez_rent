@@ -149,6 +149,9 @@ export const translations = {
     // Admin Panel
     adminProperties: '房源管理',
     adminLeases: '租约 & 财务台账',
+    propertySubtabEditor: '新增/编辑房源',
+    propertySubtabCommunities: '已登记小区',
+    propertySubtabInventory: '已登记房源库',
     addCommunityTitle: '1. 新增小区',
     communityListTitle: '已登记小区',
     communityListHint: '下拉框里同名出现多次，说明数据库有多条重复小区记录。可删除无房源的空记录。',
@@ -431,6 +434,9 @@ export const translations = {
 
     adminProperties: 'Properties & Units',
     adminLeases: 'Leases & Ledger',
+    propertySubtabEditor: 'Create / Edit Units',
+    propertySubtabCommunities: 'Registered Communities',
+    propertySubtabInventory: 'Housing Inventory',
     addCommunityTitle: '1. Add Community',
     communityListTitle: 'Registered Communities',
     communityListHint: 'Duplicate names in the dropdown mean duplicate community rows. Delete empty ones with no units.',

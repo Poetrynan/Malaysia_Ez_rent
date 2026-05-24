@@ -35,6 +35,7 @@ const MOCK_PLACES = [
 export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
+  const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
 
   useEffect(() => {
     if (defaultTab) {
@@ -1076,7 +1077,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       {/* Tab Bar */}
       {!hideTabBar && (
         <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
-          <button style={tabStyle(tab === 'properties')} onClick={() => setTab('properties')}>
+          <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
             <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
           </button>
           <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); loadAll(); }}>
@@ -1112,11 +1113,37 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       {/* ── PROPERTIES TAB ── */}
       {tab === 'properties' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6 }}>
+            <button
+              style={tabStyle(propertiesView === 'editor')}
+              onClick={() => setPropertiesView('editor')}
+            >
+              {t('propertySubtabEditor')}
+            </button>
+            <button
+              style={tabStyle(propertiesView === 'communities')}
+              onClick={() => setPropertiesView('communities')}
+            >
+              {t('propertySubtabCommunities')}
+            </button>
+            <button
+              style={tabStyle(propertiesView === 'inventory')}
+              onClick={() => setPropertiesView('inventory')}
+            >
+              {t('propertySubtabInventory')}
+            </button>
+          </div>
           {/* Add community */}
-          <div className="glass-card">
-            <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <PlusCircle size={16} style={{ color: 'var(--primary)' }} />{t('addCommunityTitle')}
-            </h3>
+          <div className="glass-card" style={{ display: propertiesView === 'inventory' ? 'none' : 'block', gridColumn: propertiesView === 'communities' ? '1 / -1' : 'auto' }}>
+            {propertiesView === 'editor' ? (
+              <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PlusCircle size={16} style={{ color: 'var(--primary)' }} />{t('addCommunityTitle')}
+              </h3>
+            ) : (
+              <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('communityListTitle')}</h3>
+            )}
+            {propertiesView === 'editor' && (
+              <>
             <div className="form-group">
               <label>{t('communityNameLabel')}</label>
               <div style={{ position: 'relative' }}>
@@ -1179,12 +1206,14 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               </div>
             </div>
             <button className="btn btn-primary" onClick={saveCommunity} style={{ width: '100%', marginTop: 12 }}>{t('saveBtn')}</button>
+              </>
+            )}
 
-            {communities.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--glass-border)' }}>
+            {propertiesView === 'communities' && communities.length > 0 && (
+              <div>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>{t('communityListTitle')}</div>
                 <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{t('communityListHint')}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
                   {communities.map(c => {
                     const unitCount = units.filter(u => u.community_id === c.id).length;
                     return (
@@ -1216,7 +1245,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           </div>
 
           {/* Add unit */}
-          <div id="add-unit-form-section" className="glass-card">
+          <div id="add-unit-form-section" className="glass-card" style={{ display: propertiesView === 'editor' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>
@@ -1365,9 +1394,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           </div>
 
           {/* Inventory Table */}
-          <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
+          <div className="glass-card" style={{ gridColumn: '1 / -1', display: propertiesView === 'inventory' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('inventoryTitle')}</h3>
-            <div className="data-table-container">
+            <div className="data-table-container" style={{ maxHeight: 420, overflow: 'auto' }}>
               <table className="data-table">
                 <thead><tr>
                   <th>{t('colCommunity')}</th><th>{t('colUnit')}</th>
