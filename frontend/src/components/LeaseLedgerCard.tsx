@@ -25,11 +25,12 @@ interface LeaseLedgerCardProps {
   monthly_rent: number;
   payments: Payment[];
   onPaymentUpdated?: () => void;
+  agent_id?: string | null;
 }
 
 export default function LeaseLedgerCard({
   community_name, unit_number, start_date, end_date,
-  monthly_rent, payments = [], onPaymentUpdated
+  monthly_rent, payments = [], onPaymentUpdated, agent_id
 }: LeaseLedgerCardProps) {
   const { t, lang } = useApp();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -48,31 +49,49 @@ export default function LeaseLedgerCard({
         try {
           const { createClient } = await import('@/utils/supabase/client');
           const supabaseClient = createClient();
-          const { data, error } = await supabaseClient
-            .from('admin_users')
-            .select('payment_qr_code')
-            .not('payment_qr_code', 'is', null)
-            .limit(1)
-            .single();
-          if (error) {
-            console.error('[QR Fetch] Error:', error.message);
-            // Fallback to localStorage
+          
+          let qrCodeUrl = null;
+          
+          if (agent_id) {
+            // Fetch this specific agent's QR code
+            const { data, error } = await supabaseClient
+              .from('admin_users')
+              .select('payment_qr_code')
+              .eq('id', agent_id)
+              .maybeSingle();
+            if (!error && data?.payment_qr_code) {
+              qrCodeUrl = data.payment_qr_code;
+            }
+          }
+          
+          if (!qrCodeUrl) {
+            // Fallback to first available admin QR code
+            const { data, error } = await supabaseClient
+              .from('admin_users')
+              .select('payment_qr_code')
+              .not('payment_qr_code', 'is', null)
+              .limit(1)
+              .single();
+            if (!error && data?.payment_qr_code) {
+              qrCodeUrl = data.payment_qr_code;
+            }
+          }
+          
+          if (qrCodeUrl) {
+            setAdminQR(qrCodeUrl);
+            localStorage.setItem('ez_admin_qr_code', qrCodeUrl);
+          } else {
             const saved = localStorage.getItem('ez_admin_qr_code');
             if (saved) setAdminQR(saved);
-            return;
           }
-          if (data?.payment_qr_code) {
-            setAdminQR(data.payment_qr_code);
-            localStorage.setItem('ez_admin_qr_code', data.payment_qr_code);
-          }
-        } catch (err: any) {
-          console.error('[QR Fetch] Exception:', err?.message);
+        } catch (e) {
+          console.error('[QR Fetch] Error:', e);
           const saved = localStorage.getItem('ez_admin_qr_code');
           if (saved) setAdminQR(saved);
         }
       })();
     }
-  }, []);
+  }, [agent_id]);
 
   const formatMonth = (dateStr: string) => {
     const d = new Date(dateStr);

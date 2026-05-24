@@ -20,7 +20,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; }
+interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; }
 interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -567,6 +567,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
             rent,
             status,
             description,
+            agent_id,
             communities (
               id,
               name,
@@ -824,12 +825,24 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     if (!isEdit) {
       unitPayload.id = targetId;
       unitPayload.status = 'available';
+    } else {
+      const prev = units.find(u => u.id === targetId);
+      if (prev?.agent_id) {
+        unitPayload.agent_id = prev.agent_id;
+      }
     }
 
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (!isEdit || !unitPayload.agent_id) {
+            unitPayload.agent_id = user.id;
+          }
+        }
         
         // Upload base64 images to Supabase Storage, keep existing http URLs
         const uploadedUrls: string[] = [];
