@@ -308,6 +308,7 @@ Storage Bucket：
 | `007_mobile_upload.sql` | **手机匿名上传凭证**：`get_mobile_upload_info(uuid)` + `submit_mobile_payment_evidence(uuid, text)` RPC；Storage `unit-media/evidence/` 匿名 INSERT/UPDATE 策略 |
 | `008_whole_unit_room_type.sql` | `units.room_type` CHECK 增加 `Whole Unit`，修复整租/合租房型保存报错 |
 | `009_unit_video_url.sql` | `units.video_url TEXT` — 看房视频 Storage URL（`{unitId}/walkthrough.webm`） |
+| `010_agent_qr_separation.sql` | **收款码与审核隔离**：`units`表新增`agent_id`外键；重构`get_mobile_upload_info`匿名RPC，自动拉取房源专属录入Agent收款码，提供Agent级别账单独立审核与列表过滤。 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -335,6 +336,7 @@ supabase/migrations/
 ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
 └── 008_whole_unit_room_type.sql # Whole Unit 房型 CHECK 约束
 └── 009_unit_video_url.sql       # units.video_url 看房视频
+└── 010_agent_qr_separation.sql  # 房源收款码与审核权限 Agent 级隔离
 ```
 
 迁移原则：
@@ -610,6 +612,21 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
 | Logo / 前端 UI | ❌ 不需要 |
 | 手机上传凭证 | ✅ `007_mobile_upload.sql` |
 | Whole Unit 房型 | ✅ `008_whole_unit_room_type.sql` |
+| 房源收款码与审核隔离 | ✅ `010_agent_qr_separation.sql` |
+
+---
+
+## 十六、房源收款码与各自审核权限隔离（2026-05-24）
+
+### 背景与逻辑
+房源是由不同的 Agent 挂载的。根据业务场景，首月租金等费用应当进入该挂牌 Agent 自己的钱包。因此：
+1. **收款码隔离**：在管理员保存/编辑房源时，系统自动在 `units.agent_id` 绑定当前操作的管理员。学生打开账单时，后台 RPC 自动查出该房源的挂牌 Agent 专属 DuitNow 收款码，优先展示；如果未绑定，则降级显示全局默认收款码。
+2. **列表数据过滤**：普通管理员（Agent 角色，`adminRole !== 'super_admin'`) 登录后台时，系统会自动对其进行界面过滤，使其**只看到自己录入名下的房源、租期账单、待审核凭证**。超级管理员（`super_admin`）具有全局最高可见与操作权。
+3. **随时追溯与清除凭证**：
+   - 账单一旦被审核（Approved/Rejected），不会被物理删除，而是永久存储凭证 URL。
+   - 优化了台账核查网格（Ledger Grid）的点击行为：现在点击任何**有凭证历史的账单格子**都会重新打开详情审核弹窗，显示当前的审核状态、当初的凭证截图以及管理员备注。
+   - 提供一键 **“清除凭证 (Clear Evidence)”** 选项，用于快速作废错误截图，并会自动从 Supabase Storage 物理删除对应的原图文件。
+4. **Toast 友好提示**：审核操作执行后，系统会展示 Toast 强引导：“审核已通过/驳回！可在下方‘有效租约 & 收租核查表’展开该租约查看详情”，解决界面刷新后记录“消失”的疑惑。
 
 ---
 
