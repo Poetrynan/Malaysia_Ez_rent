@@ -6,38 +6,38 @@
 
 /* Font loaded via <link> in layout.tsx */
 
-/* ── DARK THEME (default) ── */
-:root, [data-theme="dark"] {
-  --bg-base: #0D1117;
-  --bg-surface: rgba(22, 27, 42, 0.85);
-  --bg-surface-solid: #161B2A;
-  --bg-hover: rgba(255,255,255,0.06);
-  --glass-bg: rgba(255,255,255,0.04);
-  --glass-border: rgba(255,255,255,0.10);
-  --glass-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+/* ── LIGHT THEME (default) ── */
+:root, [data-theme="light"] {
+  --bg-base: #F0F4FF;
+  --bg-surface: rgba(255, 255, 255, 0.80);
+  --bg-surface-solid: #FFFFFF;
+  --bg-hover: rgba(37, 99, 235, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.60);
+  --glass-border: rgba(37, 99, 235, 0.15);
+  --glass-shadow: 0 8px 32px rgba(100, 130, 200, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
-  --primary: #3B82F6;
-  --primary-hover: #2563EB;
-  --primary-light: rgba(59,130,246,0.15);
-  --primary-glow: rgba(59,130,246,0.35);
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-light: rgba(37, 99, 235, 0.10);
+  --primary-glow: rgba(37, 99, 235, 0.25);
 
-  --accent: #F97316;
-  --accent-light: rgba(249,115,22,0.15);
+  --accent: #EA6C00;
+  --accent-light: rgba(234, 108, 0, 0.10);
 
-  --success: #10B981;
-  --success-light: rgba(16,185,129,0.15);
-  --danger: #EF4444;
-  --danger-light: rgba(239,68,68,0.12);
-  --warning: #F59E0B;
-  --warning-light: rgba(245,158,11,0.15);
+  --success: #059669;
+  --success-light: rgba(5, 150, 105, 0.10);
+  --danger: #DC2626;
+  --danger-light: rgba(220, 38, 38, 0.10);
+  --warning: #D97706;
+  --warning-light: rgba(217, 119, 6, 0.10);
 
-  --text-h: #F0F6FF;
-  --text-body: #C9D1E0;
-  --text-muted: #6B7A99;
-  --text-inverse: #0D1117;
+  --text-h: #0F172A;
+  --text-body: #374151;
+  --text-muted: #94A3B8;
+  --text-inverse: #FFFFFF;
 
-  --border: rgba(255,255,255,0.08);
-  --border-focus: rgba(59,130,246,0.5);
+  --border: rgba(37, 99, 235, 0.12);
+  --border-focus: rgba(37, 99, 235, 0.45);
 
   --sidebar-w: 260px;
   --radius-sm: 8px;
@@ -45,44 +45,44 @@
   --radius-lg: 18px;
   --radius-full: 9999px;
 
-  --gradient-hero: linear-gradient(135deg, #0D1117 0%, #161B2A 50%, #0F1B35 100%);
+  --gradient-hero: linear-gradient(135deg, #EFF6FF 0%, #F0F4FF 50%, #EEF2FF 100%);
   --gradient-primary: linear-gradient(135deg, #60A5FA, #2563EB);
 }
 
-/* ── LIGHT THEME ── */
-[data-theme="light"] {
-  --bg-base: #F0F4FF;
-  --bg-surface: rgba(255,255,255,0.80);
-  --bg-surface-solid: #FFFFFF;
-  --bg-hover: rgba(37,99,235,0.06);
-  --glass-bg: rgba(255,255,255,0.60);
-  --glass-border: rgba(37,99,235,0.15);
-  --glass-shadow: 0 8px 32px rgba(100,130,200,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+/* ── DARK THEME ── */
+[data-theme="dark"] {
+  --bg-base: #0D1117;
+  --bg-surface: rgba(22, 27, 42, 0.85);
+  --bg-surface-solid: #161B2A;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-light: rgba(37,99,235,0.10);
-  --primary-glow: rgba(37,99,235,0.25);
+  --primary: #3B82F6;
+  --primary-hover: #2563EB;
+  --primary-light: rgba(59, 130, 246, 0.15);
+  --primary-glow: rgba(59, 130, 246, 0.35);
 
-  --accent: #EA6C00;
-  --accent-light: rgba(234,108,0,0.10);
+  --accent: #F97316;
+  --accent-light: rgba(249, 115, 22, 0.15);
 
-  --success: #059669;
-  --success-light: rgba(5,150,105,0.10);
-  --danger: #DC2626;
-  --danger-light: rgba(220,38,38,0.10);
-  --warning: #D97706;
-  --warning-light: rgba(217,119,6,0.10);
+  --success: #10B981;
+  --success-light: rgba(16, 185, 129, 0.15);
+  --danger: #EF4444;
+  --danger-light: rgba(239, 68, 68, 0.12);
+  --warning: #F59E0B;
+  --warning-light: rgba(245, 158, 11, 0.15);
 
-  --text-h: #0F172A;
-  --text-body: #374151;
-  --text-muted: #94A3B8;
-  --text-inverse: #FFFFFF;
+  --text-h: #F0F6FF;
+  --text-body: #C9D1E0;
+  --text-muted: #6B7A99;
+  --text-inverse: #0D1117;
 
-  --border: rgba(37,99,235,0.12);
-  --border-focus: rgba(37,99,235,0.45);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(59, 130, 246, 0.5);
 
-  --gradient-hero: linear-gradient(135deg, #EFF6FF 0%, #F0F4FF 50%, #EEF2FF 100%);
+  --gradient-hero: linear-gradient(135deg, #0D1117 0%, #161B2A 50%, #0F1B35 100%);
   --gradient-primary: linear-gradient(135deg, #60A5FA, #2563EB);
 }
 

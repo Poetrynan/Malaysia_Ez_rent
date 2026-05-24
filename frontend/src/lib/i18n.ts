@@ -112,6 +112,8 @@ export const translations = {
     transit: '公交 (8分钟)',
     walking: '步行 (10分钟)',
     routeMapLabel: '实时模拟路线',
+    clickToLoadMapHint: '点击加载谷歌路线地图，将消耗流量',
+    viewRoute: '查看路线地图',
 
     // Student Portal
     leaseProgress: '租约剩余进度',
@@ -390,6 +392,8 @@ export const translations = {
     transit: 'Shuttle (8 min)',
     walking: 'Walk (10 min)',
     routeMapLabel: 'Live simulation route',
+    clickToLoadMapHint: 'Click to load Google route map (uses data)',
+    viewRoute: 'View Route Map',
 
     leaseProgress: 'Lease Progress',
     daysLeft: 'days left',

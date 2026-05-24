@@ -162,9 +162,9 @@ export default function MobileUploadPage() {
 
   if (error && !payment) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0D1117', color: '#C9D1E0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
         <div style={{ textAlign: 'center' }}>
-          <AlertCircle size={48} style={{ color: '#EF4444', marginBottom: 16 }} />
+          <AlertCircle size={48} style={{ color: 'var(--danger)', marginBottom: 16 }} />
           <p>{error}</p>
         </div>
       </div>
@@ -172,35 +172,35 @@ export default function MobileUploadPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0D1117', color: '#C9D1E0', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-body)', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 420, margin: '0 auto', padding: '32px 20px' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)', width: 56, height: 56, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 4px 16px rgba(59,130,246,0.4)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)', width: 56, height: 56, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: 'var(--primary-glow) 0 4px 16px' }}>
             <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'white' }}>Ez</span>
           </div>
-          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#F0F6FF', marginBottom: 6 }}>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 6 }}>
             {done ? '上传成功' : '上传转账凭证'}
           </h1>
-          {!done && <p style={{ fontSize: '0.82rem', color: '#6B7A99' }}>请上传您的转账截图，房东确认后即完成缴费。</p>}
+          {!done && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>请上传您的转账截图，房东确认后即完成缴费。</p>}
         </div>
 
         {/* Payment info card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 14, padding: 20, marginBottom: 24 }}>
+        <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 24, boxShadow: 'var(--glass-shadow)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: '0.78rem', color: '#6B7A99' }}>账期</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#F0F6FF' }}>{payment ? formatMonth(payment.billing_month) : '—'}</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>账期</span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-h)' }}>{payment ? formatMonth(payment.billing_month) : '—'}</span>
           </div>
           {lease && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.78rem', color: '#6B7A99' }}>月租</span>
-              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#3B82F6' }}>RM {lease.monthly_rent.toLocaleString()}</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>月租</span>
+              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--primary)' }}>RM {lease.monthly_rent.toLocaleString()}</span>
             </div>
           )}
           {unitInfo && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.78rem', color: '#6B7A99' }}>房源</span>
-              <span style={{ fontSize: '0.88rem', color: '#F0F6FF' }}>{unitInfo}</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>房源</span>
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-h)' }}>{unitInfo}</span>
             </div>
           )}
         </div>
@@ -208,11 +208,11 @@ export default function MobileUploadPage() {
         {/* Upload area or success */}
         {done ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <CheckCircle2 size={36} style={{ color: '#10B981' }} />
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <CheckCircle2 size={36} style={{ color: 'var(--success)' }} />
             </div>
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: '#F0F6FF', marginBottom: 8 }}>上传成功！</p>
-            <p style={{ fontSize: '0.82rem', color: '#6B7A99' }}>请返回电脑查看，房东将在 24 小时内审核。</p>
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>上传成功！</p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>请返回电脑查看，房东将在 24 小时内审核。</p>
           </div>
         ) : (
           <div>
@@ -221,20 +221,20 @@ export default function MobileUploadPage() {
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 12, padding: '40px 20px', borderRadius: 14, cursor: 'pointer',
-                border: '2px dashed rgba(59,130,246,0.4)', background: 'rgba(59,130,246,0.06)',
+                border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
                 transition: 'all 0.2s',
               }}
             >
               {uploading ? (
                 <>
-                  <div style={{ width: 36, height: 36, border: '3px solid rgba(59,130,246,0.2)', borderTopColor: '#3B82F6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                  <span style={{ fontSize: '0.88rem', color: '#6B7A99' }}>上传中…</span>
+                  <div style={{ width: 36, height: 36, border: '3px solid var(--primary-light)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>上传中…</span>
                 </>
               ) : (
                 <>
-                  <Camera size={36} style={{ color: '#3B82F6' }} />
-                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#F0F6FF' }}>选择转账截图</span>
-                  <span style={{ fontSize: '0.75rem', color: '#6B7A99' }}>支持 JPG / PNG，从相册或拍照</span>
+                  <Camera size={36} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-h)' }}>选择转账截图</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>支持 JPG / PNG，从相册或拍照</span>
                 </>
               )}
             </label>
@@ -247,16 +247,16 @@ export default function MobileUploadPage() {
               style={{ display: 'none' }}
             />
             {error && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                <AlertCircle size={15} style={{ color: '#EF4444', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>{error}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
+                <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{error}</span>
               </div>
             )}
           </div>
         )}
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: 40, fontSize: '0.7rem', color: '#6B7A99' }}>
+        <div style={{ textAlign: 'center', marginTop: 40, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           Malaysia Ez Rent · AI 智能租房系统
         </div>
       </div>

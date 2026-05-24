@@ -15,11 +15,11 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>('zh');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   useEffect(() => {
     const savedLang = (localStorage.getItem('ez_lang') as Lang) || 'zh';
-    const savedTheme = (localStorage.getItem('ez_theme') as 'dark' | 'light') || 'dark';
+    const savedTheme = (localStorage.getItem('ez_theme') as 'dark' | 'light') || 'light';
     setLangState(savedLang);
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);

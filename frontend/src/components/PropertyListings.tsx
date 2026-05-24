@@ -611,23 +611,23 @@ export default function PropertyListings() {
           justifyContent: 'center', zIndex: 500, padding: 20,
         }} onClick={() => setShowContact(false)}>
           <div style={{
-            background: '#161B2A', border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--bg-surface-solid)', border: '1px solid var(--border)',
             borderRadius: 20, padding: '36px 32px', maxWidth: 420, width: '100%',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+            boxShadow: 'var(--glass-shadow)',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>📞</div>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#F0F6FF', marginBottom: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-h)', marginBottom: 6 }}>
                 {t('contactTitle')}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#6B7A99' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 {t('contactDesc')}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {admins.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#6B7A99', padding: 20, fontSize: '0.85rem' }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>
                   暂无管理员联系方式
                 </div>
               ) : admins.map((admin, i) => {
@@ -635,8 +635,8 @@ export default function PropertyListings() {
                 return (
                   <div key={i} style={{
                     borderRadius: 12,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--border)',
                     overflow: 'hidden',
                   }}>
                     {/* Header: name + expand button */}
@@ -649,11 +649,11 @@ export default function PropertyListings() {
                         fontFamily: 'inherit',
                       }}
                     >
-                      <span style={{ fontWeight: 700, color: '#F0F6FF', fontSize: '0.95rem' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.95rem' }}>
                         {admin.display_name || admin.email}
                       </span>
                       <ChevronDown size={18} style={{
-                        color: '#6B7A99',
+                        color: 'var(--text-muted)',
                         transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s ease',
                       }} />
@@ -664,28 +664,28 @@ export default function PropertyListings() {
                       <div style={{
                         padding: '0 16px 14px',
                         display: 'flex', flexDirection: 'column', gap: 8,
-                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        borderTop: '1px solid var(--border)',
                         paddingTop: 12,
                       }}>
                         {admin.phone && (
-                          <a href={`tel:${admin.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#C9D1E0', textDecoration: 'none', fontSize: '0.85rem' }}>
+                          <a href={`tel:${admin.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-body)', textDecoration: 'none', fontSize: '0.85rem' }}>
                             <Phone size={14} style={{ color: 'var(--primary)' }} />
                             <span>{admin.phone}</span>
                           </a>
                         )}
                         {admin.whatsapp && (
-                          <a href={`https://wa.me/${admin.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#C9D1E0', textDecoration: 'none', fontSize: '0.85rem' }}>
+                          <a href={`https://wa.me/${admin.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-body)', textDecoration: 'none', fontSize: '0.85rem' }}>
                             <MessageCircle size={14} style={{ color: '#25D366' }} />
                             <span>WhatsApp: {admin.whatsapp}</span>
                           </a>
                         )}
                         {admin.wechat_id && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#C9D1E0', fontSize: '0.85rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-body)', fontSize: '0.85rem' }}>
                             <MessageCircle size={14} style={{ color: '#07C160' }} />
                             <span>微信: {admin.wechat_id}</span>
                           </div>
                         )}
-                        <a href={`mailto:${admin.email}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#C9D1E0', textDecoration: 'none', fontSize: '0.85rem' }}>
+                        <a href={`mailto:${admin.email}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-body)', textDecoration: 'none', fontSize: '0.85rem' }}>
                           <Mail size={14} style={{ color: 'var(--primary)' }} />
                           <span>{admin.email}</span>
                         </a>
@@ -698,8 +698,8 @@ export default function PropertyListings() {
 
             <button onClick={() => setShowContact(false)} style={{
               width: '100%', marginTop: 20, padding: '12px', borderRadius: 12,
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-              color: '#C9D1E0', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+              background: 'var(--glass-bg)', border: '1px solid var(--border)',
+              color: 'var(--text-body)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
               cursor: 'pointer',
             }}>
               {t('detailClose')}

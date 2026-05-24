@@ -33,7 +33,7 @@ const MOCK_PLACES = [
 
 export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | 'editor' | null }) {
   const { t, lang } = useApp();
-  const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback'>('properties');
+  const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [adminQR, setAdminQR] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
@@ -384,6 +384,14 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
     showToast(t('interestRemoved'), 'warning');
   };
 
+  const [myProfile, setMyProfile] = useState<{
+    display_name: string;
+    phone: string;
+    whatsapp: string;
+    wechat_id: string;
+    email: string;
+  }>({ display_name: '', phone: '', whatsapp: '', wechat_id: '', email: '' });
+
   const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
@@ -398,12 +406,22 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
       if (user) {
         setIsLive(true);
         loadFromSupabase(supabase);
-        // Load QR code from admin_users
-        const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('payment_qr_code').eq('id', user.id).maybeSingle();
-        console.log('[Admin QR Load]', { userId: user.id, adminData, adminErr: adminErr?.message });
-        if (adminData?.payment_qr_code) {
-          setAdminQR(adminData.payment_qr_code);
-          localStorage.setItem('ez_admin_qr_code', adminData.payment_qr_code);
+        // Load QR code and profile from admin_users
+        const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('*').eq('id', user.id).maybeSingle();
+        console.log('[Admin QR & Profile Load]', { userId: user.id, adminData, adminErr: adminErr?.message });
+        if (adminData) {
+          if (adminData.payment_qr_code) {
+            setAdminQR(adminData.payment_qr_code);
+            localStorage.setItem('ez_admin_qr_code', adminData.payment_qr_code);
+          }
+          setMyProfile({
+            display_name: adminData.display_name || '',
+            phone: adminData.phone || '',
+            whatsapp: adminData.whatsapp || '',
+            wechat_id: adminData.wechat_id || '',
+            email: adminData.email || '',
+          });
+          localStorage.setItem('ez_admin_profile', JSON.stringify(adminData));
         }
         return;
       }
@@ -412,6 +430,61 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
     loadFromLocalStorage();
     const savedQR = localStorage.getItem('ez_admin_qr_code');
     if (savedQR) setAdminQR(savedQR);
+    const savedProfile = localStorage.getItem('ez_admin_profile');
+    if (savedProfile) {
+      setMyProfile(JSON.parse(savedProfile));
+    } else {
+      setMyProfile({
+        display_name: '管理员',
+        phone: '+6012-345 6789',
+        whatsapp: '+6012-345 6789',
+        wechat_id: 'wechat_admin',
+        email: 'admin@ezrent.my'
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!myProfile.display_name.trim()) {
+      showToast(lang === 'zh' ? '请填写姓名' : 'Please fill in display name', 'error');
+      return;
+    }
+    if (!myProfile.phone && !myProfile.whatsapp && !myProfile.wechat_id) {
+      showToast(lang === 'zh' ? '请至少填一种联系方式' : 'Please fill in at least one contact method', 'error');
+      return;
+    }
+
+    if (isLive) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await supabase
+            .from('admin_users')
+            .update({
+              display_name: myProfile.display_name.trim(),
+              phone: myProfile.phone.trim() || null,
+              whatsapp: myProfile.whatsapp.trim() || null,
+              wechat_id: myProfile.wechat_id.trim() || null,
+            })
+            .eq('id', user.id);
+          if (error) {
+            showToast(error.message, 'error');
+            return;
+          }
+          showToast(lang === 'zh' ? '个人资料已更新' : 'Profile updated successfully', 'success');
+          localStorage.setItem('ez_admin_profile', JSON.stringify(myProfile));
+        }
+      } catch (err: any) {
+        showToast(err.message, 'error');
+      }
+    } else {
+      localStorage.setItem('ez_admin_profile', JSON.stringify(myProfile));
+      // Save this contact to client-side localStorage too
+      localStorage.setItem('ez_admin_contacts', JSON.stringify([myProfile]));
+      showToast(lang === 'zh' ? '本地个人资料已保存' : 'Local profile saved', 'success');
+    }
   };
 
   const loadFromSupabase = async (supabase: any) => {
@@ -977,6 +1050,9 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
               {feedbackPendingCount}
             </span>
           )}
+        </button>
+        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
+          <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
         </button>
       </div>
 
@@ -1687,6 +1763,86 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── PROFILE TAB ── */}
+      {tab === 'profile' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="glass-card" style={{ maxWidth: 500 }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Edit3 size={16} style={{ color: 'var(--primary)' }} />
+              {lang === 'zh' ? '个人联系信息设置' : 'Personal Contact Settings'}
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+              {lang === 'zh' 
+                ? '此处填写的个人信息（姓名、手机号、WhatsApp、微信）将直接展示给学生端，以便学生联系您进行线下咨询或租约沟通。' 
+                : 'The contact information filled here (Name, Phone, WhatsApp, WeChat) will be directly displayed to students so they can contact you.'}
+            </p>
+
+            <div className="form-group">
+              <label>{lang === 'zh' ? '显示名称 / 姓名' : 'Display Name / Name'}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={myProfile.display_name}
+                onChange={e => setMyProfile(prev => ({ ...prev, display_name: e.target.value }))}
+                placeholder={lang === 'zh' ? '例如: Super Admin 或 房东张经理' : 'e.g. Landlord Manager'}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label>{lang === 'zh' ? '联系电话' : 'Contact Phone'}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={myProfile.phone}
+                onChange={e => setMyProfile(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder={lang === 'zh' ? '例如: +6012-345 6789' : 'e.g. +6012-345 6789'}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label>{lang === 'zh' ? 'WhatsApp 号码' : 'WhatsApp Number'}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={myProfile.whatsapp}
+                onChange={e => setMyProfile(prev => ({ ...prev, whatsapp: e.target.value }))}
+                placeholder={lang === 'zh' ? '请输入带国家代码的纯数字，例如: 60123456789' : 'Pure numbers with country code, e.g. 60123456789'}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label>{lang === 'zh' ? '微信号 (WeChat ID)' : 'WeChat ID'}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={myProfile.wechat_id}
+                onChange={e => setMyProfile(prev => ({ ...prev, wechat_id: e.target.value }))}
+                placeholder={lang === 'zh' ? '例如: poetrynan666' : 'e.g. poetrynan666'}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label>{lang === 'zh' ? '登录邮箱 (不可修改)' : 'Login Email (Read-only)'}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={myProfile.email}
+                disabled
+                style={{ opacity: 0.6, cursor: 'not-allowed' }}
+              />
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveProfile}
+              style={{ marginTop: 24, width: '100%', padding: '12px' }}
+            >
+              {lang === 'zh' ? '保存个人资料' : 'Save Profile'}
+            </button>
           </div>
         </div>
       )}
