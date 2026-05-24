@@ -221,7 +221,22 @@ export default function AIChat() {
     addThought('分析用户查询意图…（离线模拟器）');
     await new Promise(r => setTimeout(r, 900));
 
-    const isLedger = lc.includes('rent') || lc.includes('payment') || lc.includes('lease') || lc.includes('账单') || lc.includes('台账') || lc.includes('交租');
+    const isLedger = 
+      lc.includes('rent') || 
+      lc.includes('payment') || 
+      lc.includes('lease') || 
+      lc.includes('账单') || 
+      lc.includes('台账') || 
+      lc.includes('交租') || 
+      lc.includes('租金') || 
+      lc.includes('缴费') || 
+      lc.includes('缴纳') || 
+      lc.includes('记录') || 
+      lc.includes('交钱') || 
+      lc.includes('房租') || 
+      lc.includes('付款') || 
+      lc.includes('支付') || 
+      lc.includes('历史');
 
     if (isLedger) {
       addThought('查询租约数据库（绕过 RLS）…');

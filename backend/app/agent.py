@@ -134,7 +134,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             }
         })
 
-    elif "status" in query_lower or "my lease" in query_lower or "rent status" in query_lower or "账单" in query_lower or "房租" in query_lower or "交租" in query_lower:
+    elif any(kw in query_lower for kw in ["status", "my lease", "rent status", "账单", "房租", "交租", "租金", "缴费", "缴纳", "记录", "交钱", "付款", "支付", "历史"]):
         # Scenario 2: Personal Rental Ledger Status
         yield sse_event({"type": "thinking", "step": "🔑 Checking security context. User requested their rental status. I need to call `check_my_own_rental_status` via service role."})
         await asyncio.sleep(1.2)
