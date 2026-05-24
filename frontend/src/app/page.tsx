@@ -50,7 +50,7 @@ export default function Home() {
           .from('admin_users')
           .select('id, role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         const activeRole = adminRecord ? 'admin' : 'student';
         if (adminRecord) {
           setAdminRole(adminRecord.role as 'super_admin' | 'editor');

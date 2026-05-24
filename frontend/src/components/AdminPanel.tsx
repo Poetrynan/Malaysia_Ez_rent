@@ -398,7 +398,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
         setIsLive(true);
         loadFromSupabase(supabase);
         // Load QR code from admin_users
-        const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('payment_qr_code').eq('id', user.id).single();
+        const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('payment_qr_code').eq('id', user.id).maybeSingle();
         console.log('[Admin QR Load]', { userId: user.id, adminData, adminErr: adminErr?.message });
         if (adminData?.payment_qr_code) {
           setAdminQR(adminData.payment_qr_code);
@@ -680,7 +680,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
           if (!updatedRows || updatedRows.length === 0) {
             // 可能是 RLS 策略阻止了更新（非 super_admin）
             // 尝试读取当前用户的角色
-            const { data: myAdmin } = await supabase.from('admin_users').select('role').eq('id', user.id).single();
+            const { data: myAdmin } = await supabase.from('admin_users').select('role').eq('id', user.id).maybeSingle();
             console.log('[QR Upload] my role:', myAdmin?.role);
             if (myAdmin?.role !== 'super_admin') {
               showToast('仅超级管理员可修改收款码，请联系超级管理员', 'error');
