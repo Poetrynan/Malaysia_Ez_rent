@@ -115,7 +115,11 @@ export default function PropertyListings() {
   const [interestFeedback, setInterestFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   const refreshInterests = async (supabase: Awaited<ReturnType<typeof import('@/utils/supabase/client').createClient>>, userId?: string) => {
-    const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+    const { data, error } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+    if (error) {
+      console.error('[refreshInterests]', error);
+      return;
+    }
     if (data) {
       setInterests(data);
       if (userId) {
@@ -194,7 +198,7 @@ export default function PropertyListings() {
       })();
     }
 
-    // Fetch tenant interests
+    // Fetch tenant interests (public read — no login required to see counts)
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
       const active = all.filter(i => i.status !== 'left');
@@ -207,17 +211,25 @@ export default function PropertyListings() {
           const { createClient } = await import('@/utils/supabase/client');
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const { data } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
-          if (data) {
-            setInterests(data);
-            const mine = data.find((i: TenantInterest) => i.user_id === user.id && i.status !== 'left');
-            if (mine) setMyInterest(mine.unit_id);
-          }
-        } catch {}
+          await refreshInterests(supabase, user?.id);
+        } catch (e) {
+          console.error('[load interests]', e);
+        }
       })();
     }
   }, []);
+
+  useEffect(() => {
+    if (!selected || isMockDatabase) return;
+    (async () => {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        await refreshInterests(supabase, user?.id);
+      } catch {}
+    })();
+  }, [selected?.id]);
 
   const expressInterest = async (unitId: string, noteOverride?: string) => {
     const note = (noteOverride ?? noteInput).trim();
@@ -254,6 +266,25 @@ export default function PropertyListings() {
         return;
       }
 
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_tenant_interest', {
+        p_unit_id: unitId,
+        p_note: note,
+      });
+
+      if (!rpcError && rpcResult?.success) {
+        setNoteInput('');
+        setShowNoteInput(false);
+        setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
+        await refreshInterests(supabase, user.id);
+        return;
+      }
+
+      if (rpcResult?.error === 'not_authenticated') {
+        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        return;
+      }
+
+      // Fallback when RPC not deployed yet (run 015 migration)
       const profile = {
         email: user.email || '',
         full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
@@ -280,8 +311,13 @@ export default function PropertyListings() {
       }
 
       if (error) {
-        console.error('[expressInterest]', error);
-        setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+        console.error('[expressInterest]', rpcError || error);
+        setInterestFeedback({
+          type: 'error',
+          msg: rpcError?.message?.includes('submit_tenant_interest')
+            ? (lang === 'zh' ? '请在 Supabase 执行 015_tenant_interest_rpc.sql 后重试' : 'Run migration 015_tenant_interest_rpc.sql in Supabase, then retry')
+            : t('coRentSubmitFailed'),
+        });
         return;
       }
 
@@ -314,14 +350,30 @@ export default function PropertyListings() {
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        return;
+      }
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('cancel_tenant_interest', {
+        p_unit_id: myInterest,
+      });
+
+      if (!rpcError && rpcResult?.success) {
+        setMyInterest(null);
+        setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
+        await refreshInterests(supabase, user.id);
+        return;
+      }
+
       const { error } = await supabase
         .from('tenant_interests')
         .update({ status: 'left' })
         .eq('unit_id', myInterest)
         .eq('user_id', user.id);
+
       if (error) {
-        console.error('[cancelInterest]', error);
+        console.error('[cancelInterest]', rpcError || error);
         setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
         return;
       }
