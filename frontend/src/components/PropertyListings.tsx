@@ -619,9 +619,6 @@ export default function PropertyListings() {
                     origin_name={selected.community.name}
                     origin_lat={selected.community.lat}
                     origin_lng={selected.community.lng}
-                    destination_name="Monash University"
-                    destination_lat={3.0645}
-                    destination_lng={101.6000}
                     rent={selected.rent}
                     room_type={selected.room_type}
                     unit_id={selected.id}

@@ -114,6 +114,11 @@ export const translations = {
     routeMapLabel: '实时模拟路线',
     clickToLoadMapHint: '点击加载谷歌路线地图，将消耗流量',
     viewRoute: '查看路线地图',
+    selectUniversity: '选择学校/目的地',
+    customDestination: '输入自定义目的地...',
+    calculateRoute: '计算通勤',
+    clearRoute: '清除定位',
+    destPrompt: '📍 房源位置。在下方选择学校或输入目的地，即可查看通勤距离及路线。',
 
     // Student Portal
     leaseProgress: '租约剩余进度',
@@ -407,6 +412,11 @@ export const translations = {
     routeMapLabel: 'Live simulation route',
     clickToLoadMapHint: 'Click to load Google route map (uses data)',
     viewRoute: 'View Route Map',
+    selectUniversity: 'Select School/Destination',
+    customDestination: 'Enter custom destination...',
+    calculateRoute: 'Calculate Commute',
+    clearRoute: 'Clear Route',
+    destPrompt: '📍 Property Location. Select a school or enter a destination below to view route details.',
 
     leaseProgress: 'Lease Progress',
     daysLeft: 'days left',
