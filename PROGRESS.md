@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-24 (UTC+8)
-> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩上传）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · Tavily/iProperty 外部搜房 · Vercel & Render 部署**
+> 最后更新：2026-05-25 (UTC+8)
+> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩上传）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · Tavily/iProperty 外部搜房 · 学生端通勤联想输入建议 · Vercel & Render 部署**
 
 ---
 
@@ -88,7 +88,7 @@ Malaysia_Ez_rent/
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
 | `PropertyListings.tsx` | ✅ 完成 | iProperty 风格列表/筛选；**主内容区滚动**；详情 **Lightbox 大图** + **视频弹窗**；合租/Storage 图片 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
-| `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
+| `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗（管理员收款码 + **每账单唯一**上传凭证二维码），已缴费不可点击，凭证预览自适应高度 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
 | `AdminPanel.tsx` | ✅ 完成 | **房源/租约二级 Tab**（编辑/库存/意向/收租核查表）+ 房源管理（配套设施、**图片压缩**、Storage 上传）+ 单元管理 + **小区删除**（无房源时可删）+ 租约创建（意向租客选人、押金月数）+ **收租核查表独立显示小区·门牌号·房型**（Supabase JOIN + 兜底）+ 凭证审核 + 合租管理 + 硬删除 + 收款设置 + 意见箱 |
@@ -310,6 +310,7 @@ Storage Bucket：
 | `009_unit_video_url.sql` | `units.video_url TEXT` — 看房视频 Storage URL（`{unitId}/walkthrough.webm`） |
 | `010_agent_qr_separation.sql` | **收款码与审核隔离**：`units`表新增`agent_id`外键；重构`get_mobile_upload_info`匿名RPC，自动拉取房源专属录入Agent收款码，提供Agent级别账单独立审核与列表过滤。 |
 | `011_optional_unit_number.sql` | **门牌号可选化**：在 `units` 表中将 `unit_number` 的 `NOT NULL` 约束去掉（DROP NOT NULL），在后台录入表单中移除该输入框，并适配前端让其完美自适应渲染。 |
+| `012_remove_unit_number_display.sql` | **彻底隐藏门牌号**：更新 `get_mobile_upload_info` 匿名 RPC 返回 `room_type` 替代 `unit_number` 以保护隐私，清除全站所有门牌号展示。 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -645,6 +646,19 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
    - 提供“自定义输入目的地...”选项。学生输入任何地标、商场或地址（如 "Sunway Pyramid"），点击“计算通勤”后，系统会自动调用 Google Directions API，在 Iframe 中绘制专属路线图。
 4. **通勤模式与重置**：
    - 仅在定位了目的地后，才会渲染出行模式切换按钮（驾车、公交、步行），并显示清除定位重置回单点地图的选项。
+
+---
+
+## 十八、学生端通勤起点自动联想与地图导航（2026-05-25）
+
+### 背景与逻辑
+学生在房源详情页查看通勤路线时，手动输入目的地不够便捷，并且缺乏拼写纠错。本次优化：
+1. **Google Places Autocomplete 自动联想**：
+   - 接入谷歌 Places 自动完成服务。学生输入出发地关键词（例如 "monash"、"sunway"）时，输入框下方会自动浮现出精确的大马本地建筑、商场和道路联想列表。
+2. **Mock 降级兜底方案**：
+   - 如果网络环境无法成功加载 Google Maps API 脚本，系统会自动降级采用本地精选的一组马来西亚经典地标列表（Monash, Sunway, Taylor's, Sunway Pyramid 等）进行模糊搜索联想，保证界面高可用、不报错。
+3. **选择自动计算**：
+   - 用户点击联想到的地点后，系统会自动更新输入框并渲染出发点到房源的通勤路线折线图。
 
 ---
 

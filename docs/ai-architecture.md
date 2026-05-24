@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-24 (UTC+8)
+Last updated: 2026-05-25 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -69,7 +69,7 @@ Malaysia_Ez_rent/
 ### Student path
 
 - `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX; **scrolls inside `.main-content`**; image lightbox + video modal. Uses `MapAndCard.tsx` for Google Maps display.
-- `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk).
+- `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation (routes payments to listing agent QR code).

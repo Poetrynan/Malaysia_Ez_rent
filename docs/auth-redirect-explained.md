@@ -930,7 +930,15 @@ supabase/migrations/008_whole_unit_room_type.sql
 
 ---
 
-## 你现在需要做的事（更新于 2026-05-24）
+## 19. 学生端通勤 Google Places Autocomplete 自动建议与 Mock 降级机制
+
+学生在详情页计算通勤时，无需手动费力输入或担心拼写错误。系统在 `MapAndCard.tsx` 中提供了地址联想输入建议：
+1. **自动联想建议**：输入关键字时自动请求 Google Places Autocomplete，列出精确的本地建筑、街道或商场名称。
+2. **本地 Mock 兜底**：如果谷歌地图脚本未加载或网络受限，自动降级切换到本地经典地标（例如 Monash, Sunway, Taylor's, Sunway Pyramid 等）关键词过滤列表，保障高可用，不会报错。
+
+---
+
+## 你现在需要做的事（更新于 2026-05-25）
 
 | 步骤 | 做什么 | 状态 |
 |------|--------|------|
@@ -939,12 +947,15 @@ supabase/migrations/008_whole_unit_room_type.sql
 | 3️⃣ | 运行 **`007_mobile_upload.sql`**（手机匿名上传凭证 RPC + Storage evidence/ 策略） | ⚠️ **必做**，否则手机上传失败 |
 | 4️⃣ | 运行 **`008_whole_unit_room_type.sql`**（Whole Unit 房型） | ⚠️ 保存整租报错时必做 |
 | 5️⃣ | 运行 **`009_unit_video_url.sql`**（看房视频 URL 字段） | ⚠️ Live 模式上传视频时必做 |
-| 6️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 7️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
-| 8️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
-| 9️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
-| 🔟 | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push` | ❌ 无需 SQL，见第 16 节 |
+| 6️⃣ | 运行 **`010_agent_qr_separation.sql`**（收款码与审核隔离） | ⚠️ 按 Agent 隔离权限和收款码时必做 |
+| 7️⃣ | 运行 **`011_optional_unit_number.sql`**（门牌号可选化） | ⚠️ 隐藏门牌号时必做 |
+| 8️⃣ | 运行 **`012_remove_unit_number_display.sql`**（彻底隐藏门牌号） | ⚠️ 隐藏门牌号时必做 |
+| 9️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 🔟 | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 1️⃣1️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
+| 1️⃣2️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+| 1️⃣3️⃣ | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push` | ❌ 无需 SQL，见第 16 节 |
 
 ---
 
-*文档更新：2026-05-24 · 含图片/视频压缩、房源列表滚动、Lightbox、009 视频迁移、Tavily/iProperty、Memory vs Storage*
+*文档更新：2026-05-25 · 含图片/视频压缩、房源列表滚动、Lightbox、010-012门牌与Agent隔离迁移、Google Places联想输入、Memory vs Storage*
