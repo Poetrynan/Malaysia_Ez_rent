@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-25 (UTC+8)
-> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩 + 删除同步）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · **禁止外部搜房（iProperty 等）** · 缴租文案银行/微信/支付宝 · 首月付中介/后续付房东 · 学生端通勤联想 · Vercel & Render 部署**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署**
 
 ---
 
@@ -75,7 +75,9 @@ Malaysia_Ez_rent/
         ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
         ├── 008_whole_unit_room_type.sql # units.room_type 允许 Whole Unit（整租/合租）
         ├── 009_unit_video_url.sql       # units.video_url + Storage 看房视频
-        └── 013_landlord_payment_details.sql # units 加 landlord_qr_code/landlord_bank_info，更新手机上传 RPC
+        ├── 013_landlord_payment_details.sql # 房东收款信息（后续月租）
+        ├── 014_tenant_interests_user_update.sql # 学生 UPDATE 自己的 tenant_interests
+        └── 015_tenant_interest_rpc.sql  # submit/cancel_tenant_interest RPC
 
 ---
 
@@ -86,7 +88,7 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
-| `PropertyListings.tsx` | ✅ 完成 | iProperty 风格列表/筛选；**主内容区滚动**；详情 **Lightbox 大图** + **视频弹窗**；合租/Storage 图片 |
+| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y（含意向中）、公开意向名单、行内「取消意向」 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
@@ -96,7 +98,7 @@ Malaysia_Ez_rent/
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
-| `i18n.ts` | ✅ 完成 | 中英双语；缴租/上传凭证文案统一为 **银行转账**（不写 Maybank/微信/支付宝/DuitNow 等具体渠道） |
+| `i18n.ts` | ✅ 完成 | 中英双语；缴租/上传凭证支持 **银行转账、微信、支付宝**（不写具体银行品牌） |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
 | `globals.css` | ✅ 完成 | 设计 Token；**`app-container` 100vh + `.main-content` 滚动**；Logo / Toast 动画 |
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
@@ -185,7 +187,12 @@ Malaysia_Ez_rent/
 | 61 | 误接入 Tavily→iProperty 外部搜房 | **已禁止**；删除 `search_iproperty_listings`；Tavily 仅用于政策/交通常识，且排除竞品租房站 |
 | 58 | 支付界面自动兜底显示中介二维码 | 移除第二个月后的中介 QR 兜底，增加房东信息缺失的显性警告提示框。 |
 | 59 | 删除凭证/图片只清 DB 不清 Storage | `clearEvidence` / `removeQR` / 编辑房源删图 / `deleteUnit` 现同步 `storage.remove()` |
-| 60 | 缴租文案写死 Maybank/微信/支付宝 | `i18n.ts` 统一为「银行转账」；英文 *bank transfer*；上传凭证为「银行转账截图」 |
+| 60 | 缴租文案写死 Maybank/DuitNow | 改为 **银行转账 / 微信 / 支付宝** 均可（`i18n.ts`） |
+| 62 | 「跳过，直接提交」不提交 | 按钮误关表单；已改为调用 `expressInterest(unitId, '')` |
+| 63 | 提交后人数仍 0/6 | 原只统计 `confirmed`；现 **合租登记 = 意向中 + 已确认** |
+| 64 | 提交成功仍显示「我要租」 | `myInterest` 与列表不同步；改由 `authUserId` + 列表推导，顶部/行内双「取消意向」 |
+| 65 | 学生无法自行取消意向 | 缺 UPDATE 权限；**014** + **`cancel_tenant_interest` RPC（015）**；无需等管理员拒绝 |
+| 66 | 合租意向 insert/update 静默失败 | **015** RPC `submit_tenant_interest`（ON CONFLICT upsert）；前端有成功/失败提示 |
 
 ---
 
@@ -314,7 +321,10 @@ Storage Bucket：
 | `009_unit_video_url.sql` | `units.video_url TEXT` — 看房视频 Storage URL（`{unitId}/walkthrough.webm`） |
 | `010_agent_qr_separation.sql` | **收款码与审核隔离**：`units`表新增`agent_id`外键；重构`get_mobile_upload_info`匿名RPC，自动拉取房源专属录入Agent收款码，提供Agent级别账单独立审核与列表过滤。 |
 | `011_optional_unit_number.sql` | **门牌号可选化**：在 `units` 表中将 `unit_number` 的 `NOT NULL` 约束去掉（DROP NOT NULL），在后台录入表单中移除该输入框，并适配前端让其完美自适应渲染。 |
-| `012_remove_unit_number_display.sql` | **彻底隐藏门牌号**：更新 `get_mobile_upload_info` 匿名 RPC 返回 `room_type` 替代 `unit_number` 以保护隐私，清除全站所有门牌号展示。 |
+| `012_remove_unit_number_display.sql` | 彻底隐藏门牌号：RPC 返回 `room_type` 替代 `unit_number` |
+| `013_landlord_payment_details.sql` | `units.landlord_qr_code` / `landlord_bank_info`；后续月租付房东 |
+| `014_tenant_interests_user_update.sql` | RLS：学生可 **UPDATE** 自己的 `tenant_interests`（取消/重新提交） |
+| `015_tenant_interest_rpc.sql` | RPC **`submit_tenant_interest`** / **`cancel_tenant_interest`**（SECURITY DEFINER upsert） |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -344,6 +354,10 @@ supabase/migrations/
 └── 009_unit_video_url.sql       # units.video_url 看房视频
 └── 010_agent_qr_separation.sql  # 房源收款码与审核权限 Agent 级隔离
 └── 011_optional_unit_number.sql # 门牌号字段设为可选 (DROP NOT NULL)
+└── 012_remove_unit_number_display.sql # 隐藏门牌号
+└── 013_landlord_payment_details.sql # 房东收款（后续月租）
+└── 014_tenant_interests_user_update.sql # 合租意向 UPDATE RLS
+└── 015_tenant_interest_rpc.sql  # 合租 submit/cancel RPC
 ```
 
 迁移原则：
@@ -381,9 +395,10 @@ supabase/migrations/
 | 删除后 Storage 文件还在吗 | Live 模式管理员删除凭证/房源/收款码/编辑删图 | 会同步删 Storage；Mock 模式只清 localStorage |
 | 视频有没有压缩 | 有：`compressVideo.ts`（WebM，>12MB 触发） | Live 模式需跑 **`009_unit_video_url.sql`** 才有 `video_url` 字段 |
 | 支付凭证有没有压缩 | 有：`EVIDENCE_IMAGE_PRESET`（≤1080×2400 JPEG 80%） | 手机上传页 + Mock 模式均走 `compressImage` |
+| 合租提交后数字不变 / 无法取消 | 未跑 **014/015** 或前端旧版 | 执行 `014`+`015` 迁移；`git push` 部署后 Ctrl+F5；见第十九节 |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
-详见 `docs/auth-redirect-explained.md` 第 8–18 节。
+详见 `docs/auth-redirect-explained.md` 第 8–20 节。
 
 ---
 
@@ -645,6 +660,7 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
 | 房源收款码与审核隔离 | ✅ `010_agent_qr_separation.sql` |
 | 门牌号可选化 | ✅ `011_optional_unit_number.sql` |
 | 房东收款信息（后续月租） | ✅ `013_landlord_payment_details.sql` |
+| Whole Unit 合租提交/取消 | ✅ `014_tenant_interests_user_update.sql` + **`015_tenant_interest_rpc.sql`** |
 
 ---
 
@@ -687,6 +703,54 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
    - 如果网络环境无法成功加载 Google Maps API 脚本，系统会自动降级采用本地精选的一组马来西亚经典地标列表（Monash, Sunway, Taylor's, Sunway Pyramid 等）进行模糊搜索联想，保证界面高可用、不报错。
 3. **选择自动计算**：
    - 用户点击联想到的地点后，系统会自动更新输入框并渲染出发点到房源的通勤路线折线图。
+
+---
+
+## 十九、Whole Unit 合租意向提交与自行取消（2026-05-25）
+
+### 流程（学生端 `PropertyListings.tsx`）
+
+```
+Whole Unit 详情 → 「我要租」
+    ├── 填写「自我介绍 & 室友期望」→ 「提交意向」
+    └── 或 「跳过，直接提交」（空备注，同样写入 DB）
+              ↓
+RPC submit_tenant_interest(unit_id, note)   ← 015 迁移
+              ↓
+status = interested；界面显示「合租登记 1/Y（已确认入住 0 · 意向中 1）」
+              ↓
+下方公开名单：姓名、邮箱、备注（可展开）、状态标签
+              ↓
+学生随时点「取消意向」（顶部或自己那一行）→ RPC cancel_tenant_interest
+              ↓
+status = left（软删除）；数字归零；**无需管理员拒绝**
+              ↓
+管理员在 AdminPanel「租客意向」可 confirm / remove
+```
+
+### 人数怎么算？
+
+| 显示 | 含义 |
+|------|------|
+| **合租登记 X/Y** | X = `interested` + `confirmed`；Y = `units.max_occupants` |
+| **已确认入住** | 仅 `confirmed`（管理员点确认后） |
+| **意向中** | `interested`，含刚提交未审核的 |
+
+满员判断仍以 **`confirmed >= max_occupants`** 为准（意向中不占硬名额）。
+
+### 其他人能看到我的意向吗？
+
+**能。** 同一 Whole Unit 详情页内，所有登录/未登录浏览者均可看到该房源下 `status != left` 的意向名单（姓名、邮箱、备注、状态）。RLS：`Anyone can view interests`。
+
+### 必须在 Supabase 执行的迁移
+
+| 文件 | 作用 |
+|------|------|
+| `003_corenting.sql` | 建表 `tenant_interests` + 基础 RLS |
+| `014_tenant_interests_user_update.sql` | 学生 UPDATE 自己的行（取消/重提 fallback） |
+| **`015_tenant_interest_rpc.sql`** | **`submit_tenant_interest` / `cancel_tenant_interest`**（推荐，upsert 更稳） |
+
+未跑 015 时，前端会 fallback 直写表，但重复提交/取消可能因 RLS 失败。
 
 ---
 

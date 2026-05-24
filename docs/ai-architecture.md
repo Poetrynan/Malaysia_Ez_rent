@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-24 (UTC+8)
+Last updated: 2026-05-25 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -36,7 +36,7 @@ Malaysia_Ez_rent/
 │   │   ├── LeaseLedgerCard.tsx
 │   │   └── AdminPanel.tsx
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
-│   ├── src/lib/i18n.ts                 # zh/en; payment copy uses generic "bank transfer"
+│   ├── src/lib/i18n.ts                 # zh/en; payment: bank transfer / WeChat / Alipay
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
 │   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
 │   └── src/middleware.ts                # route guard with mobile-upload allowlist
@@ -68,11 +68,11 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX; **scrolls inside `.main-content`**; image lightbox + video modal. Uses `MapAndCard.tsx` for Google Maps display.
+- `PropertyListings.tsx`: listing/filter/detail + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Uses `MapAndCard.tsx`.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
-- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Copy is generic **bank transfer** (no Maybank/DuitNow/WeChat/Alipay in payment UI).
+- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Payment copy: **bank transfer, WeChat, or Alipay** (no specific bank brand).
 
 ### Admin path
 
@@ -97,6 +97,16 @@ Malaysia_Ez_rent/
 - Uploads to `unit-media/evidence/`.
 - Compresses uploaded image before storage write.
 - Display info (community & room type) is resolved securely.
+
+### Whole Unit co-renting (`tenant_interests`)
+
+- **Whole Unit only**: note form + public list of interested/confirmed tenants on the unit detail drawer.
+- **Submit**: `submit_tenant_interest(p_unit_id, p_note)` RPC (migration **015**); upsert on `(unit_id, user_id)`; status `interested`.
+- **Cancel**: student self-service — `cancel_tenant_interest(p_unit_id)` sets `status = left` (**no admin rejection required**).
+- **UI occupancy**: `registered/max` = (`interested` + `confirmed`) / `max_occupants`; full when `confirmed >= max`.
+- **Visibility**: SELECT policy `Anyone can view interests` — other seekers on the same unit see name, email, note, status.
+- **Identity in UI**: `authUserId` from `onAuthStateChange` drives "my interest" + cancel buttons (top bar + row marked "Me").
+- Fallback: direct table insert/update if RPC missing (requires migration **014** UPDATE policy).
 
 ## 4) Backend AI Architecture
 
@@ -152,7 +162,7 @@ Malaysia_Ez_rent/
 - `units`: inventory records
 - `leases`: contract
 - `payment_records`: monthly bills + evidence status
-- `tenant_interests`: co-renting interest
+- `tenant_interests`: co-renting interest (`interested` | `confirmed` | `left`); UNIQUE `(unit_id, user_id)`
 - `feedback`: student suggestions
 
 ### Storage
@@ -185,6 +195,8 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 12. `migrations/011_optional_unit_number.sql`
 13. `migrations/012_remove_unit_number_display.sql`
 14. `migrations/013_landlord_payment_details.sql`
+15. `migrations/014_tenant_interests_user_update.sql`
+16. `migrations/015_tenant_interest_rpc.sql`
 
 Notes:
 
@@ -195,6 +207,8 @@ Notes:
 - `011_optional_unit_number.sql` drops the `NOT NULL` constraint on `units.unit_number`.
 - `012_remove_unit_number_display.sql` updates `get_mobile_upload_info` RPC to return `room_type` instead of `unit_number` for privacy.
 - `013_landlord_payment_details.sql` adds `landlord_qr_code` and `landlord_bank_info` to `units` for splitting payments (Deposit/1st month rent to Agent, subsequent rents to Landlord).
+- `014_tenant_interests_user_update.sql` adds RLS so students can UPDATE their own `tenant_interests` row (cancel / re-submit fallback).
+- `015_tenant_interest_rpc.sql` adds **`submit_tenant_interest`** and **`cancel_tenant_interest`** (SECURITY DEFINER, ON CONFLICT upsert). **Required for reliable co-rent submit/cancel in production.**
 
 ## 7) Auth, Roles, and Access Model
 
@@ -219,7 +233,7 @@ Notes:
 
 ### Payment copy (i18n)
 
-Product strings intentionally say **bank transfer** / **银行转账**, not a specific bank or wallet brand:
+Product strings support **bank transfer, WeChat, or Alipay** (no specific bank/wallet brand in payment UI):
 
 - `duitnowWarning`, `payToAgent`, `payToLandlord`, `scanToUploadDesc`, `uploadQR` in `frontend/src/lib/i18n.ts`
 - Admin contact fields may still show WeChat for **support contact**, separate from payment instructions.
@@ -240,6 +254,7 @@ When extending this codebase, keep these invariants:
 - When clearing media in admin flows, update **both** Postgres and Storage (see Storage delete lifecycle).
 - Maintain chronological sorting by `billing_month` in payment UIs.
 - Never scrape, link, or recommend third-party rental listings (iProperty, PropertyGuru, etc.).
+- For co-renting, prefer RPC **015** over raw table writes; never require admin action for student self-cancel.
 - For new room types, update frontend enums (`ROOM_TYPES`), DB constraint migration, and any legacy tool filters.
 
 ## 10) Known Operational Gotchas
@@ -250,6 +265,7 @@ When extending this codebase, keep these invariants:
   - Files: `Storage -> unit-media size`
 - 503 in AI chat often means upstream model saturation, not local DB failure.
 - **External listing search is forbidden** — no iProperty/PropertyGuru via Tavily or any other path. Direct users to the Property Listings tab for inventory.
+- **Co-rent submit/cancel broken?** Run migrations **014 + 015** in Supabase; redeploy frontend; hard-refresh browser.
 - Local mobile QR testing requires LAN origin (`192.168.x.x`), not `localhost`.
 
 ## 11) Quick Dev Runbook
@@ -274,4 +290,5 @@ Recommended checks after major changes:
 - admin path: community/unit/lease/payment review flows
 - mobile upload path: scan/upload/review
 - live mode + mock mode parity for touched features
+- co-rent path: Whole Unit → submit interest → see count/list → self-cancel → admin confirm
 

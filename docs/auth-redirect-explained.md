@@ -327,10 +327,25 @@ CREATE POLICY "admin update QR" ON admin_users FOR UPDATE
 ### Q: 租客取消意向是删除还是标记？
 **A:** **软删除**——把 `tenant_interests.status` 改为 `'left'`，数据保留在数据库里。
 
+- **学生可自行取消**：在 Whole Unit 详情点 **「取消意向」**（顶部或自己那一行），调用 RPC **`cancel_tenant_interest`**（**015 迁移**），**无需等管理员拒绝**
 - 学生端：查询时过滤 `.neq('status', 'left')`，看不到已取消的
 - 管理员端：可以看到所有状态（interested / confirmed / left），方便追溯历史
 
 为什么不用硬删除？因为管理员需要知道"这个人曾经来过又走了"，有助于判断房间热度。
+
+### Q: 合租意向怎么提交？必须跑哪些 SQL？
+**A:** Whole Unit 详情 →「我要租」→ 填备注或「跳过，直接提交」→ RPC **`submit_tenant_interest(unit_id, note)`**。
+
+| 迁移 | 作用 |
+|------|------|
+| `003_corenting.sql` | 建表 + 基础 RLS |
+| `014_tenant_interests_user_update.sql` | 学生 UPDATE 自己的行（fallback） |
+| **`015_tenant_interest_rpc.sql`** | **submit / cancel RPC（生产推荐）** |
+
+成功后界面显示 **「合租登记 X/Y（已确认入住 A · 意向中 B）」** 及公开意向名单。
+
+### Q: 想合租的其他人能看到我的意向吗？
+**A:** **能。** 同一 Whole Unit 详情页内，所有人可见该房源下未取消的意向（姓名、邮箱、备注、状态）。RLS 策略为 `Anyone can view interests`。
 
 ### Q: 房源类型不同，合租逻辑有什么区别？
 **A:**
@@ -338,9 +353,9 @@ CREATE POLICY "admin update QR" ON admin_users FOR UPDATE
 | 房型 | 逻辑 | 按钮行为 |
 |------|------|----------|
 | Studio / Master Room / Medium Room / Small Room | 单人入住，直接租 | 点"我要租"直接表达意向，无备注，无合租列表 |
-| Whole Unit | 多人合租 | 显示入住人数、备注输入（自我介绍 & 室友期望）、其他意向者列表 |
+| Whole Unit | 多人合租 | **合租登记**人数、备注输入、公开意向者列表、**自行取消意向** |
 
-管理员可以在 AdminPanel 设置每个 Unit 的最大入住人数（`max_occupants`）。
+管理员可以在 AdminPanel 设置每个 Unit 的最大入住人数（`max_occupants`）。**满员**以管理员确认的 `confirmed` 数量为准；`interested` 计入「合租登记」展示但不占硬名额。
 
 ### Q: 配套设施怎么用？
 **A:** 管理员创建小区时可以勾选配套设施（健身房、游泳池、洗衣房、自习室、停车位、安保、WiFi、便利店），数据存为 `communities.amenities TEXT[]` 数组。学生在房源详情页可以看到该小区的配套设施列表。
@@ -414,7 +429,13 @@ if (isLive) {
 - `006_bedrooms_bathrooms.sql` — units 加 bedrooms/bathrooms + match_units
 - `007_mobile_upload.sql` — 手机匿名上传凭证 RPC + Storage evidence/ 策略
 - `008_whole_unit_room_type.sql` — `units.room_type` 允许 `Whole Unit`（整租/合租）
-- `013_landlord_payment_details.sql` — 添加房东的收款二维码与银行账户，区分定金首月扫给中介，后续租金扫给房东。
+- `009_unit_video_url.sql` — 看房视频 `units.video_url`
+- `010_agent_qr_separation.sql` — Agent 收款码与审核隔离
+- `011_optional_unit_number.sql` — 门牌号可选
+- `012_remove_unit_number_display.sql` — 隐藏门牌号展示
+- `013_landlord_payment_details.sql` — 房东收款信息（后续月租付房东）
+- `014_tenant_interests_user_update.sql` — 学生 UPDATE 自己的合租意向
+- `015_tenant_interest_rpc.sql` — **submit_tenant_interest / cancel_tenant_interest RPC**
 
 ### Q: 超级管理员不注册，可以在数据库帮他注册吗？
 **A:** 可以，但要分两步：
@@ -937,6 +958,39 @@ supabase/migrations/008_whole_unit_room_type.sql
 
 ---
 
+## 20. Whole Unit 合租意向：提交、公开、自行取消（2026-05-25）
+
+### 学生端流程
+
+```
+PropertyListings → Whole Unit 详情
+    → 「我要租」
+    → 「提交意向」或「跳过，直接提交」
+    → RPC submit_tenant_interest
+    → 合租登记 1/Y · 名单出现 · 绿色成功提示
+    → 随时「取消意向」→ RPC cancel_tenant_interest → 归零
+```
+
+### 与管理员的关系
+
+| 动作 | 谁做 | 结果 |
+|------|------|------|
+| 提交意向 | 学生 | `status = interested` |
+| 取消意向 | **学生自己** | `status = left`，**不等管理员** |
+| 确认入住 | 管理员 AdminPanel | `status = confirmed`，计入「已确认入住」 |
+| 移除意向 | 管理员 | `status = left` |
+
+### 常见故障
+
+| 现象 | 原因 | 修复 |
+|------|------|------|
+| 提交后仍 0/Y | 旧前端只统计 confirmed | 部署最新前端 |
+| 「跳过」无反应 | 旧版只关表单未提交 | 同上 |
+| 提交成功仍显示「我要租」 | myInterest 状态不同步 | 最新版用 authUserId + 列表推导 |
+| 无法取消 | 未跑 014/015 | SQL Editor 执行两文件 |
+
+---
+
 ## 你现在需要做的事（更新于 2026-05-25）
 
 | 步骤 | 做什么 | 状态 |
@@ -949,6 +1003,8 @@ supabase/migrations/008_whole_unit_room_type.sql
 | 6️⃣ | 运行 **`010_agent_qr_separation.sql`**（收款码与审核隔离） | ⚠️ 按 Agent 隔离权限和收款码时必做 |
 | 7️⃣ | 运行 **`011_optional_unit_number.sql`**（门牌号可选化） | ⚠️ 隐藏门牌号时必做 |
 | 8️⃣ | 运行 **`012_remove_unit_number_display.sql`**（彻底隐藏门牌号） | ⚠️ 隐藏门牌号时必做 |
+| 8️⃣b | 运行 **`013_landlord_payment_details.sql`**（后续月租付房东） | ⚠️ 学生第二个月起付房东时必做 |
+| 8️⃣c | 运行 **`014_tenant_interests_user_update.sql`** + **`015_tenant_interest_rpc.sql`** | ⚠️ **Whole Unit 合租提交/取消必做** |
 | 9️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
 | 🔟 | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
 | 1️⃣1️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
@@ -957,4 +1013,4 @@ supabase/migrations/008_whole_unit_room_type.sql
 
 ---
 
-*文档更新：2026-05-25 · 含图片/视频压缩、房源列表滚动、Lightbox、010-012门牌与Agent隔离迁移、Google Places联想输入、Memory vs Storage*
+*文档更新：2026-05-25 · 含合租意向 RPC（014/015）、自行取消、缴租银行/微信/支付宝、禁止 iProperty、Memory vs Storage*

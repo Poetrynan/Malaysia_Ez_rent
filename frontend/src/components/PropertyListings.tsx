@@ -107,6 +107,7 @@ export default function PropertyListings() {
   const [admins, setAdmins] = useState<AdminContact[]>([]);
   const [expandedAdmin, setExpandedAdmin] = useState<number | null>(null);
   const [interests, setInterests] = useState<TenantInterest[]>([]);
+  const [authUserId, setAuthUserId] = useState<string | null>(isMockDatabase ? 'tenant-123' : null);
   const [myInterest, setMyInterest] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -122,12 +123,35 @@ export default function PropertyListings() {
     }
     if (data) {
       setInterests(data);
-      if (userId) {
-        const mine = data.find((i: TenantInterest) => i.user_id === userId && i.status !== 'left');
+      const uid = userId ?? authUserId;
+      if (uid) {
+        const mine = data.find((i: TenantInterest) => String(i.user_id) === String(uid) && i.status !== 'left');
         setMyInterest(mine ? mine.unit_id : null);
       }
     }
   };
+
+  useEffect(() => {
+    if (isMockDatabase) return;
+    let mounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    (async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (mounted && user) setAuthUserId(user.id);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (mounted) setAuthUserId(session?.user?.id ?? null);
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    })();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
 
   const closeDetail = () => {
     setSelected(null);
@@ -272,6 +296,7 @@ export default function PropertyListings() {
       });
 
       if (!rpcError && rpcResult?.success) {
+        setMyInterest(unitId);
         setNoteInput('');
         setShowNoteInput(false);
         setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
@@ -321,6 +346,7 @@ export default function PropertyListings() {
         return;
       }
 
+      setMyInterest(unitId);
       setNoteInput('');
       setShowNoteInput(false);
       setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
@@ -333,12 +359,13 @@ export default function PropertyListings() {
     }
   };
 
-  const cancelInterest = async () => {
-    if (!myInterest) return;
+  const cancelInterest = async (unitIdOverride?: string) => {
+    const unitId = unitIdOverride ?? myInterest ?? selected?.id;
+    if (!unitId) return;
     setInterestFeedback(null);
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
-      const updated = all.map(i => (i.unit_id === myInterest && i.user_id === 'tenant-123') ? { ...i, status: 'left' } : i);
+      const updated = all.map(i => (i.unit_id === unitId && i.user_id === 'tenant-123') ? { ...i, status: 'left' } : i);
       localStorage.setItem('ez_interests', JSON.stringify(updated));
       setInterests(updated.filter(i => i.status !== 'left'));
       setMyInterest(null);
@@ -356,11 +383,11 @@ export default function PropertyListings() {
       }
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc('cancel_tenant_interest', {
-        p_unit_id: myInterest,
+        p_unit_id: unitId,
       });
 
       if (!rpcError && rpcResult?.success) {
-        setMyInterest(null);
+        if (myInterest === unitId) setMyInterest(null);
         setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
         await refreshInterests(supabase, user.id);
         return;
@@ -369,7 +396,7 @@ export default function PropertyListings() {
       const { error } = await supabase
         .from('tenant_interests')
         .update({ status: 'left' })
-        .eq('unit_id', myInterest)
+        .eq('unit_id', unitId)
         .eq('user_id', user.id);
 
       if (error) {
@@ -377,7 +404,7 @@ export default function PropertyListings() {
         setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
         return;
       }
-      setMyInterest(null);
+      if (myInterest === unitId) setMyInterest(null);
       setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
       await refreshInterests(supabase, user.id);
     } catch (e) {
@@ -629,7 +656,10 @@ export default function PropertyListings() {
                   const registered = confirmed + interested;
                   const max = selected.max_occupants || 1;
                   const isFull = confirmed >= max;
-                  const hasMyInterest = myInterest === selected.id;
+                  const myEntry = authUserId
+                    ? unitInterests.find(i => String(i.user_id) === String(authUserId))
+                    : undefined;
+                  const hasMyInterest = !!myEntry;
                   const isWholeUnit = selected.room_type === 'Whole Unit';
 
                   // Non–Whole Unit: simple rent button
@@ -644,10 +674,10 @@ export default function PropertyListings() {
                           }}>{t('coRentJoin')}</button>
                         )}
                         {hasMyInterest && (
-                          <button onClick={cancelInterest} style={{
+                          <button onClick={() => cancelInterest(selected.id)} disabled={submittingInterest} style={{
                             padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
                             background: 'transparent', color: 'var(--danger)',
-                            fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                           }}>{t('coRentCancel')}</button>
                         )}
                         {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
@@ -674,10 +704,11 @@ export default function PropertyListings() {
                           }}>{t('coRentJoin')}</button>
                         )}
                         {hasMyInterest && (
-                          <button onClick={cancelInterest} style={{
+                          <button onClick={() => cancelInterest(selected.id)} disabled={submittingInterest} style={{
                             padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
                             background: 'transparent', color: 'var(--danger)',
-                            fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                            opacity: submittingInterest ? 0.7 : 1,
                           }}>{t('coRentCancel')}</button>
                         )}
                         {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
@@ -719,23 +750,41 @@ export default function PropertyListings() {
 
                       {unitInterests.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {unitInterests.map(i => (
+                          {unitInterests.map(i => {
+                            const isMe = authUserId && String(i.user_id) === String(authUserId);
+                            return (
                             <div key={i.id}>
-                              <div onClick={() => setExpandedNote(expandedNote === i.id ? null : i.id)} style={{
+                              <div onClick={() => !isMe && i.note && setExpandedNote(expandedNote === i.id ? null : i.id)} style={{
                                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
                                 borderRadius: expandedNote === i.id ? '8px 8px 0 0' : 8,
-                                background: 'rgba(255,255,255,0.04)',
-                                border: i.status === 'confirmed' ? '1px solid rgba(22,163,74,0.2)' : '1px solid var(--glass-border)',
-                                cursor: i.note ? 'pointer' : 'default', transition: 'all 0.15s',
+                                background: isMe ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.04)',
+                                border: i.status === 'confirmed' ? '1px solid rgba(22,163,74,0.2)' : isMe ? '1px solid rgba(59,130,246,0.25)' : '1px solid var(--glass-border)',
+                                cursor: !isMe && i.note ? 'pointer' : 'default', transition: 'all 0.15s',
                               }}>
                                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)' }}>
                                   {(i.full_name || i.email)[0]?.toUpperCase()}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{i.full_name || i.email.split('@')[0]}</div>
+                                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                                    {i.full_name || i.email.split('@')[0]}
+                                    {isMe && <span style={{ marginLeft: 6, fontSize: '0.68rem', color: 'var(--primary)' }}>({lang === 'zh' ? '我' : 'Me'})</span>}
+                                  </div>
                                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{i.email}</div>
                                 </div>
-                                {i.note && <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: expandedNote === i.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
+                                {isMe ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); cancelInterest(selected.id); }}
+                                    disabled={submittingInterest}
+                                    style={{
+                                      padding: '4px 10px', borderRadius: 6, border: '1px solid var(--danger)',
+                                      background: 'transparent', color: 'var(--danger)',
+                                      fontSize: '0.68rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                    }}
+                                  >{t('coRentCancel')}</button>
+                                ) : (
+                                  i.note && <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: expandedNote === i.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                                )}
                                 <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6,
                                   background: i.status === 'confirmed' ? 'rgba(22,163,74,0.12)' : 'rgba(59,130,246,0.1)',
                                   color: i.status === 'confirmed' ? '#16A34A' : 'var(--primary)',
@@ -751,7 +800,7 @@ export default function PropertyListings() {
                                 </div>
                               )}
                             </div>
-                          ))}
+                          );})}
                         </div>
                       )}
                     </>
