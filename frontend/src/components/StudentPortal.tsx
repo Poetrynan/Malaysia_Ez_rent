@@ -17,7 +17,7 @@ interface Payment {
   id: string; lease_id: string; billing_month: string;
   paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string;
 }
-interface Unit { id: string; community_id: string; unit_number: string; room_type: string; agent_id?: string | null; }
+interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; agent_id?: string | null; }
 interface Community { id: string; name: string; }
 
 export default function StudentPortal() {
@@ -295,7 +295,7 @@ export default function StudentPortal() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 6 }}>{t('leaseProgress')}</div>
             <h2 style={{ fontSize: '1.25rem', marginBottom: 4 }}>
-              {community?.name} · {unit?.unit_number}
+              {community?.name}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 16 }}>
               {unit?.room_type} &nbsp;·&nbsp;

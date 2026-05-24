@@ -25,7 +25,7 @@ import MapAndCard from './MapAndCard';
 import { useApp } from '@/lib/ThemeProvider';
 
 interface Unit {
-  id: string; community_id: string; unit_number: string;
+  id: string; community_id: string; unit_number?: string | null;
   room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
   video_url?: string | null;
   bedrooms?: number; bathrooms?: number;
@@ -261,7 +261,7 @@ export default function PropertyListings() {
     if (search) res = res.filter(u =>
       u.community?.name.toLowerCase().includes(search.toLowerCase()) ||
       u.community?.address.toLowerCase().includes(search.toLowerCase()) ||
-      u.unit_number.toLowerCase().includes(search.toLowerCase())
+      (u.unit_number || '').toLowerCase().includes(search.toLowerCase())
     );
     if (typeFilter) res = res.filter(u => u.room_type === typeFilter);
     if (maxRent) res = res.filter(u => u.rent <= parseFloat(maxRent));
@@ -422,7 +422,7 @@ export default function PropertyListings() {
                 </div>
                 {/* Tags */}
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                  {[selected.room_type, selected.unit_number].map((tag, i) => (
+                  {[selected.room_type, selected.unit_number].filter(Boolean).map((tag, i) => (
                     <span key={i} style={{ padding: '4px 12px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 600 }}>{tag}</span>
                   ))}
                 </div>
@@ -641,7 +641,7 @@ export default function PropertyListings() {
                         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}>
                         <img src={getUnitImages(u.id, u.media_urls)[0]} alt="" style={{ width: 56, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-h)' }}>{u.unit_number} · {u.room_type}</div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-h)' }}>{u.unit_number ? `${u.unit_number} · ` : ''}{u.room_type}</div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>RM {u.rent.toLocaleString()}{t('perMonth')}</div>
                         </div>
                         <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
@@ -930,7 +930,7 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
 
         {/* Tags row */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {[unit.unit_number, unit.room_type].map((tag, i) => (
+          {[unit.unit_number, unit.room_type].filter(Boolean).map((tag, i) => (
             <span key={i} style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>
               {tag}
             </span>

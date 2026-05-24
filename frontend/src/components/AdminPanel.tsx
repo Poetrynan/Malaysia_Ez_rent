@@ -20,7 +20,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; }
+interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; }
 interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -315,7 +315,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           const unit = units.find((un: any) => un.id === lease.unit_id);
           if (unit) {
             const comm = communities.find((c: any) => c.id === unit.community_id);
-            unitInfo = `${comm?.name || ''} · ${unit.unit_number}`;
+            unitInfo = `${comm?.name || ''}${unit.unit_number ? ` · ${unit.unit_number}` : ''}`;
           }
         }
         return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), unit_info: unitInfo || undefined };
@@ -343,7 +343,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
             const { data: unitData } = await supabase.from('units').select('unit_number, community_id').eq('id', leaseData.unit_id).single();
             if (unitData) {
               const { data: commData } = await supabase.from('communities').select('name').eq('id', unitData.community_id).single();
-              unitInfo = `${commData?.name || ''} · ${unitData.unit_number}`;
+              unitInfo = `${commData?.name || ''}${unitData.unit_number ? ` · ${unitData.unit_number}` : ''}`;
             }
           }
 
@@ -805,7 +805,6 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
   const saveUnit = async () => {
     const errors: Record<string, boolean> = {};
     if (!unitForm.community_id) errors.community_id = true;
-    if (!unitForm.unit_number.trim()) errors.unit_number = true;
     if (!unitForm.rent) errors.rent = true;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -949,7 +948,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     setEditingUnitId(u.id);
     setUnitForm({
       community_id: u.community_id,
-      unit_number: u.unit_number,
+      unit_number: u.unit_number || '',
       room_type: u.room_type,
       rent: String(u.rent),
       description: u.description || '',
@@ -1459,7 +1458,6 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               </select>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>{t('doorNumber')}</label><input className="form-input" value={unitForm.unit_number} onChange={e => { setUnitForm(f => ({ ...f, unit_number: e.target.value })); clearError('unit_number'); }} placeholder={t('doorNumberPlaceholder')} style={fieldErrors.unit_number ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
               <div className="form-group"><label>{t('roomType')}</label>
                 <select className="form-select" value={unitForm.room_type} onChange={e => setUnitForm(f => ({ ...f, room_type: e.target.value }))}>
                   {ROOM_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
@@ -1602,7 +1600,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                     return (
                       <tr key={u.id}>
                         <td style={{ fontWeight: 500, color: 'var(--text-h)' }}>{c?.name || '—'}</td>
-                        <td>{u.unit_number}</td><td>{u.room_type} ({u.bedrooms || 1}{t('bedroomsUnit')}{u.bathrooms || 1}{t('bathroomsUnit')})</td>
+                        <td>{u.unit_number || '—'}</td><td>{u.room_type} ({u.bedrooms || 1}{t('bedroomsUnit')}{u.bathrooms || 1}{t('bathroomsUnit')})</td>
                         <td style={{ color: 'var(--accent)', fontWeight: 600 }}>RM {u.rent.toLocaleString()}</td>
                         <td><span className={`status-badge ${u.status}`}>{u.status === 'available' ? t('statusAvailable') : t('statusRented')}</span></td>
                         <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
@@ -1674,7 +1672,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 <label>{t('colProperty')}</label>
                 <select className="form-select" value={leaseForm.unit_id} onChange={e => { const u = visibleUnits.find(x => x.id === e.target.value); setLeaseForm(f => ({ ...f, unit_id: e.target.value, tenant_id: '', monthly_rent: u ? String(u.rent) : f.monthly_rent })); }}>
                   <option value="">{t('selectUnit')}</option>
-                  {visibleUnits.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name} · {u.unit_number} ({u.room_type})</option>; })}
+                  {visibleUnits.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name}{u.unit_number ? ` · ${u.unit_number}` : ''} ({u.room_type})</option>; })}
                 </select>
               </div>
               <div className="form-group">
@@ -1786,7 +1784,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                           }}>{i.status === 'confirmed' ? t('interestConfirmedLabel') : t('interestInterestedLabel')}</span>
                         </div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {comm?.name} · {unit?.unit_number} · {i.email}
+                          {comm?.name}{unit?.unit_number ? ` · ${unit.unit_number}` : ''} · {i.email}
                           {i.phone && ` · ${i.phone}`}
                         </div>
                         {i.note && (

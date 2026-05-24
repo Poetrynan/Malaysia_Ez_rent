@@ -309,6 +309,7 @@ Storage Bucket：
 | `008_whole_unit_room_type.sql` | `units.room_type` CHECK 增加 `Whole Unit`，修复整租/合租房型保存报错 |
 | `009_unit_video_url.sql` | `units.video_url TEXT` — 看房视频 Storage URL（`{unitId}/walkthrough.webm`） |
 | `010_agent_qr_separation.sql` | **收款码与审核隔离**：`units`表新增`agent_id`外键；重构`get_mobile_upload_info`匿名RPC，自动拉取房源专属录入Agent收款码，提供Agent级别账单独立审核与列表过滤。 |
+| `011_optional_unit_number.sql` | **门牌号可选化**：在 `units` 表中将 `unit_number` 的 `NOT NULL` 约束去掉（DROP NOT NULL），在后台录入表单中移除该输入框，并适配前端让其完美自适应渲染。 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -337,6 +338,7 @@ supabase/migrations/
 └── 008_whole_unit_room_type.sql # Whole Unit 房型 CHECK 约束
 └── 009_unit_video_url.sql       # units.video_url 看房视频
 └── 010_agent_qr_separation.sql  # 房源收款码与审核权限 Agent 级隔离
+└── 011_optional_unit_number.sql # 门牌号字段设为可选 (DROP NOT NULL)
 ```
 
 迁移原则：
@@ -613,6 +615,7 @@ Vercel 检测到 push 后自动 build 并部署。favicon 若未更新，浏览�
 | 手机上传凭证 | ✅ `007_mobile_upload.sql` |
 | Whole Unit 房型 | ✅ `008_whole_unit_room_type.sql` |
 | 房源收款码与审核隔离 | ✅ `010_agent_qr_separation.sql` |
+| 门牌号可选化 | ✅ `011_optional_unit_number.sql` |
 
 ---
 
