@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-23 (UTC+8)
-> 状态：**前端可跑 · 后端已连接真实 DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage · 房源/租约支持删除 · 支付凭证审核功能完成 · 收款码上传/共享/持久化完成 · RLS 策略全面修复 · 意见箱功能完成 · Vercel & Render 云端生产环境部署完成**
+> 最后更新：2026-05-24 (UTC+8)
+> 状态：**前端可跑 · 后端已连接 Gemini/DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage（含客户端压缩）· 房源/租约支持删除 · 手机扫码上传支付凭证（007 迁移 + RPC）· 支付凭证审核 + 自适应预览 · 收款码上传/共享/持久化 · RLS 策略全面修复 · 意见箱功能完成 · Vercel & Render 云端生产环境部署完成**
 
 ---
 
@@ -18,7 +18,7 @@ Malaysia_Ez_rent/
 │   │   │   ├── login/
 │   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录界面（Mock/Live自适应）
 │   │   │   ├── mobile-upload/
-│   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证专属页面
+│   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证（匿名 RPC + 图片压缩）
 │   │   │   └── auth/
 │   │   │       └── callback/
 │   │   │           └── route.ts  # Supabase OAuth 回调处理器
@@ -34,10 +34,11 @@ Malaysia_Ez_rent/
 │   │       ├── ThemeProvider.tsx  # 主题/语言 Context Provider
 │   │       └── i18n.ts           # 中英双语翻译字典
 │   │   ├── utils/
-│   │   │   └── supabase/         # @supabase/ssr 服务端/中间件工具
-│   │   │       ├── client.ts
-│   │   │       ├── middleware.ts
-│   │   │       └── server.ts
+│   │   │   ├── supabase/         # @supabase/ssr 服务端/中间件工具
+│   │   │   │   ├── client.ts
+│   │   │   │   ├── middleware.ts
+│   │   │   │   └── server.ts
+│   │   │   └── compressImage.ts  # 上传前 Canvas 压缩（凭证/房源/收款码）
 │   │   └── middleware.ts         # Next.js 路由中间件，处理 Auth 状态和重定向
 │   ├── next.config.ts            # allowedDevOrigins 配置
 │   ├── .env.local                # 环境变量（Supabase/DeepSeek/Google Maps/Tavily）
@@ -47,7 +48,7 @@ Malaysia_Ez_rent/
 │   ├── app/
 │   │   ├── main.py       # FastAPI 入口，CORS，SSE /api/chat 端点
 │   │   ├── agent.py      # ReAct Agent（真实流式 API + Mock 模拟器）
-│   │   ├── tools.py      # Agent 工具集（DB 语义检索、通勤计算、Tavily 搜索）
+│   │   ├── tools.py      # Agent 工具集（内部 DB 检索、通勤计算、Tavily 常识搜索）
 │   │   ├── config.py     # 环境变量读取
 │   │   └── mock_data.py  # 离线 Mock 数据
 │   ├── .env              # 后端环境变量（从 frontend/.env.local 同步）
@@ -65,7 +66,9 @@ Malaysia_Ez_rent/
         ├── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
         ├── 003_corenting.sql           # 合租功能（入住人数 + 意向名单）
         ├── 004_unit_media.sql          # 房源图片、配套设施、收款码、押金配置
-        └── 005_feedback.sql            # 学生意见箱 (feedback 表 + RLS 策略)
+        ├── 005_feedback.sql            # 学生意见箱 (feedback 表 + RLS 策略)
+        ├── 006_bedrooms_bathrooms.sql  # units 加 bedrooms/bathrooms + match_units 更新
+        └── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
 ```
 
 ---
@@ -80,9 +83,11 @@ Malaysia_Ez_rent/
 | `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、配套设施展示、同小区推荐），联系管理员弹窗，**合租功能**（Whole Unit 显示入住人数/备注/意向者列表，其他房型直接"我要租"），图片从 Supabase Storage 读取 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
-| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格 + 支付弹窗（管理员收款码 + 手机扫码上传凭证），已缴费不可点击 |
-| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
-| `AdminPanel.tsx` | ✅ 完成 | 房源管理（含配套设施勾选、图片上传至 Supabase Storage）+ 单元管理 + 租约创建（从已确认意向租客中选人、可配置押金月数）+ 收租核查（按时间排序、点击切换已缴/待缴）+ **管理员管理**（super_admin 专属）+ **支付凭证审核**（截图、批准/驳回/删除凭证、备注）+ **合租管理**（确认/移除租客、查看备注）+ **房源/租约删除**（硬删除，同步清理 Storage 和关联数据）+ **收款设置**（上传/删除 DuitNow 收款码，全系统共享，localStorage 缓存防丢失）+ **意见箱管理**（查看/回复/标记已处理/删除，未处理数量角标提醒）|
+| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗（管理员收款码 + **每账单唯一**上传凭证二维码），已缴费不可点击，凭证预览自适应高度 |
+| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
+| `AdminPanel.tsx` | ✅ 完成 | 房源管理（含配套设施勾选、**图片上传前压缩**、上传至 Supabase Storage）+ 单元管理 + 租约创建（从已确认意向租客中选人、可配置押金月数）+ 收租核查（按时间排序、点击切换已缴/待缴）+ **管理员管理**（super_admin 专属）+ **支付凭证审核**（截图自适应预览、批准/驳回/删除凭证、备注）+ **合租管理**（确认/移除租客、查看备注）+ **房源/租约删除**（硬删除，同步清理 Storage 和关联数据）+ **收款设置**（上传/删除 DuitNow 收款码，全系统共享，localStorage 缓存防丢失）+ **意见箱管理**（查看/回复/标记已处理/删除，未处理数量角标提醒）|
+| `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（`get_mobile_upload_info` / `submit_mobile_payment_evidence` RPC），上传前压缩，Storage `evidence/` 路径 |
+| `compressImage.ts` | ✅ 完成 | Canvas 客户端压缩：凭证 ≤1080×2400 JPEG 80%、房源 ≤1920 JPEG 85%、收款码 800×800 JPEG 92% |
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
 | `i18n.ts` | ✅ 完成 | 中英双语翻译，修复重复 `perMonth` 属性 |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
@@ -98,7 +103,7 @@ Malaysia_Ez_rent/
 |------|------|------|
 | `main.py` | ✅ 完成 | FastAPI + CORS，SSE `/api/chat` 端点 |
 | `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；System Prompt 加入规则限制，禁止对用户念出或复述 ID。 |
-| `tools.py` | ✅ 完成 | 6 个工具：数据库检索、通勤计算、Tavily 网页搜索、租约查询、Frankfurter 实时汇率换算、Nager.Date 假期查询。 |
+| `tools.py` | ✅ 完成 | 6 个工具：内部 DB 语义检索、通勤计算、Tavily 网页常识搜索（非 iProperty 爬虫）、租约查询、Frankfurter 汇率、Nager.Date 假期 |
 | `config.py` | ✅ 完成 | 环境变量统一管理 |
 | `run.py` | ✅ 完成 | uvicorn 热重载启动，监听 `127.0.0.1:8000` |
 
@@ -158,6 +163,12 @@ Malaysia_Ez_rent/
 | 44 | AI 对话查询租约报默认 tenant-123 数据错配 | 修复 `page.tsx` 和 `AIChat.tsx` 的 ID 传递链。现在真实登录用户的 Supabase UUID 会秒同步本地 `ez_tenant_id` 缓存，并在退出登录时清空。 |
 | 45 | AI 念出或复述后台 UUID / tenant-123 乱码 | 后端 `agent.py` 添加第 8 条全局 Prompt 指导，严禁大模型对用户暴露和复述 ID 字符串。 |
 | 46 | 智能 Agent 功能单一、无假期/汇率工具 | `tools.py` 新增并集成 Frankfurter 汇率换算与 Nager.Date 马来西亚公休假期查询。 |
+| 47 | 手机扫码上传凭证报「未找到该账单记录」 | `payment_records` RLS 拒绝匿名 SELECT/UPDATE；新增 `007_mobile_upload.sql`：`get_mobile_upload_info` + `submit_mobile_payment_evidence` SECURITY DEFINER RPC，Storage `evidence/` 匿名写入策略 |
+| 48 | 学生端台账已缴费月份排到后面 | `StudentPortal` 查询加 `order('billing_month')`，`LeaseLedgerCard` 防御性按月份排序 |
+| 49 | 管理端审核凭证截图撑爆屏幕 | 审核弹窗与 Lightbox 加 `max-height: min(50vh, 420px)` / `85vh` + `object-fit: contain` |
+| 50 | 原图上传快速占满 Supabase Storage | 新增 `compressImage.ts`，凭证/房源/收款码上传前 Canvas 压缩为 JPEG |
+| 51 | Gemini API 高峰期 503 导致 Agent 无最终回复 | 工具调用已成功但 LLM 合成回复失败；属上游模型过载，需重试或换模型/加重试逻辑（待优化） |
+| 52 | 管理端同一门牌号重复录入多条房源 | `units` 表无唯一约束 + 保存按钮无防连点；误操作会 INSERT 重复行，需手动删除多余记录（待加防重复） |
 
 ---
 
@@ -280,6 +291,8 @@ Storage Bucket：
 | `003_corenting.sql` | 合租功能：units.max_occupants + tenant_interests 表（含 note） |
 | `004_unit_media.sql` | **完整迁移**：admin_users 联系方式 + 收款码 + units.media_urls + communities.amenities + leases 押金月数 + Storage bucket + 全部 RLS 策略 |
 | `005_feedback.sql` | 意见箱：feedback 表（user_id、content、status、admin_reply）+ RLS 策略（学生插入/查看自己的，管理员查看/更新/删除所有） |
+| `006_bedrooms_bathrooms.sql` | units 加 bedrooms/bathrooms 字段 + 更新 match_units RPC 返回值 |
+| `007_mobile_upload.sql` | **手机匿名上传凭证**：`get_mobile_upload_info(uuid)` + `submit_mobile_payment_evidence(uuid, text)` RPC；Storage `unit-media/evidence/` 匿名 INSERT/UPDATE 策略 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -302,7 +315,9 @@ supabase/migrations/
 ├── 002_limit_admins_and_ui.sql # 管理员上限 5 人触发器
 ├── 003_corenting.sql           # 合租功能：units.max_occupants + tenant_interests 表（含 note）
 ├── 004_unit_media.sql          # 图片存储：units.media_urls + Storage Bucket + amenities + payment_qr_code
-└── 005_feedback.sql            # 意见箱：feedback 表 + RLS 策略
+├── 005_feedback.sql            # 意见箱：feedback 表 + RLS 策略
+├── 006_bedrooms_bathrooms.sql  # units bedrooms/bathrooms + match_units
+└── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
 ```
 
 迁移原则：
@@ -326,11 +341,16 @@ supabase/migrations/
 
 | 问题 | 原因 | 解决方法 |
 |------|------|----------|
+| 手机扫码报「未找到该账单记录」 | 未跑 `007_mobile_upload.sql`，匿名用户被 RLS 拒绝 | Supabase SQL Editor 执行 `supabase/migrations/007_mobile_upload.sql` |
 | 手机扫码打不开网页 | `localhost` 只指向本机，手机访问的是自己的 localhost | 用 `ipconfig` 查电脑局域网 IP，改用 `http://192.168.x.x:3000` 访问，手机和电脑连同一 WiFi |
 | 部署后手机扫码有问题吗 | 没有，`window.location.origin` 自动变为正式域名 | 无需处理，仅本地开发有此问题 |
+| AI 找房报 503 | Gemini/LLM API 高峰期过载，工具可能已成功 | 稍后重试；或换模型 / 加重试逻辑 |
+| Memory usage 显示 ~400 MB 是不是数据库满了 | 这是 **RAM 内存**图表，不是磁盘；Postgres 缓存占 RAM 是正常现象 | 看 Settings → Usage 的 **Database size** 和 **Storage size**；详见 auth 文档第 14 节 |
+| Storage 配额涨太快 | 原图直传 | 已加 `compressImage.ts` 上传前压缩；旧大文件需手动清理 |
+| 同一门牌号出现多条重复房源 | `units` 无唯一约束 + 保存无防连点 | 删除多余行；改房源用「编辑」勿重复「新增」 |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
-详见 `docs/auth-redirect-explained.md` 第 8、9 节。
+详见 `docs/auth-redirect-explained.md` 第 8–14 节。
 
 ---
 
@@ -400,7 +420,115 @@ NEXT_PUBLIC_AGENT_MODEL=glm-4-plus
 | GLM-4-Plus | — |
 | Moonshot-v1 | — |
 
-如果新模型不支持 Tool Calling，Agent 会在运行时报错，不会静默返回假数据。
+Storage Bucket：
+- `unit-media` — 房源图片 + 管理员收款码 + **支付凭证**（`evidence/` 子目录，公开读、匿名可写凭证）
+
+---
+
+## 十二、手机扫码上传支付凭证（2026-05-24）
+
+### 流程
+
+```
+PC 学生端点击某月账单 → 弹窗显示两个二维码
+    ├── 左：管理员 DuitNow 收款码（全系统共享，所有人相同）
+    └── 右：上传凭证码 → /mobile-upload/{payment_records.id}（每账单唯一 UUID）
+              ↓
+手机浏览器打开（无需登录，middleware 放行 /mobile-upload/）
+              ↓
+RPC get_mobile_upload_info(payment_id) 读取账单信息
+              ↓
+客户端 compressImage 压缩截图 → Storage unit-media/evidence/{id}.jpg
+              ↓
+RPC submit_mobile_payment_evidence → status = pending_review
+              ↓
+管理端待审核列表显示缩略图 → 点开审核（自适应预览）→ 批准/驳回
+```
+
+### 两种二维码的区别（重要）
+
+| 二维码 | URL / 内容 | 是否唯一 | 用途 |
+|--------|-----------|---------|------|
+| **收款码**（左） | 管理员上传的 DuitNow/TNG 图片 URL | ❌ 全系统共享 | 学生扫码付款给房东 |
+| **上传凭证码**（右） | `{origin}/mobile-upload/{payment_uuid}` | ✅ **每个账单一条** | 学生扫码上传该月转账截图 |
+
+### 必须在 Supabase 执行的迁移
+
+在 **Supabase Dashboard → SQL Editor** 运行 `supabase/migrations/007_mobile_upload.sql`（只需一次）。
+
+未执行时：手机端仍会报「未找到该账单记录」或无法写入 Storage。
+
+### 图片压缩策略（`frontend/src/utils/compressImage.ts`）
+
+| 场景 | 最大尺寸 | 质量 | 典型体积 |
+|------|---------|------|---------|
+| 支付凭证 | 1080×2400 | JPEG 80% | 150–400 KB |
+| 房源照片 | 1920×1920 | JPEG 85% | 200–500 KB |
+| 收款码 | 800×800 | JPEG 92% | 50–150 KB |
+
+---
+
+## 十三、AI Agent 工具与数据来源说明
+
+### 找房用什么？
+
+| 用户问题类型 | 调用的工具 | 数据来源 |
+|-------------|-----------|---------|
+| 「帮我找 Monash 附近的 Studio」 | `search_internal_db` + `calculate_commute` | **Supabase 内部房源库**（管理员录入的 units） |
+| 「我的租约/账单怎么样了」 | `check_my_own_rental_status` | Supabase leases + payment_records（Service Role） |
+| 「马来西亚押金怎么退」「Sunway 有 shuttle 吗」 | `get_web_realtime_info` | **Tavily 通用网页搜索**（政策/交通/常识，**不是** iProperty 爬虫） |
+| 「RM 1350 等于多少人民币」 | `convert_currency_frankfurter` | Frankfurter API |
+| 「2026 年马来西亚公共假期」 | `get_malaysia_holidays` | Nager.Date API |
+
+**结论：AI 不会主动去 iProperty / PropertyGuru 抓房源。** 推荐的房源只来自管理员在后台录入且 `status = available` 的记录。System Prompt 第 10 条禁止编造房源。
+
+Tavily 仅在模型判断需要查「实时网页常识」时调用，与找房主路径分离。
+
+### 503 错误说明
+
+若推理过程里工具已成功（如 `SEARCH_INTERNAL_DB`、`CALCULATE_COMMUTE`），但最终报：
+
+```
+Error communicating with AI Brain: 503 - This model is currently experiencing high demand
+```
+
+这是 **上游 LLM API（如 Gemini）高峰期过载**，不是数据库或 Tavily 故障。工具结果已拿到，只是最后「组织语言回复」那一步失败。稍后重试即可。
+
+---
+
+## 十四、Supabase 资源占用说明（Memory ≠ 磁盘）
+
+### 三个指标不要混
+
+| 指标 | 位置 | 含义 | 本项目 |
+|------|------|------|--------|
+| **Memory usage** | Database → Memory usage | Postgres **RAM**（Used + Cache + Buffers） | ~400 MB 为实例正常基线，**不是数据满了** |
+| **Database size** | Settings → Usage | 表数据 **磁盘**占用 | 通常几 MB～几十 MB（URL、租约、账单、向量） |
+| **Storage size** | Storage → `unit-media` | **图片文件**磁盘占用 | 凭证/房源/收款码；压缩前易暴涨 |
+
+Postgres Free 内存只剩 ~10% 是缓存策略，Healthy，不代表磁盘告警。
+
+### 数据存哪
+
+- 图片 → **Storage**（`evidence/`、`{unitId}/`、`qr/`）
+- 数据库 TEXT/数组 → **只存 URL**（`evidence_url`、`media_urls`、`payment_qr_code`）
+- 例外：早期 base64 收款码直接写 DB 会撑大 Database size → 重新上传收款码覆盖
+
+### 自查 SQL
+
+```sql
+-- 数据库磁盘总大小
+SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size;
+
+-- 是否还有 base64 大字段（qr_len > 1000 说明可能是 base64 而非 URL）
+SELECT id, length(payment_qr_code) AS qr_len
+FROM admin_users
+WHERE payment_qr_code IS NOT NULL AND length(payment_qr_code) > 1000;
+```
+
+Storage 占用：Dashboard → Storage → `unit-media`，可删测试文件。
+
+详见 `docs/auth-redirect-explained.md` 第 14 节。
 
 ---
 

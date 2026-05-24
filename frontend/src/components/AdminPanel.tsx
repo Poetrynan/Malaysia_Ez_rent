@@ -661,6 +661,43 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     showToast(t('validationSaved'), 'success');
   };
 
+  const deleteCommunity = async (communityId: string) => {
+    const linkedUnits = units.filter(u => u.community_id === communityId);
+    if (linkedUnits.length > 0) {
+      showToast(t('communityHasUnits'), 'error');
+      return;
+    }
+    if (!confirm(t('confirmDeleteCommunity'))) return;
+
+    if (isLive) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { error } = await supabase.from('communities').delete().eq('id', communityId);
+        if (error) { showToast(error.message, 'error'); return; }
+      } catch (e: any) { showToast(e.message, 'error'); return; }
+    } else {
+      const list: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+      localStorage.setItem('ez_communities', JSON.stringify(list.filter(c => c.id !== communityId)));
+    }
+
+    if (unitForm.community_id === communityId) {
+      setUnitForm(f => ({ ...f, community_id: '' }));
+    }
+    loadAll();
+    showToast(t('validationDeleted'), 'success');
+  };
+
+  const getCommunityOptionLabel = (c: Community) => {
+    const sameNameCount = communities.filter(x => x.name === c.name).length;
+    const unitCount = units.filter(u => u.community_id === c.id).length;
+    if (sameNameCount <= 1) return c.name;
+    const addrHint = c.address
+      ? ` · ${c.address.slice(0, 28)}${c.address.length > 28 ? '…' : ''}`
+      : '';
+    return `${c.name}${addrHint} (${unitCount}${lang === 'zh' ? '个房源' : ' units'})`;
+  };
+
   const saveUnit = async () => {
     const errors: Record<string, boolean> = {};
     if (!unitForm.community_id) errors.community_id = true;
@@ -1142,6 +1179,40 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               </div>
             </div>
             <button className="btn btn-primary" onClick={saveCommunity} style={{ width: '100%', marginTop: 12 }}>{t('saveBtn')}</button>
+
+            {communities.length > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--glass-border)' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>{t('communityListTitle')}</div>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{t('communityListHint')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {communities.map(c => {
+                    const unitCount = units.filter(u => u.community_id === c.id).length;
+                    return (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-h)' }}>{c.name}</div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {c.address || '—'} · {unitCount}{lang === 'zh' ? ' 个房源' : ' units'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteCommunity(c.id)}
+                          disabled={unitCount > 0}
+                          style={{
+                            background: 'none', border: 'none', cursor: unitCount > 0 ? 'not-allowed' : 'pointer',
+                            color: unitCount > 0 ? 'var(--text-muted)' : 'var(--danger)', padding: 6, borderRadius: 6,
+                            opacity: unitCount > 0 ? 0.4 : 1,
+                          }}
+                          title={unitCount > 0 ? t('communityHasUnits') : t('deleteCommunity')}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Add unit */}
@@ -1168,7 +1239,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 style={fieldErrors.community_id ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined}
               >
                 <option value="">{t('selectCommunity')}</option>
-                {communities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {communities.map(c => <option key={c.id} value={c.id}>{getCommunityOptionLabel(c)}</option>)}
               </select>
             </div>
             <div className="form-row">

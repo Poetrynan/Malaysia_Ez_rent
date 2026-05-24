@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS units (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     community_id UUID REFERENCES communities(id) ON DELETE SET NULL,
     unit_number VARCHAR(50) NOT NULL, -- Masked for ordinary students, visible to admins
-    room_type VARCHAR(50) CHECK (room_type IN ('Studio', 'Master Room', 'Medium Room', 'Small Room')),
+    room_type VARCHAR(50) CHECK (room_type IN ('Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit')),
     rent DECIMAL(10,2) NOT NULL,
     status VARCHAR(20) CHECK (status IN ('available', 'rented')) DEFAULT 'available',
     bedrooms INT DEFAULT 1,

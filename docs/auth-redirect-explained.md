@@ -556,8 +556,11 @@ Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB�
 |------|--------|------|
 | 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
 | 2️⃣ | 运行 `supabase/migrations/004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
-| 3️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 4️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 3️⃣ | 运行 **`supabase/migrations/007_mobile_upload.sql`**（手机上传凭证 RPC） | ⚠️ 必做 |
+| 4️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 5️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+
+> 完整清单见文档末尾 **「你现在需要做的事（更新于 2026-05-24）」** 一节。
 
 ---
 
@@ -617,3 +620,204 @@ ipconfig
 | 本地开发（`localhost:3000`） | `http://localhost:3000/mobile-upload/xxx` | ❌ 不能 |
 | 本地开发（`192.168.x.x:3000`） | `http://192.168.x.x:3000/mobile-upload/xxx` | ✅ 同一 WiFi 可以 |
 | 部署后（Vercel） | `https://malaysia-ez-rent.vercel.app/mobile-upload/xxx` | ✅ 全球可以 |
+
+---
+
+## 10. 手机上传凭证页为什么不需要登录？
+
+### 设计原因
+
+学生用 PC 打开支付弹窗，再用**手机**扫「上传凭证」二维码。此时手机浏览器**没有** Google 登录态，也不应该要求学生再登录一次——否则体验极差。
+
+因此 `/mobile-upload/[id]` 在 `middleware.ts` 里被**显式放行**，不经过 Auth 检查：
+
+```typescript
+// frontend/src/middleware.ts
+if (
+  pathname.startsWith('/login') ||
+  pathname.startsWith('/auth/') ||
+  pathname.startsWith('/mobile-upload/') ||  // ← 匿名可访问
+  ...
+) {
+  return NextResponse.next();
+}
+```
+
+### 那数据安全怎么办？
+
+虽然页面匿名可访问，但不是谁都能随便改账单：
+
+1. **URL 里带 UUID**：每个账单有 128 位随机 `payment_records.id`，不可枚举
+2. **RPC 最小权限**：`007_mobile_upload.sql` 里两个 `SECURITY DEFINER` 函数只允许：
+   - 按 ID 读取展示字段（账期、月租、房源名）
+   - 按 ID 写入 `evidence_url` + 置 `status = pending_review`
+3. **Storage 子目录隔离**：匿名只能写 `unit-media/evidence/`，不能动房源图片
+4. **已审核账单不可覆盖**：`paid = true` 的账单拒绝再次提交凭证
+
+这比「要求手机也登录 Supabase」更合理：安全性靠 UUID 不可猜测 + RPC 收窄写权限，而不是靠 Cookie。
+
+### 必须在 Supabase 执行的 SQL
+
+本地改代码不够，还须在 **Supabase Dashboard → SQL Editor** 运行一次：
+
+```
+supabase/migrations/007_mobile_upload.sql
+```
+
+创建 `get_mobile_upload_info` 和 `submit_mobile_payment_evidence` 两个 RPC，以及 Storage 匿名写入策略。未执行时手机端会报「未找到该账单记录」。
+
+---
+
+## 11. 两种二维码：收款码 vs 上传凭证码
+
+支付弹窗里有两个二维码，**含义完全不同**，不要混用：
+
+| | 收款码（左侧） | 上传凭证码（右侧） |
+|---|---|---|
+| **内容** | 管理员上传的 DuitNow / Touch'n Go 图片 | URL：`{网站域名}/mobile-upload/{账单UUID}` |
+| **是否唯一** | ❌ **全系统共享**，所有学生扫同一个 | ✅ **每个账单唯一**，5 月和 6 月各不同 |
+| **谁生成** | 管理员在后台「收款设置」上传 | 前端按 `payment_records.id` 动态生成 |
+| **扫了干什么** | 打开银行 App 付款给房东 | 打开手机上传页，提交该月转账截图 |
+| **存哪里** | `admin_users.payment_qr_code`（Storage URL） | 不存库，仅 QR 编码 URL |
+
+**严肃结论：上传凭证二维码是一账单一码。** 扫 5 月的码只能传 5 月的凭证，不能传到 6 月。这是防止凭证张冠李戴的刻意设计。
+
+收款码则 intentionally 全员共用——房东只有一个收款账户。
+
+---
+
+## 12. 上传图片压缩与 Storage 配额
+
+原图（手机截图 3–8 MB）直接上传会快速占满 Supabase Storage 免费配额。
+
+项目在 `frontend/src/utils/compressImage.ts` 用 Canvas 在上传前压缩：
+
+| 类型 | 压缩参数 | 典型结果 |
+|------|---------|---------|
+| 支付凭证 | 1080×2400, JPEG 80% | 150–400 KB |
+| 房源照片 | 1920×1920, JPEG 85% | 200–500 KB |
+| 收款码 | 800×800, JPEG 92% | 50–150 KB |
+
+图片存在 **Supabase Storage**（`unit-media` bucket），不是 PostgreSQL 表字段里（除 URL 外）。
+
+---
+
+## 13. AI 找房会不会去 iProperty？
+
+**不会。** 找房主路径：
+
+```
+用户：「帮我找 Monash 附近的 Studio」
+    ↓
+Agent 调用 search_internal_db
+    ↓
+Supabase match_units（向量检索管理员录入的 units）
+    ↓
+可选：calculate_commute 算通勤
+    ↓
+LLM 组织语言回复
+```
+
+**Tavily**（`get_web_realtime_info`）只在查政策、交通、押金常识等网页信息时用，**不是** iProperty 房源爬虫。System Prompt 禁止 AI 编造未在工具结果中出现的房源。
+
+若 Agent 报 `503 - model experiencing high demand`，是 LLM API 高峰期过载，与 Supabase / Tavily 无关；工具若已成功，稍后重试即可。
+
+---
+
+## 14. Supabase「Memory usage」高 ≠ 数据库被占满了
+
+### 先分清三个概念
+
+很多人在 Supabase 仪表盘看到 **Primary Database → Memory usage** 显示 ~400 MB，会以为「数据库磁盘快满了」。**这是误解。**
+
+| 指标 | 在哪里看 | 是什么 | 你们项目典型大小 |
+|------|---------|--------|----------------|
+| **Memory usage** | Database → Memory usage 图表 | PostgreSQL **RAM（内存）**，含查询 + 缓存 | ~400 MB 是实例分配的正常基线 |
+| **Database size** | Settings → Usage | Postgres **磁盘**里表数据占用的空间 | 通常几 MB～几十 MB |
+| **Storage size** | Storage → `unit-media` | **图片文件**（凭证、房源、收款码） | 取决于上传量，这才是大图占的地方 |
+
+**Memory 图表 ≠ 磁盘占用。** Free 内存只剩 10% 也不代表出问题——PostgreSQL 会故意用 RAM 做 Cache + Buffers 加速读取，这是健康行为。
+
+### Memory 图表各项含义（示例）
+
+| 项目 | 典型占比 | 含义 |
+|------|---------|------|
+| **Used** | ~50% | 正在跑查询、维持连接 |
+| **Cache + Buffers** | ~40% | 热数据缓存在内存里 |
+| **Free** | ~10% | 空闲 RAM |
+
+Total ~408 MB 是 Supabase 给这个 Postgres 实例的**内存池大小**，不是「你的数据有多大」。
+
+### 图片到底占哪里？
+
+本项目设计：
+
+| 内容 | 存哪里 | 数据库里存什么 |
+|------|--------|--------------|
+| 支付凭证截图 | Storage `unit-media/evidence/` | `payment_records.evidence_url`（URL 字符串） |
+| 房源照片 | Storage `unit-media/{unitId}/` | `units.media_urls`（URL 数组） |
+| 收款码 | Storage `unit-media/qr/` | `admin_users.payment_qr_code`（URL 字符串） |
+
+**图片本体不在 PostgreSQL 表里**（早期若把 base64 直接写进 `payment_qr_code` 除外——那才会撑大数据库 TEXT 字段）。
+
+### 什么情况下 Storage / Database 才会真的变大？
+
+| 情况 | 影响 |
+|------|------|
+| 上传大量原图（压缩前） | **Storage** 暴涨（单张 3–8 MB） |
+| 重复测试上传凭证 | Storage `evidence/` 累积 |
+| 早期 base64 收款码存 DB | **Database size** 异常（单条可达几百 KB～几 MB TEXT） |
+| 正常业务数据（租约、账单、向量） | Database 很小，可忽略 |
+
+**2026-05-24 起** 已加 `compressImage.ts`，新上传凭证/房源/收款码会先压缩再传 Storage。
+
+### 如何自查占用
+
+**1. 看总配额（Settings → Usage）**
+
+- Database size
+- Storage size
+
+**2. 查数据库磁盘（SQL Editor）**
+
+```sql
+SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size;
+```
+
+**3. 查是否还有 base64 大字段（历史遗留）**
+
+```sql
+SELECT id, length(payment_qr_code) AS qr_len
+FROM admin_users
+WHERE payment_qr_code IS NOT NULL AND length(payment_qr_code) > 1000;
+```
+
+若 `qr_len` 达几万～几十万，说明还存着 base64 文本。在管理端**重新上传收款码**（现走 Storage URL）即可覆盖。
+
+**4. 查 Storage**
+
+Dashboard → **Storage → unit-media**，看 `evidence/`、`qr/` 各文件夹体积；测试文件可手动删除。
+
+### 总结
+
+- **Memory ~400 MB**：正常 RAM 使用，**不用慌**。
+- **担心配额**：看 **Database size** 和 **Storage size**，不是 Memory 图表。
+- **图片占空间**：在 **Storage**；新上传已压缩，旧大文件需手动清理。
+
+---
+
+## 你现在需要做的事（更新于 2026-05-24）
+
+| 步骤 | 做什么 | 状态 |
+|------|--------|------|
+| 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
+| 2️⃣ | 运行 `004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
+| 3️⃣ | 运行 **`007_mobile_upload.sql`**（手机匿名上传凭证 RPC + Storage evidence/ 策略） | ⚠️ **必做**，否则手机上传失败 |
+| 4️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 5️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 6️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
+| 7️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+
+---
+
+*文档更新：2026-05-24 · 含手机上传凭证、二维码区分、图片压缩、AI 数据来源、Memory vs Storage 说明*
