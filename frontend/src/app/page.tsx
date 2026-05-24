@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -124,11 +124,18 @@ export default function Home() {
               </>
             )}
             {role === 'admin' && (
-              <li onClick={() => setActiveTab('admin')} className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>
-                <ShieldAlert size={16} />
-                <span>{t('navAdmin')}</span>
-                <span className="role-badge admin">{t('roleManagerBadge')}</span>
-              </li>
+              <>
+                <li onClick={() => setActiveTab('admin')} className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>
+                  <ShieldAlert size={16} />
+                  <span>{t('navAdmin')}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
+                  <User size={16} />
+                  <span>{lang === 'zh' ? '个人设置' : 'Profile Settings'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+              </>
             )}
           </ul>
         </div>
@@ -205,8 +212,8 @@ export default function Home() {
           <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
             <StudentPortal />
           </div>
-          <div style={{ display: role === 'admin' && activeTab === 'admin' ? 'block' : 'none' }}>
-            <AdminPanel adminRole={adminRole} />
+          <div style={{ display: role === 'admin' && (activeTab === 'admin' || activeTab === 'admin-profile') ? 'block' : 'none' }}>
+            <AdminPanel adminRole={adminRole} defaultTab={activeTab === 'admin-profile' ? 'profile' : 'properties'} />
           </div>
         </div>
       </main>

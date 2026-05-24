@@ -31,9 +31,15 @@ const MOCK_PLACES = [
   { name: "D'Latour Luxury Suites", address: "Jalan Taylors, Bandar Sunway, 47500 Subang Jaya", lat: 3.0593, lng: 101.6160 },
 ];
 
-export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | 'editor' | null }) {
+export default function AdminPanel({ adminRole, defaultTab }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile' }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
+
+  useEffect(() => {
+    if (defaultTab) {
+      setTab(defaultTab);
+    }
+  }, [defaultTab]);
   const [adminQR, setAdminQR] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
