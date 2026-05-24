@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3 } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
@@ -44,6 +44,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
   const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   // media: up to 9 images (base64) + 1 video (object URL)
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
@@ -584,56 +585,112 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
       return;
     }
     setFieldErrors({});
+
+    const isEdit = !!editingUnitId;
+    const targetId = editingUnitId || (isLive ? crypto.randomUUID() : `u-${Date.now()}`);
+
     if (mediaImages.length === 0 && !mediaVideo) {
       showToast(t('validationNoMedia'), 'warning');
     } else {
       showToast(t('validationSaved'), 'success');
     }
-    const uid = isLive ? crypto.randomUUID() : `u-${Date.now()}`;
-    const newU: Unit = { 
-      id: uid, 
+
+    const unitPayload: any = { 
       community_id: unitForm.community_id, 
       unit_number: unitForm.unit_number, 
       room_type: unitForm.room_type, 
       rent: parseFloat(unitForm.rent), 
-      status: 'available', 
       description: unitForm.description, 
       max_occupants: parseInt(unitForm.max_occupants) || 1,
       bedrooms: parseInt(unitForm.bedrooms) || 1,
       bathrooms: parseInt(unitForm.bathrooms) || 1
     };
+
+    if (!isEdit) {
+      unitPayload.id = targetId;
+      unitPayload.status = 'available';
+    }
+
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        // Upload images to Supabase Storage
+        
+        // Upload base64 images to Supabase Storage, keep existing http URLs
         const uploadedUrls: string[] = [];
         for (let i = 0; i < mediaImages.length; i++) {
-          const b64 = mediaImages[i];
-          const res = await fetch(b64);
-          const blob = await res.blob();
-          const ext = blob.type.split('/')[1] || 'jpg';
-          const path = `${uid}/${i}.${ext}`;
-          const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true });
-          if (uploadErr) { console.error('Upload error:', uploadErr); continue; }
-          const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
-          if (urlData?.publicUrl) uploadedUrls.push(urlData.publicUrl);
+          const img = mediaImages[i];
+          if (img.startsWith('http')) {
+            uploadedUrls.push(img);
+          } else {
+            const res = await fetch(img);
+            const blob = await res.blob();
+            const ext = blob.type.split('/')[1] || 'jpg';
+            const path = `${targetId}/${Date.now()}_${i}.${ext}`;
+            const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true });
+            if (uploadErr) { console.error('Upload error:', uploadErr); continue; }
+            const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
+            if (urlData?.publicUrl) uploadedUrls.push(urlData.publicUrl);
+          }
         }
-        newU.media_urls = uploadedUrls;
-        const { error } = await supabase.from('units').insert(newU);
-        if (error) { showToast(error.message, 'error'); return; }
+        unitPayload.media_urls = uploadedUrls;
+
+        if (isEdit) {
+          const { error } = await supabase.from('units').update(unitPayload).eq('id', targetId);
+          if (error) { showToast(error.message, 'error'); return; }
+        } else {
+          const { error } = await supabase.from('units').insert(unitPayload);
+          if (error) { showToast(error.message, 'error'); return; }
+        }
       } catch (e: any) { showToast(e.message, 'error'); return; }
     } else {
       const list: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-      localStorage.setItem('ez_units', JSON.stringify([...list, newU]));
+      if (isEdit) {
+        const idx = list.findIndex(u => u.id === targetId);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...unitPayload };
+        }
+      } else {
+        list.push(unitPayload);
+      }
+      localStorage.setItem('ez_units', JSON.stringify(list));
+
       if (mediaImages.length > 0 || mediaVideo) {
         const allMedia = JSON.parse(localStorage.getItem('ez_unit_media') || '{}');
-        allMedia[uid] = { images: mediaImages, video: mediaVideo };
+        allMedia[targetId] = { images: mediaImages, video: mediaVideo };
         try { localStorage.setItem('ez_unit_media', JSON.stringify(allMedia)); } catch {}
       }
     }
+
     setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
-    setMediaImages([]); setMediaVideo(null); loadAll();
+    setMediaImages([]); setMediaVideo(null); setEditingUnitId(null); loadAll();
+  };
+
+  const startEditUnit = (u: Unit) => {
+    setEditingUnitId(u.id);
+    setUnitForm({
+      community_id: u.community_id,
+      unit_number: u.unit_number,
+      room_type: u.room_type,
+      rent: String(u.rent),
+      description: u.description || '',
+      max_occupants: String(u.max_occupants || 1),
+      bedrooms: String(u.bedrooms || 1),
+      bathrooms: String(u.bathrooms || 1),
+    });
+
+    const unitImages = u.media_urls && u.media_urls.length > 0
+      ? u.media_urls
+      : (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.images || []; } catch { return []; } })();
+    setMediaImages(unitImages);
+
+    const unitVideo = (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.video || null; } catch { return null; } })();
+    setMediaVideo(unitVideo);
+
+    const formEl = document.getElementById('add-unit-form-section');
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleImgFiles = (files: FileList | null) => {
@@ -961,9 +1018,19 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
           </div>
 
           {/* Add unit */}
-          <div className="glass-card">
+          <div id="add-unit-form-section" className="glass-card">
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <PlusCircle size={16} style={{ color: 'var(--primary)' }} />{t('addUnitTitle')}
+              {editingUnitId ? (
+                <>
+                  <FileText size={16} style={{ color: 'var(--accent)' }} />
+                  {lang === 'zh' ? '编辑房源信息' : 'Edit Room Unit'}
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={16} style={{ color: 'var(--primary)' }} />
+                  {t('addUnitTitle')}
+                </>
+              )}
             </h3>
             <div className="form-group">
               <label>{t('selectCommunity')}</label>
@@ -1081,7 +1148,22 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
               )}
             </div>
 
-            <button className="btn btn-primary" onClick={saveUnit} style={{ width: '100%', marginTop: 8 }}>{t('saveBtn')}</button>
+            {editingUnitId ? (
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button className="btn btn-primary" onClick={saveUnit} style={{ flex: 1 }}>
+                  {lang === 'zh' ? '保存修改' : 'Save Changes'}
+                </button>
+                <button className="btn" onClick={() => {
+                  setEditingUnitId(null);
+                  setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
+                  setMediaImages([]); setMediaVideo(null);
+                }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', color: 'var(--text-body)' }}>
+                  {lang === 'zh' ? '取消编辑' : 'Cancel'}
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-primary" onClick={saveUnit} style={{ width: '100%', marginTop: 8 }}>{t('saveBtn')}</button>
+            )}
           </div>
 
           {/* Inventory Table */}
@@ -1126,13 +1208,22 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
                           ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <button onClick={() => deleteUnit(u.id)} style={{
-                            background: 'none', border: 'none', color: 'var(--danger)',
-                            cursor: 'pointer', padding: 6, borderRadius: 6,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }} title={t('deleteUnit')}>
-                            <Trash2 size={15} />
-                          </button>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <button onClick={() => startEditUnit(u)} style={{
+                              background: 'none', border: 'none', color: 'var(--primary)',
+                              cursor: 'pointer', padding: 6, borderRadius: 6,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }} title={lang === 'zh' ? '编辑房源' : 'Edit Unit'}>
+                              <Edit3 size={15} />
+                            </button>
+                            <button onClick={() => deleteUnit(u.id)} style={{
+                              background: 'none', border: 'none', color: 'var(--danger)',
+                              cursor: 'pointer', padding: 6, borderRadius: 6,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }} title={t('deleteUnit')}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
