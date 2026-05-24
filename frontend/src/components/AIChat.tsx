@@ -254,8 +254,8 @@ export default function AIChat() {
 
       setToolResult(0, { has_active_lease: true, lease, payments });
       await new Promise(r => setTimeout(r, 600));
-      await typewriter(msgId, `已查到您在 **${community.name} ${unit.unit_number}** 的租约台账，请查看下方月度账单。`);
-      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'LeaseLedgerCard', props: { community_name: community.name, unit_number: unit.unit_number, start_date: lease.start_date, end_date: lease.end_date, monthly_rent: lease.monthly_rent, payments } } } : m));
+      await typewriter(msgId, `已查到您在 **${community.name} (${unit.room_type || 'Studio'})** 的租约台账，请查看下方月度账单。`);
+      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'LeaseLedgerCard', props: { community_name: community.name, room_type: unit.room_type || 'Studio', start_date: lease.start_date, end_date: lease.end_date, monthly_rent: lease.monthly_rent, payments } } } : m));
     } else {
       addThought('使用 pgvector 余弦相似度在数据库语义检索…');
       addTool('search_internal_db', { semantic_query: userText });

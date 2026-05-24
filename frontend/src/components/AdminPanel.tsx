@@ -45,7 +45,6 @@ function formatLeasePropertyLabel(
   if (!unit && !community) return unknownLabel;
   const parts: string[] = [];
   if (community?.name) parts.push(community.name);
-  if (unit?.unit_number) parts.push(unit.unit_number);
   if (unit?.room_type) parts.push(`(${unit.room_type})`);
   return parts.join(' · ') || unknownLabel;
 }
@@ -315,7 +314,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           const unit = units.find((un: any) => un.id === lease.unit_id);
           if (unit) {
             const comm = communities.find((c: any) => c.id === unit.community_id);
-            unitInfo = `${comm?.name || ''}${unit.unit_number ? ` · ${unit.unit_number}` : ''}`;
+            unitInfo = `${comm?.name || ''}${unit.room_type ? ` · ${unit.room_type}` : ''}`;
           }
         }
         return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), unit_info: unitInfo || undefined };
@@ -340,10 +339,10 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           // Get lease → unit → community
           const { data: leaseData } = await supabase.from('leases').select('unit_id').eq('tenant_id', f.user_id).eq('status', 'active').limit(1).single();
           if (leaseData) {
-            const { data: unitData } = await supabase.from('units').select('unit_number, community_id').eq('id', leaseData.unit_id).single();
+            const { data: unitData } = await supabase.from('units').select('room_type, community_id').eq('id', leaseData.unit_id).single();
             if (unitData) {
               const { data: commData } = await supabase.from('communities').select('name').eq('id', unitData.community_id).single();
-              unitInfo = `${commData?.name || ''}${unitData.unit_number ? ` · ${unitData.unit_number}` : ''}`;
+              unitInfo = `${commData?.name || ''}${unitData.room_type ? ` · ${unitData.room_type}` : ''}`;
             }
           }
 
@@ -1584,7 +1583,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
             <div className="data-table-container" style={{ maxHeight: 420, overflow: 'auto' }}>
               <table className="data-table">
                 <thead><tr>
-                  <th>{t('colCommunity')}</th><th>{t('colUnit')}</th>
+                  <th>{t('colCommunity')}</th>
                   <th>{t('colType')}</th><th>{t('colRent')}</th><th>{t('colStatus')}</th>
                   <th>{t('colOccupants')}</th>
                   <th style={{ textAlign: 'center' }}>媒体</th>
@@ -1600,7 +1599,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                     return (
                       <tr key={u.id}>
                         <td style={{ fontWeight: 500, color: 'var(--text-h)' }}>{c?.name || '—'}</td>
-                        <td>{u.unit_number || '—'}</td><td>{u.room_type} ({u.bedrooms || 1}{t('bedroomsUnit')}{u.bathrooms || 1}{t('bathroomsUnit')})</td>
+                        <td>{u.room_type} ({u.bedrooms || 1}{t('bedroomsUnit')}{u.bathrooms || 1}{t('bathroomsUnit')})</td>
                         <td style={{ color: 'var(--accent)', fontWeight: 600 }}>RM {u.rent.toLocaleString()}</td>
                         <td><span className={`status-badge ${u.status}`}>{u.status === 'available' ? t('statusAvailable') : t('statusRented')}</span></td>
                         <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
@@ -1672,7 +1671,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 <label>{t('colProperty')}</label>
                 <select className="form-select" value={leaseForm.unit_id} onChange={e => { const u = visibleUnits.find(x => x.id === e.target.value); setLeaseForm(f => ({ ...f, unit_id: e.target.value, tenant_id: '', monthly_rent: u ? String(u.rent) : f.monthly_rent })); }}>
                   <option value="">{t('selectUnit')}</option>
-                  {visibleUnits.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name}{u.unit_number ? ` · ${u.unit_number}` : ''} ({u.room_type})</option>; })}
+                  {visibleUnits.filter(u => u.status === 'available').map(u => { const c = communities.find(x => x.id === u.community_id); return <option key={u.id} value={u.id}>{c?.name} ({u.room_type})</option>; })}
                 </select>
               </div>
               <div className="form-group">
@@ -1784,7 +1783,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                           }}>{i.status === 'confirmed' ? t('interestConfirmedLabel') : t('interestInterestedLabel')}</span>
                         </div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {comm?.name}{unit?.unit_number ? ` · ${unit.unit_number}` : ''} · {i.email}
+                          {comm?.name}{unit?.room_type ? ` · ${unit.room_type}` : ''} · {i.email}
                           {i.phone && ` · ${i.phone}`}
                         </div>
                         {i.note && (

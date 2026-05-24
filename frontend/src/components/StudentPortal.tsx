@@ -295,7 +295,7 @@ export default function StudentPortal() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 6 }}>{t('leaseProgress')}</div>
             <h2 style={{ fontSize: '1.25rem', marginBottom: 4 }}>
-              {community?.name}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}
+              {community?.name}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 16 }}>
               {unit?.room_type} &nbsp;·&nbsp;
@@ -338,7 +338,7 @@ export default function StudentPortal() {
       {/* Ledger */}
       <LeaseLedgerCard
         community_name={community?.name || ''}
-        unit_number={unit?.unit_number || ''}
+        room_type={unit?.room_type || ''}
         start_date={lease.start_date}
         end_date={lease.end_date}
         monthly_rent={lease.monthly_rent}

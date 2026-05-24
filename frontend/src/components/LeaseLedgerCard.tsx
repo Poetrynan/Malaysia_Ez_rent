@@ -19,7 +19,7 @@ interface Payment {
 
 interface LeaseLedgerCardProps {
   community_name: string;
-  unit_number?: string | null;
+  room_type?: string | null;
   start_date: string;
   end_date: string;
   monthly_rent: number;
@@ -29,7 +29,7 @@ interface LeaseLedgerCardProps {
 }
 
 export default function LeaseLedgerCard({
-  community_name, unit_number, start_date, end_date,
+  community_name, room_type, start_date, end_date,
   monthly_rent, payments = [], onPaymentUpdated, agent_id
 }: LeaseLedgerCardProps) {
   const { t, lang } = useApp();
@@ -164,7 +164,7 @@ export default function LeaseLedgerCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
-            {community_name}{unit_number ? ` · ${unit_number}` : ''}
+            {community_name}{room_type ? ` · ${room_type}` : ''}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
             {start_date} → {end_date} &nbsp;·&nbsp;

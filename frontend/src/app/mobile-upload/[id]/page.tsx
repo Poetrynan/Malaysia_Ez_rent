@@ -24,7 +24,7 @@ interface Lease {
 
 interface Unit {
   id: string;
-  unit_number: string;
+  room_type: string;
   community_id: string;
 }
 
@@ -41,7 +41,7 @@ interface MobileUploadInfo {
   evidence_url: string | null;
   status: string | null;
   monthly_rent: number | null;
-  unit_number: string | null;
+  room_type: string | null;
   community_name: string | null;
   admin_qr_code: string | null;
 }
@@ -79,7 +79,7 @@ export default function MobileUploadPage() {
         const u = units.find(x => x.id === l.unit_id);
         if (u) {
           const c = communities.find(x => x.id === u.community_id);
-          setUnitInfo(`${c?.name || ''} · ${u.unit_number}`);
+          setUnitInfo(`${c?.name || ''} · ${u.room_type || ''}`);
         }
       }
     } else {
@@ -125,8 +125,8 @@ export default function MobileUploadPage() {
         if (info.monthly_rent != null) {
           setLease({ id: info.lease_id, monthly_rent: Number(info.monthly_rent), unit_id: '' });
         }
-        if (info.community_name || info.unit_number) {
-          setUnitInfo(`${info.community_name || ''} · ${info.unit_number || ''}`.replace(/^ · | · $/g, '').trim());
+        if (info.community_name || info.room_type) {
+          setUnitInfo(`${info.community_name || ''} · ${info.room_type || ''}`.replace(/^ · | · $/g, '').trim());
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load payment');
