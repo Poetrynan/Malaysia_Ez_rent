@@ -3,11 +3,8 @@ import asyncio
 from typing import AsyncGenerator, Dict, Any, List
 from app.config import Config
 from app.tools import (
-    search_internal_db,
-    search_iproperty_listings,
     calculate_commute,
     get_web_realtime_info,
-    check_my_own_rental_status,
     convert_currency_frankfurter,
     get_malaysia_holidays,
     openai_client,
@@ -26,252 +23,132 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
     """
     query_lower = query.lower()
 
-    if "rent" in query_lower or "room" in query_lower or "house" in query_lower or "monash" in query_lower or "sunway" in query_lower or "taylor" in query_lower:
-        # Scenario 1: Housing Search & Commute Route
-        yield sse_event({"type": "thinking", "step": "🔍 Analyzing user query. The user is searching for accommodation near universities in Malaysia. I should search the internal database for available rooms."})
-        await asyncio.sleep(1.2)
-
-        # Trigger search tool
-        room_type = None
-        if "studio" in query_lower:
-            room_type = "Studio"
-        elif "master" in query_lower:
-            room_type = "Master Room"
-        elif "medium" in query_lower:
-            room_type = "Medium Room"
-
-        max_price = None
-        if "under" in query_lower or "below" in query_lower:
-            # Simple number extraction
-            words = query_lower.split()
-            for i, w in enumerate(words):
-                if w in ["under", "below", "max"] and i + 1 < len(words):
-                    try:
-                        max_price = float(words[i+1].replace("myr", "").replace("$", ""))
-                    except ValueError:
-                        pass
-
-        yield sse_event({"type": "tool_call", "tool_name": "search_internal_db", "args": {"semantic_query": query, "room_type": room_type, "max_price": max_price}})
-        await asyncio.sleep(1.0)
-
-        # Retrieve search result
-        db_results = search_internal_db(query, room_type=room_type, max_price=max_price)
-        yield sse_event({"type": "tool_result", "tool_name": "search_internal_db", "result": db_results})
+    if any(kw in query_lower for kw in ["rent", "room", "house", "lease", "bill", "账单", "房租", "交租", "租金", "房源", "公寓", "住宅", "找房", "租房"]):
+        yield sse_event({"type": "thinking", "step": "🔍 Analyzing user query. The user is asking about renting or room search. These tasks should be done directly via UI tabs."})
         await asyncio.sleep(0.8)
-
-        if not db_results:
-            if Config.is_tavily_enabled():
-                yield sse_event({"type": "thinking", "step": "📡 内部库存为空，正在通过 Tavily 搜索 iProperty.com.my…"})
-                await asyncio.sleep(0.8)
-                loc = "Monash University Malaysia Sunway" if "monash" in query_lower else "Sunway Subang Jaya"
-                yield sse_event({"type": "tool_call", "tool_name": "search_iproperty_listings", "args": {"query": query, "room_type": room_type, "max_price": max_price, "location": loc}})
-                await asyncio.sleep(1.0)
-                iproperty_results = search_iproperty_listings(query, room_type=room_type, max_price=max_price, location=loc)
-                yield sse_event({"type": "tool_result", "tool_name": "search_iproperty_listings", "result": iproperty_results})
-                await asyncio.sleep(0.8)
-                listings = iproperty_results.get("listings") or []
-                if listings:
-                    intro = "系统内暂无匹配房源，以下是从 **iProperty.com.my** 搜到的外部市场房源（非本平台库存）：\n\n"
-                    for char in intro:
-                        yield sse_event({"type": "text", "delta": char})
-                        await asyncio.sleep(0.01)
-                    for i, item in enumerate(listings[:3], 1):
-                        rent_str = f"RM {item['rent_myr']}/月" if item.get("rent_myr") else "租金见详情页"
-                        block = f"{i}. **{item['title']}** — {rent_str}\n   🔗 {item['url']}\n   {item.get('snippet', '')[:120]}…\n\n"
-                        for char in block:
-                            yield sse_event({"type": "text", "delta": char})
-                            await asyncio.sleep(0.01)
-                    return
-            yield sse_event({"type": "thinking", "step": "No matching rooms found in search results. Let's do a wider search or ask for clarification."})
-            await asyncio.sleep(0.5)
-            yield sse_event({"type": "text", "delta": "抱歉，系统内暂无匹配房源。请管理员在后台录入房源，或配置 TAVILY_API_KEY 以搜索 iProperty 外部房源。"})
-            return
-
-        # Pick the top match
-        top_match = db_results[0]
-        community_name = top_match["community_name"]
         
-        yield sse_event({"type": "thinking", "step": f"Top match found: {community_name}. Let's calculate the commute distance and transit times from this property to the requested university (or Monash by default) to help the student map their journey."})
-        await asyncio.sleep(1.2)
+        resp = (
+            "您好！房源浏览和租约账单管理均无需通过 AI 查询，您直接查看页面菜单即可，这样更方便直观哦：\n\n"
+            "1. 🔍 **浏览/搜索房源**：请直接点击上方导航栏的 **“房源列表”** 页面，您可以利用筛选条件和地图直接查找最心仪的房间。\n"
+            "2. 💳 **查看账单/交租**：请直接点击上方导航栏的 **“我的租约”** 页面，里面有您实时的月度收租账单台账，并提供付款扫码与凭证上传功能。\n\n"
+            "---\n\n"
+            "作为您的 **AI 留学助手**，我当前支持以下核心功能，您可以随时向我提问：\n\n"
+            "- 🚇 **交通通勤测算**：根据您的起点位置（经纬度），帮您测算到双威、莫纳什等校区的通勤路程与不同交通工具的时间。\n"
+            "  *示例 Prompt*: `帮我计算一下从 3.0678, 101.6033 到莫纳什大学要多久？`\n"
+            "- 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
+            "  *示例 Prompt*: `3000令吉等于多少人民币？`\n"
+            "- 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
+            "  *示例 Prompt*: `查一下2026年马来西亚有哪些国定假日？`\n"
+            "- 🌐 **留学生活指南**：解答关于大马电话卡、公交卡办理、生活费水平等各种生活常识。\n"
+            "  *示例 Prompt*: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`"
+        )
+        for char in resp:
+            yield sse_event({"type": "text", "delta": char})
+            await asyncio.sleep(0.005)
+        return
 
-        # Determine target university
+    elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "校区", "怎么去", "交通", "多久", "时间"]):
+        yield sse_event({"type": "thinking", "step": "🚇 Calculating commute travel time to Malaysia universities using Google Maps database..."})
+        await asyncio.sleep(0.8)
+        
+        origin_lat, origin_lng = 3.0678, 101.6033
         target_uni = "Monash University Malaysia"
-        for uni in ["monash", "sunway", "taylor", "apu", "um"]:
-            if uni in query_lower:
-                if uni == "monash": target_uni = "Monash University Malaysia"
-                elif uni == "sunway": target_uni = "Sunway University"
-                elif uni == "taylor": target_uni = "Taylor's University"
-                elif uni == "apu": target_uni = "Asia Pacific University (APU)"
-                elif uni == "um": target_uni = "Universiti Malaya (UM)"
-
-        # Target Coordinates (simulate Sunway Geo lat/lng if available)
-        origin_lat, origin_lng = 3.06341, 101.60977
-        if "nadayu" in community_name.lower():
-            origin_lat, origin_lng = 3.0698, 101.6040
-        elif "latour" in community_name.lower():
-            origin_lat, origin_lng = 3.0593, 101.6160
-        elif "pacific" in community_name.lower():
-            origin_lat, origin_lng = 3.1130, 101.5878
-
         yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_lat": origin_lat, "origin_lng": origin_lng, "university_name": target_uni}})
-        await asyncio.sleep(1.0)
-
+        await asyncio.sleep(0.8)
+        
         commute_info = calculate_commute(origin_lat, origin_lng, target_uni)
         yield sse_event({"type": "tool_result", "tool_name": "calculate_commute", "result": commute_info})
-        await asyncio.sleep(0.8)
-
-        # Generate Stream responses
-        intro = f"嗨！为您精心推荐 **{community_name}** 的一套房源。以下是它的具体信息及到校交通情况：\n\n"
+        await asyncio.sleep(0.5)
+        
+        intro = f"根据地图测算，从坐标 `({origin_lat}, {origin_lng})` 到 **{commute_info['university']}** 的交通路线如下：\n\n"
         for char in intro:
             yield sse_event({"type": "text", "delta": char})
-            await asyncio.sleep(0.01)
-
+            await asyncio.sleep(0.005)
+            
         details = (
-            f"- **房型**: {top_match['room_type']}\n"
-            f"- **月租**: {top_match['rent']} MYR\n"
-            f"- **到校交通 ({commute_info['university']})**:\n"
-            f"  - 🚗 驾车: {commute_info['driving_distance']} / {commute_info['driving_duration']}\n"
-            f"  - 🚊 公共交通: {commute_info['transit_duration']}\n"
-            f"  - 🚶 步行: {commute_info['walk_duration']}\n\n"
-            f"**房源介绍**:\n{top_match['description']}\n\n"
-            "希望这能帮到您！您可以通过下方卡片在地图上预览路线，或直接申请看房。"
+            f"- 🚗 驾车: {commute_info['driving_distance']} / {commute_info['driving_duration']}\n"
+            f"- 🚊 公共交通: {commute_info['transit_duration']}\n"
+            f"- 🚶 步行: {commute_info['walk_duration']}\n\n"
+            "注：吉隆坡早晚高峰容易拥堵，建议首选公共交通出行。"
         )
         for char in details:
             yield sse_event({"type": "text", "delta": char})
-            await asyncio.sleep(0.01)
-
-        # Injects interactive map component
-        yield sse_event({
-            "type": "ui_component",
-            "component": "MapAndCard",
-            "props": {
-                "origin_name": community_name,
-                "origin_lat": origin_lat,
-                "origin_lng": origin_lng,
-                "destination_name": target_uni,
-                "destination_lat": 3.0645 if "monash" in target_uni.lower() else (3.0678 if "sunway" in target_uni.lower() else 3.0617),
-                "destination_lng": 101.6000 if "monash" in target_uni.lower() else (101.6033 if "sunway" in target_uni.lower() else 101.6167),
-                "rent": top_match["rent"],
-                "room_type": top_match["room_type"],
-                "unit_id": top_match["id"]
-            }
-        })
-
-    elif any(kw in query_lower for kw in ["status", "my lease", "rent status", "账单", "房租", "交租", "租金", "缴费", "缴纳", "记录", "交钱", "付款", "支付", "历史"]):
-        # Scenario 2: Personal Rental Ledger Status
-        yield sse_event({"type": "thinking", "step": "🔑 Checking security context. User requested their rental status. I need to call `check_my_own_rental_status` via service role."})
-        await asyncio.sleep(1.2)
-
-        yield sse_event({"type": "tool_call", "tool_name": "check_my_own_rental_status", "args": {"user_id": user_id}})
-        await asyncio.sleep(1.0)
-
-        rental_status = check_my_own_rental_status(user_id)
-        yield sse_event({"type": "tool_result", "tool_name": "check_my_own_rental_status", "result": rental_status})
+            await asyncio.sleep(0.005)
+            
+    elif any(kw in query_lower for kw in ["currency", "换算", "汇率", "rmb", "人民币", "myr", "令吉", "钱"]):
+        yield sse_event({"type": "thinking", "step": "💱 Querying Frankfurter API for live currency exchange rate..."})
         await asyncio.sleep(0.8)
-
-        if not rental_status.get("has_active_lease"):
-            yield sse_event({"type": "text", "delta": "您目前没有活跃的租赁合同，或者您的账户还没有绑定房源。如果有疑问，请联系管理员！"})
-            return
-
-        lease = rental_status["lease_details"]
-        payments = rental_status["payment_records"]
         
-        paid_count = sum(1 for p in payments if p["paid"])
-        total_count = len(payments)
-
-        response_text = (
-            f"您的租期信息已查到：您当前承租的是 **{lease['community_name']} {lease['unit_number']}** ({lease['room_type']})。\n\n"
-            f"- **租期**: {lease['start_date']} 至 {lease['end_date']}\n"
-            f"- **月租**: {lease['monthly_rent']} MYR\n"
-            f"- **账期进度**: 已付 {paid_count} 个月 / 共 {total_count} 个月。\n\n"
-            "下方是您的实时账单与付款进度卡片，您可直接扫码支付未结清的月租账单。"
+        yield sse_event({"type": "tool_call", "tool_name": "convert_currency_frankfurter", "args": {"amount": 1000.0, "from_currency": "MYR", "to_currency": "CNY"}})
+        await asyncio.sleep(0.8)
+        
+        rate_info = convert_currency_frankfurter(amount=1000.0, from_currency="MYR", to_currency="CNY")
+        yield sse_event({"type": "tool_result", "tool_name": "convert_currency_frankfurter", "result": rate_info})
+        await asyncio.sleep(0.5)
+        
+        res_text = (
+            f"根据最新实时汇率：\n"
+            f"**1000 令吉 (MYR)** = **{rate_info['converted_amount']} 人民币 (CNY)**\n"
+            f"当前汇率基准为: {rate_info['rate']} (1 MYR = {rate_info['rate']} CNY)"
         )
-        for char in response_text:
+        for char in res_text:
             yield sse_event({"type": "text", "delta": char})
-            await asyncio.sleep(0.01)
-
-        yield sse_event({
-            "type": "ui_component",
-            "component": "LeaseLedgerCard",
-            "props": {
-                "community_name": lease["community_name"],
-                "unit_number": lease["unit_number"],
-                "start_date": lease["start_date"],
-                "end_date": lease["end_date"],
-                "monthly_rent": lease["monthly_rent"],
-                "payments": payments
-            }
-        })
-
+            await asyncio.sleep(0.005)
+            
+    elif any(kw in query_lower for kw in ["holiday", "节日", "放假", "假期", "公休"]):
+        yield sse_event({"type": "thinking", "step": "📅 Querying Nager.Date for official Malaysian public holidays..."})
+        await asyncio.sleep(0.8)
+        
+        yield sse_event({"type": "tool_call", "tool_name": "get_malaysia_holidays", "args": {"year": 2026}})
+        await asyncio.sleep(0.8)
+        
+        holidays_info = get_malaysia_holidays(year=2026)
+        yield sse_event({"type": "tool_result", "tool_name": "get_malaysia_holidays", "result": holidays_info})
+        await asyncio.sleep(0.5)
+        
+        res_text = "为您查到 2026 年马来西亚的部分重要公众假期（部分节日依农历或伊斯兰历可能有微调）：\n\n"
+        for char in res_text:
+            yield sse_event({"type": "text", "delta": char})
+            await asyncio.sleep(0.005)
+            
+        for h in holidays_info["holidays"][:5]:
+            line = f"- **{h['date']}**: {h['english_name']} ({h['local_name']})\n"
+            for char in line:
+                yield sse_event({"type": "text", "delta": char})
+                await asyncio.sleep(0.005)
+                
     else:
-        # Scenario 3: Real-time search or general queries
-        yield sse_event({"type": "thinking", "step": f"🌐 Let's query Tavily search engine to fetch current real-time details regarding: '{query}'"})
-        await asyncio.sleep(1.2)
-
+        yield sse_event({"type": "thinking", "step": "🌐 Searching Tavily for student guide and local information..."})
+        await asyncio.sleep(0.8)
+        
         yield sse_event({"type": "tool_call", "tool_name": "get_web_realtime_info", "args": {"query": query}})
-        await asyncio.sleep(1.0)
-
+        await asyncio.sleep(0.8)
+        
         web_result = get_web_realtime_info(query)
         yield sse_event({"type": "tool_result", "tool_name": "get_web_realtime_info", "result": web_result})
-        await asyncio.sleep(0.8)
-
-        yield sse_event({"type": "thinking", "step": "Synthesizing web search results into a concise structured response."})
-        await asyncio.sleep(0.8)
-
-        intro = "根据马来西亚本地最新信息：\n\n"
+        await asyncio.sleep(0.5)
+        
+        intro = "根据马来西亚最新留学与生活资讯：\n\n"
         for char in intro:
             yield sse_event({"type": "text", "delta": char})
-            await asyncio.sleep(0.01)
-
+            await asyncio.sleep(0.005)
+            
         for char in web_result:
             yield sse_event({"type": "text", "delta": char})
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.005)
 
 
 async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, None]:
     """
     Executes a real ReAct loop using OpenAI Tool Calling.
     """
-    # Define tool structures for OpenAI
+    # Define tool structures for OpenAI (filtered to remove room search/status lookup)
     tools_definitions = [
         {
             "type": "function",
             "function": {
-                "name": "search_iproperty_listings",
-                "description": "Search external rental listings on iProperty.com.my via Tavily web search. Use when search_internal_db returns no results, or when the user explicitly asks for iProperty/external/market listings.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "What the student is looking for (e.g. Studio near Monash)."},
-                        "location": {"type": "string", "description": "Area or city, e.g. Sunway, Subang Jaya, Bandar Sunway."},
-                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room", "Whole Unit"], "description": "Optional room type filter."},
-                        "max_price": {"type": "number", "description": "Optional maximum monthly rent in MYR."}
-                    },
-                    "required": ["query"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "search_internal_db",
-                "description": "Search THIS platform's internal housing inventory (admin-entered units in Supabase). Always call this first for rental search.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "semantic_query": {"type": "string", "description": "The description/preferences of housing needed by the student."},
-                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room", "Whole Unit"], "description": "Optional room type filter."},
-                        "max_price": {"type": "number", "description": "Optional maximum rent limit in MYR."}
-                    },
-                    "required": ["semantic_query"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
                 "name": "calculate_commute",
-                "description": "Calculate travel times and distances from coordinate coordinates to a university.",
+                "description": "Calculate travel times and distances from coordinates to a university.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -287,27 +164,13 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             "type": "function",
             "function": {
                 "name": "get_web_realtime_info",
-                "description": "Search the live web for transit policies, deposit rules, neighborhood facts — NOT for property listings (use search_iproperty_listings for that).",
+                "description": "Search the live web for transit policies, deposit rules, neighborhood facts - NOT for property listings.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {"type": "string", "description": "Specific search query."}
                     },
                     "required": ["query"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "check_my_own_rental_status",
-                "description": "Check the calling user's active lease, rent due amounts, and monthly ledger ledger status.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_id": {"type": "string", "description": "The user ID of the tenant."}
-                    },
-                    "required": ["user_id"]
                 }
             }
         },
@@ -347,22 +210,25 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         {
             "role": "system",
             "content": (
-                "You are an expert AI Rent Agent for international students in Malaysia. "
-                "You help students find rooms, calculate commute to universities, get local updates, and check lease/payment records. "
-                "Important Rules:\n"
-                "1. ALWAYS explain your thoughts briefly in Chinese (thinking state) before invoking any tool.\n"
-                "2. When suggesting a property, follow up by invoking the calculate_commute tool to show specific travel durations.\n"
-                "3. If the user asks about their lease, due rent, or payment checks, run check_my_own_rental_status immediately with the user's ID.\n"
+                "You are an expert AI Assistant for international students in Malaysia. "
+                "Your role is to assist students with commute calculations, exchange rates, holiday schedules, and general student life information. "
+                "CRITICAL INSTRUCTIONS:\n"
+                "1. You DO NOT search for rooms or check rental leases/bills anymore. If a user asks about finding a room, checking a bill, or paying rent, tell them clearly to use the website's built-in tabs directly ('房源列表' / 'PropertyListings' for room browsing, and '我的租约' / 'StudentPortal' for payment ledgers/status).\n"
+                "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', you MUST list out your active features and provide the EXACT corresponding example prompts as shown below:\n"
+                "   - 🚇 **交通通勤测算**：根据您的起点位置（经纬度），帮您测算到双威、莫纳什等校区的通勤路程与不同交通工具的时间。\n"
+                "     *示例 Prompt*: `帮我计算一下从 3.0678, 101.6033 到莫纳什大学要多久？`\n"
+                "   - 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
+                "     *示例 Prompt*: `3000令吉等于多少人民币？`\n"
+                "   - 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
+                "     *示例 Prompt*: `查一下2026年马来西亚有哪些国定假日？`\n"
+                "   - 🌐 **留学生活指南**：解答关于大马电话卡、公交卡办理、生活费水平等各种生活常识。\n"
+                "     *示例 Prompt*: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
+                "3. ALWAYS explain your thoughts briefly in Chinese (thinking state) before invoking any tool.\n"
                 "4. Answer clearly in Chinese, with structured formatting.\n"
-                "5. When calling calculate_commute, ALWAYS extract the exact 'lat' and 'lng' values from the search results returned by search_internal_db for the property, and use those as 'origin_lat' and 'origin_lng' respectively. DO NOT guess or hallucinate these values.\n"
-                "6. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
-                "7. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
-                "8. NEVER print, repeat or mention the raw User ID (such as 'tenant-123' or UUID strings) in your conversational responses or greetings unless the user explicitly asks 'What is my User ID?' or 'What is my ID?'.\n"
-                "9. If check_my_own_rental_status returns has_active_lease=False, tell the user clearly that no active lease was found under their account. Do NOT fabricate or guess any lease details.\n"
-                "10. NEVER invent or hallucinate property names, rent amounts, unit numbers, or payment records. Only report data explicitly returned by a tool.\n"
-                "11. For rental search: ALWAYS call search_internal_db first. If it returns an empty list OR the user asks for iProperty/external/market listings, call search_iproperty_listings.\n"
-                "12. Clearly label internal inventory vs external iProperty listings. External results must include the iProperty URL; say they are NOT managed by this platform.\n"
-                "13. Do NOT call calculate_commute for external iProperty listings unless you have verified lat/lng from internal search results."
+                "5. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
+                "6. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
+                "7. NEVER print, repeat or mention raw User ID strings in your conversational responses.\n"
+                "8. DO NOT search for competitor rental listings or properties. When performing general web searches via get_web_realtime_info, Tavily will filter out competitor websites to avoid advertising other platforms."
             )
         },
         {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}
@@ -394,43 +260,9 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             for char in content:
                 yield sse_event({"type": "text", "delta": char})
                 await asyncio.sleep(0.01)
-            
-            # Post-text UI map card — internal inventory only (has lat/lng)
-            found_unit = None
-            for msg in reversed(messages):
-                if msg.get("role") == "tool" and msg.get("name") == "search_internal_db":
-                    try:
-                        results = json.loads(msg["content"])
-                        if results:
-                            found_unit = results[0]
-                            break
-                    except:
-                        pass
-            
-            if found_unit:
-                # Find latitude/longitude
-                com_name = found_unit.get("community_name", "")
-                lat = found_unit.get("lat") or 3.06341
-                lng = found_unit.get("lng") or 101.60977
-
-                yield sse_event({
-                    "type": "ui_component",
-                    "component": "MapAndCard",
-                    "props": {
-                        "origin_name": com_name,
-                        "origin_lat": lat,
-                        "origin_lng": lng,
-                        "destination_name": "Monash University Malaysia",
-                        "destination_lat": 3.0645,
-                        "destination_lng": 101.6000,
-                        "rent": float(found_unit.get("rent", 0)),
-                        "room_type": found_unit.get("room_type", ""),
-                        "unit_id": found_unit.get("id", "")
-                    }
-                })
             break
 
-        # Append assistant's message with tool calls (converted to dict for compatibility with third-party OpenAI APIs)
+        # Append assistant's message with tool calls
         assistant_msg = {
             "role": "assistant",
             "content": message.content or ""
@@ -458,20 +290,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
 
             # Invoke target tool
             result_data = None
-            if tool_name == "search_internal_db":
-                result_data = search_internal_db(
-                    semantic_query=tool_args.get("semantic_query", ""),
-                    room_type=tool_args.get("room_type"),
-                    max_price=tool_args.get("max_price")
-                )
-            elif tool_name == "search_iproperty_listings":
-                result_data = search_iproperty_listings(
-                    query=tool_args.get("query", ""),
-                    location=tool_args.get("location"),
-                    room_type=tool_args.get("room_type"),
-                    max_price=tool_args.get("max_price"),
-                )
-            elif tool_name == "calculate_commute":
+            if tool_name == "calculate_commute":
                 result_data = calculate_commute(
                     origin_lat=tool_args.get("origin_lat", 0.0),
                     origin_lng=tool_args.get("origin_lng", 0.0),
@@ -479,9 +298,6 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 )
             elif tool_name == "get_web_realtime_info":
                 result_data = get_web_realtime_info(query=tool_args.get("query", ""))
-            elif tool_name == "check_my_own_rental_status":
-                # Ensure we pass the actual user_id from context for compliance checks
-                result_data = check_my_own_rental_status(user_id=user_id)
             elif tool_name == "convert_currency_frankfurter":
                 result_data = convert_currency_frankfurter(
                     amount=tool_args.get("amount", 1.0),
@@ -507,7 +323,6 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             # Save trace to db asynchronously if logged in
             if supabase_service_client:
                 try:
-                    # Log conversation step
                     supabase_service_client.table("agent_conversations").insert({
                         "user_id": user_id,
                         "session_id": "session-realtime",
@@ -521,7 +336,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                     }).execute()
                 except Exception as e:
                     print(f"Failed to log conversation step to agent_conversations: {e}")
-                    
+
 
 async def agent_stream_router(query: str, user_id: str) -> AsyncGenerator[str, None]:
     """Router selecting mock or live OpenAI stream based on configuration."""

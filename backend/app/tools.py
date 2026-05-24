@@ -355,7 +355,7 @@ def get_web_realtime_info(query: str) -> str:
         url = "https://api.tavily.com/search"
         payload = {
             "api_key": Config.TAVILY_API_KEY,
-            "query": query,
+            "query": query + " -site:iproperty.com.my -site:propertyguru.com.my -site:speedhome.com -site:edgeprop.my -site:mudah.my -site:ibilik.sg -site:ibilik.my",
             "search_depth": "basic",
             "include_answer": True
         }
