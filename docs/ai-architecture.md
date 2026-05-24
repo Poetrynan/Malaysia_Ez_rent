@@ -68,27 +68,34 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX; **scrolls inside `.main-content`**; image lightbox + video modal.
+- `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX; **scrolls inside `.main-content`**; image lightbox + video modal. Uses `MapAndCard.tsx` for Google Maps display.
+- `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk).
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
-- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation.
+- `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation (routes payments to listing agent QR code).
 
 ### Admin path
 
 - `AdminPanel.tsx` includes:
   - communities/units CRUD
   - lease creation/deletion
-  - payment review (approve/reject/clear evidence)
+  - payment review (approve/reject/clear evidence with Toast feedback)
   - admin profile/payment QR settings
   - feedback handling
-  - community delete for removing duplicate same-name communities (new)
+  - community delete for removing duplicate same-name communities
+  - **Agent Separation**: Normal agents can only see and manage their own units, leases, and payment records. Super admins have full global access.
+
+### Privacy Constraints
+
+- **Door Number Removal**: All door numbers (`unit_number`) are completely hidden from all visual displays across the student portal, AI chat, admin panel (including table list and dropdowns), and mobile upload pages.
 
 ### Mobile evidence upload
 
 - `app/mobile-upload/[id]/page.tsx` is intentionally anonymous.
-- Reads/writes billing through RPCs (see migrations section) rather than direct table update.
+- Reads/writes billing through RPCs rather than direct table update.
 - Uploads to `unit-media/evidence/`.
 - Compresses uploaded image before storage write.
+- Display info (community & room type) is resolved securely.
 
 ## 4) Backend AI Architecture
 
@@ -160,12 +167,18 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 8. `migrations/007_mobile_upload.sql`
 9. `migrations/008_whole_unit_room_type.sql`
 10. `migrations/009_unit_video_url.sql`
+11. `migrations/010_agent_qr_separation.sql`
+12. `migrations/011_optional_unit_number.sql`
+13. `migrations/012_remove_unit_number_display.sql`
 
 Notes:
 
 - `007_mobile_upload.sql` is required for anonymous mobile evidence upload.
 - `008_whole_unit_room_type.sql` fixes `units_room_type_check` violation for `Whole Unit`.
 - `009_unit_video_url.sql` adds `units.video_url` for walkthrough videos in Storage.
+- `010_agent_qr_separation.sql` adds listing agent binding and routes payments to specific agent QR codes.
+- `011_optional_unit_number.sql` drops the `NOT NULL` constraint on `units.unit_number`.
+- `012_remove_unit_number_display.sql` updates `get_mobile_upload_info` RPC to return `room_type` instead of `unit_number` for privacy.
 
 ## 7) Auth, Roles, and Access Model
 
