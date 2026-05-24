@@ -240,19 +240,22 @@ export default function AIChat() {
 
     if (isLedger) {
       addThought('查询租约数据库（绕过 RLS）…');
-      addTool('check_rental_status', { user_id: 'tenant-123' });
+      addTool('check_rental_status', { user_id: userId });
       await new Promise(r => setTimeout(r, 800));
       const mockPayments = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_payments') || '[]') : [];
       const mockLeases = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_leases') || '[]') : [];
       const mockUnits = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_units') || '[]') : [];
-      const lease = mockLeases[0] || { id: 'l1-uuid', start_date: '2026-02-01', end_date: '2027-01-31', monthly_rent: 2500, unit_id: 'u1-uuid' };
-      const unit = mockUnits.find((u: any) => u.id === lease.unit_id) || { unit_number: 'Block B-12-08', community_id: 'c1-uuid' };
       const communities = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_communities') || '[]') : [];
+
+      const lease = mockLeases.find((l: any) => l.tenant_id === userId && l.status === 'active') || mockLeases[0] || { id: 'l1-uuid', start_date: '2026-02-01', end_date: '2027-01-31', monthly_rent: 2500, unit_id: 'u1-uuid' };
+      const payments = mockPayments.filter((p: any) => p.lease_id === lease.id);
+      const unit = mockUnits.find((u: any) => u.id === lease.unit_id) || { unit_number: 'Block B-12-08', community_id: 'c1-uuid' };
       const community = communities.find((c: any) => c.id === unit.community_id) || { name: 'Sunway Geo Residences' };
-      setToolResult(0, { has_active_lease: true, lease, payments: mockPayments });
+
+      setToolResult(0, { has_active_lease: true, lease, payments });
       await new Promise(r => setTimeout(r, 600));
       await typewriter(msgId, `已查到您在 **${community.name} ${unit.unit_number}** 的租约台账，请查看下方月度账单。`);
-      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'LeaseLedgerCard', props: { community_name: community.name, unit_number: unit.unit_number, start_date: lease.start_date, end_date: lease.end_date, monthly_rent: lease.monthly_rent, payments: mockPayments } } } : m));
+      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'LeaseLedgerCard', props: { community_name: community.name, unit_number: unit.unit_number, start_date: lease.start_date, end_date: lease.end_date, monthly_rent: lease.monthly_rent, payments } } } : m));
     } else {
       addThought('使用 pgvector 余弦相似度在数据库语义检索…');
       addTool('search_internal_db', { semantic_query: userText });
