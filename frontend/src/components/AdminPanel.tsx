@@ -286,11 +286,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
 
   const visibleUnits = adminRole === 'super_admin'
     ? units
-    : units.filter(u => u.agent_id === currentUserId);
+    : units.filter(u => u.agent_id === currentUserId || !u.agent_id);
 
   const visibleLeases = adminRole === 'super_admin'
     ? leases
-    : leases.filter(l => l.unitData?.agent_id === currentUserId);
+    : leases.filter(l => l.unitData?.agent_id === currentUserId || !l.unitData?.agent_id);
 
   const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
 
