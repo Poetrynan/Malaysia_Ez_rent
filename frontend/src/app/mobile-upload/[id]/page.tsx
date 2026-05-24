@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Upload, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
 import { supabase, isMockDatabase } from '@/lib/supabase';
 
@@ -30,18 +31,15 @@ interface Community {
   name: string;
 }
 
-export default function MobileUploadPage({ params }: { params: Promise<{ id: string }> }) {
-  const [paymentId, setPaymentId] = useState<string>('');
+export default function MobileUploadPage() {
+  const routerParams = useParams();
+  const paymentId = (routerParams?.id as string) || '';
   const [payment, setPayment] = useState<Payment | null>(null);
   const [lease, setLease] = useState<Lease | null>(null);
   const [unitInfo, setUnitInfo] = useState('');
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    params.then(p => setPaymentId(p.id));
-  }, [params]);
 
   useEffect(() => {
     if (!paymentId) return;
@@ -240,11 +238,10 @@ export default function MobileUploadPage({ params }: { params: Promise<{ id: str
                 </>
               )}
             </label>
-            <input
+             <input
               id="file-input"
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleUpload}
               disabled={uploading}
               style={{ display: 'none' }}
