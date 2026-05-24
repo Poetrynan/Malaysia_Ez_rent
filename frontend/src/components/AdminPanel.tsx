@@ -31,13 +31,20 @@ const MOCK_PLACES = [
   { name: "D'Latour Luxury Suites", address: "Jalan Taylors, Bandar Sunway, 47500 Subang Jaya", lat: 3.0593, lng: 101.6160 },
 ];
 
-export default function AdminPanel({ adminRole, defaultTab }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile' }) {
+export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
 
   useEffect(() => {
     if (defaultTab) {
       setTab(defaultTab);
+      if (defaultTab === 'leases') {
+        loadAll();
+      } else if (defaultTab === 'admins') {
+        fetchAdmins();
+      } else if (defaultTab === 'feedback') {
+        fetchFeedbacks();
+      }
     }
   }, [defaultTab]);
   const [adminQR, setAdminQR] = useState<string | null>(null);
@@ -1029,38 +1036,40 @@ export default function AdminPanel({ adminRole, defaultTab }: { adminRole: 'supe
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Tab Bar */}
-      <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
-        <button style={tabStyle(tab === 'properties')} onClick={() => setTab('properties')}>
-          <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
-        </button>
-        <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); loadAll(); }}>
-          <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
-          {pendingCount > 0 && (
-            <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
-              {pendingCount}
-            </span>
-          )}
-        </button>
-        <button style={tabStyle(tab === 'payment')} onClick={() => setTab('payment')}>
-          <QrCode size={14} style={{ display: 'inline', marginRight: 6 }} />{t('paymentSettings')}
-        </button>
-        {adminRole === 'super_admin' && (
-          <button style={tabStyle(tab === 'admins')} onClick={() => { setTab('admins'); fetchAdmins(); }}>
-            <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
+      {!hideTabBar && (
+        <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
+          <button style={tabStyle(tab === 'properties')} onClick={() => setTab('properties')}>
+            <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
           </button>
-        )}
-        <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
-          <MessageSquare size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
-          {feedbackPendingCount > 0 && (
-            <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
-              {feedbackPendingCount}
-            </span>
+          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); loadAll(); }}>
+            <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
+            {pendingCount > 0 && (
+              <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
+          <button style={tabStyle(tab === 'payment')} onClick={() => setTab('payment')}>
+            <QrCode size={14} style={{ display: 'inline', marginRight: 6 }} />{t('paymentSettings')}
+          </button>
+          {adminRole === 'super_admin' && (
+            <button style={tabStyle(tab === 'admins')} onClick={() => { setTab('admins'); fetchAdmins(); }}>
+              <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
+            </button>
           )}
-        </button>
-        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
-          <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
-        </button>
-      </div>
+          <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
+            <MessageSquare size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
+            {feedbackPendingCount > 0 && (
+              <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
+                {feedbackPendingCount}
+              </span>
+            )}
+          </button>
+          <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
+            <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
+          </button>
+        </div>
+      )}
 
       {/* ── PROPERTIES TAB ── */}
       {tab === 'properties' && (

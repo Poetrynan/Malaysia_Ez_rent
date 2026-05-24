@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -19,7 +19,7 @@ export default function Home() {
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
     localStorage.setItem('ez_user_role', newRole);
-    setActiveTab(newRole === 'admin' ? 'admin' : 'listings');
+    setActiveTab(newRole === 'admin' ? 'admin-properties' : 'listings');
   };
 
   // Auth guard: redirect to /login if not logged in
@@ -34,7 +34,7 @@ export default function Home() {
       const savedRole = localStorage.getItem('ez_user_role') as 'student' | 'admin' | null;
       const finalRole = savedRole || 'student';
       setRole(finalRole);
-      setActiveTab(finalRole === 'admin' ? 'admin' : 'listings');
+      setActiveTab(finalRole === 'admin' ? 'admin-properties' : 'listings');
       setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
     } else {
       const checkSession = async () => {
@@ -56,7 +56,7 @@ export default function Home() {
           setAdminRole(adminRecord.role as 'super_admin' | 'editor');
         }
         setRole(activeRole);
-        setActiveTab(activeRole === 'admin' ? 'admin' : 'listings');
+        setActiveTab(activeRole === 'admin' ? 'admin-properties' : 'listings');
         setUserEmail(user.email || '');
         localStorage.setItem('ez_tenant_id', user.id);
       };
@@ -125,9 +125,31 @@ export default function Home() {
             )}
             {role === 'admin' && (
               <>
-                <li onClick={() => setActiveTab('admin')} className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>
-                  <ShieldAlert size={16} />
-                  <span>{t('navAdmin')}</span>
+                <li onClick={() => setActiveTab('admin-properties')} className={`nav-item ${activeTab === 'admin-properties' ? 'active' : ''}`}>
+                  <Building2 size={16} />
+                  <span>{lang === 'zh' ? '房源管理' : 'Properties'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-leases')} className={`nav-item ${activeTab === 'admin-leases' ? 'active' : ''}`}>
+                  <FileText size={16} />
+                  <span>{lang === 'zh' ? '租约 & 财务台账' : 'Leases & Finance'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-payment')} className={`nav-item ${activeTab === 'admin-payment' ? 'active' : ''}`}>
+                  <QrCode size={16} />
+                  <span>{lang === 'zh' ? '收款设置' : 'Payment Settings'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                {adminRole === 'super_admin' && (
+                  <li onClick={() => setActiveTab('admin-admins')} className={`nav-item ${activeTab === 'admin-admins' ? 'active' : ''}`}>
+                    <Users size={16} />
+                    <span>{lang === 'zh' ? '管理员' : 'Admins'}</span>
+                    <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                  </li>
+                )}
+                <li onClick={() => setActiveTab('admin-feedback')} className={`nav-item ${activeTab === 'admin-feedback' ? 'active' : ''}`}>
+                  <MessageSquare size={16} />
+                  <span>{lang === 'zh' ? '意见箱' : 'Feedback'}</span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
                 <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
@@ -212,8 +234,20 @@ export default function Home() {
           <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
             <StudentPortal />
           </div>
-          <div style={{ display: role === 'admin' && (activeTab === 'admin' || activeTab === 'admin-profile') ? 'block' : 'none' }}>
-            <AdminPanel adminRole={adminRole} defaultTab={activeTab === 'admin-profile' ? 'profile' : 'properties'} />
+          <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') ? 'block' : 'none' }}>
+            <AdminPanel 
+              adminRole={adminRole} 
+              defaultTab={
+                activeTab === 'admin-properties' ? 'properties' :
+                activeTab === 'admin-leases' ? 'leases' :
+                activeTab === 'admin-payment' ? 'payment' :
+                activeTab === 'admin-admins' ? 'admins' :
+                activeTab === 'admin-feedback' ? 'feedback' :
+                activeTab === 'admin-profile' ? 'profile' : 
+                'properties'
+              }
+              hideTabBar={true}
+            />
           </div>
         </div>
       </main>
