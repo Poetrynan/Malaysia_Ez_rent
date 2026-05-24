@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Upload, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
 import { supabase, isMockDatabase } from '@/lib/supabase';
+import { useApp } from '@/lib/ThemeProvider';
 
 interface Payment {
   id: string;
@@ -32,6 +33,7 @@ interface Community {
 }
 
 export default function MobileUploadPage() {
+  const { lang } = useApp();
   const routerParams = useParams();
   const paymentId = (routerParams?.id as string) || '';
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -74,7 +76,17 @@ export default function MobileUploadPage() {
           .select('*')
           .eq('id', paymentId)
           .single();
-        if (pErr || !p) { setError('Payment not found'); return; }
+        if (pErr || !p) {
+          if (paymentId.startsWith('p') || paymentId.includes('mock') || paymentId.includes('uuid')) {
+            setError(lang === 'zh' 
+              ? '您扫描的二维码是在“离线模拟器”下生成的测试账单（如 p1-uuid 等），该账单 ID 在线上云端数据库中不存在。请在 AI 助手右上角显示为绿色的“已连接”状态下，发送消息生成真实的云端账单再进行扫码测试。' 
+              : 'The scanned QR code was generated under the "Offline Simulator" mock state. This payment ID does not exist in the live database. Please ensure the agent status is green "Connected" and scan a real cloud billing record.'
+            );
+          } else {
+            setError(lang === 'zh' ? '未找到该账单记录，请检查 ID 是否正确。' : 'Payment record not found. Please verify the billing ID.');
+          }
+          return;
+        }
         setPayment(p);
         if (p.evidence_url) { setDone(true); return; }
 
