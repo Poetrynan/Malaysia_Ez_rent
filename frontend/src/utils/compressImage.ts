@@ -24,11 +24,11 @@ export const EVIDENCE_IMAGE_PRESET: CompressImageOptions = {
   skipBelowBytes: 150 * 1024,
 };
 
-/** Unit listing photos */
+/** Unit listing photos — JPEG, max 1920px; files under 250KB skip recompression */
 export const UNIT_IMAGE_PRESET: CompressImageOptions = {
   maxWidth: 1920,
   maxHeight: 1920,
-  quality: 0.85,
+  quality: 0.88,
   mimeType: 'image/jpeg',
   skipBelowBytes: 250 * 1024,
 };

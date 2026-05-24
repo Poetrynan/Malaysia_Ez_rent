@@ -38,6 +38,7 @@ Malaysia_Ez_rent/
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
 │   ├── src/lib/i18n.ts
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
+│   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
 │   └── src/middleware.ts                # route guard with mobile-upload allowlist
 ├── backend/
 │   └── app/
@@ -67,7 +68,7 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX.
+- `PropertyListings.tsx`: listing/filter/detail + co-renting intent UX; **scrolls inside `.main-content`**; image lightbox + video modal.
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation.
@@ -114,6 +115,12 @@ Malaysia_Ez_rent/
   - `check_my_own_rental_status`: service-role query for user lease/payment status.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
 
+### Media compression (frontend)
+
+- `compressImage.ts`: Canvas JPEG — evidence, unit photos, admin QR.
+- `compressVideo.ts`: MediaRecorder WebM — max 1280×720, ~1.2 Mbps, skip if ≤12MB.
+- Live: images → `units.media_urls[]`; video → `units.video_url` (migration **009**).
+
 ## 5) Database & Storage Architecture
 
 ### Key tables
@@ -152,11 +159,13 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 7. `migrations/006_bedrooms_bathrooms.sql`
 8. `migrations/007_mobile_upload.sql`
 9. `migrations/008_whole_unit_room_type.sql`
+10. `migrations/009_unit_video_url.sql`
 
 Notes:
 
 - `007_mobile_upload.sql` is required for anonymous mobile evidence upload.
 - `008_whole_unit_room_type.sql` fixes `units_room_type_check` violation for `Whole Unit`.
+- `009_unit_video_url.sql` adds `units.video_url` for walkthrough videos in Storage.
 
 ## 7) Auth, Roles, and Access Model
 

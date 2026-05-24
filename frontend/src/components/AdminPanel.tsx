@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3 } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
+import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
@@ -19,7 +20,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; bedrooms?: number; bathrooms?: number; }
+interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; }
 interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -55,6 +56,23 @@ const MOCK_PLACES = [
   { name: "D'Latour Luxury Suites", address: "Jalan Taylors, Bandar Sunway, 47500 Subang Jaya", lat: 3.0593, lng: 101.6160 },
 ];
 
+/** Parse Supabase public URL → Storage object path inside bucket `unit-media` */
+function unitMediaStoragePath(publicUrl: string): string | null {
+  const marker = '/unit-media/';
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return publicUrl.substring(idx + marker.length).split('?')[0] || null;
+}
+
+async function removeUnitMediaFiles(
+  supabase: { storage: { from: (b: string) => { remove: (p: string[]) => Promise<unknown> } } },
+  paths: string[],
+) {
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (!unique.length) return;
+  await supabase.storage.from('unit-media').remove(unique);
+}
+
 export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
@@ -87,6 +105,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
   // media: up to 9 images (base64) + 1 video (object URL)
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
+  const [videoCompressing, setVideoCompressing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState<string | null>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
@@ -226,10 +245,17 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
 
   const clearEvidence = async (paymentId: string) => {
     if (!confirm(t('confirmClearEvidence'))) return;
+    const evidenceUrl =
+      reviewingPayment?.id === paymentId ? reviewingPayment.evidence_url
+        : leases.flatMap(l => l.payments || []).find(p => p.id === paymentId)?.evidence_url;
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
+        const storagePath = evidenceUrl
+          ? unitMediaStoragePath(evidenceUrl)
+          : `evidence/${paymentId}.jpg`;
+        if (storagePath) await removeUnitMediaFiles(supabase, [storagePath]);
         const { error } = await supabase.from('payment_records').update({
           evidence_url: null,
           status: 'unpaid',
@@ -823,6 +849,47 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
         unitPayload.media_urls = uploadedUrls;
 
         if (isEdit) {
+          const prev = units.find(u => u.id === targetId);
+          const keptUrls = new Set(uploadedUrls.map(u => u.split('?')[0]));
+          const removedImagePaths = (prev?.media_urls || [])
+            .filter(u => !keptUrls.has(u.split('?')[0]))
+            .map(u => unitMediaStoragePath(u))
+            .filter(Boolean) as string[];
+          if (removedImagePaths.length) await removeUnitMediaFiles(supabase, removedImagePaths);
+          if (!mediaVideo && prev?.video_url) {
+            const vp = unitMediaStoragePath(prev.video_url);
+            if (vp) await removeUnitMediaFiles(supabase, [vp]);
+          }
+        }
+
+        if (mediaVideo) {
+          if (mediaVideo.startsWith('http')) {
+            unitPayload.video_url = mediaVideo;
+          } else {
+            try {
+              const res = await fetch(mediaVideo);
+              const blob = await res.blob();
+              const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
+              const videoPath = `${targetId}/walkthrough.${ext}`;
+              const { error: videoErr } = await supabase.storage.from('unit-media').upload(videoPath, blob, {
+                upsert: true,
+                contentType: blob.type || 'video/webm',
+              });
+              if (!videoErr) {
+                const { data: videoUrlData } = supabase.storage.from('unit-media').getPublicUrl(videoPath);
+                if (videoUrlData?.publicUrl) unitPayload.video_url = videoUrlData.publicUrl;
+              } else {
+                console.error('Video upload error:', videoErr);
+              }
+            } catch (e) {
+              console.error('Video upload failed:', e);
+            }
+          }
+        } else if (isEdit) {
+          unitPayload.video_url = null;
+        }
+
+        if (isEdit) {
           const { error } = await supabase.from('units').update(unitPayload).eq('id', targetId);
           if (error) { showToast(error.message, 'error'); return; }
         } else {
@@ -871,7 +938,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       : (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.images || []; } catch { return []; } })();
     setMediaImages(unitImages);
 
-    const unitVideo = (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.video || null; } catch { return null; } })();
+    const unitVideo = u.video_url || (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.video || null; } catch { return null; } })();
     setMediaVideo(unitVideo);
 
     const formEl = document.getElementById('add-unit-form-section');
@@ -894,9 +961,30 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     }
   };
 
-  const handleVideoFile = (file: File | null) => {
+  const handleVideoFile = async (file: File | null) => {
     if (!file) return;
-    setMediaVideo(URL.createObjectURL(file));
+    const maxBytes = 150 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      showToast(lang === 'zh' ? '视频超过 150MB，请先裁剪或压缩' : 'Video exceeds 150MB — trim or compress first', 'error');
+      return;
+    }
+    setVideoCompressing(true);
+    try {
+      const compressed = await compressVideoFile(file, UNIT_VIDEO_PRESET);
+      if (mediaVideo?.startsWith('blob:')) URL.revokeObjectURL(mediaVideo);
+      setMediaVideo(URL.createObjectURL(compressed));
+      if (compressed.size < file.size) {
+        showToast(lang === 'zh'
+          ? `视频已压缩：${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressed.size / 1024 / 1024).toFixed(1)}MB`
+          : `Video compressed: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressed.size / 1024 / 1024).toFixed(1)}MB`, 'success');
+      }
+    } catch (e) {
+      console.error('Video compress error:', e);
+      setMediaVideo(URL.createObjectURL(file));
+      showToast(lang === 'zh' ? '视频压缩失败，已使用原文件' : 'Compression failed — using original file', 'warning');
+    } finally {
+      setVideoCompressing(false);
+    }
   };
 
   const handleQRFile = async (file: File | null) => {
@@ -962,7 +1050,10 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) await supabase.from('admin_users').update({ payment_qr_code: null }).eq('id', user.id);
+        if (user) {
+          await removeUnitMediaFiles(supabase, [`qr/${user.id}.jpg`]);
+          await supabase.from('admin_users').update({ payment_qr_code: null }).eq('id', user.id);
+        }
       } catch {}
     }
   };
@@ -1046,11 +1137,14 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
         // Delete storage media
         const unit = units.find(u => u.id === unitId);
         if (unit?.media_urls && unit.media_urls.length > 0) {
-          const paths = unit.media_urls.map(url => {
-            const idx = url.indexOf('/unit-media/');
-            return idx !== -1 ? url.substring(idx + '/unit-media/'.length) : null;
-          }).filter(Boolean);
-          if (paths.length > 0) await supabase.storage.from('unit-media').remove(paths as string[]);
+          const paths = unit.media_urls
+            .map(url => unitMediaStoragePath(url))
+            .filter(Boolean) as string[];
+          if (paths.length > 0) await removeUnitMediaFiles(supabase, paths);
+        }
+        if (unit?.video_url) {
+          const vPath = unitMediaStoragePath(unit.video_url);
+          if (vPath) await removeUnitMediaFiles(supabase, [vPath]);
         }
         const { error } = await supabase.from('units').delete().eq('id', unitId);
         if (error) { showToast(error.message, 'error'); return; }
@@ -1370,8 +1464,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 </button>
                 <input ref={vidInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={e => handleVideoFile(e.target.files?.[0] || null)} />
                 <button type="button" className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem' }}
-                  onClick={() => vidInputRef.current?.click()}>
-                  <Video size={14} /> {t('uploadVideo')} {mediaVideo ? '✓' : ''}
+                  onClick={() => vidInputRef.current?.click()} disabled={videoCompressing}>
+                  <Video size={14} /> {videoCompressing ? (lang === 'zh' ? '压缩中…' : 'Compressing…') : `${t('uploadVideo')} ${mediaVideo ? '✓' : ''}`}
                 </button>
               </div>
 

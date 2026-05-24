@@ -111,7 +111,7 @@ body {
 h1,h2,h3,h4,h5 { color: var(--text-h); font-weight: 700; letter-spacing: -0.02em; }
 
 /* ── APP LAYOUT ── */
-.app-container { display: flex; min-height: 100vh; background: var(--gradient-hero); }
+.app-container { display: flex; height: 100vh; overflow: hidden; background: var(--gradient-hero); }
 
 /* ── SIDEBAR ── */
 .sidebar {
@@ -230,10 +230,10 @@ h1,h2,h3,h4,h5 { color: var(--text-h); font-weight: 700; letter-spacing: -0.02em
 
 /* ── MAIN VIEWPORT ── */
 .main-viewport {
-  flex-grow: 1; padding: 0;
-  overflow-y: auto;
+  flex: 1; padding: 0;
+  min-width: 0; min-height: 0;
+  overflow: hidden;
   display: flex; flex-direction: column;
-  min-width: 0;
 }
 
 /* Top header bar */
@@ -260,10 +260,16 @@ h1,h2,h3,h4,h5 { color: var(--text-h); font-weight: 700; letter-spacing: -0.02em
 .topbar-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 .topbar-btn.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 
-/* Scrollable content below topbar */
+/* Scrollable content below topbar — listings/admin tabs scroll here, not the whole page */
 .main-content {
-  flex-grow: 1; padding: 24px 28px;
-  overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+  flex: 1; min-height: 0; padding: 24px 28px;
+  overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.listings-page {
+  flex: 1;
+  min-height: 0;
 }
 
 

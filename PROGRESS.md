@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-24 (UTC+8)
-> 状态：**前端可跑 · 后端已连接 Gemini/DeepSeek API · Google OAuth + Magic Link 双登录完成 · 超级管理员面板完成 · 合租功能完成 · 图片上传至 Supabase Storage（含客户端压缩）· 房源/租约支持删除 · 手机扫码上传支付凭证（007 迁移 + RPC）· 支付凭证审核 + 自适应预览 · 收款码上传/共享/持久化 · RLS 策略全面修复 · 意见箱功能完成 · 品牌 Logo（图标版）· 收租核查表显示小区/门牌号 · Vercel & Render 云端生产环境部署完成**
+> 状态：**前端可跑 · 后端 Gemini/DeepSeek Agent · Google OAuth + Magic Link · 超级管理员面板 · 合租 · Supabase Storage（图片+视频压缩上传）· 手机扫码上传凭证（007）· 品牌 Logo · 收租核查表显示单元 · 在租房源列表滚动+图片灯箱 · Tavily/iProperty 外部搜房 · Vercel & Render 部署**
 
 ---
 
@@ -39,6 +39,7 @@ Malaysia_Ez_rent/
 │   │   │   │   ├── middleware.ts
 │   │   │   │   └── server.ts
 │   │   │   └── compressImage.ts  # 上传前 Canvas 压缩（凭证/房源/收款码）
+│   │   │   └── compressVideo.ts  # 浏览器 MediaRecorder 压缩看房视频（WebM）
 │   │   └── middleware.ts         # Next.js 路由中间件，处理 Auth 状态和重定向
 │   ├── public/
 │   │   └── logo.png              # 产品 Logo（圆形图标版，侧边栏/登录/上传页/favicon 共用）
@@ -72,7 +73,8 @@ Malaysia_Ez_rent/
         ├── 005_feedback.sql            # 学生意见箱 (feedback 表 + RLS 策略)
         ├── 006_bedrooms_bathrooms.sql  # units 加 bedrooms/bathrooms + match_units 更新
         ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
-        └── 008_whole_unit_room_type.sql # units.room_type 允许 Whole Unit（整租/合租）
+        ├── 008_whole_unit_room_type.sql # units.room_type 允许 Whole Unit（整租/合租）
+        └── 009_unit_video_url.sql       # units.video_url + Storage 看房视频
 ```
 
 ---
@@ -84,18 +86,19 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
-| `PropertyListings.tsx` | ✅ 完成 | iProperty 风格房源卡片列表，搜索/筛选/排序，详情抽屉（图片画廊、通勤地图、配套设施展示、同小区推荐），联系管理员弹窗，**合租功能**（Whole Unit 显示入住人数/备注/意向者列表，其他房型直接"我要租"），图片从 Supabase Storage 读取 |
+| `PropertyListings.tsx` | ✅ 完成 | iProperty 风格列表/筛选；**主内容区滚动**；详情 **Lightbox 大图** + **视频弹窗**；合租/Storage 图片 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换 |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗（管理员收款码 + **每账单唯一**上传凭证二维码），已缴费不可点击，凭证预览自适应高度 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
 | `AdminPanel.tsx` | ✅ 完成 | **房源/租约二级 Tab**（编辑/库存/意向/收租核查表）+ 房源管理（配套设施、**图片压缩**、Storage 上传）+ 单元管理 + **小区删除**（无房源时可删）+ 租约创建（意向租客选人、押金月数）+ **收租核查表独立显示小区·门牌号·房型**（Supabase JOIN + 兜底）+ 凭证审核 + 合租管理 + 硬删除 + 收款设置 + 意见箱 |
-| `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（`get_mobile_upload_info` / `submit_mobile_payment_evidence` RPC），上传前压缩，Storage `evidence/` 路径 |
-| `compressImage.ts` | ✅ 完成 | Canvas 客户端压缩：凭证 ≤1080×2400 JPEG 80%、房源 ≤1920 JPEG 85%、收款码 800×800 JPEG 92% |
+| `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
+| `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
+| `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
 | `ThemeProvider.tsx` | ✅ 完成 | 主题/语言 Context，解决 Next.js 16 路由器初始化黑屏问题 |
 | `i18n.ts` | ✅ 完成 | 中英双语翻译，修复重复 `perMonth` 属性 |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
-| `globals.css` | ✅ 完成 | 暗色玻璃风格 CSS，全套设计 Token，**Logo 布局样式**（`.logo-section` / `.logo-img`），Toast 动画 |
+| `globals.css` | ✅ 完成 | 设计 Token；**`app-container` 100vh + `.main-content` 滚动**；Logo / Toast 动画 |
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
 | `public/logo.png` | ✅ 完成 | 圆形图标版品牌 Logo（源文件 `QQ20260524-170137.png`），**纯静态资源，不涉及数据库** |
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
@@ -176,6 +179,9 @@ Malaysia_Ez_rent/
 | 52 | 管理端同一门牌号重复录入多条房源 | `units` 表无唯一约束 + 保存按钮无防连点；误操作会 INSERT 重复行，需手动删除多余记录（待加防重复） |
 | 53 | 收租核查表头部不显示小区/门牌号 | 租约与 unit 关联不可靠且 UI 挤在一行；改为 Supabase `leases → units → communities` JOIN，**单独一行**显示 `小区 · 门牌 · (房型)` |
 | 54 | 保存 Whole Unit 房型报 `units_room_type_check` | 数据库 CHECK 缺 `Whole Unit`；执行 `008_whole_unit_room_type.sql` 扩展约束 |
+| 55 | 房源缩略图无法点开大图 | 详情抽屉仅切换预览；新增 **Lightbox 全屏**（点击大图/缩略图，←/→/Esc） |
+| 56 | 看房视频未压缩且 Live 模式未上云 | 新增 `compressVideo.ts` + `units.video_url`（**009 迁移**）+ Storage 上传 |
+| 57 | AI 找房返回 Mock 演示房源 Sunway Geo | `search_internal_db` 在 Supabase 已连接时不再回退 Mock；空库时走 **Tavily → iProperty** |
 
 ---
 
@@ -301,6 +307,7 @@ Storage Bucket：
 | `006_bedrooms_bathrooms.sql` | units 加 bedrooms/bathrooms 字段 + 更新 match_units RPC 返回值 |
 | `007_mobile_upload.sql` | **手机匿名上传凭证**：`get_mobile_upload_info(uuid)` + `submit_mobile_payment_evidence(uuid, text)` RPC；Storage `unit-media/evidence/` 匿名 INSERT/UPDATE 策略 |
 | `008_whole_unit_room_type.sql` | `units.room_type` CHECK 增加 `Whole Unit`，修复整租/合租房型保存报错 |
+| `009_unit_video_url.sql` | `units.video_url TEXT` — 看房视频 Storage URL（`{unitId}/walkthrough.webm`） |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -327,6 +334,7 @@ supabase/migrations/
 ├── 006_bedrooms_bathrooms.sql  # units bedrooms/bathrooms + match_units
 ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
 └── 008_whole_unit_room_type.sql # Whole Unit 房型 CHECK 约束
+└── 009_unit_video_url.sql       # units.video_url 看房视频
 ```
 
 迁移原则：
@@ -360,9 +368,11 @@ supabase/migrations/
 | Whole Unit 保存报 `units_room_type_check` | 未跑 `008_whole_unit_room_type.sql` | Supabase SQL Editor 执行 `008_whole_unit_room_type.sql` |
 | 收租核查表看不到门牌号 | 旧版 UI 或未关联 unit | 刷新前端；若显示「单元信息缺失」则检查租约 `unit_id` |
 | Logo 上线要不要动数据库 | Logo 是 `frontend/public/logo.png` 静态文件 | **不用**；`git push` 后 Vercel 自动部署即可 |
+| 在租房源很多会挤占页面吗 | 已固定 `app-container` 高度 + `.main-content` 独立滚动 | 卡片增多时出现**右侧滚动条**，侧边栏/topbar 不动 |
+| 视频有没有压缩 | 有：`compressVideo.ts`（WebM，>12MB 触发） | Live 模式需跑 **`009_unit_video_url.sql`** 才有 `video_url` 字段 |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
-详见 `docs/auth-redirect-explained.md` 第 8–15 节。
+详见 `docs/auth-redirect-explained.md` 第 8–18 节。
 
 ---
 
@@ -475,8 +485,27 @@ RPC submit_mobile_payment_evidence → status = pending_review
 | 场景 | 最大尺寸 | 质量 | 典型体积 |
 |------|---------|------|---------|
 | 支付凭证 | 1080×2400 | JPEG 80% | 150–400 KB |
-| 房源照片 | 1920×1920 | JPEG 85% | 200–500 KB |
+| 房源照片 | 1920×1920 | JPEG 88% | 200–500 KB |
 | 收款码 | 800×800 | JPEG 92% | 50–150 KB |
+
+小于 `skipBelowBytes` 的原图**不重复压缩**。详情页点击缩略图/大图 → **Lightbox 全屏查看**（`PropertyListings.tsx`）。
+
+### 视频压缩与上传（`frontend/src/utils/compressVideo.ts`）
+
+| 项 | 说明 |
+|----|------|
+| 方式 | 浏览器 Canvas + **MediaRecorder** 重编码为 WebM |
+| 参数 | 最长边 ≤1280×720，~1.2 Mbps |
+| 触发 | 原文件 **> 12MB** 才压缩；否则直传 |
+| 存储 | Supabase Storage `unit-media/{unitId}/walkthrough.webm` |
+| 数据库 | `units.video_url`（需执行 **`009_unit_video_url.sql`**） |
+| 限制 | 浏览器不支持时回退原文件；**不含音频轨**（看房视频通常无音轨） |
+
+### 在租房源列表滚动
+
+布局：`app-container` 固定 `height: 100vh` → `main-content` `overflow-y: auto`。
+
+房源卡片再多也只在**主内容区**滚动，**不会把侧边栏/topbar 顶出屏幕**。
 
 ---
 

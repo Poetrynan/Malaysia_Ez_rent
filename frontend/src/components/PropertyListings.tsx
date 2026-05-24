@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
-  Building2, X, ChevronRight, CheckCircle2, Car, Footprints,
+  Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store
 } from 'lucide-react';
@@ -27,6 +27,7 @@ import { useApp } from '@/lib/ThemeProvider';
 interface Unit {
   id: string; community_id: string; unit_number: string;
   room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
+  video_url?: string | null;
   bedrooms?: number; bathrooms?: number;
 }
 interface Community {
@@ -54,11 +55,30 @@ const getUnitImages = (unitId: string, mediaUrls?: string[]): string[] => {
   } catch {}
   return Array.from({ length: 4 }, (_, i) => `https://picsum.photos/seed/${unitId}${i}/600/400`);
 };
-const getUnitVideo = (unitId: string): string | null => {
+const getUnitVideo = (unitId: string, videoUrl?: string | null): string | null => {
+  if (videoUrl) return videoUrl;
   try {
     const stored = JSON.parse(localStorage.getItem('ez_unit_media') || '{}');
     return stored[unitId]?.video || null;
   } catch { return null; }
+};
+
+const lightboxNavBtnStyle: React.CSSProperties = {
+  position: 'absolute',
+  left: 0,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'rgba(255,255,255,0.12)',
+  border: 'none',
+  color: 'white',
+  width: 44,
+  height: 44,
+  borderRadius: '50%',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 2,
 };
 
 interface AdminContact {
@@ -81,6 +101,8 @@ export default function PropertyListings() {
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<UnitWithCommunity | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [admins, setAdmins] = useState<AdminContact[]>([]);
   const [expandedAdmin, setExpandedAdmin] = useState<number | null>(null);
@@ -89,6 +111,31 @@ export default function PropertyListings() {
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
+
+  const closeDetail = () => {
+    setSelected(null);
+    setLightboxOpen(false);
+    setVideoOpen(false);
+    setImgIdx(0);
+  };
+
+  const openLightbox = (index: number) => {
+    setImgIdx(index);
+    setLightboxOpen(true);
+  };
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!selected) return;
+      const imgs = getUnitImages(selected.id, selected.media_urls);
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === 'ArrowLeft') setImgIdx(i => (i - 1 + imgs.length) % imgs.length);
+      if (e.key === 'ArrowRight') setImgIdx(i => (i + 1) % imgs.length);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxOpen, selected]);
 
   useEffect(() => {
     if (isMockDatabase) {
@@ -229,7 +276,7 @@ export default function PropertyListings() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="listings-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
         <h2 style={{ fontSize: '1.4rem' }}>{t('listingsTitle')}</h2>
@@ -301,7 +348,7 @@ export default function PropertyListings() {
       {selected && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex' }}>
           {/* Backdrop */}
-          <div onClick={() => setSelected(null)} style={{ flex: 1, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
+          <div onClick={closeDetail} style={{ flex: 1, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
 
           {/* Panel */}
           <div style={{
@@ -314,29 +361,41 @@ export default function PropertyListings() {
             <div style={{ position: 'relative', height: 260, background: '#0B1622', overflow: 'hidden' }}>
               {(() => {
                 const imgs = getUnitImages(selected.id, selected.media_urls);
-                const vid = getUnitVideo(selected.id);
+                const vid = getUnitVideo(selected.id, selected.video_url);
                 return (
                   <>
                     <img
                       src={imgs[imgIdx] || imgs[0]}
                       alt={selected.room_type}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9, cursor: 'zoom-in' }}
+                      onClick={() => openLightbox(imgIdx)}
                       onError={(e: any) => { e.target.style.display = 'none'; }}
+                      title={lang === 'zh' ? '点击查看大图' : 'Click to view full size'}
                     />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)' }} />
-                    <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                    <button onClick={closeDetail} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
                       <X size={18} />
                     </button>
-                    <div style={{ position: 'absolute', bottom: 12, left: 16, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 2 }}>
                       {imgs.slice(0, 9).map((src, i) => (
-                        <div key={i} onClick={() => setImgIdx(i)}
-                          style={{ width: 52, height: 36, borderRadius: 4, overflow: 'hidden', border: imgIdx === i ? '2px solid var(--primary)' : '2px solid rgba(255,255,255,0.3)', cursor: 'pointer', flexShrink: 0 }}>
-                          <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); openLightbox(i); }}
+                          style={{ width: 52, height: 36, borderRadius: 4, overflow: 'hidden', border: imgIdx === i ? '2px solid var(--primary)' : '2px solid rgba(255,255,255,0.3)', cursor: 'zoom-in', flexShrink: 0 }}
+                          title={lang === 'zh' ? '点击查看大图' : 'Click to view full size'}
+                        >
+                          <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
                         </div>
                       ))}
-                      {vid && <div style={{ width: 52, height: 36, borderRadius: 4, background: 'rgba(0,0,0,0.7)', border: '2px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => window.open(vid)}>
-                        <Video size={16} color="white" />
-                      </div>}
+                      {vid && (
+                        <div
+                          style={{ width: 52, height: 36, borderRadius: 4, background: 'rgba(0,0,0,0.7)', border: '2px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          onClick={(e) => { e.stopPropagation(); setVideoOpen(true); }}
+                          title={lang === 'zh' ? '播放看房视频' : 'Play walkthrough video'}
+                        >
+                          <Video size={16} color="white" />
+                        </div>
+                      )}
                     </div>
                     <div style={{ position: 'absolute', top: 16, left: 16, background: 'var(--primary)', color: 'white', padding: '4px 12px', borderRadius: 6, fontWeight: 800, fontSize: '1rem' }}>
                       RM {selected.rent.toLocaleString()}<span style={{ fontWeight: 400, fontSize: '0.8rem' }}>{t('perMonth')}</span>
@@ -602,6 +661,107 @@ export default function PropertyListings() {
           </div>
         </div>
       )}
+
+      {/* ── Image lightbox (full-size gallery) ── */}
+      {lightboxOpen && selected && (() => {
+        const imgs = getUnitImages(selected.id, selected.media_urls);
+        if (!imgs.length) return null;
+        const current = imgs[imgIdx] || imgs[0];
+        const goPrev = () => setImgIdx(i => (i - 1 + imgs.length) % imgs.length);
+        const goNext = () => setImgIdx(i => (i + 1) % imgs.length);
+        return (
+          <div
+            onClick={() => setLightboxOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 600,
+              background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '20px 16px',
+            }}
+          >
+            <button
+              onClick={() => setLightboxOpen(false)}
+              style={{
+                position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.12)',
+                border: 'none', color: 'white', width: 40, height: 40, borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2,
+              }}
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', marginBottom: 12 }}>
+              {imgIdx + 1} / {imgs.length} · {selected.community?.name}
+            </div>
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: 960, flex: 1, minHeight: 0 }}
+            >
+              {imgs.length > 1 && (
+                <button onClick={goPrev} style={lightboxNavBtnStyle} aria-label="Previous">
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+              <img
+                src={current}
+                alt=""
+                style={{ maxWidth: 'min(92vw, 960px)', maxHeight: 'min(72vh, 720px)', width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 8, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}
+              />
+              {imgs.length > 1 && (
+                <button onClick={goNext} style={{ ...lightboxNavBtnStyle, right: 0, left: 'auto' }} aria-label="Next">
+                  <ChevronRight size={28} />
+                </button>
+              )}
+            </div>
+            {imgs.length > 1 && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%', overflowX: 'auto', padding: '4px 0' }}>
+                {imgs.map((src, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); setImgIdx(i); }}
+                    style={{
+                      padding: 0, border: imgIdx === i ? '2px solid var(--primary)' : '2px solid rgba(255,255,255,0.25)',
+                      borderRadius: 6, overflow: 'hidden', width: 64, height: 44, cursor: 'pointer', background: 'transparent', flexShrink: 0,
+                    }}
+                  >
+                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Walkthrough video modal ── */}
+      {videoOpen && selected && (() => {
+        const vid = getUnitVideo(selected.id, selected.video_url);
+        if (!vid) return null;
+        return (
+          <div
+            onClick={() => setVideoOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 610,
+              background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}
+          >
+            <button
+              onClick={() => setVideoOpen(false)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.12)', border: 'none', color: 'white', width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={20} />
+            </button>
+            <video
+              src={vid}
+              controls
+              autoPlay
+              playsInline
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: 'min(92vw, 960px)', maxHeight: '85vh', borderRadius: 8, background: '#000' }}
+            />
+          </div>
+        );
+      })()}
 
       {/* ── Contact Admin Modal ── */}
       {showContact && (

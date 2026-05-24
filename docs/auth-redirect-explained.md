@@ -699,14 +699,44 @@ supabase/migrations/007_mobile_upload.sql
 | 类型 | 压缩参数 | 典型结果 |
 |------|---------|---------|
 | 支付凭证 | 1080×2400, JPEG 80% | 150–400 KB |
-| 房源照片 | 1920×1920, JPEG 85% | 200–500 KB |
+| 房源照片 | 1920×1920, JPEG 88% | 200–500 KB |
 | 收款码 | 800×800, JPEG 92% | 50–150 KB |
 
-图片存在 **Supabase Storage**（`unit-media` bucket），不是 PostgreSQL 表字段里（除 URL 外）。
+小于阈值（如房源图 250KB）**跳过压缩**。学生端详情页可 **Lightbox 全屏** 查看大图（点击缩略图或主图）。
+
+### 看房视频压缩（2026-05-24 新增）
+
+`frontend/src/utils/compressVideo.ts`：
+
+| 项 | 说明 |
+|----|------|
+| 方式 | Canvas + MediaRecorder → **WebM** |
+| 参数 | ≤1280×720，~1.2 Mbps |
+| 触发 | 原文件 **> 12MB** |
+| 存储 | `unit-media/{unitId}/walkthrough.webm` |
+| 字段 | `units.video_url`（需 **`009_unit_video_url.sql`**） |
+
+浏览器不支持 MediaRecorder 时回退原文件。压缩过程管理端按钮显示「压缩中…」。
 
 ---
 
-## 13. AI 找房会不会去 iProperty？
+## 13. 在租房源列表会不会挤占页面？
+
+**不会。** 布局已固定：
+
+```
+app-container (height: 100vh, overflow: hidden)
+  ├── sidebar（固定）
+  └── main-viewport
+        ├── topbar（sticky）
+        └── main-content（overflow-y: auto）← 房源卡片在这里滚动
+```
+
+房源再多，只在**主内容区**出现滚动条；侧边栏和顶部栏保持固定。
+
+---
+
+## 14. AI 找房会不会去 iProperty？
 
 **不会。** 找房主路径：
 
@@ -728,7 +758,7 @@ LLM 组织语言回复
 
 ---
 
-## 14. Supabase「Memory usage」高 ≠ 数据库被占满了
+## 15. Supabase「Memory usage」高 ≠ 数据库被占满了
 
 ### 先分清三个概念
 
@@ -810,7 +840,7 @@ Dashboard → **Storage → unit-media**，看 `evidence/`、`qr/` 各文件夹�
 
 ---
 
-## 15. 品牌 Logo 上线要不要动数据库？
+## 16. 品牌 Logo 上线要不要动数据库？
 
 ### 简单答案：**不用。**
 
@@ -846,7 +876,7 @@ favicon 若浏览器仍显示旧图标：强制刷新（Ctrl+F5）或清除缓�
 
 ---
 
-## 16. 收租核查表为什么不显示门牌号？
+## 17. 收租核查表为什么不显示门牌号？
 
 ### 现象
 
@@ -881,7 +911,7 @@ WHERE l.status = 'active';
 
 ---
 
-## 17. Whole Unit 保存报 `units_room_type_check` 怎么办？
+## 18. Whole Unit 保存报 `units_room_type_check` 怎么办？
 
 前端 AdminPanel 已支持 **Whole Unit**（整租/合租），但旧数据库的 CHECK 约束可能只允许 4 种房型。
 
@@ -907,13 +937,14 @@ supabase/migrations/008_whole_unit_room_type.sql
 | 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
 | 2️⃣ | 运行 `004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
 | 3️⃣ | 运行 **`007_mobile_upload.sql`**（手机匿名上传凭证 RPC + Storage evidence/ 策略） | ⚠️ **必做**，否则手机上传失败 |
-| 4️⃣ | 运行 **`008_whole_unit_room_type.sql`**（Whole Unit 房型 CHECK） | ⚠️ 保存整租报错时必做 |
-| 5️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 6️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
-| 7️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
-| 8️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
-| 9️⃣ | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push`，Vercel 自动部署 | ❌ **无需 SQL**，见第 15 节 |
+| 4️⃣ | 运行 **`008_whole_unit_room_type.sql`**（Whole Unit 房型） | ⚠️ 保存整租报错时必做 |
+| 5️⃣ | 运行 **`009_unit_video_url.sql`**（看房视频 URL 字段） | ⚠️ Live 模式上传视频时必做 |
+| 6️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 7️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 8️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
+| 9️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+| 🔟 | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push` | ❌ 无需 SQL，见第 16 节 |
 
 ---
 
-*文档更新：2026-05-24 · 含手机上传凭证、二维码区分、图片压缩、AI 数据来源、Memory vs Storage、Logo 部署、收租核查表单元显示、Whole Unit 迁移*
+*文档更新：2026-05-24 · 含图片/视频压缩、房源列表滚动、Lightbox、009 视频迁移、Tavily/iProperty、Memory vs Storage*
