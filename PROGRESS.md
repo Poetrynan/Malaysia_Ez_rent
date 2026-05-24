@@ -74,8 +74,8 @@ Malaysia_Ez_rent/
         ├── 006_bedrooms_bathrooms.sql  # units 加 bedrooms/bathrooms + match_units 更新
         ├── 007_mobile_upload.sql       # 手机匿名上传凭证 RPC + Storage evidence/ 策略
         ├── 008_whole_unit_room_type.sql # units.room_type 允许 Whole Unit（整租/合租）
-        └── 009_unit_video_url.sql       # units.video_url + Storage 看房视频
-```
+        ├── 009_unit_video_url.sql       # units.video_url + Storage 看房视频
+        └── 013_landlord_payment_details.sql # units 加 landlord_qr_code/landlord_bank_info，更新手机上传 RPC
 
 ---
 
@@ -89,9 +89,9 @@ Malaysia_Ez_rent/
 | `PropertyListings.tsx` | ✅ 完成 | iProperty 风格列表/筛选；**主内容区滚动**；详情 **Lightbox 大图** + **视频弹窗**；合租/Storage 图片 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
-| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗（管理员收款码 + **每账单唯一**上传凭证二维码），已缴费不可点击，凭证预览自适应高度 |
-| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击 + **意见箱**（提交意见/建议，查看历史及管理员回复）|
-| `AdminPanel.tsx` | ✅ 完成 | **房源/租约二级 Tab**（编辑/库存/意向/收租核查表）+ 房源管理（配套设施、**图片压缩**、Storage 上传）+ 单元管理 + **小区删除**（无房源时可删）+ 租约创建（意向租客选人、押金月数）+ **收租核查表独立显示小区·门牌号·房型**（Supabase JOIN + 兜底）+ 凭证审核 + 合租管理 + 硬删除 + 收款设置 + 意见箱 |
+| `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**，每账单唯一上传凭证二维码，已缴费不可点击 |
+| `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息 + **意见箱** |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（编辑/库存/意向/收租核查表），支持**房东银行信息/房东收款码录入**、图片流式压缩、Storage上传、单元管理、小区无房源硬删除、租约创建、凭证审核等 |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
