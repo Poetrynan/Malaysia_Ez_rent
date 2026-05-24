@@ -7,14 +7,14 @@ import { useApp } from '@/lib/ThemeProvider';
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
 const AMENITIES = [
-  { key: 'gym', label: '🏋️ Gym', labelZh: '健身房' },
-  { key: 'pool', label: '🏊 Pool', labelZh: '游泳池' },
-  { key: 'laundry', label: '👕 Laundry', labelZh: '洗衣房' },
-  { key: 'study', label: '📚 Study Room', labelZh: '自习室' },
-  { key: 'parking', label: '🅿️ Parking', labelZh: '停车位' },
-  { key: 'security', label: '🔒 24h Security', labelZh: '24小时安保' },
-  { key: 'wifi', label: '📶 WiFi', labelZh: 'WiFi覆盖' },
-  { key: 'mart', label: '🛒 Mini Mart', labelZh: '便利店' },
+  { key: 'gym', label: '🏋️ Gym', labelZh: '🏋️ 健身房' },
+  { key: 'pool', label: '🏊 Pool', labelZh: '🏊 游泳池' },
+  { key: 'laundry', label: '👕 Laundry', labelZh: '👕 洗衣房' },
+  { key: 'study', label: '📚 Study Room', labelZh: '📚 自习室' },
+  { key: 'parking', label: '🅿️ Parking', labelZh: '🅿️ 停车位' },
+  { key: 'security', label: '🔒 24h Security', labelZh: '🔒 24小时安保' },
+  { key: 'wifi', label: '📶 WiFi', labelZh: '📶 WiFi覆盖' },
+  { key: 'mart', label: '🛒 Mini Mart', labelZh: '🛒 便利店' },
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
