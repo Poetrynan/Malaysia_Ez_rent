@@ -20,9 +20,9 @@ const DEFAULT_COMMUNITIES = [
 ];
 
 const DEFAULT_UNITS = [
-  { id: 'u1-uuid', community_id: 'c1-uuid', unit_number: 'Block B-12-08', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.' },
-  { id: 'u2-uuid', community_id: 'c2-uuid', unit_number: 'Block A-20-03', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.' },
-  { id: 'u3-uuid', community_id: 'c3-uuid', unit_number: 'Tower 2-15-11', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.' }
+  { id: 'u1-uuid', community_id: 'c1-uuid', unit_number: 'Block B-12-08', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.', bedrooms: 1, bathrooms: 1 },
+  { id: 'u2-uuid', community_id: 'c2-uuid', unit_number: 'Block A-20-03', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.', bedrooms: 4, bathrooms: 3 },
+  { id: 'u3-uuid', community_id: 'c3-uuid', unit_number: 'Tower 2-15-11', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.', bedrooms: 3, bathrooms: 2 }
 ];
 
 const DEFAULT_LEASES = [

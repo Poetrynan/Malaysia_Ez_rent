@@ -63,7 +63,9 @@ UNITS = [
         "room_type": "Studio",
         "rent": 2500.00,
         "status": "available",
-        "description": "Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk (5 mins) and Sunway University (8 mins). Fully furnished, pet policy: friendly to small pets, free shuttle bus to Sunway Pyramid LRT."
+        "description": "Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk (5 mins) and Sunway University (8 mins). Fully furnished, pet policy: friendly to small pets, free shuttle bus to Sunway Pyramid LRT.",
+        "bedrooms": 1,
+        "bathrooms": 1
     },
     {
         "id": "u2-uuid",
@@ -73,7 +75,9 @@ UNITS = [
         "room_type": "Master Room",
         "rent": 1600.00,
         "status": "available",
-        "description": "Spacious Master Room with private bathroom. Sharing with 3 other Monash/Sunway students. Cooking allowed. Gym, Swimming pool, and 24h security. Walk to Sunway University in 3 mins. Aircon, study table, and wardrobes included."
+        "description": "Spacious Master Room with private bathroom. Sharing with 3 other Monash/Sunway students. Cooking allowed. Gym, Swimming pool, and 24h security. Walk to Sunway University in 3 mins. Aircon, study table, and wardrobes included.",
+        "bedrooms": 4,
+        "bathrooms": 3
     },
     {
         "id": "u3-uuid",
@@ -83,7 +87,9 @@ UNITS = [
         "room_type": "Medium Room",
         "rent": 1200.00,
         "status": "available",
-        "description": "Beautiful loft-style medium room. Female only unit. Includes high-speed Wi-Fi, air conditioner, study table. 5 mins walk to Taylor's University Lakeside Campus. Infinity pool and sky gym."
+        "description": "Beautiful loft-style medium room. Female only unit. Includes high-speed Wi-Fi, air conditioner, study table. 5 mins walk to Taylor's University Lakeside Campus. Infinity pool and sky gym.",
+        "bedrooms": 3,
+        "bathrooms": 2
     },
     {
         "id": "u4-uuid",
@@ -93,7 +99,9 @@ UNITS = [
         "room_type": "Medium Room",
         "rent": 1400.00,
         "status": "available",
-        "description": "Premium Medium Room sharing bathroom with only one tidy student. Opposite Sunway Geo Avenue shopping mall. Direct link to BRT station. Cooking allowed, high speed fiber wifi included."
+        "description": "Premium Medium Room sharing bathroom with only one tidy student. Opposite Sunway Geo Avenue shopping mall. Direct link to BRT station. Cooking allowed, high speed fiber wifi included.",
+        "bedrooms": 3,
+        "bathrooms": 2
     },
     {
         "id": "u5-uuid",
@@ -103,7 +111,9 @@ UNITS = [
         "room_type": "Studio",
         "rent": 1500.00,
         "status": "available",
-        "description": "Modern studio unit next to Ara Damansara LRT station. Super easy commute to APU (via LRT connect) or downtown KL. Gym, swimming pool. Downstairs has Jaya Grocer, food court, and cafes."
+        "description": "Modern studio unit next to Ara Damansara LRT station. Super easy commute to APU (via LRT connect) or downtown KL. Gym, swimming pool. Downstairs has Jaya Grocer, food court, and cafes.",
+        "bedrooms": 1,
+        "bathrooms": 1
     }
 ]
 

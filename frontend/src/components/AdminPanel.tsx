@@ -18,7 +18,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; }
+interface Unit { id: string; community_id: string; unit_number: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; bedrooms?: number; bathrooms?: number; }
 interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -43,7 +43,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
   const [communitySearch, setCommunitySearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
-  const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1' });
+  const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
   // media: up to 9 images (base64) + 1 video (object URL)
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
@@ -590,7 +590,18 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
       showToast(t('validationSaved'), 'success');
     }
     const uid = isLive ? crypto.randomUUID() : `u-${Date.now()}`;
-    const newU: Unit = { id: uid, community_id: unitForm.community_id, unit_number: unitForm.unit_number, room_type: unitForm.room_type, rent: parseFloat(unitForm.rent), status: 'available', description: unitForm.description, max_occupants: parseInt(unitForm.max_occupants) || 1 };
+    const newU: Unit = { 
+      id: uid, 
+      community_id: unitForm.community_id, 
+      unit_number: unitForm.unit_number, 
+      room_type: unitForm.room_type, 
+      rent: parseFloat(unitForm.rent), 
+      status: 'available', 
+      description: unitForm.description, 
+      max_occupants: parseInt(unitForm.max_occupants) || 1,
+      bedrooms: parseInt(unitForm.bedrooms) || 1,
+      bathrooms: parseInt(unitForm.bathrooms) || 1
+    };
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -621,7 +632,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
         try { localStorage.setItem('ez_unit_media', JSON.stringify(allMedia)); } catch {}
       }
     }
-    setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1' });
+    setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
     setMediaImages([]); setMediaVideo(null); loadAll();
   };
 
@@ -978,6 +989,10 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
               <div className="form-group"><label>{t('rentMYR')}</label><input type="number" className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: e.target.value })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
               <div className="form-group"><label>{t('maxOccupants')}</label><input type="number" min="1" max="10" className="form-input" value={unitForm.max_occupants} onChange={e => setUnitForm(f => ({ ...f, max_occupants: e.target.value }))} /></div>
             </div>
+            <div className="form-row">
+              <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: e.target.value }))} /></div>
+              <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: e.target.value }))} /></div>
+            </div>
             <div className="form-group"><label>{t('descLabel')}</label><textarea className="form-textarea" rows={2} value={unitForm.description} onChange={e => setUnitForm(f => ({ ...f, description: e.target.value }))} placeholder={t('descPlaceholder')} style={{ resize: 'vertical' }} /></div>
 
             {/* ── Media Upload ── */}
@@ -1091,7 +1106,7 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
                     return (
                       <tr key={u.id}>
                         <td style={{ fontWeight: 500, color: 'var(--text-h)' }}>{c?.name || '—'}</td>
-                        <td>{u.unit_number}</td><td>{u.room_type}</td>
+                        <td>{u.unit_number}</td><td>{u.room_type} ({u.bedrooms || 1}{t('bedroomsUnit')}{u.bathrooms || 1}{t('bathroomsUnit')})</td>
                         <td style={{ color: 'var(--accent)', fontWeight: 600 }}>RM {u.rent.toLocaleString()}</td>
                         <td><span className={`status-badge ${u.status}`}>{u.status === 'available' ? t('statusAvailable') : t('statusRented')}</span></td>
                         <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Search, SlidersHorizontal, MapPin, Bed, DollarSign, Tag,
+  Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
   Building2, X, ChevronRight, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown
@@ -20,6 +20,7 @@ import { useApp } from '@/lib/ThemeProvider';
 interface Unit {
   id: string; community_id: string; unit_number: string;
   room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
+  bedrooms?: number; bathrooms?: number;
 }
 interface Community {
   id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
@@ -366,9 +367,11 @@ export default function PropertyListings() {
               <div>
                 <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{t('detailProperty')}</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-                  {[
+                   {[
                     [t('detailType'), selected.room_type],
                     [t('detailRent'), `RM ${selected.rent.toLocaleString()}/mo`],
+                    [t('detailBedrooms'), `${selected.bedrooms || 1} ${t('bedroomsUnit')}`],
+                    [t('detailBathrooms'), `${selected.bathrooms || 1} ${t('bathroomsUnit')}`],
                     [t('detailCommunity'), selected.community?.name || '—'],
                     [t('detailStatus'), selected.status === 'available' ? t('available') : t('rented')],
                     [t('detailAddress'), selected.community?.address || '—'],
@@ -780,8 +783,15 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
 
         {/* Per-month + View */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: 10, marginTop: 2 }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Bed size={13} /> {unit.room_type}
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Bed size={13} />
+              <span>{unit.bedrooms || 1} {t('bedroomsUnit')}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Bath size={13} />
+              <span>{unit.bathrooms || 1} {t('bathroomsUnit')}</span>
+            </span>
           </span>
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 3 }}>
             {t('viewDetail')} <ChevronRight size={13} />

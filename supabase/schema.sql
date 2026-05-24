@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS units (
     room_type VARCHAR(50) CHECK (room_type IN ('Studio', 'Master Room', 'Medium Room', 'Small Room')),
     rent DECIMAL(10,2) NOT NULL,
     status VARCHAR(20) CHECK (status IN ('available', 'rented')) DEFAULT 'available',
+    bedrooms INT DEFAULT 1,
+    bathrooms INT DEFAULT 1,
     description TEXT,
     embedding VECTOR(1536), -- Text Embedding for room details
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -211,7 +213,9 @@ CREATE OR REPLACE FUNCTION match_units (
     rent DECIMAL,
     status VARCHAR,
     description TEXT,
-    similarity FLOAT
+    similarity FLOAT,
+    bedrooms INT,
+    bathrooms INT
 ) LANGUAGE plpgsql AS $$
 BEGIN
     RETURN QUERY
@@ -222,7 +226,9 @@ BEGIN
         u.rent,
         u.status,
         u.description,
-        1 - (u.embedding <=> query_embedding) AS similarity
+        1 - (u.embedding <=> query_embedding) AS similarity,
+        u.bedrooms,
+        u.bathrooms
     FROM units u
     JOIN communities c ON u.community_id = c.id
     WHERE 1 - (u.embedding <=> query_embedding) > match_threshold
