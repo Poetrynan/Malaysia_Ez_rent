@@ -13,6 +13,15 @@ interface MapAndCardProps {
   unit_id: string;
 }
 
+const MOCK_PLACES = [
+  { name: 'Monash University Malaysia', address: 'Jalan Lagoon Selatan, Bandar Sunway, 47500 Subang Jaya' },
+  { name: 'Sunway University', address: 'Jalan Universiti, Bandar Sunway, 47500 Subang Jaya' },
+  { name: 'Taylor\'s University Lakeside Campus', address: 'Jalan Taylors, Bandar Sunway, 47500 Subang Jaya' },
+  { name: 'Sunway Pyramid Shopping Mall', address: 'Jalan PJS 11/15, Bandar Sunway, 47500 Subang Jaya' },
+  { name: 'Sunway Lagoon BRT Station', address: 'Bandar Sunway, Subang Jaya' },
+  { name: 'Subang Jaya LRT Station', address: 'Subang Jaya, Selangor' },
+];
+
 export default function MapAndCard({
   origin_name, origin_lat, origin_lng,
   rent, room_type
@@ -24,11 +33,60 @@ export default function MapAndCard({
   // Start point (origin) states
   const [customStart, setCustomStart] = useState<string>(''); // User-typed start point
   const [activeStart, setActiveStart] = useState<{ name: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  const handleStartSearch = (val: string) => {
+    setCustomStart(val);
+    if (!val.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
+      const autocompleteService = new window.google.maps.places.AutocompleteService();
+      autocompleteService.getPlacePredictions(
+        {
+          input: val,
+          componentRestrictions: { country: 'my' },
+          types: ['establishment', 'geocode']
+        },
+        (predictions, status) => {
+          if (status === window.google!.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSuggestions(predictions.map((p) => ({
+              description: p.description,
+              place_id: p.place_id,
+              main_text: p.structured_formatting.main_text,
+              secondary_text: p.structured_formatting.secondary_text,
+            })));
+          } else {
+            setSuggestions([]);
+          }
+        }
+      );
+    } else {
+      // Fallback
+      setSuggestions(MOCK_PLACES.filter(p => p.name.toLowerCase().includes(val.toLowerCase())).map(p => ({
+        description: p.name + ', ' + p.address,
+        place_id: '',
+        main_text: p.name,
+        secondary_text: p.address,
+      })));
+    }
+  };
+
+  const selectSuggestion = (s: any) => {
+    const displayName = s.description || s.main_text;
+    setCustomStart(displayName);
+    setActiveStart({ name: displayName });
+    setSuggestions([]);
+    setShowMap(true);
+  };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (customStart.trim()) {
       setActiveStart({ name: customStart.trim() });
+      setSuggestions([]);
       setShowMap(true);
     }
   };
@@ -36,6 +94,7 @@ export default function MapAndCard({
   const handleReset = () => {
     setCustomStart('');
     setActiveStart(null);
+    setSuggestions([]);
   };
 
   const modes = [
@@ -73,18 +132,53 @@ export default function MapAndCard({
       </div>
 
       {/* Starting Point Input area */}
-      <div style={{ padding: '12px 16px', background: 'rgba(255, 255, 255, 0.01)', borderBottom: '1px solid var(--glass-border)' }}>
+      <div style={{ padding: '12px 16px', background: 'rgba(255, 255, 255, 0.01)', borderBottom: '1px solid var(--glass-border)', position: 'relative' }}>
         <form onSubmit={handleCustomSubmit} style={{ display: 'flex', gap: 8, width: '100%' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <input
               type="text"
               className="form-input"
-              placeholder={lang === 'zh' ? '输入出发地点（例如：学校、火车站、地标）' : 'Enter starting point (e.g. school, station, landmark)'}
+              placeholder={lang === 'zh' ? '输入出发地点（例如：学校、地标）' : 'Enter starting point (e.g. school, landmark)'}
               value={customStart}
-              onChange={e => setCustomStart(e.target.value)}
+              onChange={e => handleStartSearch(e.target.value)}
               style={{ fontSize: '0.8rem', padding: '6px 10px 6px 28px', height: 34, width: '100%', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-body)' }}
             />
             <MapPin size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+            
+            {/* Suggestions dropdown */}
+            {suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: 'var(--bg-surface-solid, #1e1e24)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 'var(--radius-sm, 6px)',
+                zIndex: 50,
+                boxShadow: 'var(--glass-shadow)',
+                maxHeight: '180px',
+                overflowY: 'auto',
+                marginTop: 4
+              }}>
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className="suggestion-item"
+                    onClick={() => selectSuggestion(s)}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid var(--glass-border)',
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '0.8rem' }}>{s.main_text}</div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{s.secondary_text || s.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           
           <button
