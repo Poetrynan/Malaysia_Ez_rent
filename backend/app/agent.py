@@ -33,8 +33,8 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             "2. 💳 **查看账单/交租**：请直接点击上方导航栏的 **“我的租约”** 页面，里面有您实时的月度收租账单台账，并提供付款扫码与凭证上传功能。\n\n"
             "---\n\n"
             "作为您的 **AI 留学助手**，我当前支持以下核心功能，您可以随时向我提问：\n\n"
-            "- 🚇 **交通通勤测算**：根据您的起点位置（经纬度），帮您测算到双威、莫纳什等校区的通勤路程与不同交通工具的时间。\n"
-            "  *示例 Prompt*: `帮我计算一下从 3.0678, 101.6033 到莫纳什大学要多久？`\n"
+            "- 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
+            "  *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
             "- 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
             "  *示例 Prompt*: `3000令吉等于多少人民币？`\n"
             "- 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
@@ -51,16 +51,16 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         yield sse_event({"type": "thinking", "step": "🚇 Calculating commute travel time to Malaysia universities using Google Maps database..."})
         await asyncio.sleep(0.8)
         
-        origin_lat, origin_lng = 3.0678, 101.6033
+        origin_address = "Sunway Geo Residences"
         target_uni = "Monash University Malaysia"
-        yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_lat": origin_lat, "origin_lng": origin_lng, "university_name": target_uni}})
+        yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_address": origin_address, "university_name": target_uni}})
         await asyncio.sleep(0.8)
         
-        commute_info = calculate_commute(origin_lat, origin_lng, target_uni)
+        commute_info = calculate_commute(origin_address, target_uni)
         yield sse_event({"type": "tool_result", "tool_name": "calculate_commute", "result": commute_info})
         await asyncio.sleep(0.5)
         
-        intro = f"根据地图测算，从坐标 `({origin_lat}, {origin_lng})` 到 **{commute_info['university']}** 的交通路线如下：\n\n"
+        intro = f"根据地图测算，从 **{origin_address}** 到 **{commute_info['university']}** 的交通路线如下：\n\n"
         for char in intro:
             yield sse_event({"type": "text", "delta": char})
             await asyncio.sleep(0.005)
@@ -69,7 +69,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             f"- 🚗 驾车: {commute_info['driving_distance']} / {commute_info['driving_duration']}\n"
             f"- 🚊 公共交通: {commute_info['transit_duration']}\n"
             f"- 🚶 步行: {commute_info['walk_duration']}\n\n"
-            "注：吉隆坡早晚高峰容易拥堵，建议首选公共交通出行。"
+            "注：吉隆坡早晚高峰容易拥堵，建议首选公共交通/步道（如双威 Canopy Walk）出行。"
         )
         for char in details:
             yield sse_event({"type": "text", "delta": char})
@@ -142,21 +142,19 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
     """
     Executes a real ReAct loop using OpenAI Tool Calling.
     """
-    # Define tool structures for OpenAI (filtered to remove room search/status lookup)
     tools_definitions = [
         {
             "type": "function",
             "function": {
                 "name": "calculate_commute",
-                "description": "Calculate travel times and distances from coordinates to a university.",
+                "description": "Calculate travel times and distances from a starting address or condo name to a university.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "origin_lat": {"type": "number", "description": "Latitude of the community."},
-                        "origin_lng": {"type": "number", "description": "Longitude of the community."},
+                        "origin_address": {"type": "string", "description": "Starting address, condo name, or landmark (e.g. Nadayu 28, Sunway Geo Residences)."},
                         "university_name": {"type": "string", "description": "Target university name (e.g. Monash University Malaysia)."}
                     },
-                    "required": ["origin_lat", "origin_lng", "university_name"]
+                    "required": ["origin_address", "university_name"]
                 }
             }
         },
@@ -215,8 +213,8 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "CRITICAL INSTRUCTIONS:\n"
                 "1. You DO NOT search for rooms or check rental leases/bills anymore. If a user asks about finding a room, checking a bill, or paying rent, tell them clearly to use the website's built-in tabs directly ('房源列表' / 'PropertyListings' for room browsing, and '我的租约' / 'StudentPortal' for payment ledgers/status).\n"
                 "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', you MUST list out your active features and provide the EXACT corresponding example prompts as shown below:\n"
-                "   - 🚇 **交通通勤测算**：根据您的起点位置（经纬度），帮您测算到双威、莫纳什等校区的通勤路程与不同交通工具的时间。\n"
-                "     *示例 Prompt*: `帮我计算一下从 3.0678, 101.6033 到莫纳什大学要多久？`\n"
+                "   - 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
+                "     *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
                 "   - 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
                 "     *示例 Prompt*: `3000令吉等于多少人民币？`\n"
                 "   - 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
@@ -292,8 +290,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             result_data = None
             if tool_name == "calculate_commute":
                 result_data = calculate_commute(
-                    origin_lat=tool_args.get("origin_lat", 0.0),
-                    origin_lng=tool_args.get("origin_lng", 0.0),
+                    origin_address=tool_args.get("origin_address", ""),
                     university_name=tool_args.get("university_name", "")
                 )
             elif tool_name == "get_web_realtime_info":
