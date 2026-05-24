@@ -5,13 +5,20 @@ import {
   Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
   Building2, X, ChevronRight, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
-  Phone, MessageCircle, Mail, ChevronDown
+  Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
-const AMENITIES_MAP: Record<string, string> = {
-  gym: '🏋️ Gym', pool: '🏊 Pool', laundry: '👕 Laundry', study: '📚 Study Room',
-  parking: '🅿️ Parking', security: '🔒 24h Security', wifi: '📶 WiFi', mart: '🛒 Mini Mart',
+// Define mapped amenities with icons and bilingual names (respecting admin checkboxes)
+const AMENITY_DETAILS: Record<string, { icon: React.ReactNode; zh: string; en: string }> = {
+  security: { icon: <ShieldCheck size={16} />, zh: '24小时门卫', en: '24-hr Security' },
+  pool: { icon: <Waves size={16} />, zh: '游泳池', en: 'Swimming Pool' },
+  gym: { icon: <Dumbbell size={16} />, zh: '健身房', en: 'Gymnasium' },
+  parking: { icon: <ParkingCircle size={16} />, zh: '停车场', en: 'Parking' },
+  wifi: { icon: <Wifi size={16} />, zh: '公共 Wi-Fi', en: 'Common Wi-Fi' },
+  laundry: { icon: <Shirt size={16} />, zh: '洗衣房', en: 'Laundry' },
+  study: { icon: <BookOpen size={16} />, zh: '自习室', en: 'Study Room' },
+  mart: { icon: <Store size={16} />, zh: '便利店', en: 'Mini Mart' },
 };
 
 import MapAndCard from './MapAndCard';
@@ -65,7 +72,7 @@ interface AdminContact {
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
 
 export default function PropertyListings() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -220,7 +227,6 @@ export default function PropertyListings() {
     ? units.filter(u => u.community_id === selected.community_id && u.id !== selected.id)
     : [];
 
-  const facilities = (t('facilityList') as unknown as string[]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -404,36 +410,26 @@ export default function PropertyListings() {
               {/* Facilities */}
               <div>
                 <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{t('detailFacilities')}</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
-                  {facilities.map((f: string, i: number) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--text-body)' }}>
-                      <span style={{ color: 'var(--primary)', display: 'flex' }}>{FACILITY_ICONS[f] || <Star size={16} />}</span>
-                      {f}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Community Amenities from DB */}
-              {selected.community?.amenities && selected.community.amenities.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>配套设施</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {selected.community?.amenities && selected.community.amenities.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
                     {selected.community.amenities.map((key: string) => {
-                      const amenity = AMENITIES_MAP[key];
+                      const detail = AMENITY_DETAILS[key];
+                      if (!detail) return null;
+                      const displayName = lang === 'zh' ? detail.zh : detail.en;
                       return (
-                        <span key={key} style={{
-                          fontSize: '0.78rem', padding: '5px 12px', borderRadius: 8,
-                          background: 'rgba(37,99,235,0.08)', color: 'var(--primary)',
-                          border: '1px solid rgba(37,99,235,0.15)',
-                        }}>
-                          {amenity || key}
-                        </span>
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--text-body)' }}>
+                          <span style={{ color: 'var(--primary)', display: 'flex' }}>{detail.icon}</span>
+                          {displayName}
+                        </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '暂无公共设施信息' : 'No facility information available'}
+                  </div>
+                )}
+              </div>
 
               {/* Rent / Co-renting */}
               <div>
