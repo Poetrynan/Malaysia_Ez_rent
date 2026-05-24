@@ -32,6 +32,19 @@ interface Community {
   name: string;
 }
 
+interface MobileUploadInfo {
+  id: string;
+  lease_id: string;
+  billing_month: string;
+  paid: boolean;
+  evidence_url: string | null;
+  status: string | null;
+  monthly_rent: number | null;
+  unit_number: string | null;
+  community_name: string | null;
+  admin_qr_code: string | null;
+}
+
 export default function MobileUploadPage() {
   const { lang } = useApp();
   const routerParams = useParams();
@@ -69,47 +82,50 @@ export default function MobileUploadPage() {
         }
       }
     } else {
-      // Live mode: read from Supabase
+      // Live mode: read via SECURITY DEFINER RPC so the unauthenticated mobile browser bypasses RLS
       try {
-        const { data: p, error: pErr } = await supabase
-          .from('payment_records')
-          .select('*')
-          .eq('id', paymentId)
-          .single();
-        if (pErr || !p) {
-          if (paymentId.startsWith('p') || paymentId.includes('mock') || paymentId.includes('uuid')) {
-            setError(lang === 'zh' 
-              ? '您扫描的二维码是在“离线模拟器”下生成的测试账单（如 p1-uuid 等），该账单 ID 在线上云端数据库中不存在。请在 AI 助手右上角显示为绿色的“已连接”状态下，发送消息生成真实的云端账单再进行扫码测试。' 
-              : 'The scanned QR code was generated under the "Offline Simulator" mock state. This payment ID does not exist in the live database. Please ensure the agent status is green "Connected" and scan a real cloud billing record.'
-            );
+        const { data, error: rpcErr } = await supabase
+          .rpc('get_mobile_upload_info', { p_payment_id: paymentId });
+
+        if (rpcErr) {
+          setError(lang === 'zh'
+            ? `读取账单失败：${rpcErr.message}。请刷新页面重试，或联系房东确认二维码。`
+            : `Failed to load payment: ${rpcErr.message}. Please refresh or contact the landlord.`);
+          return;
+        }
+
+        const info = data as MobileUploadInfo | null;
+        if (!info) {
+          // UUIDs are 36 characters with dashes; mock IDs from the offline simulator (e.g. "p1-uuid") are shorter
+          const looksLikeMockId = paymentId.length < 36 || paymentId.includes('mock');
+          if (looksLikeMockId) {
+            setError(lang === 'zh'
+              ? '您扫描的二维码是在"离线模拟器"下生成的测试账单（如 p1-uuid 等），该账单 ID 在云端数据库中不存在。请在 AI 助手右上角显示为绿色的"已连接"状态下生成真实账单后再扫码。'
+              : 'The scanned QR was generated in the "Offline Simulator". This payment ID does not exist in the live database. Please generate a real cloud bill (AI agent status must be green "Connected") and re-scan.');
           } else {
-            setError(lang === 'zh' ? '未找到该账单记录，请检查 ID 是否正确。' : 'Payment record not found. Please verify the billing ID.');
+            setError(lang === 'zh'
+              ? '未找到该账单记录，请检查 ID 是否正确。'
+              : 'Payment record not found. Please verify the billing ID.');
           }
           return;
         }
-        setPayment(p);
-        if (p.evidence_url) { setDone(true); return; }
 
-        const { data: l } = await supabase
-          .from('leases')
-          .select('id, monthly_rent, unit_id')
-          .eq('id', p.lease_id)
-          .single();
-        if (l) {
-          setLease(l);
-          const { data: u } = await supabase
-            .from('units')
-            .select('unit_number, community_id')
-            .eq('id', l.unit_id)
-            .single();
-          if (u) {
-            const { data: c } = await supabase
-              .from('communities')
-              .select('name')
-              .eq('id', u.community_id)
-              .single();
-            setUnitInfo(`${c?.name || ''} · ${u.unit_number}`);
-          }
+        const p: Payment = {
+          id: info.id,
+          lease_id: info.lease_id,
+          billing_month: info.billing_month,
+          paid: info.paid,
+          evidence_url: info.evidence_url,
+          status: info.status || undefined,
+        };
+        setPayment(p);
+        if (info.evidence_url) { setDone(true); return; }
+
+        if (info.monthly_rent != null) {
+          setLease({ id: info.lease_id, monthly_rent: Number(info.monthly_rent), unit_id: '' });
+        }
+        if (info.community_name || info.unit_number) {
+          setUnitInfo(`${info.community_name || ''} · ${info.unit_number || ''}`.replace(/^ · | · $/g, '').trim());
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load payment');
@@ -145,23 +161,27 @@ export default function MobileUploadPage() {
           localStorage.setItem('ez_payments', JSON.stringify(payments));
         }
       } else {
-        // Live mode: upload to Supabase Storage, then update DB
-        const ext = file.name.split('.').pop() || 'jpg';
+        // Live mode: upload to Supabase Storage (anon-allowed under evidence/), then update via RPC
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
         const path = `evidence/${paymentId}.${ext}`;
         const { error: uploadErr } = await supabase.storage
           .from('unit-media')
-          .upload(path, file, { upsert: true });
+          .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
         if (uploadErr) { setError(uploadErr.message); setUploading(false); return; }
 
         const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
         const url = urlData?.publicUrl;
         if (!url) { setError('Failed to get upload URL'); setUploading(false); return; }
 
-        const { error: dbErr } = await supabase
-          .from('payment_records')
-          .update({ evidence_url: url, status: 'pending_review' })
-          .eq('id', paymentId);
-        if (dbErr) { setError(dbErr.message); setUploading(false); return; }
+        // Cache-bust so reviewers always see the latest screenshot when upsert overwrites the same path
+        const evidenceUrl = `${url}?t=${Date.now()}`;
+
+        const { error: rpcErr } = await supabase
+          .rpc('submit_mobile_payment_evidence', {
+            p_payment_id: paymentId,
+            p_evidence_url: evidenceUrl,
+          });
+        if (rpcErr) { setError(rpcErr.message); setUploading(false); return; }
       }
 
       setDone(true);

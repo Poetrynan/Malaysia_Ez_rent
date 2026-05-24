@@ -162,7 +162,9 @@ export default function LeaseLedgerCard({
       </div>
 
       <div className="payment-grid">
-        {payments.map(p => {
+        {[...payments]
+          .sort((a, b) => a.billing_month.localeCompare(b.billing_month))
+          .map(p => {
           const badge = getStatusBadge(p);
           return (
             <div

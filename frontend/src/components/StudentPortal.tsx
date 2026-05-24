@@ -100,7 +100,11 @@ export default function StudentPortal() {
       const myLease = leases.find(l => l.tenant_id === tenantId && l.status === 'active') || null;
       setLease(myLease);
       if (myLease) {
-        setPayments(allPayments.filter(p => p.lease_id === myLease.id));
+        setPayments(
+          allPayments
+            .filter(p => p.lease_id === myLease.id)
+            .sort((a, b) => a.billing_month.localeCompare(b.billing_month))
+        );
         const u = units.find(u => u.id === myLease.unit_id) || null;
         setUnit(u);
         if (u) setCommunity(communities.find(c => c.id === u.community_id) || null);
@@ -119,7 +123,11 @@ export default function StudentPortal() {
         if (leaseData) {
           setLease(leaseData);
           const [payRes, unitRes] = await Promise.all([
-            supabase.from('payment_records').select('*').eq('lease_id', leaseData.id),
+            supabase
+              .from('payment_records')
+              .select('*')
+              .eq('lease_id', leaseData.id)
+              .order('billing_month', { ascending: true }),
             supabase.from('units').select('id, community_id, unit_number, room_type').eq('id', leaseData.unit_id).single(),
           ]);
           setPayments(payRes.data || []);
