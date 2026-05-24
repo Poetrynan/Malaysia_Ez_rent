@@ -878,16 +878,46 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
   };
 
   const togglePaid = async (paymentId: string, currentPaid: boolean) => {
+    // 1. Optimistic UI update to make the interaction instant (0ms delay)
+    setLeases(prevLeases => prevLeases.map(l => {
+      if (!l.payments) return l;
+      return {
+        ...l,
+        payments: l.payments.map(p => {
+          if (p.id === paymentId) {
+            return {
+              ...p,
+              paid: !currentPaid,
+              paid_date: currentPaid ? null : new Date().toISOString().split('T')[0],
+              status: currentPaid ? 'unpaid' : 'approved'
+            };
+          }
+          return p;
+        })
+      };
+    }));
+
+    // 2. Perform DB update
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        await supabase.from('payment_records').update({
+        const { error } = await supabase.from('payment_records').update({
           paid: !currentPaid,
           paid_date: currentPaid ? null : new Date().toISOString().split('T')[0],
           status: currentPaid ? 'unpaid' : 'approved',
         }).eq('id', paymentId);
-      } catch {}
+        
+        if (error) {
+          showToast(error.message, 'error');
+          loadAll(); // Revert back to server state
+          return;
+        }
+      } catch (err: any) {
+        showToast(err.message, 'error');
+        loadAll(); // Revert back to server state
+        return;
+      }
     } else {
       const all: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
       const idx = all.findIndex(p => p.id === paymentId);
@@ -898,6 +928,11 @@ export default function AdminPanel({ adminRole }: { adminRole: 'super_admin' | '
         localStorage.setItem('ez_payments', JSON.stringify(all));
       }
     }
+
+    // 3. Show Success Toast
+    showToast(lang === 'zh' ? '账单状态已更新' : 'Payment status updated', 'success');
+
+    // 4. Background reload to sync
     loadAll();
   };
 
