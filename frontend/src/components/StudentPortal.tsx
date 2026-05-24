@@ -17,7 +17,7 @@ interface Payment {
   id: string; lease_id: string; billing_month: string;
   paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string;
 }
-interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; agent_id?: string | null; }
+interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
 interface Community { id: string; name: string; }
 
 export default function StudentPortal() {
@@ -128,7 +128,7 @@ export default function StudentPortal() {
               .select('*')
               .eq('lease_id', leaseData.id)
               .order('billing_month', { ascending: true }),
-            supabase.from('units').select('id, community_id, unit_number, room_type, agent_id').eq('id', leaseData.unit_id).single(),
+            supabase.from('units').select('id, community_id, unit_number, room_type, agent_id, landlord_qr_code, landlord_bank_info').eq('id', leaseData.unit_id).single(),
           ]);
           setPayments(payRes.data || []);
           if (unitRes.data) {
@@ -344,6 +344,8 @@ export default function StudentPortal() {
         monthly_rent={lease.monthly_rent}
         payments={payments}
         agent_id={unit?.agent_id || null}
+        landlord_qr_code={unit?.landlord_qr_code || null}
+        landlord_bank_info={unit?.landlord_bank_info || null}
         onPaymentUpdated={() => setTick(t2 => t2 + 1)}
       />
 

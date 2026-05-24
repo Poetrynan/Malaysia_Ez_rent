@@ -142,7 +142,10 @@ export const translations = {
     // Payment
     paymentTitle: '缴纳租金',
     paymentCycle: '账期',
-    paymentRent: '月租',
+    paymentRent: '由于这是首账单，可能包含押金',
+    payToAgent: '这是首月账单及押金，请支付给中介',
+    payToLandlord: '后续月租，请出账给房东',
+    landlordBankInfo: '房东银行转账信息',
     duitnowWarning: '请使用马来西亚银行 App（Maybank MAE / CIMB / Touch\'n Go 钱包）或微信/支付宝扫码支付。',
     noPaymentQR: '管理员尚未上传收款码，请联系管理员。',
     paymentCancel: '取消',
@@ -438,7 +441,10 @@ export const translations = {
 
     paymentTitle: 'Pay Rent',
     paymentCycle: 'Billing Cycle',
-    paymentRent: 'Monthly Rent',
+    paymentRent: 'First month may include deposit',
+    payToAgent: 'First month & deposit, please pay the agent:',
+    payToLandlord: 'Subsequent rent, please pay the landlord:',
+    landlordBankInfo: 'Landlord Bank Info:',
     duitnowWarning: 'Scan with Malaysian Bank apps (Maybank MAE, CIMB, Touch\'n Go eWallet), WeChat Pay, or Alipay.',
     noPaymentQR: 'Admin has not uploaded a payment QR code yet. Please contact the admin.',
     paymentCancel: 'Cancel',

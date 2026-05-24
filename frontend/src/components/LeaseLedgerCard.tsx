@@ -26,11 +26,14 @@ interface LeaseLedgerCardProps {
   payments: Payment[];
   onPaymentUpdated?: () => void;
   agent_id?: string | null;
+  landlord_qr_code?: string | null;
+  landlord_bank_info?: string | null;
 }
 
 export default function LeaseLedgerCard({
   community_name, room_type, start_date, end_date,
-  monthly_rent, payments = [], onPaymentUpdated, agent_id
+  monthly_rent, payments = [], onPaymentUpdated, agent_id,
+  landlord_qr_code, landlord_bank_info
 }: LeaseLedgerCardProps) {
   const { t, lang } = useApp();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -158,6 +161,8 @@ export default function LeaseLedgerCard({
     return null;
   };
 
+  const sortedPayments = [...payments].sort((a, b) => new Date(a.billing_month).getTime() - new Date(b.billing_month).getTime());
+  
   return (
     <div className="glass-card" style={{ marginTop: 12 }}>
       {/* Header */}
@@ -181,9 +186,7 @@ export default function LeaseLedgerCard({
       </div>
 
       <div className="payment-grid">
-        {[...payments]
-          .sort((a, b) => new Date(a.billing_month).getTime() - new Date(b.billing_month).getTime())
-          .map(p => {
+        {sortedPayments.map(p => {
           const badge = getStatusBadge(p);
           return (
             <div
@@ -250,21 +253,37 @@ export default function LeaseLedgerCard({
             ) : (
               /* No evidence yet — show payment QR + upload QR side by side */
               <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                {/* Left: Admin Payment QR Code (DuitNow / Touch'n Go) */}
+                {/* Left: Payment QR Code (Agent or Landlord) */}
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>{t('paymentTitle')}</div>
-                  {adminQR ? (
-                    <>
-                      <div style={{ background: 'white', padding: 8, borderRadius: 12, display: 'inline-block', marginBottom: 8, border: '1px solid var(--glass-border)' }}>
-                        <img src={adminQR} alt="Payment QR" style={{ width: '100%', maxWidth: 160, height: 'auto', display: 'block', objectFit: 'contain' }} />
-                      </div>
-                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: 0 }}>{t('duitnowWarning')}</p>
-                    </>
-                  ) : (
-                    <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                      {t('noPaymentQR')}
-                    </div>
-                  )}
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    {selectedPayment && sortedPayments.length > 0 && selectedPayment.id === sortedPayments[0].id ? t('payToAgent') : t('payToLandlord')}
+                  </div>
+                  {(() => {
+                    const isFirstMonth = sortedPayments.length > 0 && selectedPayment?.id === sortedPayments[0].id;
+                    const qrToShow = isFirstMonth ? adminQR : (landlord_qr_code || adminQR);
+                    // Use admin QR as fallback if no landlord QR
+
+                    return (
+                      <>
+                        {qrToShow ? (
+                          <div style={{ background: 'white', padding: 8, borderRadius: 12, display: 'inline-block', marginBottom: 8, border: '1px solid var(--glass-border)' }}>
+                            <img src={qrToShow} alt="Payment QR" style={{ width: '100%', maxWidth: 160, height: 'auto', display: 'block', objectFit: 'contain' }} />
+                          </div>
+                        ) : (
+                          <div style={{ padding: '24px 12px', borderRadius: 10, border: '1px dashed var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: 8 }}>
+                            {t('noPaymentQR')}
+                          </div>
+                        )}
+                        {!isFirstMonth && landlord_bank_info && (
+                          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, padding: 8, marginTop: 8, textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>
+                             <strong style={{ color: 'var(--text-h)' }}>{t('landlordBankInfo')}</strong><br/>
+                             {landlord_bank_info}
+                          </div>
+                        )}
+                        <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: 0, marginTop: 8 }}>{t('duitnowWarning')}</p>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Divider */}

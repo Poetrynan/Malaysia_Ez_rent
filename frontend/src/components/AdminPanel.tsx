@@ -20,7 +20,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; }
+interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
 interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -100,7 +100,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
   const [communitySearch, setCommunitySearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
-  const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
+  const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   // media: up to 9 images (base64) + 1 video (object URL)
   const [mediaImages, setMediaImages] = useState<string[]>([]);
@@ -829,7 +829,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       description: unitForm.description, 
       max_occupants: parseInt(unitForm.max_occupants) || 1,
       bedrooms: parseInt(unitForm.bedrooms) || 1,
-      bathrooms: parseInt(unitForm.bathrooms) || 1
+      bathrooms: parseInt(unitForm.bathrooms) || 1,
+      landlord_bank_info: unitForm.landlord_bank_info || null
     };
 
     if (!isEdit) {
@@ -912,6 +913,22 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           unitPayload.video_url = null;
         }
 
+        if (unitForm.landlord_qr_code) {
+          if (unitForm.landlord_qr_code.startsWith('http')) {
+            unitPayload.landlord_qr_code = unitForm.landlord_qr_code;
+          } else {
+            const blob = await compressDataUrl(unitForm.landlord_qr_code, UNIT_IMAGE_PRESET);
+            const path = `${targetId}/landlord_qr_${Date.now()}.jpg`;
+            const { error: qrUploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+            if (!qrUploadErr) {
+              const { data: qrUrlData } = supabase.storage.from('unit-media').getPublicUrl(path);
+              if (qrUrlData?.publicUrl) unitPayload.landlord_qr_code = qrUrlData.publicUrl;
+            }
+          }
+        } else if (isEdit) {
+          unitPayload.landlord_qr_code = null;
+        }
+
         if (isEdit) {
           const { error } = await supabase.from('units').update(unitPayload).eq('id', targetId);
           if (error) { showToast(error.message, 'error'); return; }
@@ -922,6 +939,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       } catch (e: any) { showToast(e.message, 'error'); return; }
     } else {
       const list: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+      if (unitForm.landlord_qr_code) unitPayload.landlord_qr_code = unitForm.landlord_qr_code;
       if (isEdit) {
         const idx = list.findIndex(u => u.id === targetId);
         if (idx !== -1) {
@@ -939,7 +957,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       }
     }
 
-    setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
+    setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
     setMediaImages([]); setMediaVideo(null); setEditingUnitId(null); loadAll();
   };
 
@@ -954,6 +972,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       max_occupants: String(u.max_occupants || 1),
       bedrooms: String(u.bedrooms || 1),
       bathrooms: String(u.bathrooms || 1),
+      landlord_qr_code: u.landlord_qr_code || '',
+      landlord_bank_info: u.landlord_bank_info || ''
     });
 
     const unitImages = u.media_urls && u.media_urls.length > 0
@@ -1471,6 +1491,32 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: e.target.value }))} /></div>
               <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: e.target.value }))} /></div>
             </div>
+            
+            <div className="form-group"><label>{t('landlordBankInfo') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder="e.g. Maybank 1234567890 Name" style={{ resize: 'vertical' }} /></div>
+
+            {/* Landlord QR Code Upload */}
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <QrCode size={14} style={{ color: 'var(--primary)' }} /> {lang === 'zh' ? '房东收款二维码 (可选)' : 'Landlord QR Code (Optional)'}
+              </label>
+              {unitForm.landlord_qr_code ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                  <img src={unitForm.landlord_qr_code} alt="Landlord QR" style={{ height: 60, width: 60, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                  <button type="button" className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', border: 'none', background: 'var(--danger-light)', color: 'var(--danger)' }} onClick={() => setUnitForm(f => ({ ...f, landlord_qr_code: '' }))}>移除 QR Code</button>
+                </div>
+              ) : (
+                <input type="file" accept="image/*" className="form-input" style={{ fontSize: '0.8rem', padding: '6px' }} onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const { compressImageToDataUrl } = await import('@/utils/compressImage');
+                    const b64 = await compressImageToDataUrl(file, { maxWidth: 600, quality: 0.8 });
+                    setUnitForm(f => ({ ...f, landlord_qr_code: b64 }));
+                  } catch (err) { console.error(err); }
+                }} />
+              )}
+            </div>
+
             <div className="form-group"><label>{t('descLabel')}</label><textarea className="form-textarea" rows={2} value={unitForm.description} onChange={e => setUnitForm(f => ({ ...f, description: e.target.value }))} placeholder={t('descPlaceholder')} style={{ resize: 'vertical' }} /></div>
 
             {/* ── Media Upload ── */}
@@ -1566,7 +1612,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
                 </button>
                 <button className="btn" onClick={() => {
                   setEditingUnitId(null);
-                  setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1' });
+                  setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
                   setMediaImages([]); setMediaVideo(null);
                 }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', color: 'var(--text-body)' }}>
                   {lang === 'zh' ? '取消编辑' : 'Cancel'}
