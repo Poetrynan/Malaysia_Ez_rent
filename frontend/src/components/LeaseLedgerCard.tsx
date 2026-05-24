@@ -163,7 +163,7 @@ export default function LeaseLedgerCard({
 
       <div className="payment-grid">
         {[...payments]
-          .sort((a, b) => a.billing_month.localeCompare(b.billing_month))
+          .sort((a, b) => new Date(a.billing_month).getTime() - new Date(b.billing_month).getTime())
           .map(p => {
           const badge = getStatusBadge(p);
           return (

@@ -941,10 +941,14 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
     const unitVideo = u.video_url || (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.video || null; } catch { return null; } })();
     setMediaVideo(unitVideo);
 
-    const formEl = document.getElementById('add-unit-form-section');
-    if (formEl) {
-      formEl.scrollIntoView({ behavior: 'smooth' });
-    }
+    setPropertiesView('editor');
+
+    setTimeout(() => {
+      const formEl = document.getElementById('add-unit-form-section');
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   const handleImgFiles = async (files: FileList | null) => {
