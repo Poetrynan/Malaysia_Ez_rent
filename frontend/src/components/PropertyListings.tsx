@@ -5,7 +5,8 @@ import {
   Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
-  Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store
+  Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store,
+  Grid, List
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -101,6 +102,7 @@ export default function PropertyListings() {
   const [maxRent, setMaxRent] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available'>('all');
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selected, setSelected] = useState<UnitWithCommunity | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -491,21 +493,55 @@ export default function PropertyListings() {
             <option value="asc">{t('sortPriceAsc')}</option>
             <option value="desc">{t('sortPriceDesc')}</option>
           </select>
+
+          {/* View Toggle */}
+          <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+            <button type="button" onClick={() => setViewMode('grid')}
+              style={{
+                padding: '8px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: viewMode === 'grid' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'grid' ? 'white' : 'var(--text-muted)',
+                transition: 'all 0.2s'
+              }}
+              title={lang === 'zh' ? '网格视图' : 'Grid View'}
+            >
+              <Grid size={15} />
+            </button>
+            <button type="button" onClick={() => setViewMode('list')}
+              style={{
+                padding: '8px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: viewMode === 'list' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'list' ? 'white' : 'var(--text-muted)',
+                transition: 'all 0.2s'
+              }}
+              title={lang === 'zh' ? '列表视图' : 'List View'}
+            >
+              <List size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Card Grid ── */}
+      {/* ── Card/List Grid ── */}
       {filtered.length === 0 ? (
         <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
           <Building2 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
           <p>{t('noListings')}</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-          {filtered.map(u => (
-            <PropertyCard key={u.id} unit={u} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
-          ))}
-        </div>
+        viewMode === 'grid' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+            {filtered.map(u => (
+              <PropertyCard key={u.id} unit={u} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filtered.map(u => (
+              <PropertyRow key={u.id} unit={u} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
+            ))}
+          </div>
+        )
       )}
 
       {/* ── Detail Drawer ── */}
@@ -1072,7 +1108,7 @@ export default function PropertyListings() {
   );
 }
 
-/* ── Property Card ── */
+/* ── Compact Property Card ── */
 function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect: () => void; t: (k: any) => string }) {
   const [hovered, setHovered] = useState(false);
 
@@ -1091,7 +1127,7 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
       }}
     >
       {/* Image */}
-      <div style={{ position: 'relative', height: 190, overflow: 'hidden', background: '#0B1622' }}>
+      <div style={{ position: 'relative', height: 160, overflow: 'hidden', background: '#0B1622' }}>
         <img
           src={getUnitImages(unit.id, unit.media_urls)[0]}
           alt={unit.room_type}
@@ -1112,44 +1148,129 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
       </div>
 
       {/* Card body */}
-      <div style={{ padding: '14px 16px' }}>
+      <div style={{ padding: '12px 14px' }}>
         {/* Community name + address */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-            <h4 style={{ fontSize: '0.95rem', lineHeight: 1.3, flex: 1 }}>{unit.community?.name || '—'}</h4>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', flexShrink: 0 }}>
+            <h4 style={{ fontSize: '0.9rem', lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>{unit.community?.name || '—'}</h4>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)', flexShrink: 0 }}>
               RM {unit.rent.toLocaleString()}
             </div>
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MapPin size={12} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <MapPin size={11} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>
               {unit.community?.address || '—'}
             </span>
           </div>
         </div>
 
         {/* Tags row */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {[unit.room_type].filter(Boolean).map((tag, i) => (
-            <span key={i} style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>
+            <span key={i} style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.68rem', fontWeight: 600 }}>
               {tag}
             </span>
           ))}
         </div>
 
         {/* Per-month + View */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: 10, marginTop: 2 }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Bed size={13} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: 8, marginTop: 2 }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Bed size={12} />
               <span>{unit.bedrooms || 1} {t('bedroomsUnit')}</span>
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Bath size={13} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Bath size={12} />
               <span>{unit.bathrooms || 1} {t('bathroomsUnit')}</span>
             </span>
           </span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 2 }}>
+            {t('viewDetail')} <ChevronRight size={12} />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Property List Row ── */
+function PropertyRow({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect: () => void; t: (k: any) => string }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      onClick={onSelect}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+        background: 'var(--bg-surface)',
+        border: `1px solid ${hovered ? 'var(--primary)' : 'var(--glass-border)'}`,
+        boxShadow: hovered ? '0 8px 24px rgba(59,130,246,0.12)' : 'var(--glass-shadow)',
+        transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        display: 'flex',
+        gap: 16,
+        padding: 12,
+        alignItems: 'center',
+      }}
+    >
+      {/* Image */}
+      <div style={{ position: 'relative', width: 180, height: 110, borderRadius: 10, overflow: 'hidden', background: '#0B1622', flexShrink: 0 }}>
+        <img
+          src={getUnitImages(unit.id, unit.media_urls)[0]}
+          alt={unit.room_type}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
+          onError={(e: any) => { e.target.style.display = 'none'; }}
+        />
+        {/* Status pill */}
+        <span className={`status-badge ${unit.status}`}
+          style={{ position: 'absolute', top: 8, right: 8, fontSize: '0.65rem', padding: '2px 8px' }}>
+          {unit.status === 'available' ? t('available') : t('rented')}
+        </span>
+      </div>
+
+      {/* Info Body */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>{unit.community?.name || '—'}</h4>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={12} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>
+                {unit.community?.address || '—'}
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
+              RM {unit.rent.toLocaleString()}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              RM / 月
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, borderTop: '1px solid var(--glass-border)', paddingTop: 10 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>
+              {unit.room_type}
+            </span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Bed size={12} />
+                <span>{unit.bedrooms || 1} {t('bedroomsUnit')}</span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Bath size={12} />
+                <span>{unit.bathrooms || 1} {t('bathroomsUnit')}</span>
+              </span>
+            </span>
+          </div>
+
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 3 }}>
             {t('viewDetail')} <ChevronRight size={13} />
           </span>
