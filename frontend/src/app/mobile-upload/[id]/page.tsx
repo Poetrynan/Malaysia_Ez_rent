@@ -44,6 +44,9 @@ interface MobileUploadInfo {
   room_type: string | null;
   community_name: string | null;
   admin_qr_code: string | null;
+  landlord_qr_code?: string | null;
+  landlord_bank_info?: string | null;
+  is_first_month?: boolean | null;
 }
 
 export default function MobileUploadPage() {
@@ -53,6 +56,7 @@ export default function MobileUploadPage() {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [lease, setLease] = useState<Lease | null>(null);
   const [unitInfo, setUnitInfo] = useState('');
+  const [mobileInfo, setMobileInfo] = useState<MobileUploadInfo | null>(null);
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -74,13 +78,44 @@ export default function MobileUploadPage() {
       const l = leases.find(x => x.id === p.lease_id);
       if (l) {
         setLease(l);
-        const units: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+        const units: any[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
         const communities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
         const u = units.find(x => x.id === l.unit_id);
+        
+        let cName = '';
+        let roomT = '';
+        let landQr = null;
+        let landBank = null;
         if (u) {
           const c = communities.find(x => x.id === u.community_id);
-          setUnitInfo(`${c?.name || ''} · ${u.room_type || ''}`);
+          cName = c?.name || '';
+          roomT = u.room_type || '';
+          landQr = u.landlord_qr_code || null;
+          landBank = u.landlord_bank_info || null;
+          setUnitInfo(`${cName} · ${roomT}`);
         }
+
+        const sortedLeasePayments = payments
+          .filter(x => x.lease_id === p.lease_id)
+          .sort((a, b) => a.billing_month.localeCompare(b.billing_month));
+        const isFirst = sortedLeasePayments.length > 0 && p.id === sortedLeasePayments[0].id;
+
+        const infoObj: MobileUploadInfo = {
+          id: p.id,
+          lease_id: p.lease_id,
+          billing_month: p.billing_month,
+          paid: p.paid,
+          evidence_url: p.evidence_url || null,
+          status: p.status || null,
+          monthly_rent: l.monthly_rent,
+          room_type: roomT,
+          community_name: cName,
+          admin_qr_code: localStorage.getItem('ez_admin_qr_code') || null,
+          landlord_qr_code: landQr,
+          landlord_bank_info: landBank,
+          is_first_month: isFirst
+        };
+        setMobileInfo(infoObj);
       }
     } else {
       // Live mode: read via SECURITY DEFINER RPC so the unauthenticated mobile browser bypasses RLS
@@ -120,6 +155,7 @@ export default function MobileUploadPage() {
           status: info.status || undefined,
         };
         setPayment(p);
+        setMobileInfo(info);
         if (info.evidence_url) { setDone(true); return; }
 
         if (info.monthly_rent != null) {
@@ -232,6 +268,63 @@ export default function MobileUploadPage() {
             </div>
           )}
         </div>
+
+        {/* Payment QR / Bank info section */}
+        {mobileInfo && !done && (
+          <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 24, boxShadow: 'var(--glass-shadow)', textAlign: 'center' }}>
+            {mobileInfo.is_first_month ? (
+              <span style={{ display: 'inline-block', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, marginBottom: 12 }}>
+                {lang === 'zh' ? '中介收款 (首月定金/押金)' : 'Agent Payment (Deposit & 1st Month Rent)'}
+              </span>
+            ) : (
+              <span style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, marginBottom: 12 }}>
+                {lang === 'zh' ? '房东收款 (第2个月及以后租金)' : 'Landlord Payment (Rent from 2nd Month)'}
+              </span>
+            )}
+
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-body)', marginBottom: 12, lineHeight: 1.4 }}>
+              {mobileInfo.is_first_month 
+                ? (lang === 'zh' ? '请扫码支付款项给中介：' : 'Please scan and pay to Agent:')
+                : (lang === 'zh' ? '请扫码或转账支付月租给房东：' : 'Please scan or transfer monthly rent to Landlord:')
+              }
+            </div>
+
+            {/* QR Code display */}
+            {(() => {
+              const isFirstMonth = mobileInfo.is_first_month;
+              const qrToShow = isFirstMonth ? mobileInfo.admin_qr_code : (mobileInfo.landlord_qr_code || null);
+              const noLandlordInfo = (!isFirstMonth && !mobileInfo.landlord_qr_code && !mobileInfo.landlord_bank_info);
+
+              return (
+                <>
+                  {qrToShow ? (
+                    <div style={{ background: 'white', padding: 10, borderRadius: 12, display: 'inline-block', margin: '0 auto 12px', border: '1px solid var(--border)' }}>
+                      <img src={qrToShow} alt="Payment QR" style={{ width: 140, height: 140, objectFit: 'contain', display: 'block' }} />
+                      <p style={{ fontSize: '0.62rem', color: '#9CA3AF', margin: '6px 0 0 0' }}>{lang === 'zh' ? '长按可保存二维码' : 'Long-press to save QR'}</p>
+                    </div>
+                  ) : isFirstMonth ? (
+                    <div style={{ padding: '20px 10px', borderRadius: 10, border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 12 }}>
+                      {lang === 'zh' ? '中介收款二维码未上传' : 'Agent QR code not uploaded'}
+                    </div>
+                  ) : null}
+
+                  {noLandlordInfo && (
+                    <div style={{ padding: '20px 10px', borderRadius: 10, border: '1px dashed rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)', color: '#F59E0B', fontSize: '0.75rem', marginBottom: 12 }}>
+                      {lang === 'zh' ? '房东暂未上传收款码或银行账户信息，请联系管理员。' : 'Landlord payment QR code or bank info is not set up yet. Please contact admin.'}
+                    </div>
+                  )}
+
+                  {!isFirstMonth && mobileInfo.landlord_bank_info && (
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                       <strong style={{ color: 'var(--text-h)' }}>{lang === 'zh' ? '房东银行账户转账信息：' : 'Landlord Bank Info:'}</strong><br/>
+                       {mobileInfo.landlord_bank_info}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Upload area or success */}
         {done ? (

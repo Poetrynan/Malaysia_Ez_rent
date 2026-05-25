@@ -181,17 +181,6 @@ export default function MapAndCard({
             )}
           </div>
           
-          <button
-            type="submit"
-            style={{
-              background: 'var(--primary)', border: 'none', color: 'white',
-              padding: '6px 14px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4, height: 34, flexShrink: 0
-            }}
-          >
-            {lang === 'zh' ? '计算通勤' : 'Commute'}
-          </button>
-          
           {activeStart && (
             <button
               type="button"

@@ -255,7 +255,18 @@ export default function LeaseLedgerCard({
               <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 {/* Left: Payment QR Code (Agent or Landlord) */}
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    {selectedPayment && sortedPayments.length > 0 && selectedPayment.id === sortedPayments[0].id ? (
+                      <span style={{ display: 'inline-block', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700 }}>
+                        {lang === 'zh' ? '中介收款 (定金扫给中介)' : 'Agent Payment (Deposit to Agent)'}
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700 }}>
+                        {lang === 'zh' ? '房东收款 (租金扫给房东)' : 'Landlord Payment (Rent to Landlord)'}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.4 }}>
                     {selectedPayment && sortedPayments.length > 0 && selectedPayment.id === sortedPayments[0].id ? t('payToAgent') : t('payToLandlord')}
                   </div>
                   {(() => {

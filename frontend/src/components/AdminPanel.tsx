@@ -1492,7 +1492,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: e.target.value }))} /></div>
             </div>
             
-            <div className="form-group"><label>{t('landlordBankInfo') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder={lang === 'zh' ? '如：银行账号、微信 ID、支付宝账号' : 'e.g. bank account, WeChat ID, Alipay account'} style={{ resize: 'vertical' }} /></div>
+            <div className="form-group"><label>{t('landlordBankInfoLabel') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder={lang === 'zh' ? '如：银行账号、微信 ID、支付宝账号' : 'e.g. bank account, WeChat ID, Alipay account'} style={{ resize: 'vertical' }} /></div>
 
             {/* Landlord QR Code Upload */}
             <div className="form-group">
