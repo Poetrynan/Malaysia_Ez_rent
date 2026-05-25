@@ -88,12 +88,12 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
-| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y（含意向中）、公开意向名单、行内「取消意向」 |
+| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y（含意向中）、公开意向名单、行内「取消意向」 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息 + **意见箱** |
-| `AdminPanel.tsx` | ✅ 完成 | 二级Tab；房东银行/QR（013）；图片/视频压缩上传；**删除凭证/收款码/房源/编辑删图时同步删 Storage**；凭证审核 Toast |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（**带未处理审核/意向/反馈的红色数字气泡提示，并支持 Agent 权限隔离**）；房东银行/QR（013）；添加小区保存 Toast 详细引导下一步；图片/视频压缩上传；**删除凭证/收款码/房源/编辑删图时同步删 Storage**；凭证审核 Toast |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
