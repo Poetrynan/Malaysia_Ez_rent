@@ -152,12 +152,12 @@ export default function LoginPage() {
                   {lang === 'zh' ? (
                     <>
                       <strong>收不到邮件？</strong>
-                      由于 Supabase 免费发信服务器限制，QQ等国内邮箱可能会拦截此邮件或延迟较长。请务必检查您的<strong>垃圾邮件箱</strong>。若长时间未收到，请使用 Google 账号登录，或返回登录页切换至 Sandbox 模式。
+                      由于免费发信服务器通道限制，QQ等国内邮箱可能会拦截此邮件或有较长延迟。请务必检查您的<strong>垃圾邮件箱</strong>。若长时间未收到，建议使用更稳定的 Google 账号直接登录。
                     </>
                   ) : (
                     <>
                       <strong>Not receiving email?</strong>
-                      Due to default SMTP server limits, QQ and other domestic mailboxes might block or delay this email. Please check your <strong>Junk/Spam</strong> folder, use Google login, or switch to Sandbox mode.
+                      Due to default SMTP server limits, QQ and domestic mailboxes might block or delay this email. Please check your <strong>Junk/Spam</strong> folder, or use Google login for instant access.
                     </>
                   )}
                 </div>
