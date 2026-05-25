@@ -68,7 +68,7 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Uses `MapAndCard.tsx`.
+- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box.
@@ -79,7 +79,7 @@ Malaysia_Ez_rent/
 - `AdminPanel.tsx` includes:
   - Calculates dynamic red notification badges for pending actions (unreviewed payments, pending interests, unreplied feedbacks) and bubbles them up to `page.tsx`. Agent isolation strictly applied.
   - communities/units CRUD (adding community displays detailed Toast guiding users to register units next)
-  - lease creation/deletion
+  - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and all registered users name/phone, with a toggle fallback for manual UUID entry)
   - payment review (approve/reject/clear evidence with Toast feedback; **clear evidence deletes Storage object**)
   - admin profile/payment QR settings (remove QR clears DB + Storage `qr/{adminId}.jpg`)
   - feedback handling

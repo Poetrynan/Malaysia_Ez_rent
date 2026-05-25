@@ -1,7 +1,8 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-25 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式**
+
 
 ---
 
@@ -193,6 +194,9 @@ Malaysia_Ez_rent/
 | 64 | 提交成功仍显示「我要租」 | `myInterest` 与列表不同步；改由 `authUserId` + 列表推导，顶部/行内双「取消意向」 |
 | 65 | 学生无法自行取消意向 | 缺 UPDATE 权限；**014** + **`cancel_tenant_interest` RPC（015）**；无需等管理员拒绝 |
 | 66 | 合租意向 insert/update 静默失败 | **015** RPC `submit_tenant_interest`（ON CONFLICT upsert）；前端有成功/失败提示 |
+| 67 | 中介端租客 UUID 复制繁琐且易错 | 租约创建表单改用下拉列表选择租客，分为“已确认合租意向人”与“全系统注册房客”，同时保留手动输入 UUID 兼容模式并解决 unmount 闪退 Bug。 |
+| 68 | 登录页布局拥挤，且缺乏多语言与深色模式 | 重新编排登录页间距，添加多语言与深色模式切换；针对 SMTP 延迟增加高亮警告，移除所有面向用户的“沙盒(Sandbox)”词汇以适应正式环境。 |
+| 69 | 房源列表默认大图卡片占用空间，缺乏精简模式 | 在筛选 Bar 增加网格/列表（Grid / List）模式切换按钮，缩小网格卡片以使其更紧凑精致，并新增横向排版的 `PropertyRow` 组件。 |
 
 ---
 
