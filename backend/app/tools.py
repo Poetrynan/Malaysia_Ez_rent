@@ -86,6 +86,27 @@ def search_internal_db(
     supabase_connected = Config.is_supabase_enabled() and supabase_client
     if supabase_connected:
         try:
+            # 1. Sync embeddings dynamically if any unit lacks them
+            if supabase_service_client:
+                try:
+                    units_res = supabase_service_client.table("units").select("id, room_type, description, community_id, embedding").execute()
+                    units_data = units_res.data or []
+                    missing_units = [u for u in units_data if not u.get("embedding")]
+                    if missing_units:
+                        print(f"[Embedding Sync] Found {len(missing_units)} unit(s) missing embeddings. Generating...")
+                        comm_res = supabase_service_client.table("communities").select("id, name").execute()
+                        comm_map = {c["id"]: c["name"] for c in (comm_res.data or [])}
+                        for u in missing_units:
+                            comm_name = comm_map.get(u.get("community_id"), "")
+                            desc_text = f"{comm_name} {u.get('room_type') or ''} {u.get('description') or ''}".strip()
+                            if desc_text:
+                                emb = get_embedding(desc_text)
+                                supabase_service_client.table("units").update({"embedding": emb}).eq("id", u["id"]).execute()
+                                print(f"[Embedding Sync] Computed embedding for unit {u['id']}")
+                except Exception as sync_err:
+                    print(f"[Embedding Sync] Warning: failed to sync embeddings: {sync_err}")
+
+            # 2. Call RPC match_units for vector similarity search
             embedding = get_embedding(semantic_query)
             params = {
                 "query_embedding": embedding,
@@ -100,7 +121,38 @@ def search_internal_db(
             response = supabase_client.rpc("match_units", params).execute()
             results = response.data or []
             print(f"[Tool: search_internal_db] Supabase returned {len(results)} unit(s)")
-            return results
+
+            # 3. Enrich results with community coordinates (lat/lng) and media_urls
+            enriched_results = []
+            for r in results:
+                unit_id = r["id"]
+                try:
+                    # Retrieve unit community lat/lng and images from service client
+                    unit_detail = supabase_service_client.table("units").select("community_id, communities(lat, lng), unit_images(media_url)").eq("id", unit_id).single().execute()
+                    if unit_detail.data:
+                        u_data = unit_detail.data
+                        comm = u_data.get("communities", {})
+                        if isinstance(comm, list) and len(comm) > 0:
+                            comm = comm[0]
+                        r["lat"] = comm.get("lat", 3.06341) if comm else 3.06341
+                        r["lng"] = comm.get("lng", 101.60977) if comm else 101.60977
+                        
+                        imgs = u_data.get("unit_images", [])
+                        if not isinstance(imgs, list):
+                            imgs = [imgs]
+                        r["media_urls"] = [img.get("media_url") for img in imgs if img.get("media_url")]
+                    else:
+                        r["lat"] = 3.06341
+                        r["lng"] = 101.60977
+                        r["media_urls"] = []
+                except Exception as enrich_err:
+                    print(f"Failed to enrich unit {unit_id}: {enrich_err}")
+                    r["lat"] = 3.06341
+                    r["lng"] = 101.60977
+                    r["media_urls"] = []
+                enriched_results.append(r)
+
+            return enriched_results
         except Exception as e:
             print(f"Failed to query Supabase RPC match_units: {e}")
             return []

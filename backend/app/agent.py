@@ -7,6 +7,7 @@ from app.tools import (
     get_web_realtime_info,
     convert_currency_frankfurter,
     get_malaysia_holidays,
+    search_internal_db,
     openai_client,
     supabase_service_client
 )
@@ -201,6 +202,22 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                     "required": ["year"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_internal_db",
+                "description": "Search the internal database of available rental rooms/units using vector similarity and filter criteria.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "semantic_query": {"type": "string", "description": "Free text query describing the room, e.g. 'near monash', 'studio with gym', 'medium room in sunway'."},
+                        "room_type": {"type": "string", "enum": ["Studio", "Master Room", "Medium Room", "Small Room", "Whole Unit"], "description": "Optional room type filter."},
+                        "max_price": {"type": "number", "description": "Optional maximum monthly rent in MYR."}
+                    },
+                    "required": ["semantic_query"]
+                }
+            }
         }
     ]
 
@@ -209,10 +226,12 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             "role": "system",
             "content": (
                 "You are an expert AI Assistant for international students in Malaysia. "
-                "Your role is to assist students with commute calculations, exchange rates, holiday schedules, and general student life information. "
+                "Your role is to assist students with room recommendations, commute calculations, exchange rates, holiday schedules, and general student life information. "
                 "CRITICAL INSTRUCTIONS:\n"
-                "1. You DO NOT search for rooms or check rental leases/bills anymore. If a user asks about finding a room, checking a bill, or paying rent, tell them clearly to use the website's built-in tabs directly ('房源列表' / 'PropertyListings' for room browsing, and '我的租约' / 'StudentPortal' for payment ledgers/status).\n"
+                "1. If a user asks about checking a lease/bill or paying rent, tell them clearly to use the website's built-in '我的租约' / 'StudentPortal' tab.\n"
                 "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', you MUST list out your active features and provide the EXACT corresponding example prompts as shown below:\n"
+                "   - 🔍 **智能选房推荐**：根据您的偏好（如离莫纳什近、价格、房型等），帮您从系统房源库检索最匹配的房间并直接展示路线地图。\n"
+                "     *示例 Prompt*: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
                 "   - 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
                 "     *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
                 "   - 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
@@ -226,7 +245,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "5. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
                 "6. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
                 "7. NEVER print, repeat or mention raw User ID strings in your conversational responses.\n"
-                "8. DO NOT search for rental listings anywhere — internal or external. External platforms (iProperty, PropertyGuru, SpeedHome, etc.) are **strictly forbidden**. If a user asks to find a room, direct them to the website's **Property Listings** tab only.\n"
+                "8. You CAN search internal available listings using search_internal_db when the user asks to find, search, or recommend rooms. However, third-party external platforms (iProperty, PropertyGuru, SpeedHome, Mudah, etc.) are **strictly forbidden**. Never call Tavily or any web tool to search for room listings.\n"
                 "9. When using get_web_realtime_info, Tavily excludes competitor rental sites. Never scrape, link, or recommend third-party listing pages."
             )
         },
@@ -306,9 +325,35 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 result_data = get_malaysia_holidays(
                     year=tool_args.get("year", 2026)
                 )
+            elif tool_name == "search_internal_db":
+                result_data = search_internal_db(
+                    semantic_query=tool_args.get("semantic_query", ""),
+                    room_type=tool_args.get("room_type"),
+                    max_price=tool_args.get("max_price")
+                )
 
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})
             await asyncio.sleep(0.5)
+
+            # If search_internal_db found rooms, yield a ui_component event for the front-end to render the map
+            if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
+                best_match = result_data[0]
+                yield sse_event({
+                    "type": "ui_component",
+                    "component": "MapAndCard",
+                    "props": {
+                        "origin_name": best_match.get("community_name") or "Sunway Geo Residences",
+                        "origin_lat": float(best_match.get("lat") or 3.06341),
+                        "origin_lng": float(best_match.get("lng") or 101.60977),
+                        "destination_name": "Monash University Malaysia",
+                        "destination_lat": 3.0645,
+                        "destination_lng": 101.6000,
+                        "rent": float(best_match.get("rent") or 2500),
+                        "room_type": best_match.get("room_type") or "Studio",
+                        "unit_id": best_match.get("id")
+                    }
+                })
+                await asyncio.sleep(0.5)
 
             # Append tool result to messages
             messages.append({
