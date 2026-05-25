@@ -29,6 +29,7 @@ interface Unit {
   room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
   video_url?: string | null;
   bedrooms?: number; bathrooms?: number;
+  agent_id?: string | null;
 }
 interface Community {
   id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
@@ -82,6 +83,7 @@ const lightboxNavBtnStyle: React.CSSProperties = {
 };
 
 interface AdminContact {
+  id?: string;
   display_name: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -105,6 +107,11 @@ export default function PropertyListings() {
   const [videoOpen, setVideoOpen] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [admins, setAdmins] = useState<AdminContact[]>([]);
+  const filteredAdmins = useMemo(() => {
+    if (!selected?.agent_id) return admins;
+    const match = admins.filter(a => a.id === selected.agent_id);
+    return match.length > 0 ? match : admins;
+  }, [admins, selected]);
   const [expandedAdmin, setExpandedAdmin] = useState<number | null>(null);
   const [interests, setInterests] = useState<TenantInterest[]>([]);
   const [authUserId, setAuthUserId] = useState<string | null>(isMockDatabase ? 'tenant-123' : null);
@@ -208,7 +215,7 @@ export default function PropertyListings() {
     // Fetch admin contacts
     if (isMockDatabase) {
       const stored = JSON.parse(localStorage.getItem('ez_admin_contacts') || '[]');
-      setAdmins(stored.length > 0 ? stored : [{ display_name: '管理员', phone: '+6012-345 6789', whatsapp: '+6012-345 6789', wechat_id: null, email: 'admin@ezrent.my' }]);
+      setAdmins(stored.length > 0 ? stored : [{ id: 'admin-123', display_name: '管理员', phone: '+6012-345 6789', whatsapp: '+6012-345 6789', wechat_id: null, email: 'admin@ezrent.my' }]);
     } else {
       (async () => {
         try {
@@ -216,7 +223,7 @@ export default function PropertyListings() {
           const supabase = createClient();
           const { data } = await supabase
             .from('admin_users')
-            .select('display_name, phone, whatsapp, wechat_id, email');
+            .select('id, display_name, phone, whatsapp, wechat_id, email');
           if (data) setAdmins(data as AdminContact[]);
         } catch {}
       })();
@@ -980,11 +987,11 @@ export default function PropertyListings() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {admins.length === 0 ? (
+              {filteredAdmins.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>
                   暂无管理员联系方式
                 </div>
-              ) : admins.map((admin, i) => {
+              ) : filteredAdmins.map((admin, i) => {
                 const isExpanded = expandedAdmin === i;
                 return (
                   <div key={i} style={{
