@@ -773,7 +773,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       localStorage.setItem('ez_communities', JSON.stringify([...list, newC]));
     }
     setCommunityForm({ name: '', address: '', lat: '', lng: '', amenities: [] }); setCommunitySearch(''); loadAll();
-    showToast(t('validationSaved'), 'success');
+    showToast(lang === 'zh' ? '小区保存成功！现在可以在下方“2. 新增房间”中选择该小区来录入房间。' : 'Community saved successfully! You can now select it under "2. Add Room Unit" below to list a room.', 'success');
   };
 
   const deleteCommunity = async (communityId: string) => {
