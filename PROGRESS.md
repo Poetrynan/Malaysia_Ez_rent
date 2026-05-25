@@ -87,7 +87,7 @@ Malaysia_Ez_rent/
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航 + **图标 Logo + 产品名/副标题**，角色判断（查 admin_users 表），flex 布局修复 |
+| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航（**已集成 AdminPanel 冒泡上报的红点提示，显示未处理租约/意向及反馈数量**） + **图标 Logo + 产品名/副标题**，角色判断，flex 布局修复 |
 | `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y（含意向中）、公开意向名单、行内「取消意向」 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |

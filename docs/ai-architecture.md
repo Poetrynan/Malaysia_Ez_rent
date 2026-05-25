@@ -57,7 +57,7 @@ Malaysia_Ez_rent/
 ### Core
 
 - `frontend/src/app/page.tsx`
-  - Main app shell with sidebar tabs.
+  - Main app shell with sidebar tabs. Displays dynamic red notification badges on admin tabs by listening to `onPendingCountsChange` from `AdminPanel`.
   - Determines `role` (`student` or `admin`) by checking `admin_users`.
   - Mounts all views, toggles visibility for smoother UI state.
 
@@ -77,7 +77,7 @@ Malaysia_Ez_rent/
 ### Admin path
 
 - `AdminPanel.tsx` includes:
-  - Role-based tabs with dynamic red notification badges for pending actions (Leases tab: unreviewed payments + pending interests; Feedback tab: unreplied feedbacks). Agent isolation strictly applied.
+  - Calculates dynamic red notification badges for pending actions (unreviewed payments, pending interests, unreplied feedbacks) and bubbles them up to `page.tsx`. Agent isolation strictly applied.
   - communities/units CRUD (adding community displays detailed Toast guiding users to register units next)
   - lease creation/deletion
   - payment review (approve/reject/clear evidence with Toast feedback; **clear evidence deletes Storage object**)

@@ -1013,4 +1013,4 @@ PropertyListings → Whole Unit 详情
 
 ---
 
-*文档更新：2026-05-25 · 含合租意向 RPC（014/015）、自行取消、缴租银行/微信/支付宝、禁止 iProperty、Memory vs Storage*
+*文档更新：2026-05-25 · 含合租意向 RPC（014/015）、自行取消、缴租银行/微信/支付宝、禁止 iProperty、Memory vs Storage、Agent权限隔离与红点气泡通知*
