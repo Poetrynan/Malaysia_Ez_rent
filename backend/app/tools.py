@@ -71,6 +71,36 @@ def get_embedding(text: str) -> List[float]:
     return [random.uniform(-0.1, 0.1) for _ in range(1536)]
 
 
+def sync_missing_embeddings() -> int:
+    """Scan all units and generate embeddings for any unit missing one."""
+    if not supabase_service_client:
+        return 0
+    try:
+        units_res = supabase_service_client.table("units").select("id, room_type, description, community_id, embedding").execute()
+        units_data = units_res.data or []
+        missing_units = [u for u in units_data if not u.get("embedding")]
+        if not missing_units:
+            return 0
+            
+        print(f"[Embedding Sync] Found {len(missing_units)} unit(s) missing embeddings. Generating...")
+        comm_res = supabase_service_client.table("communities").select("id, name").execute()
+        comm_map = {c["id"]: c["name"] for c in (comm_res.data or [])}
+        
+        synced_count = 0
+        for u in missing_units:
+            comm_name = comm_map.get(u.get("community_id"), "")
+            desc_text = f"{comm_name} {u.get('room_type') or ''} {u.get('description') or ''}".strip()
+            if desc_text:
+                emb = get_embedding(desc_text)
+                supabase_service_client.table("units").update({"embedding": emb}).eq("id", u["id"]).execute()
+                print(f"[Embedding Sync] Computed embedding for unit {u['id']}")
+                synced_count += 1
+        return synced_count
+    except Exception as e:
+        print(f"[Embedding Sync] Error during sync: {e}")
+        return 0
+
+
 # Tool 1: search_internal_db
 def search_internal_db(
     semantic_query: str,
@@ -87,24 +117,7 @@ def search_internal_db(
     if supabase_connected:
         try:
             # 1. Sync embeddings dynamically if any unit lacks them
-            if supabase_service_client:
-                try:
-                    units_res = supabase_service_client.table("units").select("id, room_type, description, community_id, embedding").execute()
-                    units_data = units_res.data or []
-                    missing_units = [u for u in units_data if not u.get("embedding")]
-                    if missing_units:
-                        print(f"[Embedding Sync] Found {len(missing_units)} unit(s) missing embeddings. Generating...")
-                        comm_res = supabase_service_client.table("communities").select("id, name").execute()
-                        comm_map = {c["id"]: c["name"] for c in (comm_res.data or [])}
-                        for u in missing_units:
-                            comm_name = comm_map.get(u.get("community_id"), "")
-                            desc_text = f"{comm_name} {u.get('room_type') or ''} {u.get('description') or ''}".strip()
-                            if desc_text:
-                                emb = get_embedding(desc_text)
-                                supabase_service_client.table("units").update({"embedding": emb}).eq("id", u["id"]).execute()
-                                print(f"[Embedding Sync] Computed embedding for unit {u['id']}")
-                except Exception as sync_err:
-                    print(f"[Embedding Sync] Warning: failed to sync embeddings: {sync_err}")
+            sync_missing_embeddings()
 
             # 2. Call RPC match_units for vector similarity search
             embedding = get_embedding(semantic_query)

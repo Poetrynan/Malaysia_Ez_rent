@@ -46,6 +46,22 @@ def get_config_status():
         "google_maps_available": Config.is_google_maps_enabled()
     }
 
+@app.post("/api/embeddings/sync")
+def sync_embeddings():
+    """
+    Direct endpoint to trigger immediate generation of embeddings for units missing them.
+    """
+    from app.tools import sync_missing_embeddings
+    try:
+        count = sync_missing_embeddings()
+        return {
+            "status": "ok",
+            "synced_count": count,
+            "message": f"Successfully synced {count} unit(s)"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/chat")
 async def chat_post(request: ChatRequest):
     """

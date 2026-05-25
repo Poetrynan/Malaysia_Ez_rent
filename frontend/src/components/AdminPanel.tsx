@@ -960,6 +960,10 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           const { error } = await supabase.from('units').insert(unitPayload);
           if (error) { showToast(error.message, 'error'); return; }
         }
+
+        // Trigger immediate backend embedding synchronization in the background
+        const agentApiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
+        fetch(`${agentApiUrl}/api/embeddings/sync`, { method: 'POST' }).catch(err => console.error('Failed to trigger embedding sync:', err));
       } catch (e: any) { showToast(e.message, 'error'); return; }
     } else {
       const list: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
