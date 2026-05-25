@@ -298,8 +298,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbackReply, setFeedbackReply] = useState<Record<string, string>>({});
 
-  const fetchFeedbacks = async () => {
-    if (!isLive) {
+  const fetchFeedbacks = async (liveOverride?: boolean) => {
+    const useLive = liveOverride !== undefined ? liveOverride : isLive;
+    if (!useLive) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       // Mock: enrich with user info from localStorage
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
@@ -409,6 +410,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
 
   // ── Tenant interests state ──
   const [interests, setInterests] = useState<TenantInterest[]>([]);
+
+  const visibleInterests = adminRole === 'super_admin'
+    ? interests
+    : interests.filter(i => {
+        const unit = units.find(u => u.id === i.unit_id);
+        return !unit || unit.agent_id === currentUserId || !unit.agent_id;
+      });
+
+  const leasesPendingCount = pendingCount + visibleInterests.filter(i => i.status === 'interested').length;
 
   const fetchInterests = async () => {
     if (!isLive) {
@@ -629,6 +639,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
         };
       }));
       if (interestRes.data) setInterests(interestRes.data);
+      fetchFeedbacks(true);
     } catch (e) { console.error('Failed to load from Supabase:', e); }
   };
 
@@ -649,6 +660,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       payments: p.filter(x => x.lease_id === lease.id),
     })));
     setInterests(ints);
+    fetchFeedbacks(false);
   };
 
   const loadAll = () => {
@@ -1287,9 +1299,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
           </button>
           <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('overview'); loadAll(); }}>
             <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
-            {pendingCount > 0 && (
+            {leasesPendingCount > 0 && (
               <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
-                {pendingCount}
+                {leasesPendingCount}
               </span>
             )}
           </button>
@@ -1807,11 +1819,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
               <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <UserPlus size={16} style={{ color: 'var(--primary)' }} />{t('tenantInterests')}
               </h3>
-              {interests.filter(i => i.status !== 'left').length === 0 ? (
+              {visibleInterests.filter(i => i.status !== 'left').length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20, fontSize: '0.85rem' }}>{t('noInterests')}</p>
               ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
-                {interests.filter(i => i.status !== 'left').map(i => {
+                {visibleInterests.filter(i => i.status !== 'left').map(i => {
                   const unit = units.find(u => u.id === i.unit_id);
                   const comm = unit ? communities.find(c => c.id === unit.community_id) : null;
                   return (
