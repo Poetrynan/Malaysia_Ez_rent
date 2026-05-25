@@ -72,7 +72,7 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean }) {
+export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
@@ -419,6 +419,12 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false }
       });
 
   const leasesPendingCount = pendingCount + visibleInterests.filter(i => i.status === 'interested').length;
+
+  useEffect(() => {
+    if (onPendingCountsChange) {
+      onPendingCountsChange(leasesPendingCount, feedbackPendingCount);
+    }
+  }, [leasesPendingCount, feedbackPendingCount, onPendingCountsChange]);
 
   const fetchInterests = async () => {
     if (!isLive) {

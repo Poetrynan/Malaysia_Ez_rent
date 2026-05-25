@@ -15,6 +15,7 @@ export default function Home() {
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0 });
 
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
@@ -132,7 +133,14 @@ export default function Home() {
                 </li>
                 <li onClick={() => setActiveTab('admin-leases')} className={`nav-item ${activeTab === 'admin-leases' ? 'active' : ''}`}>
                   <FileText size={16} />
-                  <span>{lang === 'zh' ? '租约 & 财务台账' : 'Leases & Finance'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {lang === 'zh' ? '租约 & 财务台账' : 'Leases & Finance'}
+                    {pendingCounts.leases > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                        {pendingCounts.leases}
+                      </span>
+                    )}
+                  </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
                 <li onClick={() => setActiveTab('admin-payment')} className={`nav-item ${activeTab === 'admin-payment' ? 'active' : ''}`}>
@@ -149,7 +157,14 @@ export default function Home() {
                 )}
                 <li onClick={() => setActiveTab('admin-feedback')} className={`nav-item ${activeTab === 'admin-feedback' ? 'active' : ''}`}>
                   <MessageSquare size={16} />
-                  <span>{lang === 'zh' ? '意见箱' : 'Feedback'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {lang === 'zh' ? '意见箱' : 'Feedback'}
+                    {pendingCounts.feedback > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                        {pendingCounts.feedback}
+                      </span>
+                    )}
+                  </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
                 <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
@@ -247,6 +262,7 @@ export default function Home() {
                 'properties'
               }
               hideTabBar={true}
+              onPendingCountsChange={(leasesCount, feedbackCount) => setPendingCounts({ leases: leasesCount, feedback: feedbackCount })}
             />
           </div>
         </div>
