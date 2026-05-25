@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-25 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式**
+> 最后更新：2026-05-26 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步**
 
 
 ---
@@ -755,6 +755,23 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 | **`015_tenant_interest_rpc.sql`** | **`submit_tenant_interest` / `cancel_tenant_interest`**（推荐，upsert 更稳） |
 
 未跑 015 时，前端会 fallback 直写表，但重复提交/取消可能因 RLS 失败。
+
+---
+
+## 二十、智能 AI 选房推荐与 Embedding 自动向量检索（2026-05-26）
+
+### 业务背景与逻辑
+为了让 AI 助手真正具备智能找房和推荐的能力，打通了 Supabase pgvector 向量检索与 AI Agent 系统的实战功能：
+1. **自动同步与重置 Embedding（On-Demand Sync）**：
+   * **保存时重置**：当管理员在后台 `AdminPanel.tsx` 中创建房源（`insert`）或更新房源信息（`update`）时，前端会自动将 `embedding` 列显式置为 `null`。这确保了只要房源描述、房型、租金等信息发生变化，旧有的失效向量就会被自动清空。
+   * **查询时生成**：当用户在 AI Chat 中提出找房或推荐偏好时，后端 `search_internal_db` 会自动扫描数据库中所有 `embedding` 为 `null` 的可用房源，提取其 `小区名 + 房型 + 描述文本` 调用 `AI_EMBEDDING_MODEL`（如 `BAAI/bge-large-zh-v1.5`）生成全新向量，并由免 RLS 校验的 `supabase_service_client` 自动更新写回。
+2. **位置坐标与媒体图片补全 (Data Enrichment)**：
+   * Supabase 的 RPC 函数 `match_units` 检索相似房源后，后端会自动联查该房源的真实**小区 GPS 经纬度 (`lat`/`lng`)** 以及关联的**媒体图片列表 (`media_urls`)**。
+3. **工具激活与系统提示更新**：
+   * 解除了 AI 助手原本“禁止推荐房源”的硬编码限制，将 `search_internal_db` 搜房工具正式注册并暴露给 Live Agent 的 ReAct 决策循环。
+4. **流式推送 `MapAndCard` 视觉地图组件**：
+   * 当 AI 选房检索到高度匹配的房源后，流式接口会立即下发一条 `type: "ui_component"` 事件。
+   * 前端 `AIChat.tsx` 动态接收该事件，并在聊天对话中原地渲染出专属的 `MapAndCard` 重交通地图组件（绘制房源起点至莫纳什大学终点的自适应路线及步行/公交/驾车测算）与房源富媒体卡片，实现文本问答与视觉地图的交互体验。
 
 ---
 

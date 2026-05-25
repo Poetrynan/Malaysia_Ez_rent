@@ -853,7 +853,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       max_occupants: parseInt(unitForm.max_occupants) || 1,
       bedrooms: parseInt(unitForm.bedrooms) || 1,
       bathrooms: parseInt(unitForm.bathrooms) || 1,
-      landlord_bank_info: unitForm.landlord_bank_info || null
+      landlord_bank_info: unitForm.landlord_bank_info || null,
+      embedding: null
     };
 
     if (!isEdit) {
