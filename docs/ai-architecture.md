@@ -60,6 +60,7 @@ Malaysia_Ez_rent/
   - Main app shell with sidebar tabs. Displays dynamic red notification badges on admin tabs by listening to `onPendingCountsChange` from `AdminPanel`.
   - Determines `role` (`student` or `admin`) by checking `admin_users`.
   - Mounts all views, toggles visibility for smoother UI state.
+  - **Integrates the new top-level Maintenance & Feedback tab (`maintenance`) with a unified Wrench icon.**
 
 - `frontend/src/lib/supabase.ts`
   - Auto-detects real vs mock mode by env presence.
@@ -70,8 +71,8 @@ Malaysia_Ez_rent/
 
 - `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
-- `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response.
-- `StudentPortal.tsx`: lease summary, payment progress, feedback box.
+- `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.**
+- `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator.**
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Payment copy: **bank transfer, WeChat, or Alipay** (no specific bank brand).
 
 ### Admin path
@@ -80,9 +81,10 @@ Malaysia_Ez_rent/
   - Calculates dynamic red notification badges for pending actions (unreviewed payments, pending interests, unreplied feedbacks) and bubbles them up to `page.tsx`. Agent isolation strictly applied.
   - communities/units CRUD (adding community displays detailed Toast guiding users to register units next)
   - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and all registered users name/phone, with a toggle fallback for manual UUID entry)
-  - payment review (approve/reject/clear evidence with Toast feedback; **clear evidence deletes Storage object**)
+  - **Lease workflow (Sub-tabs)**: ordered chronologically as "Tenant Interests" -> "Active Leases" -> "Pending Reviews" -> "Rent Ledger".
+  - **Payment Review**: "Pending Reviews" is a standalone sub-tab with a beautiful grid-based layout and a warning-colored count badge showing outstanding tasks. Clearing evidence deletes Storage object.
   - admin profile/payment QR settings (remove QR clears DB + Storage `qr/{adminId}.jpg`)
-  - feedback handling
+  - **Maintenance Work Orders**: renamed tab matching `t('feedback')` and synched icon to `Wrench` to align with the student view.
   - community delete for removing duplicate same-name communities
   - **Agent Separation**: Normal agents can only see and manage their own units, leases, and payment records. Super admins have full global access.
   - **Unit save/delete**: removing images or deleting a unit triggers Storage cleanup for orphaned `media_urls` / `video_url` files.

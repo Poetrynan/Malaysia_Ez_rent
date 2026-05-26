@@ -76,12 +76,13 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
-  const [leasesView, setLeasesView] = useState<'overview' | 'interests' | 'ledger'>('overview');
+  const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger'>('interests');
 
   useEffect(() => {
     if (defaultTab) {
       setTab(defaultTab);
       if (defaultTab === 'leases') {
+        setLeasesView('interests');
         loadAll();
       } else if (defaultTab === 'admins') {
         fetchAdmins();
@@ -1353,7 +1354,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
             <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
           </button>
-          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('overview'); loadAll(); }}>
+          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('interests'); loadAll(); }}>
             <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
             {leasesPendingCount > 0 && (
               <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
@@ -1764,11 +1765,19 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       {tab === 'leases' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6, width: 'fit-content' }}>
+            <button style={tabStyle(leasesView === 'interests')} onClick={() => setLeasesView('interests')}>
+              {t('leaseSubtabInterests')}
+            </button>
             <button style={tabStyle(leasesView === 'overview')} onClick={() => setLeasesView('overview')}>
               {t('leaseSubtabOverview')}
             </button>
-            <button style={tabStyle(leasesView === 'interests')} onClick={() => setLeasesView('interests')}>
-              {t('leaseSubtabInterests')}
+            <button style={tabStyle(leasesView === 'review')} onClick={() => setLeasesView('review')}>
+              {t('reviewPending')}
+              {pendingCount > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                  {pendingCount}
+                </span>
+              )}
             </button>
             <button style={tabStyle(leasesView === 'ledger')} onClick={() => setLeasesView('ledger')}>
               {t('leaseSubtabLedger')}
@@ -1862,8 +1871,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           </div>
 
           {/* Pending Review Summary */}
-          <div className="glass-card" style={{ display: leasesView === 'overview' ? 'block' : 'none', border: '1px solid var(--warning)', background: 'rgba(245,158,11,0.06)' }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="glass-card" style={{ display: leasesView === 'review' ? 'block' : 'none' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} style={{ color: 'var(--warning)' }} />
               {t('reviewPending')}
               {pendingCount > 0 && (
@@ -1871,40 +1880,60 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               )}
             </h3>
             {pendingCount === 0 ? (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 16, fontSize: '0.85rem' }}>
-                {t('noReviewPending')}
-              </p>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <CheckCircle2 size={36} style={{ color: 'var(--success)', marginBottom: 12, opacity: 0.8 }} />
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('noReviewPending')}</p>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
-                {visibleLeases.map(l =>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
+                {visibleLeases.flatMap(l =>
                   (l.payments || [])
                     .filter(p => p.status === 'pending_review' && p.evidence_url)
-                    .map(p => (
-                      <div key={p.id} onClick={() => { setReviewingPayment(p); setAdminNote(''); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(245,158,11,0.2)', cursor: 'pointer', transition: 'all 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.1)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                      >
-                        <img src={p.evidence_url!} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--glass-border)' }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-h)' }}>{l.tenantName}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: 2 }}>
-                            {formatLeasePropertyLabel(
-                              ...(() => {
-                                const { unit, community } = resolveLeaseUnit(l, units, communities);
-                                return [unit, community, t('unknownUnit')] as const;
-                              })(),
-                            )}
+                    .map(p => {
+                      const { unit, community } = resolveLeaseUnit(l, units, communities);
+                      const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                      return (
+                        <div key={p.id} onClick={() => { setReviewingPayment(p); setAdminNote(''); }}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 12, 
+                            padding: '12px 16px', 
+                            borderRadius: 12, 
+                            background: 'var(--glass-bg)', 
+                            border: '1px solid rgba(245,158,11,0.25)', 
+                            cursor: 'pointer', 
+                            transition: 'all 0.2s ease-in-out' 
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
+                            e.currentTarget.style.background = 'rgba(245,158,11,0.06)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.background = 'var(--glass-bg)';
+                          }}
+                        >
+                          <img src={p.evidence_url!} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.tenantName}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {propertyLabel}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{fmtMonth(p.billing_month)}</div>
                           </div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{fmtMonth(p.billing_month)}</div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent)' }}>RM {l.monthly_rent}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--warning)' }}></span>
+                              {t('pendingReview')}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--accent)' }}>RM {l.monthly_rent}</div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--warning)', fontWeight: 600 }}>{t('pendingReview')}</div>
-                        </div>
-                        <Eye size={16} style={{ color: 'var(--text-muted)' }} />
-                      </div>
-                    ))
+                      );
+                    })
                 )}
               </div>
             )}
@@ -1967,8 +1996,10 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           )}
 
           {/* Leases Table */}
-          <div className="glass-card" style={{ display: leasesView === 'ledger' ? 'block' : 'none' }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('leasesTitle')}</h3>
+          <div className="glass-card" style={{ display: (leasesView === 'overview' || leasesView === 'ledger') ? 'block' : 'none' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>
+              {leasesView === 'overview' ? (lang === 'zh' ? '有效租约列表' : 'Active Leases List') : t('leaseSubtabLedger')}
+            </h3>
             {visibleLeases.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>{t('noLeases')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
             {visibleLeases.map(l => {
