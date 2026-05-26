@@ -1132,11 +1132,18 @@ export default function PropertyListings() {
               <div>
                 {(() => {
                   const unitInterests = interests.filter(i => i.unit_id === selected.id && i.status !== 'left');
-                  const confirmed = unitInterests.filter(i => i.status === 'confirmed').length;
+                  
+                  // For occupancy counting: a 'confirmed' interest only counts if the unit is NOT available
+                  // (If it's available, any 'confirmed' interest is stale/terminated)
+                  const confirmed = selected.status === 'available' 
+                    ? 0 
+                    : unitInterests.filter(i => i.status === 'confirmed').length;
+                  
                   const interested = unitInterests.filter(i => i.status === 'interested').length;
                   const registered = confirmed + interested;
                   const max = selected.max_occupants || 1;
                   const isFull = confirmed >= max;
+                  
                   const myEntry = authUserId
                     ? unitInterests.find(i => String(i.user_id) === String(authUserId))
                     : undefined;
