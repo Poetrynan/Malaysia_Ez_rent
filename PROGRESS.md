@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-26 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · iProperty中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条**
 
 
 ---
@@ -32,6 +32,7 @@ Malaysia_Ez_rent/
 │   │   │   └── AdminPanel.tsx    # 管理后台（房源/租约二级 Tab、收租核查表显示单元、小区删除、表单校验与 Toast）
 │   │   └── lib/
 │   │       ├── supabase.ts       # Supabase 客户端（含完整 LocalStorage Mock）
+│   │       ├── numberInput.ts    # 数字输入非负校验（AdminPanel / PropertyListings）
 │   │       ├── ThemeProvider.tsx  # 主题/语言 Context Provider
 │   │       └── i18n.ts           # 中英双语翻译字典
 │   │   ├── utils/
@@ -90,12 +91,12 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航（**已集成 AdminPanel 冒泡上报的红点提示，显示未处理租约/意向及反馈数量**） + **图标 Logo + 产品名/副标题**，角色判断，**新增侧边栏报修一级菜单 Tab 独立导航与 Wrench 图标统一**，flex 布局修复 |
-| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y（含意向中）、公开意向名单、行内「取消意向」 |
+| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；卡片/行显示 **中介：display_name**；`loadListings` 失败可重试、登录后自动刷新；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y、公开意向名单；学生详情 **所属中介** + 中介主页（WhatsApp/微信 **暂无** 兜底）；`getUnitsForAgent` 严格 `agent_id` + `UnitWithCommunity` 类型 |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题，**添加 useEffect 监听中英文语言切换，实时动态翻译更新首句 AI 欢迎语**。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息，**重构支持 mode 属性以实现“我的租约”与“维修反馈”双 tab 的物理分离隔离，且历史工单列表支持 Chevron 展开折叠指示器** |
-| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（**带未处理审核/意向/反馈的红色数字气泡提示，并支持 Agent 权限隔离**）；房东银行/QR（013）；添加小区保存 Toast 详细引导下一步；图片/视频压缩上传；**删除凭证/收款码/房源/编辑删图时同步删 Storage**；**同步修改工单管理 Tab 的文字和 Wrench 扳手图标**；凭证审核 Toast |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（红点 + Agent 隔离）；房东银行/QR（013）；**复制挂牌**（文本+房东收款，不含图/视频，保存为**新行**）；保存时写入 **`agent_id`**（旧数据可编辑保存补全）；个人资料全宽、仅头像上传压缩、去掉 iProperty 文案；**删除凭证/房源/删图同步 Storage**；数字输入非负；**编辑保存 = UPDATE 同 id，不新建** |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
@@ -205,6 +206,9 @@ Malaysia_Ez_rent/
 | 73 | 租约二级导航逻辑不合理、待审核没有独立入口 | 重构 `AdminPanel` 二级导航顺序为「租客意向」->「有效租约」->「待审核凭证」->「收租核查表」；并将待审核凭证单独拆为二级 Tab 且运用 Grid 样式美化，有效租约列表在「有效租约」和「收租核查表」中皆可见。 |
 
 | 74 | 租客选择列表允许手动输入且包含管理员 | 彻底移除租约创建表单中手动输入 UUID 的入口与相应状态；并在加载数据时拉取 `admin_users` 所有 ID，在渲染房客选择列表时进行排除过滤，避免管理员（如 Chris）出现在租客备选中。 |
+| 75 | Vercel 构建 `currentEnquiryUnit.community` 类型错误 | `getUnitsForAgent` 改为 `UnitWithCommunity[]`，与主列表 join 的 `community` 一致 |
+| 76 | 学生登录后房源列表空白 | `loadListings`/`loadAdmins` 抽离 + 错误重试；`middleware` anon key 回退；`SIGNED_IN` 时重新拉取 |
+| 77 | 旧房源无 `agent_id` 中介主页不显示 | 管理端 **编辑 → 保存** 同一条记录即可写入当前用户 `agent_id`（UPDATE，非新建） |
 
 ---
 
@@ -403,7 +407,9 @@ supabase/migrations/
 | AI 找房报 503 | Gemini/LLM API 高峰期过载，工具可能已成功 | 稍后重试；或换模型 / 加重试逻辑 |
 | Memory usage 显示 ~400 MB 是不是数据库满了 | 这是 **RAM 内存**图表，不是磁盘；Postgres 缓存占 RAM 是正常现象 | 看 Settings → Usage 的 **Database size** 和 **Storage size**；详见 auth 文档第 14 节 |
 | Storage 配额涨太快 | 原图直传 | 已加 `compressImage.ts` 上传前压缩；旧大文件需手动清理 |
-| 同一门牌号出现多条重复房源 | `units` 无唯一约束 + 保存无防连点 | 删除多余行；改房源用「编辑」勿重复「新增」 |
+| 同一门牌号出现多条重复房源 | `units` 无唯一约束 + **误点「新增」或「复制挂牌」** | 删除多余行；**改信息用「编辑」→ 保存（覆盖同 id）**；多中介各挂一行是业务设计，见下文 |
+| 编辑后什么都不改再点保存 | 会 **UPDATE** 同一条，**不会 INSERT** | 仍会写库并 `embedding=null` 触发向量重算；不会多一条 |
+| 复制挂牌 vs 编辑保存 | 复制填表后点「保存为新房源」→ **新 UUID 新行** | 编辑保存始终 **覆盖原 id** |
 | Whole Unit 保存报 `units_room_type_check` | 未跑 `008_whole_unit_room_type.sql` | Supabase SQL Editor 执行 `008_whole_unit_room_type.sql` |
 | 收租核查表看不到门牌号 | 旧版 UI 或未关联 unit | 刷新前端；若显示「单元信息缺失」则检查租约 `unit_id` |
 | Logo 上线要不要动数据库 | Logo 是 `frontend/public/logo.png` 静态文件 | **不用**；`git push` 后 Vercel 自动部署即可 |
@@ -785,6 +791,29 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 4. **流式推送 `MapAndCard` 视觉地图组件**：
    * 当 AI 选房检索到高度匹配的房源后，流式接口会立即下发一条 `type: "ui_component"` 事件。
    * 前端 `AIChat.tsx` 动态接收该事件，并在聊天对话中原地渲染出专属的 `MapAndCard` 重交通地图组件（绘制房源起点至莫纳什大学终点的自适应路线及步行/公交/驾车测算）与房源富媒体卡片，实现文本问答与视觉地图的交互体验。
+
+---
+
+## 二十一、多中介独立挂牌、复制挂牌与保存语义（2026-05-26）
+
+### 业务模型
+
+- 同一物理房源可由**多个中介各建一条 `units` 记录**（文案可重复，**互不同步**）。
+- 学生看到的联系人、收款码、房东信息，均来自**当前点击的那一行**的 `agent_id` 与 `landlord_*` 字段。
+- 中介个人主页只展示 `agent_id === 该中介.id` 的房源（严格匹配）。
+
+### 管理端三种操作
+
+| 操作 | `editingUnitId` | 数据库行为 |
+|------|-----------------|------------|
+| **新增房源** | `null` | `INSERT` 新行，新 UUID |
+| **编辑 → 保存**（含内容未改） | 有值 | `UPDATE` **同一条**，覆盖字段；**不新建** |
+| **复制挂牌 → 保存为新房源** | `null`（`isCopyDraft`） | `INSERT` **新行**；复制文字+房东收款，**不复制**图片/视频 |
+
+### 给运营的一句话
+
+- 只想补 `agent_id` 或改租金：**点编辑，保存** → 还是原来那条。
+- 想给自己再挂一套相同信息：**用复制挂牌**，保存后才是新记录。
 
 ---
 

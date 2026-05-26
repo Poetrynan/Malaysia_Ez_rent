@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-25 (UTC+8)
+Last updated: 2026-05-26 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -36,10 +36,11 @@ Malaysia_Ez_rent/
 │   │   ├── LeaseLedgerCard.tsx
 │   │   └── AdminPanel.tsx
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
+│   ├── src/lib/numberInput.ts          # nonNegativeInputValue / nonNegativeNumber for type=number fields
 │   ├── src/lib/i18n.ts                 # zh/en; payment: bank transfer / WeChat / Alipay
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
 │   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
-│   └── src/middleware.ts                # route guard with mobile-upload allowlist
+│   └── src/middleware.ts                # route guard; anon key fallback PUBLISHABLE_KEY || ANON_KEY
 ├── backend/
 │   └── app/
 │       ├── main.py                      # FastAPI + SSE endpoints
@@ -69,7 +70,7 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **Includes an iProperty-inspired Agent Profile details panel showing stats (listings count, active/rented), bio, experience duration, areas/types of expertise, a tabbed listings view with min/max rent filters, and a validation-checked contact enquiry form that automatically redirects students to their portal upon unit selection.**
+- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **`loadListings()` / `loadAdmins()`** with error UI, retry, and reload on `SIGNED_IN` / `INITIAL_SESSION`. Listing cards show **`getListingAgentLabel()`** (e.g. `中介：name`) so duplicate rows are distinguishable. Student unit detail shows **「所属中介：」** + agent card (no redundant “contact admin” CTA). **Agent profile modal**: strict `getUnitsForAgent(agentId, units)` (`agent_id` match only, typed `UnitWithCommunity[]`); WhatsApp/WeChat icons with **「暂无」** when empty; rent filter inputs use `agentPriceInputStyle`. Enquiry form shows `currentEnquiryUnit.community?.name` (requires joined community on agent units).
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.**
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator.**
@@ -83,11 +84,22 @@ Malaysia_Ez_rent/
   - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and registered users, filtering out admin users using `admin_users` table data and avoiding any manual ID entries)
   - **Lease workflow (Sub-tabs)**: ordered chronologically as "Tenant Interests" -> "Active Leases" -> "Pending Reviews" -> "Rent Ledger".
   - **Payment Review**: "Pending Reviews" is a standalone sub-tab with a beautiful grid-based layout and a warning-colored count badge showing outstanding tasks. Clearing evidence deletes Storage object.
-  - admin profile/payment QR settings (expanded fields matching iProperty specs; client-side avatar file compression to ≤30KB and auto-upload to Supabase Storage; **removal of external social url fields** (Facebook, website) to limit redirects outside the site; remove QR clears DB + Storage `qr/{adminId}.jpg`)
+  - admin profile/payment QR settings (expanded agent profile fields; **avatar upload only** — no URL field; Canvas compress ≤30KB → Storage; profile card **full width**; removed iProperty marketing copy; **removal of external social url fields** (Facebook, website); remove QR clears DB + Storage `qr/{adminId}.jpg`)
+  - **Copy listing** (`startCopyUnit` / `isCopyDraft`): duplicate text fields + landlord QR/bank from an existing unit; **does not** copy images/video; save runs **INSERT** as a new row with new `agent_id` = current user. Editors may copy only own listings; `super_admin` may copy any visible unit.
+  - **Unit save semantics**: `editingUnitId` set → **UPDATE** same row; unset → **INSERT**. Re-save without field changes still **updates** the same row (sets `embedding: null` for re-sync). Does **not** create a duplicate unless user uses copy flow or clicks add without being in edit mode.
+  - **`agent_id` on save**: new units and legacy rows without `agent_id` get `auth.uid()` on save; existing `agent_id` preserved on edit.
+  - All `type="number"` inputs use `frontend/src/lib/numberInput.ts` (`nonNegativeInputValue`, `nonNegativeNumber`).
   - **Maintenance Work Orders**: renamed tab matching `t('feedback')` and synched icon to `Wrench` to align with the student view.
   - community delete for removing duplicate same-name communities
   - **Agent Separation**: Normal agents can only see and manage their own units, leases, and payment records. Super admins have full global access.
   - **Unit save/delete**: removing images or deleting a unit triggers Storage cleanup for orphaned `media_urls` / `video_url` files.
+
+### Multi-agent inventory model (no shared row)
+
+- Each agent maintains **separate `units` rows** for the same physical property (duplicate community/room/rent text is intentional).
+- Rows are **not synced** across agents; student detail shows the **one** `agent_id` on that row.
+- Payments: month 1 → that row’s listing agent QR; month 2+ → `landlord_qr_code` / `landlord_bank_info` on **that same row**.
+- Agent profile listings: filter `units` where `agent_id === profile.id` only (no fallback to unassigned units).
 
 ### Privacy Constraints
 
@@ -274,6 +286,8 @@ When extending this codebase, keep these invariants:
 - **External listing search is forbidden** — no iProperty/PropertyGuru via Tavily or any other path. Direct users to the Property Listings tab for inventory.
 - **Co-rent submit/cancel broken?** Run migrations **014 + 015** in Supabase; redeploy frontend; hard-refresh browser.
 - Local mobile QR testing requires LAN origin (`192.168.x.x`), not `localhost`.
+- **Edit + save with no changes** updates the same `units.id` (does not INSERT). Accidental duplicates usually come from **new listing** or **copy-as-new**, not from re-saving an edit.
+- Windows dev: `next build` may fail on Turbopack native bindings — use `next build --webpack` or rely on Vercel CI; run `npx tsc --noEmit` for type-check locally.
 
 ## 11) Quick Dev Runbook
 
