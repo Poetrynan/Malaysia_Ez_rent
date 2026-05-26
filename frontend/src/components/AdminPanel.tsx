@@ -117,7 +117,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const [leaseForm, setLeaseForm] = useState<LeaseForm>({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5' });
   interface UserProfile { id: string; full_name: string | null; phone?: string | null; }
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [isManualTenant, setIsManualTenant] = useState(false);
+  const [adminIds, setAdminIds] = useState<string[]>([]);
 
   // ── Toast & Validation ──
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'warning' | 'success' } | null>(null);
@@ -623,7 +623,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
 
   const loadFromSupabase = async (supabase: any) => {
     try {
-      const [commRes, unitRes, leaseRes, paymentRes, userRes, interestRes] = await Promise.all([
+      const [commRes, unitRes, leaseRes, paymentRes, userRes, interestRes, adminRes] = await Promise.all([
         supabase.from('communities').select('*'),
         supabase.from('units').select('*'),
         supabase.from('leases').select(`
@@ -649,15 +649,18 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         supabase.from('payment_records').select('*'),
         supabase.from('users').select('id, full_name, phone'),
         supabase.from('tenant_interests').select('*'),
+        supabase.from('admin_users').select('id'),
       ]);
       const c: Community[] = commRes.data || [];
       const u: Unit[] = unitRes.data || [];
       const l: any[] = leaseRes.data || [];
       const p: Payment[] = paymentRes.data || [];
       const users: any[] = userRes.data || [];
+      const admins: any[] = adminRes.data || [];
       setCommunities(c);
       setUnits(u);
       setAllUsers(users);
+      setAdminIds(admins.map(a => a.id));
       setLeases(l.map(row => {
         const { units: nestedUnit, ...lease } = row as Lease & { units?: any };
         const unitData: Unit | undefined = nestedUnit ? {
@@ -700,9 +703,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     const p: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
     const users: any[] = JSON.parse(localStorage.getItem('ez_users') || '[]');
     const ints: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+    const admins: any[] = JSON.parse(localStorage.getItem('ez_admins') || '[]');
     setCommunities(c);
     setUnits(u);
     setAllUsers(users);
+    setAdminIds(admins.map(a => a.id));
     setLeases(l.map(lease => ({
       ...lease,
       unitData: u.find(x => x.id === lease.unit_id),
@@ -1210,7 +1215,6 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       localStorage.setItem('ez_payments', JSON.stringify([...allP, ...payments]));
     }
     setLeaseForm({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5' });
-    setIsManualTenant(false);
     loadAll();
   };
 
@@ -1799,67 +1803,40 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               </div>
               <div className="form-group">
                 <label>{t('selectTenant')}</label>
-                {isManualTenant ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <input 
-                      className="form-input" 
-                      value={leaseForm.tenant_id} 
-                      onChange={e => setLeaseForm(f => ({ ...f, tenant_id: e.target.value }))} 
-                      placeholder={t('tenantIdPlaceholder')} 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => { setIsManualTenant(false); setLeaseForm(f => ({ ...f, tenant_id: '' })); }} 
-                      style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
-                    >
-                      {lang === 'zh' ? '← 返回选择列表' : '← Back to Selection List'}
-                    </button>
-                  </div>
-                ) : (
-                  <select 
-                    className="form-select" 
-                    value={leaseForm.tenant_id} 
-                    onChange={e => {
-                      if (e.target.value === '__manual__') {
-                        setIsManualTenant(true);
-                        setLeaseForm(f => ({ ...f, tenant_id: '' }));
-                      } else {
-                        setLeaseForm(f => ({ ...f, tenant_id: e.target.value }));
-                      }
-                    }}
-                  >
-                    <option value="">{t('selectTenant')}</option>
-                    
-                    {/* Group 1: Confirmed tenants for this unit */}
-                    {(() => {
-                      const confirmedInterests = interests.filter(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed');
-                      if (confirmedInterests.length === 0) return null;
-                      return (
-                        <optgroup label={lang === 'zh' ? '📄 意向已确认的合租/整租人' : '📄 Confirmed Interested Tenants'}>
-                          {confirmedInterests.map(i => (
-                            <option key={i.user_id} value={i.user_id}>
-                              {i.full_name || i.email || i.user_id.slice(0, 8)} ({i.email || i.phone || 'No Contact'})
-                            </option>
-                          ))}
-                        </optgroup>
-                      );
-                    })()}
-                    
-                    {/* Group 2: All registered users in the database */}
-                    <optgroup label={lang === 'zh' ? '👥 所有注册的房客名单' : '👥 All Registered Tenants'}>
-                      {allUsers
-                        .filter(u => !interests.some(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed' && i.user_id === u.id))
-                        .map(u => (
-                          <option key={u.id} value={u.id}>
-                            {u.full_name || (lang === 'zh' ? '未设置姓名' : 'Unnamed Tenant')} ({u.phone || 'No Phone'})
+                <select 
+                  className="form-select" 
+                  value={leaseForm.tenant_id} 
+                  onChange={e => setLeaseForm(f => ({ ...f, tenant_id: e.target.value }))}
+                >
+                  <option value="">{t('selectTenant')}</option>
+                  
+                  {/* Group 1: Confirmed tenants for this unit */}
+                  {(() => {
+                    const confirmedInterests = interests.filter(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed');
+                    if (confirmedInterests.length === 0) return null;
+                    return (
+                      <optgroup label={lang === 'zh' ? '📄 意向已确认的合租/整租人' : '📄 Confirmed Interested Tenants'}>
+                        {confirmedInterests.map(i => (
+                          <option key={i.user_id} value={i.user_id}>
+                            {i.full_name || i.email || i.user_id.slice(0, 8)} ({i.email || i.phone || 'No Contact'})
                           </option>
-                        ))
-                      }
-                    </optgroup>
-                    
-                    <option value="__manual__">{lang === 'zh' ? '➕ 手动输入 UUID (仅限开发调试)' : '➕ Manual UUID Input (Dev only)'}</option>
-                  </select>
-                )}
+                        ))}
+                      </optgroup>
+                    );
+                  })()}
+                  
+                  {/* Group 2: All registered users in the database */}
+                  <optgroup label={lang === 'zh' ? '👥 所有注册的房客名单' : '👥 All Registered Tenants'}>
+                    {allUsers
+                      .filter(u => !adminIds.includes(u.id) && !interests.some(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed' && i.user_id === u.id))
+                      .map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.full_name || (lang === 'zh' ? '未设置姓名' : 'Unnamed Tenant')} ({u.phone || 'No Phone'})
+                        </option>
+                      ))
+                    }
+                  </optgroup>
+                </select>
               </div>
               <div className="form-group"><label>{t('monthlyRent')} (RM)</label><input type="number" className="form-input" value={leaseForm.monthly_rent} onChange={e => setLeaseForm(f => ({ ...f, monthly_rent: e.target.value }))} /></div>
               <div className="form-group"><label>{t('startDate')}</label><input type="date" className="form-input" value={leaseForm.start_date} onChange={e => setLeaseForm(f => ({ ...f, start_date: e.target.value }))} /></div>

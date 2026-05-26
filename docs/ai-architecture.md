@@ -80,7 +80,7 @@ Malaysia_Ez_rent/
 - `AdminPanel.tsx` includes:
   - Calculates dynamic red notification badges for pending actions (unreviewed payments, pending interests, unreplied feedbacks) and bubbles them up to `page.tsx`. Agent isolation strictly applied.
   - communities/units CRUD (adding community displays detailed Toast guiding users to register units next)
-  - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and all registered users name/phone, with a toggle fallback for manual UUID entry)
+  - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and registered users, filtering out admin users using `admin_users` table data and avoiding any manual ID entries)
   - **Lease workflow (Sub-tabs)**: ordered chronologically as "Tenant Interests" -> "Active Leases" -> "Pending Reviews" -> "Rent Ledger".
   - **Payment Review**: "Pending Reviews" is a standalone sub-tab with a beautiful grid-based layout and a warning-colored count badge showing outstanding tasks. Clearing evidence deletes Storage object.
   - admin profile/payment QR settings (remove QR clears DB + Storage `qr/{adminId}.jpg`)
