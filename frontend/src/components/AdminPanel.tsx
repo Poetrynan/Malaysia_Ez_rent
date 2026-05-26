@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -104,6 +104,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
   const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [isCopyDraft, setIsCopyDraft] = useState(false);
+  const [copySourceId, setCopySourceId] = useState('');
   // media: up to 9 images (base64) + 1 video (object URL)
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
@@ -291,6 +293,16 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const visibleUnits = adminRole === 'super_admin'
     ? units
     : units.filter(u => u.agent_id === currentUserId || !u.agent_id);
+
+  /** Only own listings for editors; super admin may copy from any visible listing. */
+  const copyableUnits = useMemo(() => {
+    if (adminRole === 'super_admin') return visibleUnits;
+    if (!currentUserId) return [];
+    return visibleUnits.filter(u => u.agent_id === currentUserId);
+  }, [visibleUnits, adminRole, currentUserId]);
+
+  const canCopyUnit = (u: Unit) =>
+    adminRole === 'super_admin' || (!!currentUserId && u.agent_id === currentUserId);
 
   const visibleLeases = adminRole === 'super_admin'
     ? leases
@@ -1149,10 +1161,51 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     }
 
     setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
-    setMediaImages([]); setMediaVideo(null); setEditingUnitId(null); loadAll();
+    setMediaImages([]); setMediaVideo(null); setEditingUnitId(null);
+    setIsCopyDraft(false);
+    setCopySourceId('');
+    loadAll();
+  };
+
+  const scrollToUnitForm = () => {
+    setPropertiesView('editor');
+    setTimeout(() => {
+      document.getElementById('add-unit-form-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+  };
+
+  const startCopyUnit = (u: Unit) => {
+    if (!canCopyUnit(u)) {
+      showToast(lang === 'zh' ? '只能复制您自己的挂牌' : 'You can only copy your own listings', 'error');
+      return;
+    }
+    setEditingUnitId(null);
+    setIsCopyDraft(true);
+    setCopySourceId('');
+    setUnitForm({
+      community_id: u.community_id,
+      unit_number: u.unit_number || '',
+      room_type: u.room_type,
+      rent: String(u.rent),
+      description: u.description || '',
+      max_occupants: String(u.max_occupants || 1),
+      bedrooms: String(u.bedrooms || 1),
+      bathrooms: String(u.bathrooms || 1),
+      landlord_qr_code: u.landlord_qr_code || '',
+      landlord_bank_info: u.landlord_bank_info || '',
+    });
+    setMediaImages([]);
+    setMediaVideo(null);
+    scrollToUnitForm();
+    showToast(
+      lang === 'zh' ? '已复制挂牌信息，请修改租金并上传图片后保存为新房源' : 'Listing copied — update rent and photos, then save as new',
+      'success'
+    );
   };
 
   const startEditUnit = (u: Unit) => {
+    setIsCopyDraft(false);
+    setCopySourceId('');
     setEditingUnitId(u.id);
     setUnitForm({
       community_id: u.community_id,
@@ -1175,14 +1228,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     const unitVideo = u.video_url || (() => { try { const m = JSON.parse(localStorage.getItem('ez_unit_media') || '{}'); return m[u.id]?.video || null; } catch { return null; } })();
     setMediaVideo(unitVideo);
 
-    setPropertiesView('editor');
-
-    setTimeout(() => {
-      const formEl = document.getElementById('add-unit-form-section');
-      if (formEl) {
-        formEl.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 50);
+    scrollToUnitForm();
   };
 
   const handleImgFiles = async (files: FileList | null) => {
@@ -1648,6 +1694,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   <FileText size={16} style={{ color: 'var(--accent)' }} />
                   {lang === 'zh' ? '编辑房源信息' : 'Edit Room Unit'}
                 </>
+              ) : isCopyDraft ? (
+                <>
+                  <Copy size={16} style={{ color: 'var(--primary)' }} />
+                  {lang === 'zh' ? '新建房源（已从挂牌复制）' : 'New Listing (copied)'}
+                </>
               ) : (
                 <>
                   <PlusCircle size={16} style={{ color: 'var(--primary)' }} />
@@ -1655,6 +1706,61 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 </>
               )}
             </h3>
+
+            {!editingUnitId && copyableUnits.length > 0 && (
+              <div style={{ marginBottom: 16, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 8 }}>
+                  {lang === 'zh' ? '从已有挂牌复制' : 'Copy from existing listing'}
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <select
+                    className="form-select"
+                    value={copySourceId}
+                    onChange={e => setCopySourceId(e.target.value)}
+                    style={{ flex: '1 1 200px', minWidth: 0 }}
+                  >
+                    <option value="">{lang === 'zh' ? '选择要复制的挂牌…' : 'Select a listing…'}</option>
+                    {copyableUnits.map(u => {
+                      const c = communities.find(x => x.id === u.community_id);
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {(c?.name || '—')} · {u.room_type} · RM {u.rent.toLocaleString()}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={!copySourceId}
+                    onClick={() => {
+                      const src = copyableUnits.find(x => x.id === copySourceId);
+                      if (src) startCopyUnit(src);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+                  >
+                    <Copy size={14} />
+                    {lang === 'zh' ? '复制到表单' : 'Copy to form'}
+                  </button>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
+                  {adminRole === 'super_admin'
+                    ? (lang === 'zh'
+                      ? '可复制任意挂牌的文本信息；保存后将生成新房源记录。图片与视频需重新上传。'
+                      : 'Copy text fields from any listing; saving creates a new record. Photos and video must be uploaded again.')
+                    : (lang === 'zh'
+                      ? '仅可复制您自己的挂牌。适合同小区、同户型但租金或装修不同的新房源；图片需重新上传。'
+                      : 'Only your own listings. Use for same community/layout with different rent or fit-out; re-upload photos.')}
+                </p>
+              </div>
+            )}
+
+            {isCopyDraft && (
+              <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)', fontSize: '0.78rem', color: 'var(--primary)' }}>
+                {lang === 'zh' ? '已载入复制内容。请修改租金、描述，并上传新图片后点击保存，将创建一条新挂牌。' : 'Copied fields loaded. Adjust rent and description, upload new photos, then save to create a new listing.'}
+              </div>
+            )}
+
             <div className="form-group">
               <label>{t('selectCommunity')}</label>
               <select
@@ -1803,6 +1909,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 </button>
                 <button className="btn" onClick={() => {
                   setEditingUnitId(null);
+                  setIsCopyDraft(false);
+                  setCopySourceId('');
                   setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
                   setMediaImages([]); setMediaVideo(null);
                 }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', color: 'var(--text-body)' }}>
@@ -1810,7 +1918,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 </button>
               </div>
             ) : (
-              <button className="btn btn-primary" onClick={saveUnit} style={{ width: '100%', marginTop: 8 }}>{t('saveBtn')}</button>
+              <button className="btn btn-primary" onClick={saveUnit} style={{ width: '100%', marginTop: 8 }}>
+                {isCopyDraft ? (lang === 'zh' ? '保存为新房源' : 'Save as new listing') : t('saveBtn')}
+              </button>
             )}
           </div>
 
@@ -1864,6 +1974,15 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                             }} title={lang === 'zh' ? '编辑房源' : 'Edit Unit'}>
                               <Edit3 size={15} />
                             </button>
+                            {canCopyUnit(u) && (
+                              <button onClick={() => startCopyUnit(u)} style={{
+                                background: 'none', border: 'none', color: 'var(--text-body)',
+                                cursor: 'pointer', padding: 6, borderRadius: 6,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }} title={lang === 'zh' ? '复制为新房源' : 'Copy as new listing'}>
+                                <Copy size={15} />
+                              </button>
+                            )}
                             <button onClick={() => deleteUnit(u.id)} style={{
                               background: 'none', border: 'none', color: 'var(--danger)',
                               cursor: 'pointer', padding: 6, borderRadius: 6,

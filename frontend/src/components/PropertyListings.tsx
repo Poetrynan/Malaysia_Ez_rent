@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
@@ -134,6 +134,14 @@ function getUnitsForAgent(agentId: string | undefined, allUnits: Unit[]): Unit[]
   return allUnits.filter(u => u.agent_id === agentId);
 }
 
+function getListingAgentLabel(unit: Unit, admins: AdminContact[], lang: string): string | null {
+  if (!unit.agent_id) return null;
+  const agent = admins.find(a => a.id === unit.agent_id);
+  const name = agent?.display_name?.trim();
+  if (!name) return null;
+  return lang === 'zh' ? `中介：${name}` : `Agent: ${name}`;
+}
+
 const agentPriceInputStyle: React.CSSProperties = {
   width: 96,
   fontSize: '0.78rem',
@@ -173,6 +181,8 @@ interface TenantInterest { id: string; unit_id: string; user_id: string; email: 
 export default function PropertyListings() {
   const { t, lang } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [maxRent, setMaxRent] = useState('');
@@ -227,6 +237,98 @@ export default function PropertyListings() {
     }
   };
 
+  const loadListings = useCallback(async () => {
+    setListingsLoading(true);
+    setListingsError(null);
+    try {
+      if (isMockDatabase) {
+        const allUnits: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+        const allCommunities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+        setUnits(allUnits.map(u => ({
+          ...u,
+          community: allCommunities.find(c => c.id === u.community_id) || null,
+        })));
+        if (allUnits.length === 0) {
+          console.warn('[listings] Mock mode: ez_units is empty — admin data is in browser localStorage only, not Supabase.');
+        }
+        return;
+      }
+
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const [unitRes, commRes] = await Promise.all([
+        supabase.from('units').select('*'),
+        supabase.from('communities').select('*'),
+      ]);
+
+      if (unitRes.error || commRes.error) {
+        const msg = unitRes.error?.message || commRes.error?.message || 'Failed to load listings';
+        console.error('[listings] Supabase error:', unitRes.error, commRes.error);
+        setListingsError(msg);
+        setUnits([]);
+        return;
+      }
+
+      const allUnits: Unit[] = unitRes.data || [];
+      const allCommunities: Community[] = commRes.data || [];
+      setUnits(allUnits.map(u => ({
+        ...u,
+        community: allCommunities.find(c => c.id === u.community_id) || null,
+      })));
+    } catch (e) {
+      console.error('[listings] load failed:', e);
+      setListingsError(e instanceof Error ? e.message : 'Failed to load listings');
+      setUnits([]);
+    } finally {
+      setListingsLoading(false);
+    }
+  }, []);
+
+  const loadAdmins = useCallback(async () => {
+    if (isMockDatabase) {
+      const storedAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      if (storedAdmins.length > 0) {
+        setAdmins(storedAdmins);
+      } else {
+        const defaultAgent = {
+          id: 'admin-999',
+          display_name: 'Nick Chan',
+          phone: '+6012-345 6789',
+          whatsapp: '60123456789',
+          wechat_id: 'nick_chan_ren',
+          email: 'admin@ezrent.my',
+          avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
+          job_title: 'Senior Rental Manager',
+          agency_name: 'VIVAHOMES REALTY SDN. BHD',
+          agency_license: 'E (1) 1670',
+          agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
+          bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
+          experience_years: 5,
+          experience_months: 6,
+          area_expertise: ['Bandar Sunway', 'Subang Jaya', 'Petaling Jaya'],
+          property_types: ['Condo', 'Serviced Residence', 'Apartment', 'Room']
+        };
+        setAdmins([defaultAgent]);
+        localStorage.setItem('ez_admins', JSON.stringify([defaultAgent]));
+      }
+      return;
+    }
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data, error } = await supabase.from('admin_users').select('*');
+      if (error) console.error('[listings] admin_users:', error);
+      if (data) setAdmins(data as AdminContact[]);
+    } catch (e) {
+      console.error('[listings] load admins failed:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadListings();
+    loadAdmins();
+  }, [loadListings, loadAdmins]);
+
   useEffect(() => {
     if (isMockDatabase) return;
     let mounted = true;
@@ -237,8 +339,12 @@ export default function PropertyListings() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (mounted && user) setAuthUserId(user.id);
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (mounted) setAuthUserId(session?.user?.id ?? null);
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          loadListings();
+          loadAdmins();
+        }
       });
       unsubscribe = () => subscription.unsubscribe();
     })();
@@ -247,7 +353,7 @@ export default function PropertyListings() {
       mounted = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [loadListings, loadAdmins]);
 
   const closeDetail = () => {
     setSelected(null);
@@ -275,72 +381,6 @@ export default function PropertyListings() {
   }, [lightboxOpen, selected]);
 
   useEffect(() => {
-    if (isMockDatabase) {
-      const allUnits: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-      const allCommunities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-      setUnits(allUnits.map(u => ({
-        ...u,
-        community: allCommunities.find(c => c.id === u.community_id) || null,
-      })));
-    } else {
-      (async () => {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const [unitRes, commRes] = await Promise.all([
-            supabase.from('units').select('*'),
-            supabase.from('communities').select('*'),
-          ]);
-          const allUnits: Unit[] = unitRes.data || [];
-          const allCommunities: Community[] = commRes.data || [];
-          setUnits(allUnits.map(u => ({
-            ...u,
-            community: allCommunities.find(c => c.id === u.community_id) || null,
-          })));
-        } catch {}
-      })();
-    }
-
-    // Fetch admin contacts
-    if (isMockDatabase) {
-      const storedAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      if (storedAdmins.length > 0) {
-        setAdmins(storedAdmins);
-      } else {
-        const defaultAgent = {
-          id: 'admin-999',
-          display_name: 'Nick Chan',
-          phone: '+6012-345 6789',
-          whatsapp: '60123456789',
-          wechat_id: 'nick_chan_ren',
-          email: 'admin@ezrent.my',
-          avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
-          job_title: 'Senior Rental Manager',
-          agency_name: 'VIVAHOMES REALTY SDN. BHD',
-          agency_license: 'E (1) 1670',
-          agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
-          bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
-          experience_years: 5,
-          experience_months: 6,
-          area_expertise: ['Bandar Sunway', 'Subang Jaya', 'Petaling Jaya'],
-          property_types: ['Condo', 'Serviced Residence', 'Apartment', 'Room']
-        };
-        setAdmins([defaultAgent]);
-        localStorage.setItem('ez_admins', JSON.stringify([defaultAgent]));
-      }
-    } else {
-      (async () => {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { data } = await supabase
-            .from('admin_users')
-            .select('*');
-          if (data) setAdmins(data as AdminContact[]);
-        } catch {}
-      })();
-    }
-
     // Fetch tenant interests (public read — no login required to see counts)
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
@@ -664,22 +704,46 @@ export default function PropertyListings() {
       </div>
 
       {/* ── Card/List Grid ── */}
-      {filtered.length === 0 ? (
+      {listingsLoading ? (
         <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
           <Building2 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-          <p>{t('noListings')}</p>
+          <p>{lang === 'zh' ? '正在加载房源…' : 'Loading listings…'}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
+          <Building2 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+          {listingsError ? (
+            <>
+              <p style={{ marginBottom: 12, color: 'var(--danger)' }}>
+                {lang === 'zh' ? '加载房源失败' : 'Failed to load listings'}: {listingsError}
+              </p>
+              <button type="button" className="btn btn-primary" onClick={() => loadListings()}>
+                {lang === 'zh' ? '重试' : 'Retry'}
+              </button>
+            </>
+          ) : (
+            <p>
+              {units.length === 0
+                ? (isMockDatabase
+                  ? (lang === 'zh'
+                    ? '暂无房源。沙盒模式下数据存在本机浏览器；若管理员在 Live 模式上架，请确认顶部显示 Live 模式且使用同一环境。'
+                    : 'No listings. In sandbox mode data is stored in this browser only. If an admin added units in Live mode, ensure the top bar shows Live mode.')
+                  : t('noListings'))
+                : (lang === 'zh' ? '没有符合筛选条件的房源' : 'No listings match your filters')}
+            </p>
+          )}
         </div>
       ) : (
         viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
             {filtered.map(u => (
-              <PropertyCard key={u.id} unit={u} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
+              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
             ))}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(u => (
-              <PropertyRow key={u.id} unit={u} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
+              <PropertyRow key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
             ))}
           </div>
         )
@@ -1774,7 +1838,7 @@ export default function PropertyListings() {
 }
 
 /* ── Compact Property Card ── */
-function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect: () => void; t: (k: any) => string }) {
+function PropertyCard({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -1828,6 +1892,12 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
               {unit.community?.address || '—'}
             </span>
           </div>
+          {agentLabel && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+              <User size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agentLabel}</span>
+            </div>
+          )}
         </div>
 
         {/* Tags row */}
@@ -1861,7 +1931,7 @@ function PropertyCard({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect
 }
 
 /* ── Property List Row ── */
-function PropertyRow({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect: () => void; t: (k: any) => string }) {
+function PropertyRow({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -1908,6 +1978,12 @@ function PropertyRow({ unit, onSelect, t }: { unit: UnitWithCommunity; onSelect:
                 {unit.community?.address || '—'}
               </span>
             </div>
+            {agentLabel && (
+              <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                <User size={12} style={{ flexShrink: 0 }} />
+                <span>{agentLabel}</span>
+              </div>
+            )}
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>

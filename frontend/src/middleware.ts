@@ -31,7 +31,10 @@ export async function middleware(request: NextRequest) {
 
   // ── LIVE MODE: Supabase SSR auth check ──
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    '';
   const { createServerClient } = await import('@supabase/ssr');
 
   // Build response with cookie forwarding
