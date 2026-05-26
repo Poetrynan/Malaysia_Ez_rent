@@ -209,8 +209,10 @@ export const translations = {
     depositEscrow: '押金托管',
     createLeaseBtn: '创建租约协议',
     leasesTitle: '有效租约 & 收租核查表',
-    leaseSubtabOverview: '新建租约/待审核',
+    leaseSubtabOverview: '新建租约',
     leaseSubtabInterests: '租客意向',
+    leaseSubtabReview: '凭证审核',
+    leaseSubtabSettle: '退租结算',
     leaseSubtabLedger: '收租核查表',
     noInterests: '暂无租客意向记录',
     colTenant: '租客信息',
@@ -329,6 +331,8 @@ export const translations = {
     saving: '保存中…',
     profileHint: '填写后，您提交的工单会自动附带您的姓名和房间信息，方便中介识别和维修。',
     profileRequired: '请先填写个人信息（姓名）再提交工单',
+    confirm: '确认',
+    cancel: '取消',
   },
 
   en: {
@@ -525,8 +529,10 @@ export const translations = {
     depositEscrow: 'Deposit Escrow',
     createLeaseBtn: 'Create Tenancy Agreement',
     leasesTitle: 'Active Leases & Rent Ledger',
-    leaseSubtabOverview: 'Create Lease / Pending',
+    leaseSubtabOverview: 'New Lease',
     leaseSubtabInterests: 'Tenant Interests',
+    leaseSubtabReview: 'Voucher Review',
+    leaseSubtabSettle: 'Settlements',
     leaseSubtabLedger: 'Rent Ledger',
     noInterests: 'No tenant interests yet.',
     colTenant: 'Tenant',
@@ -645,6 +651,8 @@ export const translations = {
     saving: 'Saving…',
     profileHint: 'Once saved, your request will automatically include your name and unit info for easy tracking.',
     profileRequired: 'Please fill in your profile (name) before submitting request',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
   }
 } as const;
 

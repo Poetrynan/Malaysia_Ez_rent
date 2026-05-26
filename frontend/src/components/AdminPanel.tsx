@@ -78,7 +78,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
-  const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger'>('interests');
+  const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger' | 'settle'>('interests');
 
   useEffect(() => {
     if (defaultTab) {
@@ -96,6 +96,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const [adminQR, setAdminQR] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Delete Confirmation state ──
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // ── Properties state ──
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -1504,7 +1507,6 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   };
 
   const deleteLease = async (leaseId: string) => {
-    if (!confirm(t('confirmDeleteLease'))) return;
     const lease = leases.find(l => l.id === leaseId);
     if (isLive) {
       try {
@@ -2313,10 +2315,18 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               {t('leaseSubtabOverview')}
             </button>
             <button style={tabStyle(leasesView === 'review')} onClick={() => setLeasesView('review')}>
-              {t('reviewPending')}
-              {(pendingCount + terminatedLeases.length) > 0 && (
+              {t('leaseSubtabReview')}
+              {pendingCount > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.2' }}>
-                  {pendingCount + terminatedLeases.length}
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+            <button style={tabStyle(leasesView === 'settle')} onClick={() => setLeasesView('settle')}>
+              {t('leaseSubtabSettle')}
+              {terminatedLeases.length > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                  {terminatedLeases.length}
                 </span>
               )}
             </button>
@@ -2379,144 +2389,141 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             <button className="btn btn-primary" onClick={createLease} style={{ marginTop: 4 }}>{t('createLeaseBtn')}</button>
           </div>
 
-          {/* Pending Review Summary */}
           <div className="glass-card" style={{ display: leasesView === 'review' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} style={{ color: 'var(--warning)' }} />
-              {t('reviewPending')}
+              {t('leaseSubtabReview')}
               {pendingCount > 0 && (
                 <span style={{ background: 'var(--warning)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{pendingCount}</span>
               )}
             </h3>
-            {pendingCount === 0 && terminatedLeases.length === 0 ? (
+            {pendingCount === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
                 <CheckCircle2 size={36} style={{ color: 'var(--success)', marginBottom: 12, opacity: 0.8 }} />
-                <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('noReviewPending')}</p>
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无待审核的支付凭证' : 'No vouchers pending review'}</p>
               </div>
             ) : (
               <div>
-                {/* Terminated Leases Awaiting Settlement */}
-                {terminatedLeases.length > 0 && (
-                  <div style={{ marginBottom: 24 }}>
-                    <h4 style={{ fontSize: '0.82rem', color: 'var(--danger)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <AlertTriangle size={14} />
-                      {lang === 'zh' ? '待结算归档的已终止租约 (租客退租)' : 'Terminated Leases Awaiting Settlement'} ({terminatedLeases.length})
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {terminatedLeases.map(l => {
-                        const { unit, community } = resolveLeaseUnit(l, units, communities);
-                        const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
-                        const notesLines = (l.admin_notes || '').split('\n');
-                        const termLine = notesLines.find((ln: string) => ln.includes('Terminated by tenant'));
-                        return (
-                          <div key={l.id} style={{
-                            padding: '12px 16px',
-                            borderRadius: 'var(--radius-md)',
-                            background: 'rgba(239, 68, 68, 0.04)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 16
-                          }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <strong style={{ fontSize: '0.88rem', color: 'var(--text-h)' }}>{l.tenantName}</strong>
-                                <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
-                                  {lang === 'zh' ? '已终止' : 'Terminated'}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>
-                                {propertyLabel}
-                              </div>
-                              {termLine && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontWeight: 500 }}>
-                                  {termLine}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleArchiveTerminatedLease(l.id)}
-                              className="btn btn-primary"
-                              style={{
-                                background: 'var(--danger)',
-                                borderColor: 'var(--danger)',
-                                padding: '6px 12px',
-                                fontSize: '0.78rem',
-                                color: 'white',
-                                fontWeight: 600
-                              }}
-                            >
-                              {lang === 'zh' ? '确认已结算并归档' : 'Settle & Archive'}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {pendingCount > 0 && <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '20px 0' }} />}
-                  </div>
-                )}
-
-                {/* Pending Payments Review */}
-                {pendingCount > 0 && (
-                  <div>
-                    <h4 style={{ fontSize: '0.82rem', color: 'var(--warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <Clock size={14} />
-                      {lang === 'zh' ? '待审核房租账单凭证' : 'Pending Payment Voucher Reviews'} ({pendingCount})
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
-                {visibleLeases.flatMap(l =>
-                  (l.payments || [])
-                    .filter(p => p.status === 'pending_review' && p.evidence_url)
-                    .map(p => {
-                      const { unit, community } = resolveLeaseUnit(l, units, communities);
-                      const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
-                      return (
-                        <div key={p.id} onClick={() => { setReviewingPayment(p); setAdminNote(''); }}
-                          style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 12, 
-                            padding: '12px 16px', 
-                            borderRadius: 12, 
-                            background: 'var(--glass-bg)', 
-                            border: '1px solid rgba(245,158,11,0.25)', 
-                            cursor: 'pointer', 
-                            transition: 'all 0.2s ease-in-out' 
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
-                            e.currentTarget.style.background = 'rgba(245,158,11,0.06)';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.background = 'var(--glass-bg)';
-                          }}
-                        >
-                          <img src={p.evidence_url!} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.tenantName}</div>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {propertyLabel}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{fmtMonth(p.billing_month)}</div>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent)' }}>RM {l.monthly_rent}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--warning)' }}></span>
-                              {t('pendingReview')}
-                            </div>
-                          </div>
+                <h4 style={{ fontSize: '0.82rem', color: 'var(--warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <Clock size={14} />
+                  {lang === 'zh' ? '待审核房租账单凭证' : 'Pending Payment Voucher Reviews'} ({pendingCount})
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
+            {visibleLeases.flatMap(l =>
+              (l.payments || [])
+                .filter(p => p.status === 'pending_review' && p.evidence_url)
+                .map(p => {
+                  const { unit, community } = resolveLeaseUnit(l, units, communities);
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  return (
+                    <div key={p.id} onClick={() => { setReviewingPayment(p); setAdminNote(''); }}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 12, 
+                        padding: '12px 16px', 
+                        borderRadius: 12, 
+                        background: 'var(--glass-bg)', 
+                        border: '1px solid rgba(245,158,11,0.25)', 
+                        cursor: 'pointer', 
+                        transition: 'all 0.2s ease-in-out' 
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
+                        e.currentTarget.style.background = 'rgba(245,158,11,0.06)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.background = 'var(--glass-bg)';
+                      }}
+                    >
+                      <img src={p.evidence_url!} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.tenantName}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {propertyLabel}
                         </div>
-                      );
-                    })
-                )}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{fmtMonth(p.billing_month)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent)' }}>RM {l.monthly_rent}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--warning)' }}></span>
+                          {t('pendingReview')}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })
+            )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="glass-card" style={{ display: leasesView === 'settle' ? 'block' : 'none' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={16} style={{ color: 'var(--danger)' }} />
+              {t('leaseSubtabSettle')}
+              {terminatedLeases.length > 0 && (
+                <span style={{ background: 'var(--danger)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{terminatedLeases.length}</span>
+              )}
+            </h3>
+            {terminatedLeases.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <CheckCircle2 size={36} style={{ color: 'var(--success)', marginBottom: 12, opacity: 0.8 }} />
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无待结算的已终止租约' : 'No terminated leases awaiting settlement'}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {terminatedLeases.map(l => {
+                  const { unit, community } = resolveLeaseUnit(l, units, communities);
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  return (
+                    <div key={l.id} style={{
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(239, 68, 68, 0.04)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 16
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <strong style={{ fontSize: '0.88rem', color: 'var(--text-h)' }}>{l.tenantName}</strong>
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '已终止' : 'Terminated'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>
+                          {propertyLabel}
+                        </div>
+                        {/* Issue 3: Better translation for terminated notes */}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontWeight: 500 }}>
+                          {lang === 'zh' ? '⚠️ 租客已手动终止此租约，请核对账目（按比例退还/扣除定金等）后点击归档。' : '⚠️ Tenant has terminated this lease. Please reconcile accounts then archive.'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleArchiveTerminatedLease(l.id)}
+                        className="btn btn-primary"
+                        style={{
+                          background: 'var(--danger)',
+                          borderColor: 'var(--danger)',
+                          padding: '6px 12px',
+                          fontSize: '0.78rem',
+                          color: 'white',
+                          fontWeight: 600
+                        }}
+                      >
+                        {lang === 'zh' ? '确认已结算并归档' : 'Settle & Archive'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2626,9 +2633,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                         RM {l.monthly_rent}/mo · {l.start_date} → {l.end_date}
                       </div>
-                      {l.status === 'terminated' && l.admin_notes && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontStyle: 'italic' }}>
-                          {(l.admin_notes.split('\n').find((ln: string) => ln.includes('Terminated by tenant')) || l.admin_notes)}
+                      {l.status === 'terminated' && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
+                          {lang === 'zh' ? '⚠️ 租客已手动终止' : '⚠️ Terminated by tenant'}
                         </div>
                       )}
                     </div>
@@ -2650,7 +2657,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                         <RefreshCw size={13} /> {lang === 'zh' ? '退租继租变更' : 'Replace Tenant'}
                       </button>
                     )}
-                    <button onClick={(e) => { e.stopPropagation(); deleteLease(l.id); }} style={{
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(l.id); }} style={{
                       background: 'none', border: 'none', color: 'var(--danger)',
                       cursor: 'pointer', padding: 6, borderRadius: 6,
                       display: 'flex', alignItems: 'center',
@@ -2665,14 +2672,17 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                         {[...(l.payments || [])].sort((a, b) => a.billing_month.localeCompare(b.billing_month)).map(p => {
                           const isPending = p.status === 'pending_review' && p.evidence_url;
                           const isRejected = p.status === 'rejected';
+                          const isArchived = l.status === 'completed' || l.status === 'terminated';
                           const cellBg = p.paid ? 'var(--success-light)' : isPending ? 'rgba(245,158,11,0.12)' : isRejected ? 'rgba(239,68,68,0.12)' : 'var(--danger-light)';
                           const cellBorder = p.paid ? 'var(--success)' : isPending ? 'var(--warning)' : isRejected ? 'var(--danger)' : 'var(--danger)';
+                          const canInteract = !isArchived || !!p.evidence_url;
                           return (
                             <div key={p.id} onClick={() => {
+                              if (!canInteract && isArchived && !p.paid) return;
                               if (p.evidence_url) { setReviewingPayment(p); setAdminNote(p.admin_notes || ''); }
                               else togglePaid(p.id, p.paid);
                             }} className="ledger-cycle-cell"
-                              style={{ background: cellBg, borderColor: cellBorder, cursor: 'pointer' }}>
+                              style={{ background: cellBg, borderColor: cellBorder, cursor: canInteract ? 'pointer' : 'default', opacity: (!p.paid && isArchived) ? 0.6 : 1 }}>
                               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>{fmtMonth(p.billing_month)}</div>
                               {p.paid
                                 ? <CheckCircle2 size={18} style={{ color: 'var(--success)' }} />
@@ -2685,6 +2695,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                                 {p.paid ? t('approved') : isPending ? t('pendingReview') : isRejected ? t('rejected') : t('unpaid')}
                               </div>
                               {isPending && <div style={{ fontSize: '0.58rem', color: 'var(--warning)', marginTop: 2 }}>{t('reviewClick')}</div>}
+                              {!p.paid && (l.status === 'completed' || l.status === 'terminated') && (
+                                <div style={{ fontSize: '0.56rem', color: 'var(--text-muted)', marginTop: 1, fontWeight: 600 }}>
+                                  ({lang === 'zh' ? '已归档' : 'Archived'})
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -3381,6 +3396,44 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 20, fontSize: '0.85rem' }} onClick={closeMobileUploadSession}>
               {lang === 'zh' ? '完成并关闭' : 'Done & Close'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (Issue 4) */}
+      {deleteConfirmId && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)} style={{ zIndex: 500 }}>
+          <div className="modal-content" style={{ width: 380, textAlign: 'center', padding: '30px 24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={32} />
+            </div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 12, color: 'var(--text-h)' }}>
+              {lang === 'zh' ? '确定删除该租约记录？' : 'Delete Lease Record?'}
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
+              {lang === 'zh' 
+                ? '此操作将永久删除该租约及其所有关联的缴费记录。房源状态将恢复为“可租”。' 
+                : 'This will permanently delete the lease and all its payment records. The property status will be restored to "Available".'}
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setDeleteConfirmId(null)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '10px' }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={() => {
+                  deleteLease(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }} 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '10px', background: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 700 }}
+              >
+                {t('confirm')}
+              </button>
+            </div>
           </div>
         </div>
       )}
