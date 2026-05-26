@@ -88,15 +88,15 @@ const contactIconWrap = (size: number, color: string): React.CSSProperties => ({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: size + 4,
-  height: size + 4,
-  minWidth: size + 4,
-  minHeight: size + 4,
+  width: size,
+  height: size,
+  minWidth: size,
+  minHeight: size,
   flexShrink: 0,
   color,
   lineHeight: 0,
-  overflow: 'hidden',
-  borderRadius: '4px',
+  overflow: 'visible',
+  background: 'transparent',
 });
 
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
@@ -109,17 +109,30 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
 
 function WeChatIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ display: 'block' }}>
-      <path d="M8.291 2.188C3.491 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.67l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.328.328 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.082 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.385 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.223 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-3.733 0-6.76 2.873-6.76 6.414 0 .349.028.695.082 1.036a8.06 8.06 0 0 0 1.228-.094c4.066-.413 7.262-3.626 7.262-7.514a6.86 6.86 0 0 0-.812-3.842zm-3.01 3.355c.519 0 .94.43.94.96a.953.953 0 0 1-.94.961.953.953 0 0 1-.939-.96c0-.531.421-.96.94-.96zm4.845 0c.519 0 .939.43.939.96a.953.953 0 0 1-.939.961.953.953 0 0 1-.94-.96c0-.531.42-.96.94-.96z" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="-1 -1 26 26"
+      fill="currentColor"
+      aria-hidden
+      style={{ display: 'block', flexShrink: 0, overflow: 'visible' }}
+    >
+      <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.67l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.328.328 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.082 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-3.733 0-6.76 2.873-6.76 6.414 0 .349.028.695.082 1.036a8.06 8.06 0 0 0 1.228-.094c4.066-.413 7.262-3.626 7.262-7.514a6.86 6.86 0 0 0-.812-3.842zm-3.01 3.355c.519 0 .94.43.94.96a.953.953 0 0 1-.94.961.953.953 0 0 1-.939-.96c0-.531.421-.96.94-.96zm4.845 0c.519 0 .939.43.939.96a.953.953 0 0 1-.939.961.953.953 0 0 1-.94-.96c0-.531.42-.96.94-.96z" />
     </svg>
   );
 }
+
+const WHATSAPP_OFFICIAL_URL = 'https://www.whatsapp.com/';
 
 const formatWhatsAppLink = (num: string) => {
   let cleaned = num.replace(/[^0-9]/g, '');
   if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
   return `https://wa.me/${cleaned}`;
 };
+
+function getWhatsAppHref(num: string | null | undefined): string {
+  return hasConfiguredContact(num) ? formatWhatsAppLink(num!) : WHATSAPP_OFFICIAL_URL;
+}
 
 const contactRowStyle: React.CSSProperties = {
   display: 'flex',
@@ -1343,18 +1356,22 @@ export default function PropertyListings() {
                             <span>{admin.phone}</span>
                           </a>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', lineHeight: 1.5, minHeight: 20 }}>
+                        <a
+                          href={getWhatsAppHref(admin.whatsapp)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', lineHeight: 1.5, minHeight: 20, color: hasConfiguredContact(admin.whatsapp) ? 'var(--text-body)' : 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                          title={lang === 'zh' ? (hasConfiguredContact(admin.whatsapp) ? '点击跳转 WhatsApp' : '打开 WhatsApp 官网') : (hasConfiguredContact(admin.whatsapp) ? 'Open WhatsApp chat' : 'Open WhatsApp website')}
+                          onMouseEnter={e => { if (hasConfiguredContact(admin.whatsapp)) e.currentTarget.style.color = '#25D366'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = hasConfiguredContact(admin.whatsapp) ? 'var(--text-body)' : 'var(--text-muted)'; }}
+                        >
                           <span style={contactIconWrap(14, '#25D366')}>
                             <WhatsAppIcon size={14} />
                           </span>
-                          {hasConfiguredContact(admin.whatsapp) ? (
-                            <a href={formatWhatsAppLink(admin.whatsapp)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-body)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#25D366'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-body)'}>
-                              WhatsApp: {admin.whatsapp}
-                            </a>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)' }}>WhatsApp: {lang === 'zh' ? '暂无' : 'N/A'}</span>
-                          )}
-                        </div>
+                          <span>
+                            WhatsApp: {hasConfiguredContact(admin.whatsapp) ? admin.whatsapp : (lang === 'zh' ? '暂无' : 'N/A')}
+                          </span>
+                        </a>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', lineHeight: 1.5, minHeight: 20 }}>
                           <span style={contactIconWrap(14, '#07C160')}>
                             <WeChatIcon size={14} />
@@ -1532,28 +1549,29 @@ export default function PropertyListings() {
                           <span>{showAgentProfile.phone}</span>
                         </a>
                       )}
-                      <div style={contactRowStyle}>
+                      <a
+                        href={getWhatsAppHref(showAgentProfile.whatsapp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          ...contactRowStyle,
+                          textDecoration: 'none',
+                          color: hasConfiguredContact(showAgentProfile.whatsapp) ? 'var(--text-body)' : 'var(--text-muted)',
+                          transition: 'color 0.2s',
+                        }}
+                        title={lang === 'zh'
+                          ? (hasConfiguredContact(showAgentProfile.whatsapp) ? '点击跳转 WhatsApp' : '打开 WhatsApp 官网')
+                          : (hasConfiguredContact(showAgentProfile.whatsapp) ? 'Open WhatsApp chat' : 'Open WhatsApp website')}
+                        onMouseEnter={e => { if (hasConfiguredContact(showAgentProfile.whatsapp)) e.currentTarget.style.color = '#25D366'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = hasConfiguredContact(showAgentProfile.whatsapp) ? 'var(--text-body)' : 'var(--text-muted)'; }}
+                      >
                         <span style={contactIconWrap(18, '#25D366')}>
                           <WhatsAppIcon size={18} />
                         </span>
-                        {hasConfiguredContact(showAgentProfile.whatsapp) ? (
-                          <a
-                            href={formatWhatsAppLink(showAgentProfile.whatsapp)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={lang === 'zh' ? '点击跳转 WhatsApp' : 'Click to go to WhatsApp'}
-                            style={{ color: 'var(--text-body)', textDecoration: 'none', transition: 'color 0.2s' }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#25D366'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-body)'; }}
-                          >
-                            {showAgentProfile.whatsapp}
-                          </a>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>
-                            {lang === 'zh' ? '暂无' : 'N/A'}
-                          </span>
-                        )}
-                      </div>
+                        <span>
+                          {hasConfiguredContact(showAgentProfile.whatsapp) ? showAgentProfile.whatsapp : (lang === 'zh' ? '暂无' : 'N/A')}
+                        </span>
+                      </a>
                       <div style={contactRowStyle}>
                         <span style={contactIconWrap(18, '#07C160')}>
                           <WeChatIcon size={18} />
