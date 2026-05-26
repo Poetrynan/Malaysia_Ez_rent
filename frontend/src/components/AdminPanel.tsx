@@ -522,7 +522,21 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     whatsapp: string;
     wechat_id: string;
     email: string;
-  }>({ display_name: '', phone: '', whatsapp: '', wechat_id: '', email: '' });
+    avatar_url: string;
+    job_title: string;
+    agency_name: string;
+    agency_license: string;
+    agency_address: string;
+    bio: string;
+    experience_years: number;
+    experience_months: number;
+    area_expertise: string;
+    property_types: string;
+  }>({
+    display_name: '', phone: '', whatsapp: '', wechat_id: '', email: '',
+    avatar_url: '', job_title: '', agency_name: '', agency_license: '', agency_address: '',
+    bio: '', experience_years: 0, experience_months: 0, area_expertise: '', property_types: ''
+  });
 
   const [isLive, setIsLive] = useState(false);
 
@@ -531,6 +545,24 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   }, []);
 
   const detectModeAndLoad = async () => {
+    const defaultProfile = {
+      display_name: 'Nick Chan',
+      phone: '+6012-345 6789',
+      whatsapp: '60123456789',
+      wechat_id: 'nick_chan_ren',
+      email: 'admin@ezrent.my',
+      avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
+      job_title: 'Senior Rental Manager',
+      agency_name: 'VIVAHOMES REALTY SDN. BHD',
+      agency_license: 'E (1) 1670',
+      agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
+      bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
+      experience_years: 5,
+      experience_months: 6,
+      area_expertise: 'Bandar Sunway, Subang Jaya, Petaling Jaya',
+      property_types: 'Condo, Serviced Residence, Apartment, Room'
+    };
+
     try {
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
@@ -553,6 +585,16 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             whatsapp: adminData.whatsapp || '',
             wechat_id: adminData.wechat_id || '',
             email: adminData.email || '',
+            avatar_url: adminData.avatar_url || '',
+            job_title: adminData.job_title || 'Real Estate Negotiator',
+            agency_name: adminData.agency_name || 'Malaysia Ez Rent',
+            agency_license: adminData.agency_license || '',
+            agency_address: adminData.agency_address || '',
+            bio: adminData.bio || '',
+            experience_years: adminData.experience_years ?? 0,
+            experience_months: adminData.experience_months ?? 0,
+            area_expertise: Array.isArray(adminData.area_expertise) ? adminData.area_expertise.join(', ') : (adminData.area_expertise || ''),
+            property_types: Array.isArray(adminData.property_types) ? adminData.property_types.join(', ') : (adminData.property_types || ''),
           });
           localStorage.setItem('ez_admin_profile', JSON.stringify(adminData));
         }
@@ -560,21 +602,25 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       }
     } catch {}
     setIsLive(false);
-    setCurrentUserId('admin-123');
+    setCurrentUserId('admin-999'); // Point to admin-999 to align with DEFAULT_ADMINS
     loadFromLocalStorage();
     const savedQR = localStorage.getItem('ez_admin_qr_code');
     if (savedQR) setAdminQR(savedQR);
     const savedProfile = localStorage.getItem('ez_admin_profile');
     if (savedProfile) {
-      setMyProfile(JSON.parse(savedProfile));
+      try {
+        const parsed = JSON.parse(savedProfile);
+        setMyProfile({
+          ...defaultProfile,
+          ...parsed,
+          area_expertise: Array.isArray(parsed.area_expertise) ? parsed.area_expertise.join(', ') : (parsed.area_expertise || defaultProfile.area_expertise),
+          property_types: Array.isArray(parsed.property_types) ? parsed.property_types.join(', ') : (parsed.property_types || defaultProfile.property_types),
+        });
+      } catch {
+        setMyProfile(defaultProfile);
+      }
     } else {
-      setMyProfile({
-        display_name: '管理员',
-        phone: '+6012-345 6789',
-        whatsapp: '+6012-345 6789',
-        wechat_id: 'wechat_admin',
-        email: 'admin@ezrent.my'
-      });
+      setMyProfile(defaultProfile);
     }
   };
 
@@ -588,12 +634,46 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       return;
     }
 
+    const areaExpertiseArr = myProfile.area_expertise.split(',').map(s => s.trim()).filter(Boolean);
+    const propertyTypesArr = myProfile.property_types.split(',').map(s => s.trim()).filter(Boolean);
+
+    let finalAvatarUrl = myProfile.avatar_url.trim() || null;
+
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // If avatar is base64 local image, compress and upload to storage
+          if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
+            try {
+              const blob = await compressDataUrl(finalAvatarUrl, {
+                maxWidth: 300,
+                maxHeight: 300,
+                quality: 0.82,
+                mimeType: 'image/jpeg',
+                skipBelowBytes: 40 * 1024
+              });
+              const path = `avatars/${user.id}_${Date.now()}.jpg`;
+              const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, {
+                upsert: true,
+                contentType: 'image/jpeg'
+              });
+              if (!uploadErr) {
+                const { data: urlData } = supabase.storage.from('unit-media').getPublicUrl(path);
+                if (urlData?.publicUrl) {
+                  finalAvatarUrl = urlData.publicUrl;
+                  setMyProfile(prev => ({ ...prev, avatar_url: urlData.publicUrl }));
+                }
+              } else {
+                console.error('Avatar upload error:', uploadErr);
+              }
+            } catch (compressErr) {
+              console.error('Avatar compression/upload failed:', compressErr);
+            }
+          }
+
           const { error } = await supabase
             .from('admin_users')
             .update({
@@ -601,6 +681,16 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               phone: myProfile.phone.trim() || null,
               whatsapp: myProfile.whatsapp.trim() || null,
               wechat_id: myProfile.wechat_id.trim() || null,
+              avatar_url: finalAvatarUrl,
+              job_title: myProfile.job_title.trim() || 'Real Estate Negotiator',
+              agency_name: myProfile.agency_name.trim() || 'Malaysia Ez Rent',
+              agency_license: myProfile.agency_license.trim() || null,
+              agency_address: myProfile.agency_address.trim() || null,
+              bio: myProfile.bio.trim() || null,
+              experience_years: Number(myProfile.experience_years) || 0,
+              experience_months: Number(myProfile.experience_months) || 0,
+              area_expertise: areaExpertiseArr,
+              property_types: propertyTypesArr,
             })
             .eq('id', user.id);
           if (error) {
@@ -608,15 +698,38 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             return;
           }
           showToast(lang === 'zh' ? '个人资料已更新' : 'Profile updated successfully', 'success');
-          localStorage.setItem('ez_admin_profile', JSON.stringify(myProfile));
+          // cache local copy
+          localStorage.setItem('ez_admin_profile', JSON.stringify({
+            ...myProfile,
+            avatar_url: finalAvatarUrl || '',
+            area_expertise: areaExpertiseArr,
+            property_types: propertyTypesArr
+          }));
         }
       } catch (err: any) {
         showToast(err.message, 'error');
       }
     } else {
-      localStorage.setItem('ez_admin_profile', JSON.stringify(myProfile));
+      const updatedProfile = {
+        ...myProfile,
+        area_expertise: areaExpertiseArr,
+        property_types: propertyTypesArr,
+      };
+      localStorage.setItem('ez_admin_profile', JSON.stringify(updatedProfile));
+      
+      // Update this admin in ez_admins array
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      const idx = admins.findIndex((a: any) => a.id === currentUserId);
+      if (idx !== -1) {
+        admins[idx] = {
+          ...admins[idx],
+          ...updatedProfile,
+        };
+        localStorage.setItem('ez_admins', JSON.stringify(admins));
+      }
+      
       // Save this contact to client-side localStorage too
-      localStorage.setItem('ez_admin_contacts', JSON.stringify([myProfile]));
+      localStorage.setItem('ez_admin_contacts', JSON.stringify([updatedProfile]));
       showToast(lang === 'zh' ? '本地个人资料已保存' : 'Local profile saved', 'success');
     }
   };
@@ -2334,70 +2447,252 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       {/* ── PROFILE TAB ── */}
       {tab === 'profile' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="glass-card" style={{ maxWidth: 500 }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Edit3 size={16} style={{ color: 'var(--primary)' }} />
-              {lang === 'zh' ? '个人联系信息设置' : 'Personal Contact Settings'}
+          <div className="glass-card" style={{ maxWidth: 650 }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Edit3 size={18} style={{ color: 'var(--primary)' }} />
+              {lang === 'zh' ? '中介个人主页与联系设置' : 'Agent Profile & Contact Settings'}
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
               {lang === 'zh' 
-                ? '此处填写的个人信息（姓名、手机号、WhatsApp、微信）将直接展示给学生端，以便学生联系您进行线下咨询或租约沟通。' 
-                : 'The contact information filled here (Name, Phone, WhatsApp, WeChat) will be directly displayed to students so they can contact you.'}
+                ? '此处填写的个人与中介信息（包含资质证书、从业经验、擅长区域等）将以 iProperty 风格的中介主页格式展示给学生，提升专业度与信任感。' 
+                : 'The personal and agency profile information filled here will be displayed to students in a professional iProperty-style Agent Profile page.'}
             </p>
 
-            <div className="form-group">
-              <label>{lang === 'zh' ? '显示名称 / 姓名' : 'Display Name / Name'}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={myProfile.display_name}
-                onChange={e => setMyProfile(prev => ({ ...prev, display_name: e.target.value }))}
-                placeholder={lang === 'zh' ? '例如: Super Admin 或 房东张经理' : 'e.g. Landlord Manager'}
-              />
+            {/* Section 1: Basic Info */}
+            <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, marginBottom: 16 }}>
+              <h4 style={{ fontSize: '0.88rem', color: 'var(--primary)', marginBottom: 12 }}>
+                {lang === 'zh' ? '1. 基本与联系信息' : '1. Basic & Contact Info'}
+              </h4>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+                <img 
+                  src={myProfile.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'} 
+                  alt="Avatar Preview" 
+                  style={{ width: 64, height: 64, borderRadius: '50%', border: '2px solid var(--primary)', objectFit: 'cover', background: 'var(--bg-surface)' }}
+                  onError={(e: any) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'; }}
+                />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                      {lang === 'zh' ? '上传头像 (选择本地照片进行自动压缩)' : 'Upload Avatar (Auto-compressed)'}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const dataUrl = await compressImageToDataUrl(file, {
+                            maxWidth: 300,
+                            maxHeight: 300,
+                            quality: 0.82,
+                            mimeType: 'image/jpeg',
+                            skipBelowBytes: 40 * 1024
+                          });
+                          setMyProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+                          showToast(lang === 'zh' ? '头像已自动压缩成功！' : 'Avatar auto-compressed successfully!', 'success');
+                        } catch (err) {
+                          console.error('Avatar compression error:', err);
+                          showToast(lang === 'zh' ? '压缩头像图片失败' : 'Failed to compress avatar', 'error');
+                        }
+                      }}
+                      style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', display: 'block', marginBottom: 2, color: 'var(--text-muted)' }}>
+                      {lang === 'zh' ? '或 输入头像图片网址' : 'Or enter Avatar Image URL'}
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={myProfile.avatar_url}
+                      onChange={e => setMyProfile(prev => ({ ...prev, avatar_url: e.target.value }))}
+                      placeholder="https://example.com/avatar.jpg"
+                      style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '显示名称 / 姓名' : 'Display Name / Name'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.display_name}
+                    onChange={e => setMyProfile(prev => ({ ...prev, display_name: e.target.value }))}
+                    placeholder={lang === 'zh' ? '例如: Nick Chan' : 'e.g. Nick Chan'}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '职位头衔' : 'Job Title'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.job_title}
+                    onChange={e => setMyProfile(prev => ({ ...prev, job_title: e.target.value }))}
+                    placeholder={lang === 'zh' ? '例如: Real Estate Negotiator' : 'e.g. Real Estate Negotiator'}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '联系电话' : 'Contact Phone'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.phone}
+                    onChange={e => setMyProfile(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="+6012-345 6789"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{lang === 'zh' ? 'WhatsApp 号码' : 'WhatsApp Number'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.whatsapp}
+                    onChange={e => setMyProfile(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    placeholder="60123456789"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '微信号 (WeChat ID)' : 'WeChat ID'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.wechat_id}
+                    onChange={e => setMyProfile(prev => ({ ...prev, wechat_id: e.target.value }))}
+                    placeholder={lang === 'zh' ? '例如: NickChan88' : 'e.g. NickChan88'}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '登录邮箱 (不可修改)' : 'Login Email (Read-only)'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.email}
+                    disabled
+                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="form-group" style={{ marginTop: 12 }}>
-              <label>{lang === 'zh' ? '联系电话' : 'Contact Phone'}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={myProfile.phone}
-                onChange={e => setMyProfile(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder={lang === 'zh' ? '例如: +6012-345 6789' : 'e.g. +6012-345 6789'}
-              />
+            {/* Section 2: Agency Details */}
+            <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, marginBottom: 16 }}>
+              <h4 style={{ fontSize: '0.88rem', color: 'var(--primary)', marginBottom: 12 }}>
+                {lang === 'zh' ? '2. 所属代理公司信息' : '2. Real Estate Agency Info'}
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '公司名称' : 'Agency Company Name'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.agency_name}
+                    onChange={e => setMyProfile(prev => ({ ...prev, agency_name: e.target.value }))}
+                    placeholder="VIVAHOMES REALTY SDN. BHD"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '执照编号' : 'License / REN Number'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={myProfile.agency_license}
+                    onChange={e => setMyProfile(prev => ({ ...prev, agency_license: e.target.value }))}
+                    placeholder="E (1) 1670"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: 12 }}>
+                <label>{lang === 'zh' ? '公司地址' : 'Agency Office Address'}</label>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  value={myProfile.agency_address}
+                  onChange={e => setMyProfile(prev => ({ ...prev, agency_address: e.target.value }))}
+                  placeholder={lang === 'zh' ? '公司完整的办公地址' : 'Full office address of the agency'}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
             </div>
 
-            <div className="form-group" style={{ marginTop: 12 }}>
-              <label>{lang === 'zh' ? 'WhatsApp 号码' : 'WhatsApp Number'}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={myProfile.whatsapp}
-                onChange={e => setMyProfile(prev => ({ ...prev, whatsapp: e.target.value }))}
-                placeholder={lang === 'zh' ? '请输入带国家代码的纯数字，例如: 60123456789' : 'Pure numbers with country code, e.g. 60123456789'}
-              />
-            </div>
+            {/* Section 3: Bio & Expertise */}
+            <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, marginBottom: 16 }}>
+              <h4 style={{ fontSize: '0.88rem', color: 'var(--primary)', marginBottom: 12 }}>
+                {lang === 'zh' ? '3. 简介与擅长领域' : '3. About & Area Expertise'}
+              </h4>
+              
+              <div className="form-group">
+                <label>{lang === 'zh' ? '中介个人简介' : 'Bio / Biography'}</label>
+                <textarea
+                  className="form-textarea"
+                  rows={3}
+                  value={myProfile.bio}
+                  onChange={e => setMyProfile(prev => ({ ...prev, bio: e.target.value }))}
+                  placeholder={lang === 'zh' ? '简单介绍您的租客服务特色，帮助学生建立信任。' : 'Introduce yourself and your specialization to students.'}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
 
-            <div className="form-group" style={{ marginTop: 12 }}>
-              <label>{lang === 'zh' ? '微信号 (WeChat ID)' : 'WeChat ID'}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={myProfile.wechat_id}
-                onChange={e => setMyProfile(prev => ({ ...prev, wechat_id: e.target.value }))}
-                placeholder={lang === 'zh' ? '例如: poetrynan666' : 'e.g. poetrynan666'}
-              />
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '从业年限 (年)' : 'Experience (Years)'}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    value={myProfile.experience_years}
+                    onChange={e => setMyProfile(prev => ({ ...prev, experience_years: Number(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{lang === 'zh' ? '从业年限 (月)' : 'Experience (Months)'}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="11"
+                    className="form-input"
+                    value={myProfile.experience_months}
+                    onChange={e => setMyProfile(prev => ({ ...prev, experience_months: Number(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
 
-            <div className="form-group" style={{ marginTop: 12 }}>
-              <label>{lang === 'zh' ? '登录邮箱 (不可修改)' : 'Login Email (Read-only)'}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={myProfile.email}
-                disabled
-                style={{ opacity: 0.6, cursor: 'not-allowed' }}
-              />
+              <div className="form-group" style={{ marginTop: 12 }}>
+                <label>{lang === 'zh' ? '擅长区域 (逗号分隔)' : 'Expertise Areas (comma separated)'}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={myProfile.area_expertise}
+                  onChange={e => setMyProfile(prev => ({ ...prev, area_expertise: e.target.value }))}
+                  placeholder="Bandar Sunway, Subang Jaya, Petaling Jaya"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginTop: 12 }}>
+                <label>{lang === 'zh' ? '主营房源类型 (逗号分隔)' : 'Property Types (comma separated)'}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={myProfile.property_types}
+                  onChange={e => setMyProfile(prev => ({ ...prev, property_types: e.target.value }))}
+                  placeholder="Condo, Apartment, Room, Studio"
+                />
+              </div>
             </div>
 
             <button

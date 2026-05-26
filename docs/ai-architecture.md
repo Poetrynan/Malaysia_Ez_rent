@@ -69,7 +69,7 @@ Malaysia_Ez_rent/
 
 ### Student path
 
-- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`.
+- `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **Includes an iProperty-inspired Agent Profile details panel showing stats (listings count, active/rented), bio, experience duration, areas/types of expertise, a tabbed listings view with min/max rent filters, and a validation-checked contact enquiry form that automatically redirects students to their portal upon unit selection.**
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.**
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator.**
@@ -83,7 +83,7 @@ Malaysia_Ez_rent/
   - lease creation/deletion (tenant selection uses a smart grouped selector populated with confirmed interest co-tenants and registered users, filtering out admin users using `admin_users` table data and avoiding any manual ID entries)
   - **Lease workflow (Sub-tabs)**: ordered chronologically as "Tenant Interests" -> "Active Leases" -> "Pending Reviews" -> "Rent Ledger".
   - **Payment Review**: "Pending Reviews" is a standalone sub-tab with a beautiful grid-based layout and a warning-colored count badge showing outstanding tasks. Clearing evidence deletes Storage object.
-  - admin profile/payment QR settings (remove QR clears DB + Storage `qr/{adminId}.jpg`)
+  - admin profile/payment QR settings (expanded fields matching iProperty specs; client-side avatar file compression to ≤30KB and auto-upload to Supabase Storage; **removal of external social url fields** (Facebook, website) to limit redirects outside the site; remove QR clears DB + Storage `qr/{adminId}.jpg`)
   - **Maintenance Work Orders**: renamed tab matching `t('feedback')` and synched icon to `Wrench` to align with the student view.
   - community delete for removing duplicate same-name communities
   - **Agent Separation**: Normal agents can only see and manage their own units, leases, and payment records. Super admins have full global access.
@@ -200,6 +200,8 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 14. `migrations/013_landlord_payment_details.sql`
 15. `migrations/014_tenant_interests_user_update.sql`
 16. `migrations/015_tenant_interest_rpc.sql`
+17. `migrations/016_maintenance_requests.sql`
+18. `migrations/017_agent_profile_fields.sql`
 
 Notes:
 
@@ -212,6 +214,8 @@ Notes:
 - `013_landlord_payment_details.sql` adds `landlord_qr_code` and `landlord_bank_info` to `units` for splitting payments (Deposit/1st month rent to Agent, subsequent rents to Landlord).
 - `014_tenant_interests_user_update.sql` adds RLS so students can UPDATE their own `tenant_interests` row (cancel / re-submit fallback).
 - `015_tenant_interest_rpc.sql` adds **`submit_tenant_interest`** and **`cancel_tenant_interest`** (SECURITY DEFINER, ON CONFLICT upsert). **Required for reliable co-rent submit/cancel in production.**
+- `016_maintenance_requests.sql` creates table `maintenance_requests` for the maintenance request portal.
+- `017_agent_profile_fields.sql` extends `admin_users` for professional agent profiles and removes external redirect social urls.
 
 ## 7) Auth, Roles, and Access Model
 

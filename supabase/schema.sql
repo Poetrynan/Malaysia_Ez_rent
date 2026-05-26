@@ -26,6 +26,16 @@ CREATE TABLE IF NOT EXISTS admin_users (
     whatsapp VARCHAR(30),
     wechat_id VARCHAR(100),
     role VARCHAR(20) CHECK (role IN ('super_admin', 'editor')) DEFAULT 'editor',
+    avatar_url TEXT,
+    job_title VARCHAR(100) DEFAULT 'Real Estate Negotiator',
+    agency_name VARCHAR(200) DEFAULT 'Malaysia Ez Rent',
+    agency_license VARCHAR(100),
+    agency_address TEXT,
+    bio TEXT,
+    experience_years INT DEFAULT 0,
+    experience_months INT DEFAULT 0,
+    area_expertise TEXT[],
+    property_types TEXT[],
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT at_least_one_contact CHECK (phone IS NOT NULL OR whatsapp IS NOT NULL OR wechat_id IS NOT NULL)
 );

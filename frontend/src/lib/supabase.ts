@@ -20,9 +20,9 @@ const DEFAULT_COMMUNITIES = [
 ];
 
 const DEFAULT_UNITS = [
-  { id: 'u1-uuid', community_id: 'c1-uuid', unit_number: 'Block B-12-08', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.', bedrooms: 1, bathrooms: 1 },
-  { id: 'u2-uuid', community_id: 'c2-uuid', unit_number: 'Block A-20-03', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.', bedrooms: 4, bathrooms: 3 },
-  { id: 'u3-uuid', community_id: 'c3-uuid', unit_number: 'Tower 2-15-11', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.', bedrooms: 3, bathrooms: 2 }
+  { id: 'u1-uuid', community_id: 'c1-uuid', agent_id: 'admin-999', unit_number: 'Block B-12-08', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.', bedrooms: 1, bathrooms: 1 },
+  { id: 'u2-uuid', community_id: 'c2-uuid', agent_id: 'admin-999', unit_number: 'Block A-20-03', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.', bedrooms: 4, bathrooms: 3 },
+  { id: 'u3-uuid', community_id: 'c3-uuid', agent_id: 'admin-999', unit_number: 'Tower 2-15-11', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.', bedrooms: 3, bathrooms: 2 }
 ];
 
 const DEFAULT_LEASES = [
@@ -59,7 +59,25 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_ADMINS = [
-  { id: 'admin-999', email: 'admin@ezrent.my', role: 'super_admin' }
+  {
+    id: 'admin-999',
+    email: 'admin@ezrent.my',
+    role: 'super_admin',
+    display_name: 'Nick Chan',
+    phone: '+6012-345 6789',
+    whatsapp: '60123456789',
+    wechat_id: 'nick_chan_ren',
+    avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
+    job_title: 'Senior Rental Manager',
+    agency_name: 'VIVAHOMES REALTY SDN. BHD',
+    agency_license: 'E (1) 1670',
+    agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
+    bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
+    experience_years: 5,
+    experience_months: 6,
+    area_expertise: ['Bandar Sunway', 'Subang Jaya', 'Petaling Jaya'],
+    property_types: ['Condo', 'Serviced Residence', 'Apartment', 'Room']
+  }
 ];
 
 // Initialize mock databases in localStorage if not exists
@@ -70,7 +88,23 @@ const getLocalData = (key: string, defaults: any) => {
     localStorage.setItem(key, JSON.stringify(defaults));
     return defaults;
   }
-  return JSON.parse(stored);
+  try {
+    const parsed = JSON.parse(stored);
+    // Auto-upgrade check: if it's ez_admins and is missing 'job_title', reset to include Nick Chan details
+    if (key === 'ez_admins' && Array.isArray(parsed) && parsed.length > 0 && !parsed[0].job_title) {
+      localStorage.setItem(key, JSON.stringify(defaults));
+      return defaults;
+    }
+    // Auto-upgrade for ez_units to have agent_id
+    if (key === 'ez_units' && Array.isArray(parsed) && parsed.length > 0 && !parsed[0].agent_id) {
+      localStorage.setItem(key, JSON.stringify(defaults));
+      return defaults;
+    }
+    return parsed;
+  } catch (e) {
+    localStorage.setItem(key, JSON.stringify(defaults));
+    return defaults;
+  }
 };
 
 const setLocalData = (key: string, data: any) => {

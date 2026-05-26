@@ -6,7 +6,7 @@ import {
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store,
-  Grid, List
+  Grid, List, User, Calendar, Globe, MessageSquare
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -90,6 +90,16 @@ interface AdminContact {
   whatsapp: string | null;
   wechat_id: string | null;
   email: string;
+  avatar_url?: string | null;
+  job_title?: string | null;
+  agency_name?: string | null;
+  agency_license?: string | null;
+  agency_address?: string | null;
+  bio?: string | null;
+  experience_years?: number | null;
+  experience_months?: number | null;
+  area_expertise?: string[] | string | null;
+  property_types?: string[] | string | null;
 }
 
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
@@ -123,6 +133,17 @@ export default function PropertyListings() {
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [submittingInterest, setSubmittingInterest] = useState(false);
   const [interestFeedback, setInterestFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // iProperty Agent Profile states
+  const [showAgentProfile, setShowAgentProfile] = useState<AdminContact | null>(null);
+  const [agentTab, setAgentTab] = useState<'all' | 'available' | 'rented'>('all');
+  const [agentMinPrice, setAgentMinPrice] = useState('');
+  const [agentMaxPrice, setAgentMaxPrice] = useState('');
+  const [enquiryName, setEnquiryName] = useState('');
+  const [enquiryPhone, setEnquiryPhone] = useState('');
+  const [enquiryMsg, setEnquiryMsg] = useState('Hi, I am interested in renting one of your units. Please contact me.');
+  const [enquiryFeedback, setEnquiryFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [submittingEnquiry, setSubmittingEnquiry] = useState(false);
 
   const refreshInterests = async (supabase: Awaited<ReturnType<typeof import('@/utils/supabase/client').createClient>>, userId?: string) => {
     const { data, error } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
@@ -216,8 +237,31 @@ export default function PropertyListings() {
 
     // Fetch admin contacts
     if (isMockDatabase) {
-      const stored = JSON.parse(localStorage.getItem('ez_admin_contacts') || '[]');
-      setAdmins(stored.length > 0 ? stored : [{ id: 'admin-123', display_name: '管理员', phone: '+6012-345 6789', whatsapp: '+6012-345 6789', wechat_id: null, email: 'admin@ezrent.my' }]);
+      const storedAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      if (storedAdmins.length > 0) {
+        setAdmins(storedAdmins);
+      } else {
+        const defaultAgent = {
+          id: 'admin-999',
+          display_name: 'Nick Chan',
+          phone: '+6012-345 6789',
+          whatsapp: '60123456789',
+          wechat_id: 'nick_chan_ren',
+          email: 'admin@ezrent.my',
+          avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
+          job_title: 'Senior Rental Manager',
+          agency_name: 'VIVAHOMES REALTY SDN. BHD',
+          agency_license: 'E (1) 1670',
+          agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
+          bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
+          experience_years: 5,
+          experience_months: 6,
+          area_expertise: ['Bandar Sunway', 'Subang Jaya', 'Petaling Jaya'],
+          property_types: ['Condo', 'Serviced Residence', 'Apartment', 'Room']
+        };
+        setAdmins([defaultAgent]);
+        localStorage.setItem('ez_admins', JSON.stringify([defaultAgent]));
+      }
     } else {
       (async () => {
         try {
@@ -225,7 +269,7 @@ export default function PropertyListings() {
           const supabase = createClient();
           const { data } = await supabase
             .from('admin_users')
-            .select('id, display_name, phone, whatsapp, wechat_id, email');
+            .select('*');
           if (data) setAdmins(data as AdminContact[]);
         } catch {}
       })();
@@ -421,6 +465,37 @@ export default function PropertyListings() {
     } finally {
       setSubmittingInterest(false);
     }
+  };
+
+  const handleAgentEnquirySubmit = async (unitId: string) => {
+    if (!enquiryName.trim()) {
+      setEnquiryFeedback({ type: 'error', msg: lang === 'zh' ? '请填写您的姓名' : 'Please enter your name' });
+      return;
+    }
+    if (!enquiryPhone.trim()) {
+      setEnquiryFeedback({ type: 'error', msg: lang === 'zh' ? '请填写您的电话号码' : 'Please enter your phone number' });
+      return;
+    }
+
+    setSubmittingEnquiry(true);
+    setEnquiryFeedback(null);
+
+    // Save student profile fields to local storage so they are pre-filled next time
+    const userProfile = {
+      full_name: enquiryName.trim(),
+      phone: enquiryPhone.trim(),
+      email: isMockDatabase ? 'student@ezrent.my' : ''
+    };
+    localStorage.setItem('ez_user_profile', JSON.stringify(userProfile));
+
+    // Submit interest
+    const noteText = `[iProperty Agent Enquiry] ${enquiryMsg.trim()} (Phone: ${enquiryPhone.trim()})`;
+    
+    // We call the existing expressInterest function
+    await expressInterest(unitId, noteText);
+    
+    setSubmittingEnquiry(false);
+    setEnquiryFeedback({ type: 'success', msg: lang === 'zh' ? '咨询已成功发送给中介！' : 'Enquiry sent successfully to the agent!' });
   };
 
   const filtered = useMemo(() => {
@@ -888,9 +963,81 @@ export default function PropertyListings() {
                 </div>
               )}
 
+              {/* Agent Profile Summary Card */}
+              {(() => {
+                const agent = admins.find(a => a.id === selected.agent_id) || admins[0];
+                if (!agent) return null;
+                return (
+                  <div style={{
+                    marginTop: 20,
+                    padding: 16,
+                    borderRadius: 12,
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    position: 'relative'
+                  }}>
+                    <img 
+                      src={agent.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'} 
+                      alt={agent.display_name || ''} 
+                      style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid var(--primary)', objectFit: 'cover', background: 'var(--bg-surface)' }}
+                      onError={(e: any) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'; }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)' }}>
+                        {agent.display_name || 'Nick Chan'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
+                        {agent.job_title || 'Real Estate Negotiator'}
+                      </div>
+                      {agent.agency_name && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {agent.agency_name}
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setShowAgentProfile(agent);
+                        setEnquiryName(localStorage.getItem('ez_user_profile') ? JSON.parse(localStorage.getItem('ez_user_profile')!).full_name : '');
+                        setEnquiryPhone(localStorage.getItem('ez_user_profile') ? JSON.parse(localStorage.getItem('ez_user_profile')!).phone : '');
+                        setEnquiryFeedback(null);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-body)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-body)'; }}
+                    >
+                      {lang === 'zh' ? '查看主页' : 'View Profile'}
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* CTA */}
               <div style={{ padding: '20px 0 0', borderTop: '1px solid var(--glass-border)' }}>
-                <button className="btn btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem' }} onClick={() => setShowContact(true)}>
+                <button className="btn btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem' }} onClick={() => {
+                  const agent = admins.find(a => a.id === selected.agent_id) || admins[0];
+                  if (agent) {
+                    setShowAgentProfile(agent);
+                    setEnquiryName(localStorage.getItem('ez_user_profile') ? JSON.parse(localStorage.getItem('ez_user_profile')!).full_name : '');
+                    setEnquiryPhone(localStorage.getItem('ez_user_profile') ? JSON.parse(localStorage.getItem('ez_user_profile')!).phone : '');
+                    setEnquiryFeedback(null);
+                  } else {
+                    setShowContact(true);
+                  }
+                }}>
                   {t('detailContactBtn')}
                 </button>
               </div>
@@ -1104,6 +1251,428 @@ export default function PropertyListings() {
           </div>
         </div>
       )}
+
+      {/* ── iProperty Agent Profile Modal ── */}
+      {showAgentProfile && (() => {
+        // filter units managed by this agent
+        const agentUnits = units.filter(u => u.agent_id === showAgentProfile.id || (showAgentProfile.id === 'admin-999' && !u.agent_id));
+        
+        // filter stats
+        const totalCount = agentUnits.length;
+        const availableCount = agentUnits.filter(u => u.status === 'available').length;
+        const rentedCount = agentUnits.filter(u => u.status === 'rented').length;
+
+        // apply min/max price & status tab filters
+        let filteredAgentUnits = agentUnits;
+        if (agentTab === 'available') filteredAgentUnits = filteredAgentUnits.filter(u => u.status === 'available');
+        if (agentTab === 'rented') filteredAgentUnits = filteredAgentUnits.filter(u => u.status === 'rented');
+        if (agentMinPrice) filteredAgentUnits = filteredAgentUnits.filter(u => u.rent >= parseFloat(agentMinPrice));
+        if (agentMaxPrice) filteredAgentUnits = filteredAgentUnits.filter(u => u.rent <= parseFloat(agentMaxPrice));
+
+        // Areas and property types representation
+        const areas = Array.isArray(showAgentProfile.area_expertise) 
+          ? showAgentProfile.area_expertise 
+          : (showAgentProfile.area_expertise ? String(showAgentProfile.area_expertise).split(',').map(s => s.trim()) : []);
+        
+        const propTypes = Array.isArray(showAgentProfile.property_types) 
+          ? showAgentProfile.property_types 
+          : (showAgentProfile.property_types ? String(showAgentProfile.property_types).split(',').map(s => s.trim()) : []);
+
+        // Pre-filled unit for enquiry
+        const defaultEnquiryUnitId = selected?.id || (agentUnits[0]?.id || '');
+        const currentEnquiryUnit = agentUnits.find(u => u.id === defaultEnquiryUnitId) || agentUnits[0];
+
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(9, 11, 20, 0.85)',
+            backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', zIndex: 450, padding: '24px 16px',
+            animation: 'fadeIn 0.25s ease'
+          }} onClick={() => setShowAgentProfile(null)}>
+            
+            <div style={{
+              background: 'var(--bg-surface-solid)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 24,
+              width: '100%',
+              maxWidth: 1080,
+              height: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              position: 'relative',
+              overflow: 'hidden'
+            }} onClick={e => e.stopPropagation()}>
+              
+              {/* Modal Header */}
+              <div style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid var(--glass-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(255,255,255,0.01)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <User size={18} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-h)', letterSpacing: '0.03em' }}>
+                    {lang === 'zh' ? '中介专业主页' : 'Agent Professional Profile'}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowAgentProfile(null)}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-h)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="custom-scroll" style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: 24,
+                display: 'grid',
+                gridTemplateColumns: '320px 1fr',
+                gap: 24,
+              }}>
+                
+                {/* Left Column: Agent Card, Contact details, Agency info, Enquiry form */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  
+                  {/* Agent Card */}
+                  <div className="glass-card" style={{ padding: 20, textAlign: 'center', background: 'var(--glass-bg)' }}>
+                    <img 
+                      src={showAgentProfile.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'} 
+                      alt={showAgentProfile.display_name || ''} 
+                      style={{ width: 96, height: 96, borderRadius: '50%', border: '3px solid var(--primary)', objectFit: 'cover', margin: '0 auto 12px', display: 'block', background: 'var(--bg-surface)' }}
+                      onError={(e: any) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'; }}
+                    />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 4px' }}>
+                      {showAgentProfile.display_name}
+                    </h3>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 12 }}>
+                      {showAgentProfile.job_title || 'Real Estate Negotiator'}
+                    </div>
+
+                    {/* Social links */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                      {showAgentProfile.phone && (
+                        <a href={`tel:${showAgentProfile.phone}`} title={lang === 'zh' ? '拨打电话' : 'Call Phone'} style={{ color: 'var(--text-muted)', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                          <Phone size={16} />
+                        </a>
+                      )}
+                      {showAgentProfile.whatsapp && (
+                        <a href={`https://wa.me/${showAgentProfile.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" style={{ color: 'var(--text-muted)', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#25D366'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                          <MessageCircle size={16} />
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Quick Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                      <div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{availableCount}</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '在租房源' : 'Available'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-muted)' }}>{rentedCount}</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '已租房源' : 'Rented'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Agency Branding */}
+                  {showAgentProfile.agency_name && (
+                    <div className="glass-card" style={{ padding: 16 }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 8 }}>
+                        {lang === 'zh' ? '所属代理公司' : 'Representing Agency'}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', marginBottom: 4 }}>
+                        {showAgentProfile.agency_name}
+                      </div>
+                      {showAgentProfile.agency_license && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginBottom: 8, fontWeight: 500 }}>
+                          {lang === 'zh' ? '执照号' : 'License'}: {showAgentProfile.agency_license}
+                        </div>
+                      )}
+                      {showAgentProfile.agency_address && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4', display: 'flex', gap: 6 }}>
+                          <MapPin size={12} style={{ flexShrink: 0, marginTop: 2, color: 'var(--primary)' }} />
+                          <span>{showAgentProfile.agency_address}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Direct Contact Form */}
+                  <div className="glass-card" style={{ padding: 18, background: 'var(--glass-bg)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <MessageSquare size={14} style={{ color: 'var(--primary)' }} />
+                      {lang === 'zh' ? '直接预约咨询' : 'Direct Inquiry'}
+                    </div>
+
+                    <form onSubmit={(e) => { e.preventDefault(); if (currentEnquiryUnit) handleAgentEnquirySubmit(currentEnquiryUnit.id); }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input 
+                        type="text" 
+                        placeholder={lang === 'zh' ? '您的姓名 *' : 'Your Name *'} 
+                        value={enquiryName}
+                        onChange={e => setEnquiryName(e.target.value)}
+                        className="form-input"
+                        style={{ fontSize: '0.8rem', padding: '8px 12px' }}
+                        required
+                      />
+                      <input 
+                        type="text" 
+                        placeholder={lang === 'zh' ? '您的手机号码 *' : 'Your Phone Number *'} 
+                        value={enquiryPhone}
+                        onChange={e => setEnquiryPhone(e.target.value)}
+                        className="form-input"
+                        style={{ fontSize: '0.8rem', padding: '8px 12px' }}
+                        required
+                      />
+                      <textarea 
+                        rows={2}
+                        placeholder={lang === 'zh' ? '咨询留言...' : 'Message...'} 
+                        value={enquiryMsg}
+                        onChange={e => setEnquiryMsg(e.target.value)}
+                        className="form-input"
+                        style={{ fontSize: '0.8rem', padding: '8px 12px', resize: 'vertical' }}
+                      />
+                      
+                      {currentEnquiryUnit && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: 6, borderRadius: 6, border: '1px solid var(--glass-border)' }}>
+                          📍 {lang === 'zh' ? '咨询房源' : 'Target Property'}: <strong>{currentEnquiryUnit.room_type}</strong> - {currentEnquiryUnit.community?.name}
+                        </div>
+                      )}
+
+                      {enquiryFeedback && (
+                        <div style={{
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          fontSize: '0.72rem',
+                          background: enquiryFeedback.type === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+                          color: enquiryFeedback.type === 'success' ? 'var(--success)' : 'var(--danger)',
+                          border: enquiryFeedback.type === 'success' ? '1px solid var(--success-glow)' : '1px solid var(--danger-glow)',
+                          textAlign: 'center'
+                        }}>
+                          {enquiryFeedback.msg}
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary" 
+                        style={{ padding: 10, fontSize: '0.82rem', marginTop: 4 }}
+                        disabled={submittingEnquiry}
+                      >
+                        {submittingEnquiry ? (lang === 'zh' ? '发送中...' : 'Sending...') : (lang === 'zh' ? '发送租房咨询' : 'Send Enquiry')}
+                      </button>
+                    </form>
+                  </div>
+
+                </div>
+
+                {/* Right Column: Bio, Expertise, Grid of Listings with price filter */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  
+                  {/* Bio Description */}
+                  {showAgentProfile.bio && (
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 10px', borderLeft: '3px solid var(--primary)', paddingLeft: 8 }}>
+                        {lang === 'zh' ? `关于 ${showAgentProfile.display_name}` : `About ${showAgentProfile.display_name}`}
+                      </h4>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                        {showAgentProfile.bio}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Expertise list */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 16 }}>
+                    <div>
+                      <h5 style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', margin: '0 0 8px', fontWeight: 700 }}>
+                        {lang === 'zh' ? '擅长区域' : 'Expertise Areas'}
+                      </h5>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {areas.length > 0 ? areas.map((area: string, i: number) => (
+                          <span key={i} style={{ fontSize: '0.72rem', padding: '4px 8px', borderRadius: 6, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
+                            {area}
+                          </span>
+                        )) : <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sunway, Subang Jaya</span>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', margin: '0 0 8px', fontWeight: 700 }}>
+                        {lang === 'zh' ? '主营房源' : 'Property Types'}
+                      </h5>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {propTypes.length > 0 ? propTypes.map((t: string, i: number) => (
+                          <span key={i} style={{ fontSize: '0.72rem', padding: '4px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--text-body)', fontWeight: 500 }}>
+                            {t}
+                          </span>
+                        )) : <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Condo, Room</span>}
+                      </div>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--glass-border)', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: 'var(--text-body)' }}>
+                      <Calendar size={14} style={{ color: 'var(--primary)' }} />
+                      <span>
+                        {lang === 'zh' ? '从业时间' : 'Experience'}: <strong>{showAgentProfile.experience_years || 0} {lang === 'zh' ? '年' : 'Years'} {showAgentProfile.experience_months || 0} {lang === 'zh' ? '个月' : 'Months'}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Listings Tab Swapper & Filters */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {(['all', 'available', 'rented'] as const).map(tab => (
+                          <button
+                            key={tab}
+                            onClick={() => setAgentTab(tab)}
+                            style={{
+                              padding: '8px 16px',
+                              background: 'none',
+                              border: 'none',
+                              borderBottom: agentTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
+                              color: agentTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                              fontWeight: agentTab === tab ? 700 : 500,
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              paddingBottom: 10
+                            }}
+                          >
+                            {tab === 'all' && (lang === 'zh' ? `全部房源 (${totalCount})` : `All Listings (${totalCount})`)}
+                            {tab === 'available' && (lang === 'zh' ? `可租房源 (${availableCount})` : `Available (${availableCount})`)}
+                            {tab === 'rented' && (lang === 'zh' ? `已租房源 (${rentedCount})` : `Rented (${rentedCount})`)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Price filter inputs */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        <DollarSign size={14} style={{ color: 'var(--text-muted)' }} />
+                        <input
+                          type="number"
+                          placeholder={lang === 'zh' ? '最低价格' : 'Min RM'}
+                          value={agentMinPrice}
+                          onChange={e => setAgentMinPrice(e.target.value)}
+                          style={{ width: 80, fontSize: '0.78rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-surface)' }}
+                        />
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>-</span>
+                        <input
+                          type="number"
+                          placeholder={lang === 'zh' ? '最高价格' : 'Max RM'}
+                          value={agentMaxPrice}
+                          onChange={e => setAgentMaxPrice(e.target.value)}
+                          style={{ width: 80, fontSize: '0.78rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-surface)' }}
+                        />
+                        {(agentMinPrice || agentMaxPrice) && (
+                          <button
+                            onClick={() => { setAgentMinPrice(''); setAgentMaxPrice(''); }}
+                            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600 }}
+                          >
+                            {lang === 'zh' ? '重置' : 'Reset'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Listings Grid */}
+                    {filteredAgentUnits.length === 0 ? (
+                      <div style={{ padding: '48px 16px', textAlign: 'center', border: '1px dashed var(--glass-border)', borderRadius: 16, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {lang === 'zh' ? '暂无符合过滤条件的房源' : 'No properties matched your filters.'}
+                      </div>
+                    ) : (
+                      <div className="custom-scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+                        {filteredAgentUnits.map(unit => (
+                          <div 
+                            key={unit.id}
+                            onClick={() => {
+                              // Open this unit's detail view
+                              setSelected(unit);
+                              setImgIdx(0);
+                              setShowAgentProfile(null); // Close the profile so they see details drawer
+                            }}
+                            style={{
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              background: 'var(--bg-surface)',
+                              border: '1px solid var(--glass-border)',
+                              cursor: 'pointer',
+                              transition: 'all 0.22s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          >
+                            <div style={{ position: 'relative', height: 110, background: '#070f17' }}>
+                              <img 
+                                src={getUnitImages(unit.id, unit.media_urls)[0]} 
+                                alt="" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              <div style={{
+                                position: 'absolute', top: 8, right: 8,
+                                padding: '2px 8px', borderRadius: 4, fontSize: '0.62rem', fontWeight: 700,
+                                background: unit.status === 'available' ? 'var(--success-light)' : 'rgba(255,255,255,0.06)',
+                                color: unit.status === 'available' ? 'var(--success)' : 'var(--text-muted)'
+                              }}>
+                                {unit.status === 'available' ? t('available') : t('rented')}
+                              </div>
+                            </div>
+                            <div style={{ padding: 12 }}>
+                              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {unit.room_type}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '2px 0 6px' }}>
+                                {unit.community?.name || 'Unknown Community'}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: 8 }}>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                  RM {unit.rent.toLocaleString()}
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Bed size={10} /> {unit.bedrooms || 1}
+                                  </span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Bath size={10} /> {unit.bathrooms || 1}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        );
+      })()}
     </div>
   );
 }

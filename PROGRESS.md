@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-26 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生可自行取消意向 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · iProperty中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环**
 
 
 ---
@@ -338,6 +338,7 @@ Storage Bucket：
 | `014_tenant_interests_user_update.sql` | RLS：学生可 **UPDATE** 自己的 `tenant_interests`（取消/重新提交） |
 | `015_tenant_interest_rpc.sql` | RPC **`submit_tenant_interest`** / **`cancel_tenant_interest`**（SECURITY DEFINER upsert） |
 | `016_maintenance_requests.sql` | **维修工单系统**：`maintenance_requests` 表（category 校验、RLS 权限控制、图片存储、认领状态） |
+| `017_agent_profile_fields.sql` | **中介个人主页扩展**：为 `admin_users` 新增 `job_title`, `agency_name`, `agency_license`, `agency_address`, `bio`, `experience_years`, `experience_months`, `area_expertise`, `property_types` 中介信息字段，并限制只在平台内部维护、移除外部社交链接引流 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -372,6 +373,7 @@ supabase/migrations/
 └── 014_tenant_interests_user_update.sql # 合租意向 UPDATE RLS
 └── 015_tenant_interest_rpc.sql  # 合租 submit/cancel RPC
 └── 016_maintenance_requests.sql # 维修工单系统 (替换旧意见箱表)
+└── 017_agent_profile_fields.sql # 中介个人主页扩展字段
 ```
 
 迁移原则：
@@ -537,6 +539,7 @@ RPC submit_mobile_payment_evidence → status = pending_review
 | 支付凭证 | 1080×2400 | JPEG 80% | 150–400 KB |
 | 房源照片 | 1920×1920 | JPEG 88% | 200–500 KB |
 | 收款码 | 800×800 | JPEG 92% | 50–150 KB |
+| 中介头像 | 300×300 | JPEG 85% | ≤ 30 KB |
 
 小于 `skipBelowBytes` 的原图**不重复压缩**。详情页点击缩略图/大图 → **Lightbox 全屏查看**（`PropertyListings.tsx`）。
 
