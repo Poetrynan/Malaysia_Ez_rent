@@ -5,6 +5,7 @@ import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, 
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
+import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
@@ -687,8 +688,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               agency_license: myProfile.agency_license.trim() || null,
               agency_address: myProfile.agency_address.trim() || null,
               bio: myProfile.bio.trim() || null,
-              experience_years: Number(myProfile.experience_years) || 0,
-              experience_months: Number(myProfile.experience_months) || 0,
+              experience_years: nonNegativeNumber(myProfile.experience_years),
+              experience_months: nonNegativeNumber(myProfile.experience_months),
               area_expertise: areaExpertiseArr,
               property_types: propertyTypesArr,
             })
@@ -1006,11 +1007,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       community_id: unitForm.community_id, 
       unit_number: unitForm.unit_number, 
       room_type: unitForm.room_type, 
-      rent: parseFloat(unitForm.rent), 
+      rent: nonNegativeNumber(unitForm.rent), 
       description: unitForm.description, 
-      max_occupants: parseInt(unitForm.max_occupants) || 1,
-      bedrooms: parseInt(unitForm.bedrooms) || 1,
-      bathrooms: parseInt(unitForm.bathrooms) || 1,
+      max_occupants: Math.max(1, nonNegativeNumber(unitForm.max_occupants, 1)),
+      bedrooms: nonNegativeNumber(unitForm.bedrooms, 1),
+      bathrooms: nonNegativeNumber(unitForm.bathrooms, 1),
       landlord_bank_info: unitForm.landlord_bank_info || null,
       embedding: null
     };
@@ -1025,16 +1026,20 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       }
     }
 
+    if (currentUserId) {
+      if (!isEdit || !unitPayload.agent_id) {
+        unitPayload.agent_id = currentUserId;
+      }
+    }
+
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          if (!isEdit || !unitPayload.agent_id) {
-            unitPayload.agent_id = user.id;
-          }
+        if (user && (!isEdit || !unitPayload.agent_id)) {
+          unitPayload.agent_id = user.id;
         }
         
         // Upload base64 images to Supabase Storage, keep existing http URLs
@@ -1296,9 +1301,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     const tenantId = leaseForm.tenant_id && leaseForm.tenant_id !== '__manual__' ? leaseForm.tenant_id : '';
     if (isLive && !tenantId) { showToast(t('validationTenantRequired'), 'error'); return; }
     const finalTenantId = tenantId || `tenant-${Date.now()}`;
-    const rent = parseFloat(leaseForm.monthly_rent);
-    const secMonths = parseFloat(leaseForm.security_deposit_months) || 0;
-    const utilMonths = parseFloat(leaseForm.utility_deposit_months) || 0;
+    const rent = nonNegativeNumber(leaseForm.monthly_rent);
+    const secMonths = nonNegativeNumber(leaseForm.security_deposit_months);
+    const utilMonths = nonNegativeNumber(leaseForm.utility_deposit_months);
     const totalDeposit = rent * (secMonths + utilMonths);
     const newLease: Lease = { id: isLive ? crypto.randomUUID() : `l-${Date.now()}`, unit_id: leaseForm.unit_id, tenant_id: finalTenantId, start_date: leaseForm.start_date, end_date: leaseForm.end_date, monthly_rent: rent, deposit_amount: totalDeposit, security_deposit_months: secMonths, utility_deposit_months: utilMonths, status: 'active' };
     if (isLive) {
@@ -1670,12 +1675,12 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               </div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>{t('rentMYR')}</label><input type="number" className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: e.target.value })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
-              <div className="form-group"><label>{t('maxOccupants')}</label><input type="number" min="1" max="10" className="form-input" value={unitForm.max_occupants} onChange={e => setUnitForm(f => ({ ...f, max_occupants: e.target.value }))} /></div>
+              <div className="form-group"><label>{t('rentMYR')}</label><input type="number" min={0} className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: nonNegativeInputValue(e.target.value) })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
+              <div className="form-group"><label>{t('maxOccupants')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.max_occupants} onChange={e => setUnitForm(f => ({ ...f, max_occupants: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: e.target.value }))} /></div>
-              <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min="0" max="10" className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: e.target.value }))} /></div>
+              <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: nonNegativeInputValue(e.target.value) }))} /></div>
+              <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
             
             <div className="form-group"><label>{t('landlordBankInfoLabel') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder={lang === 'zh' ? '如：银行账号、微信 ID、支付宝账号' : 'e.g. bank account, WeChat ID, Alipay account'} style={{ resize: 'vertical' }} /></div>
@@ -1951,11 +1956,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   </optgroup>
                 </select>
               </div>
-              <div className="form-group"><label>{t('monthlyRent')} (RM)</label><input type="number" className="form-input" value={leaseForm.monthly_rent} onChange={e => setLeaseForm(f => ({ ...f, monthly_rent: e.target.value }))} /></div>
+              <div className="form-group"><label>{t('monthlyRent')} (RM)</label><input type="number" min={0} className="form-input" value={leaseForm.monthly_rent} onChange={e => setLeaseForm(f => ({ ...f, monthly_rent: nonNegativeInputValue(e.target.value) }))} /></div>
               <div className="form-group"><label>{t('startDate')}</label><input type="date" className="form-input" value={leaseForm.start_date} onChange={e => setLeaseForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div className="form-group"><label>{t('endDate')}</label><input type="date" className="form-input" value={leaseForm.end_date} onChange={e => setLeaseForm(f => ({ ...f, end_date: e.target.value }))} /></div>
-              <div className="form-group"><label>{t('securityDeposit')} ({t('months')})</label><input type="number" step="0.5" min="0" className="form-input" value={leaseForm.security_deposit_months} onChange={e => setLeaseForm(f => ({ ...f, security_deposit_months: e.target.value }))} /></div>
-              <div className="form-group"><label>{t('utilityDeposit')} ({t('months')})</label><input type="number" step="0.5" min="0" className="form-input" value={leaseForm.utility_deposit_months} onChange={e => setLeaseForm(f => ({ ...f, utility_deposit_months: e.target.value }))} /></div>
+              <div className="form-group"><label>{t('securityDeposit')} ({t('months')})</label><input type="number" step={0.5} min={0} className="form-input" value={leaseForm.security_deposit_months} onChange={e => setLeaseForm(f => ({ ...f, security_deposit_months: nonNegativeInputValue(e.target.value) }))} /></div>
+              <div className="form-group"><label>{t('utilityDeposit')} ({t('months')})</label><input type="number" step={0.5} min={0} className="form-input" value={leaseForm.utility_deposit_months} onChange={e => setLeaseForm(f => ({ ...f, utility_deposit_months: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
             <button className="btn btn-primary" onClick={createLease} style={{ marginTop: 4 }}>{t('createLeaseBtn')}</button>
           </div>
@@ -2655,21 +2660,21 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   <label>{lang === 'zh' ? '从业年限 (年)' : 'Experience (Years)'}</label>
                   <input
                     type="number"
-                    min="0"
+                    min={0}
                     className="form-input"
                     value={myProfile.experience_years}
-                    onChange={e => setMyProfile(prev => ({ ...prev, experience_years: Number(e.target.value) || 0 }))}
+                    onChange={e => setMyProfile(prev => ({ ...prev, experience_years: nonNegativeNumber(e.target.value) }))}
                   />
                 </div>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '从业年限 (月)' : 'Experience (Months)'}</label>
                   <input
                     type="number"
-                    min="0"
-                    max="11"
+                    min={0}
+                    max={11}
                     className="form-input"
                     value={myProfile.experience_months}
-                    onChange={e => setMyProfile(prev => ({ ...prev, experience_months: Number(e.target.value) || 0 }))}
+                    onChange={e => setMyProfile(prev => ({ ...prev, experience_months: Math.min(11, nonNegativeNumber(e.target.value)) }))}
                   />
                 </div>
               </div>
