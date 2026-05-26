@@ -112,13 +112,12 @@ function WeChatIcon({ size = 18 }: { size?: number }) {
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
+      viewBox="0 0 24 24"
       fill="currentColor"
       aria-hidden
-      style={{ display: 'block', flexShrink: 0, overflow: 'visible' }}
+      style={{ display: 'block', flexShrink: 0 }}
     >
-      <path d="M11.176 14.429c-2.665 0-4.826-1.8-4.826-4.018 0-2.22 2.159-4.02 4.824-4.02S16 8.191 16 10.411c0 1.21-.65 2.301-1.666 3.036a.32.32 0 0 0-.12.366l.218.81a.6.6 0 0 1 .029.117.166.166 0 0 1-.162.162.2.2 0 0 1-.092-.03l-1.057-.61a.5.5 0 0 0-.256-.074.5.5 0 0 0-.142.021 5.7 5.7 0 0 1-1.576.22M9.064 9.542a.647.647 0 1 0 .557-1 .645.645 0 0 0-.646.647.6.6 0 0 0 .09.353Zm3.232.001a.646.646 0 1 0 .546-1 .645.645 0 0 0-.644.644.63.63 0 0 0 .098.356" />
-      <path d="M0 6.826c0 1.455.781 2.765 2.001 3.656a.385.385 0 0 1 .143.439l-.161.6-.1.373a.5.5 0 0 0-.032.14.19.19 0 0 0 .193.193q.06 0 .111-.029l1.268-.733a.6.6 0 0 1 .308-.088q.088 0 .171.025a6.8 6.8 0 0 0 1.625.26 4.5 4.5 0 0 1-.177-1.251c0-2.936 2.785-5.02 5.824-5.02l.15.002C10.587 3.429 8.392 2 5.796 2 2.596 2 0 4.16 0 6.826m4.632-1.555a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0m3.875 0a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0" />
+      <path d="M8.22 13.06c.4 0 .8-.05 1.18-.12-.34-1.3-.23-2.73.36-3.9-1.3-.65-3.04-1.04-4.96-1.04C2.15 8 0 9.87 0 12.18c0 1.25.63 2.39 1.68 3.16a.33.33 0 01.12.38l-.22.84c-.08.31-.02.49.25.31l2.33-1.34c.32-.06.66-.1 1-.1 1.22 0 2.36-.21 3.06-.57zM5.53 10.96a.66.66 0 110-1.32.66.66 0 010 1.32zm3.32 0a.66.66 0 110-1.32.66.66 0 010 1.32zm13.15.75c0-3.38-3.25-6.13-7.25-6.13S7.5 8.33 7.5 11.71c0 3.38 3.25 6.13 7.25 6.13a7.8 7.8 0 002.5-.4l2.42 1.4c.26.15.31-.03.24-.31l-.23-1c1.37-.9 2.32-2.14 2.32-3.82zm-6.75-2.07c.45 0 .82.37.82.83 0 .45-.37.82-.82.82a.83.83 0 01-.83-.82c0-.46.37-.83.83-.83zm3.75 0c.45 0 .82.37.82.83 0 .45-.37.82-.82.82a.83.83 0 01-.83-.82c0-.46.37-.83.83-.83z" />
     </svg>
   );
 }
@@ -238,6 +237,31 @@ export default function PropertyListings() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ msg, type });
     toastTimer.current = setTimeout(() => setToast(null), 3800);
+  }, []);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isAlert?: boolean;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, isAlert = false) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      isAlert,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog(null);
+      },
+      onCancel: () => {
+        setConfirmDialog(null);
+      }
+    });
   }, []);
 
   // Agent profile modal states
@@ -994,11 +1018,18 @@ export default function PropertyListings() {
                             {hasMyInterest && (
                               <button onClick={() => {
                                 if (myEntry?.status === 'confirmed') {
-                                  alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                                  showConfirm(
+                                    lang === 'zh' ? '提示' : 'Notice',
+                                    lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.',
+                                    () => {},
+                                    true
+                                  );
                                 } else {
-                                  if (window.confirm(lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.')) {
-                                    cancelInterest(selected.id);
-                                  }
+                                  showConfirm(
+                                    lang === 'zh' ? '取消租房意向' : 'Cancel Interest',
+                                    lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.',
+                                    () => cancelInterest(selected.id)
+                                  );
                                 }
                               }} disabled={submittingInterest} style={{
                                 padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
@@ -1040,24 +1071,7 @@ export default function PropertyListings() {
                                 fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                               }}>{t('coRentJoin')}</button>
                             )}
-                            {hasMyInterest && (
-                              <button onClick={() => {
-                                if (myEntry?.status === 'confirmed') {
-                                  alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
-                                } else {
-                                  if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
-                                    cancelInterest(selected.id);
-                                  }
-                                }
-                              }} disabled={submittingInterest} style={{
-                                padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
-                                background: 'transparent', color: 'var(--danger)',
-                                fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                                opacity: submittingInterest ? 0.7 : 1,
-                              }}>
-                                {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
-                              </button>
-                            )}
+
                             {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                           </>
                         )}
@@ -1115,11 +1129,18 @@ export default function PropertyListings() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (i.status === 'confirmed') {
-                                        alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                                        showConfirm(
+                                          lang === 'zh' ? '提示' : 'Notice',
+                                          lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.',
+                                          () => {},
+                                          true
+                                        );
                                       } else {
-                                        if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
-                                          cancelInterest(selected.id);
-                                        }
+                                        showConfirm(
+                                          lang === 'zh' ? '取消合租意向' : 'Cancel Interest',
+                                          lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?',
+                                          () => cancelInterest(selected.id)
+                                        );
                                       }
                                     }}
                                     disabled={submittingInterest}
@@ -2015,6 +2036,87 @@ export default function PropertyListings() {
               {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '✅'}
             </span>
             <span>{toast.msg}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Custom Glassmorphism Confirmation Modal ── */}
+      {confirmDialog?.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(8px)',
+          }}
+          onClick={confirmDialog.isAlert ? () => confirmDialog.onConfirm() : confirmDialog.onCancel}
+        >
+          <div
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px) saturate(160%)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 16,
+              padding: '24px 28px',
+              maxWidth: 360,
+              width: '90%',
+              boxShadow: '0 24px 50px rgba(0, 0, 0, 0.4)',
+              color: 'var(--text-h)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-h)' }}>
+              {confirmDialog.title}
+            </h4>
+            <p style={{ margin: '0 0 20px 0', fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
+              {confirmDialog.message}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              {!confirmDialog.isAlert && (
+                <button
+                  onClick={confirmDialog.onCancel}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: 'transparent',
+                    color: 'var(--text-body)',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    fontFamily: 'inherit',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {lang === 'zh' ? '取消' : 'Cancel'}
+                </button>
+              )}
+              <button
+                onClick={confirmDialog.onConfirm}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                {lang === 'zh' ? '确定' : 'Confirm'}
+              </button>
+            </div>
           </div>
         </div>
       )}
