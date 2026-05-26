@@ -997,137 +997,143 @@ export default function PropertyListings() {
                   const hasMyInterest = !!myEntry;
                   const isWholeUnit = selected.room_type === 'Whole Unit';
 
-                  // Non–Whole Unit: simple rent button
+                  // Non–Whole Unit: single rent (大房/中房/小房/Studio)
                   if (!isWholeUnit) {
                     const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {isLeasedByMe ? (
-                          <span style={{ fontSize: '0.88rem', color: 'var(--success)', fontWeight: 600 }}>
-                            {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this room'}
-                          </span>
-                        ) : (
-                          <div style={{ width: '100%' }}>
-                            {/* Interest Progress Flow */}
-                            {hasMyInterest && (
-                              <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
-                                  {/* Base Grey Line */}
-                                  <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
-                                  
-                                  {/* Dynamic Progress Line with Extension Animation */}
-                                  {(() => {
-                                    const isAgreed = myEntry?.status === 'confirmed';
-                                    const isActive = myLeasedUnitIds.includes(selected.id);
-                                    let width = '0%';
-                                    if (isActive) width = '100%';
-                                    else if (isAgreed) width = '50%';
-                                    
-                                    return (
-                                      <>
-                                        <div style={{ 
-                                          position: 'absolute', top: 10, left: 20, width: `calc(${width} - 40px)`, 
-                                          height: 2, background: 'var(--primary)', zIndex: 0, 
-                                          transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                                          boxShadow: '0 0 8px var(--primary)',
-                                          transformOrigin: 'left center'
-                                        }} />
-                                        {/* Animated glow effect at the end of the line */}
-                                        <div style={{ 
-                                          position: 'absolute', 
-                                          top: 8, 
-                                          left: width === '0%' ? '20px' : width === '50%' ? 'calc(50% - 20px)' : 'calc(100% - 60px)',
-                                          width: 6, 
-                                          height: 6, 
-                                          borderRadius: '50%',
-                                          background: 'var(--primary)',
-                                          boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
-                                          zIndex: 1,
-                                          opacity: width !== '0%' ? 1 : 0,
-                                          transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
-                                          animation: width !== '0%' ? 'pulse 1.5s ease-in-out infinite' : 'none'
-                                        }} />
-                                      </>
-                                    );
-                                  })()}
+                      <div style={{ width: '100%' }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{lang === 'zh' ? '单租模式' : 'Single Rent'}</h3>
 
-                                  {[
-                                    { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
-                                    { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
-                                    { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
-                                  ].map((step, idx) => (
-                                    <div key={idx} style={{ 
-                                      zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                                      transition: 'transform 0.3s ease',
-                                      transform: step.active ? 'scale(1.1)' : 'scale(1)'
-                                    }}>
-                                      <div style={{ 
-                                        width: 20, height: 20, borderRadius: '50%', 
-                                        background: step.active ? 'var(--primary)' : 'var(--bg-card)',
-                                        border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        transition: 'all 0.5s ease',
-                                        boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
-                                      }}>
-                                        {step.active && <CheckCircle2 size={12} color="white" />}
-                                      </div>
-                                      <span style={{ 
-                                        fontSize: '0.6rem', fontWeight: 700, 
-                                        color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
-                                        transition: 'color 0.5s ease'
-                                      }}>{step.label}</span>
-                                    </div>
-                                  ))}
+                        {/* Progress Flow - Always show if user has interest OR is already leasing */}
+                        {(hasMyInterest || isLeasedByMe) && (
+                          <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+                              {/* Base Grey Line */}
+                              <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+                              
+                              {/* Animated Progress Line with Extension Effect */}
+                              {(() => {
+                                const isAgreed = myEntry?.status === 'confirmed';
+                                const isActive = isLeasedByMe;
+                                let width = 'calc(33.33% - 13.33px)'; // 默认已发起
+                                if (isActive) width = 'calc(100% - 40px)';
+                                else if (isAgreed) width = 'calc(66.66% - 26.66px)';
+                                
+                                return (
+                                  <>
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      top: 10, 
+                                      left: 20, 
+                                      width: width,
+                                      height: 2, 
+                                      background: 'var(--primary)', 
+                                      zIndex: 0, 
+                                      opacity: 0.6,
+                                      transformOrigin: 'left center',
+                                      animation: 'extendLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                                    }} />
+                                    {/* Animated glow at the end of the line */}
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      top: 8, 
+                                      right: isActive ? '20px' : isAgreed ? 'calc(33.33% + 6.66px)' : 'calc(66.66% + 13.33px)',
+                                      width: 6, 
+                                      height: 6, 
+                                      borderRadius: '50%',
+                                      background: 'var(--primary)',
+                                      boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+                                      zIndex: 1,
+                                      animation: 'glowPulse 1.5s ease-in-out infinite, slideToEnd 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                                    }} />
+                                  </>
+                                );
+                              })()}
+
+                              {[
+                                { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+                                { label: lang === 'zh' ? '中介同意' : 'Agreed', active: myEntry?.status === 'confirmed' || isLeasedByMe },
+                                { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: myEntry?.status === 'confirmed' || isLeasedByMe },
+                                { label: lang === 'zh' ? '租房中' : 'Renting', active: isLeasedByMe },
+                              ].map((step, idx) => (
+                                <div key={idx} style={{ 
+                                  zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                                  transition: 'transform 0.3s ease',
+                                  transform: step.active ? 'scale(1.1)' : 'scale(1)'
+                                }}>
+                                  <div style={{ 
+                                    width: 20, height: 20, borderRadius: '50%', 
+                                    background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+                                    border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.5s ease',
+                                    boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
+                                  }}>
+                                    {step.active && <CheckCircle2 size={12} color="white" />}
+                                  </div>
+                                  <span style={{ 
+                                    fontSize: '0.6rem', fontWeight: 700, 
+                                    color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+                                    transition: 'color 0.5s ease'
+                                  }}>{step.label}</span>
                                 </div>
-                              </div>
-                            )}
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              {!hasMyInterest && !isFull && (
-                                <button onClick={() => expressInterest(selected.id)} style={{
-                                  padding: '10px 24px', borderRadius: 8, border: 'none',
-                                  background: 'var(--primary)', color: 'white',
-                                  fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                                }}>{t('coRentJoin')}</button>
-                              )}
-                              {hasMyInterest && (
-                                <button onClick={() => {
-                                  if (myEntry?.status === 'confirmed') {
-                                    // Check if the lease actually exists for this user and unit
-                                    const leaseExists = myLeasedUnitIds.includes(selected.id);
-                                    
-                                    if (leaseExists) {
-                                      showConfirm(
-                                        lang === 'zh' ? '提示' : 'Notice',
-                                        lang === 'zh' ? '您的租约已生效。如需查看详情或缴纳房租，请前往“我的租约”面板。' : 'Your lease is active. Please visit the "My Lease" panel to view details or pay rent.',
-                                        () => {},
-                                        true
-                                      );
-                                    } else {
-                                      showConfirm(
-                                        lang === 'zh' ? '处理中' : 'Processing',
-                                        lang === 'zh' ? '中介已同意您的入住意向，正在为您准备正式合约，请稍后再次查看。' : 'Agent has agreed to your interest and is preparing the official lease. Please check back shortly.',
-                                        () => {},
-                                        true
-                                      );
-                                    }
+                        {isLeasedByMe ? (
+                          <div style={{ padding: '12px', background: 'var(--success-light)', borderRadius: 10, border: '1px solid var(--success)' }}>
+                            <span style={{ fontSize: '0.88rem', color: 'var(--success)', fontWeight: 600 }}>
+                              ✓ {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this room'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {!hasMyInterest && !isFull && (
+                              <button onClick={() => expressInterest(selected.id)} style={{
+                                padding: '10px 24px', borderRadius: 8, border: 'none',
+                                background: 'var(--primary)', color: 'white',
+                                fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                              }}>{lang === 'zh' ? '提交租房意向' : 'Express Interest'}</button>
+                            )}
+                            {hasMyInterest && (
+                              <button onClick={() => {
+                                if (myEntry?.status === 'confirmed') {
+                                  // Check if the lease actually exists for this user and unit
+                                  const leaseExists = myLeasedUnitIds.includes(selected.id);
+                                  
+                                  if (leaseExists) {
+                                    showConfirm(
+                                      lang === 'zh' ? '提示' : 'Notice',
+                                      lang === 'zh' ? '您的租约已生效。如需查看详情或缴纳房租，请前往"我的租约"面板。' : 'Your lease is active. Please visit the "My Lease" panel to view details or pay rent.',
+                                      () => {},
+                                      true
+                                    );
                                   } else {
                                     showConfirm(
-                                      lang === 'zh' ? '取消租房意向' : 'Cancel Interest',
-                                      lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.',
-                                      () => cancelInterest(selected.id)
+                                      lang === 'zh' ? '处理中' : 'Processing',
+                                      lang === 'zh' ? '中介已同意您的入住意向，正在为您准备正式合约，请稍后再次查看。' : 'Agent has agreed to your interest and is preparing the official lease. Please check back shortly.',
+                                      () => {},
+                                      true
                                     );
                                   }
-                                }} disabled={submittingInterest} style={{
-                                  padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
-                                  background: 'transparent', color: 'var(--danger)',
-                                  fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                                  width: '100%', textAlign: 'center'
-                                }}>
-                                  {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看状态 / 合约' : 'View Status / Lease') : t('coRentCancel')}
-                                </button>
-                              )}
-                            </div>
+                                } else {
+                                  showConfirm(
+                                    lang === 'zh' ? '取消租房意向' : 'Cancel Interest',
+                                    lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.',
+                                    () => cancelInterest(selected.id)
+                                  );
+                                }
+                              }} disabled={submittingInterest} style={{
+                                padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
+                                background: 'transparent', color: 'var(--danger)',
+                                fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                width: '100%', textAlign: 'center'
+                              }}>
+                                {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看状态 / 合约' : 'View Status / Lease') : (lang === 'zh' ? '取消意向' : 'Cancel Interest')}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1141,52 +1147,56 @@ export default function PropertyListings() {
                       <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
 
                       {/* Interest Progress Flow (Whole Unit) */}
-                      {hasMyInterest && !isLeasedByMe && (
+                      {(hasMyInterest || isLeasedByMe) && (
                         <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
                             {/* Base Grey Line */}
                             <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
                             
-                            {/* Dynamic Progress Line with Extension Animation */}
+                            {/* Animated Progress Line with Extension Effect */}
                             {(() => {
                               const isAgreed = myEntry?.status === 'confirmed';
-                              const isActive = myLeasedUnitIds.includes(selected.id);
-                              let width = '0%';
-                              if (isActive) width = '100%';
-                              else if (isAgreed) width = '50%';
+                              const isActive = isLeasedByMe;
+                              let width = 'calc(33.33% - 13.33px)'; // 默认已发起
+                              if (isActive) width = 'calc(100% - 40px)';
+                              else if (isAgreed) width = 'calc(66.66% - 26.66px)';
                               
                               return (
                                 <>
                                   <div style={{ 
-                                    position: 'absolute', top: 10, left: 20, width: `calc(${width} - 40px)`, 
-                                    height: 2, background: 'var(--primary)', zIndex: 0, 
-                                    transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    boxShadow: '0 0 8px var(--primary)',
-                                    transformOrigin: 'left center'
+                                    position: 'absolute', 
+                                    top: 10, 
+                                    left: 20, 
+                                    width: width,
+                                    height: 2, 
+                                    background: 'var(--primary)', 
+                                    zIndex: 0, 
+                                    opacity: 0.6,
+                                    transformOrigin: 'left center',
+                                    animation: 'extendLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
                                   }} />
-                                  {/* Animated glow effect at the end of the line */}
+                                  {/* Animated glow at the end of the line */}
                                   <div style={{ 
                                     position: 'absolute', 
                                     top: 8, 
-                                    left: width === '0%' ? '20px' : width === '50%' ? 'calc(50% - 20px)' : 'calc(100% - 60px)',
+                                    right: isActive ? '20px' : isAgreed ? 'calc(33.33% + 6.66px)' : 'calc(66.66% + 13.33px)',
                                     width: 6, 
                                     height: 6, 
                                     borderRadius: '50%',
                                     background: 'var(--primary)',
                                     boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
                                     zIndex: 1,
-                                    opacity: width !== '0%' ? 1 : 0,
-                                    transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
-                                    animation: width !== '0%' ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                                    animation: 'glowPulse 1.5s ease-in-out infinite, slideToEnd 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
                                   }} />
                                 </>
                               );
                             })()}
                             
                             {[
-                              { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
-                              { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
-                              { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
+                              { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+                              { label: lang === 'zh' ? '中介同意' : 'Agreed', active: myEntry?.status === 'confirmed' || isLeasedByMe },
+                              { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: myEntry?.status === 'confirmed' || isLeasedByMe },
+                              { label: lang === 'zh' ? '租房中' : 'Renting', active: isLeasedByMe },
                             ].map((step, idx) => (
                               <div key={idx} style={{ 
                                 zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
