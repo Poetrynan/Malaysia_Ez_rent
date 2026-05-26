@@ -3420,8 +3420,8 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
               {lang === 'zh' 
-                ? '此操作将永久删除该租约及其所有关联的缴费记录。房源状态将恢复为“可租”。' 
-                : 'This will permanently delete the lease and all its payment records. The property status will be restored to "Available".'}
+                ? '此操作将永久删除该租约及其所有关联的缴费数据。请谨慎操作，删除后数据不可恢复。' 
+                : 'This will permanently delete the lease and all associated payment data. This action cannot be undone.'}
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button 
