@@ -113,6 +113,13 @@ const setLocalData = (key: string, data: any) => {
   }
 };
 
+const getStorageKey = (tableName: string) => {
+  if (tableName === 'tenant_interests') return 'ez_interests';
+  if (tableName === 'payment_records') return 'ez_payments';
+  if (tableName === 'admin_users') return 'ez_admins';
+  return 'ez_' + tableName;
+};
+
 // Builder Proxy Class to mock Supabase Query Builder
 class MockQueryBuilder {
   tableName: string;
@@ -141,12 +148,13 @@ class MockQueryBuilder {
 
   async execute() {
     let data = [];
-    const communities = getLocalData('ez_communities', DEFAULT_COMMUNITIES);
-    const units = getLocalData('ez_units', DEFAULT_UNITS);
-    const leases = getLocalData('ez_leases', DEFAULT_LEASES);
-    const payments = getLocalData('ez_payments', DEFAULT_PAYMENTS);
-    const users = getLocalData('ez_users', DEFAULT_USERS);
-    const admins = getLocalData('ez_admins', DEFAULT_ADMINS);
+    const communities = getLocalData(getStorageKey('communities'), DEFAULT_COMMUNITIES);
+    const units = getLocalData(getStorageKey('units'), DEFAULT_UNITS);
+    const leases = getLocalData(getStorageKey('leases'), DEFAULT_LEASES);
+    const payments = getLocalData(getStorageKey('payment_records'), DEFAULT_PAYMENTS);
+    const users = getLocalData(getStorageKey('users'), DEFAULT_USERS);
+    const admins = getLocalData(getStorageKey('admin_users'), DEFAULT_ADMINS);
+    const interests = getLocalData(getStorageKey('tenant_interests'), []);
 
     if (this.tableName === 'communities') data = [...communities];
     else if (this.tableName === 'units') {
@@ -166,6 +174,7 @@ class MockQueryBuilder {
     else if (this.tableName === 'payment_records') data = [...payments];
     else if (this.tableName === 'users') data = [...users];
     else if (this.tableName === 'admin_users') data = [...admins];
+    else if (this.tableName === 'tenant_interests') data = [...interests];
 
     // Apply filters
     for (const f of this.filters) {
@@ -192,7 +201,7 @@ class MockQueryBuilder {
   }
 
   async insert(payload: any) {
-    const list = getLocalData('ez_' + this.tableName, 
+    const list = getLocalData(getStorageKey(this.tableName), 
       this.tableName === 'communities' ? DEFAULT_COMMUNITIES :
       this.tableName === 'units' ? DEFAULT_UNITS :
       this.tableName === 'leases' ? DEFAULT_LEASES :
@@ -211,7 +220,7 @@ class MockQueryBuilder {
       return newItem;
     });
 
-    setLocalData('ez_' + this.tableName, list);
+    setLocalData(getStorageKey(this.tableName), list);
 
     // Side effect for leases insert: auto-generate 12 months billing records
     if (this.tableName === 'leases') {
@@ -253,7 +262,7 @@ class MockQueryBuilder {
   }
 
   async update(payload: any) {
-    const list = getLocalData('ez_' + this.tableName, []);
+    const list = getLocalData(getStorageKey(this.tableName), []);
 
     const matchedItems: any[] = [];
     for (const item of list) {
@@ -271,7 +280,7 @@ class MockQueryBuilder {
       }
     }
 
-    setLocalData('ez_' + this.tableName, list);
+    setLocalData(getStorageKey(this.tableName), list);
 
     // Side effect: if updating payment to paid = true, record paid_date
     if (this.tableName === 'payment_records' && payload.paid === true) {

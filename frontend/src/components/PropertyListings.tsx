@@ -1140,12 +1140,15 @@ export default function PropertyListings() {
                   const myEntry = authUserId
                     ? unitInterests.find(i => String(i.user_id) === String(authUserId))
                     : undefined;
-                  const hasMyInterest = !!myEntry;
+                  
+                  // Filter out confirmed interest if no lease exists and unit is available (stale data)
+                  const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
+                  const hasMyInterest = !!myEntry && !(myEntry.status === 'confirmed' && !isLeasedByMe && selected.status === 'available');
+                  
                   const isWholeUnit = selected.room_type === 'Whole Unit';
 
                   // Non–Whole Unit: single rent (大房/中房/小房/Studio)
                   if (!isWholeUnit) {
-                    const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
                     return (
                       <div style={{ width: '100%' }}>
                         <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{lang === 'zh' ? '单租模式' : 'Single Rent'}</h3>
@@ -1214,7 +1217,6 @@ export default function PropertyListings() {
                   }
 
                   // Whole Unit: full co-renting flow
-                  const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
                   return (
                     <>
                       <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
