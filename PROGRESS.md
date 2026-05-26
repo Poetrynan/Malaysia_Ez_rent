@@ -78,7 +78,8 @@ Malaysia_Ez_rent/
         ├── 009_unit_video_url.sql       # units.video_url + Storage 看房视频
         ├── 013_landlord_payment_details.sql # 房东收款信息（后续月租）
         ├── 014_tenant_interests_user_update.sql # 学生 UPDATE 自己的 tenant_interests
-        └── 015_tenant_interest_rpc.sql  # submit/cancel_tenant_interest RPC
+        ├── 015_tenant_interest_rpc.sql  # submit/cancel_tenant_interest RPC
+        └── 016_maintenance_requests.sql # 维修工单系统 (替换旧意见箱表)
 
 ---
 
@@ -329,6 +330,7 @@ Storage Bucket：
 | `013_landlord_payment_details.sql` | `units.landlord_qr_code` / `landlord_bank_info`；后续月租付房东 |
 | `014_tenant_interests_user_update.sql` | RLS：学生可 **UPDATE** 自己的 `tenant_interests`（取消/重新提交） |
 | `015_tenant_interest_rpc.sql` | RPC **`submit_tenant_interest`** / **`cancel_tenant_interest`**（SECURITY DEFINER upsert） |
+| `016_maintenance_requests.sql` | **维修工单系统**：`maintenance_requests` 表（category 校验、RLS 权限控制、图片存储、认领状态） |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -362,6 +364,7 @@ supabase/migrations/
 └── 013_landlord_payment_details.sql # 房东收款（后续月租）
 └── 014_tenant_interests_user_update.sql # 合租意向 UPDATE RLS
 └── 015_tenant_interest_rpc.sql  # 合租 submit/cancel RPC
+└── 016_maintenance_requests.sql # 维修工单系统 (替换旧意见箱表)
 ```
 
 迁移原则：

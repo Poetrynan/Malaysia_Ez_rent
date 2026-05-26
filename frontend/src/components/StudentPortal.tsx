@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
@@ -30,9 +30,21 @@ export default function StudentPortal() {
   const [tick, setTick] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackCategory, setFeedbackCategory] = useState('Aircon');
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-  const [myFeedbacks, setMyFeedbacks] = useState<{ id: string; content: string; status: string; admin_reply: string | null; created_at: string }[]>([]);
+  const [myFeedbacks, setMyFeedbacks] = useState<{
+    id: string;
+    content: string;
+    status: string;
+    admin_reply: string | null;
+    created_at: string;
+    category?: string;
+    photo_url?: string | null;
+    rating?: number | null;
+    assigned_to?: string | null;
+  }[]>([]);
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
@@ -40,6 +52,28 @@ export default function StudentPortal() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const profileComplete = profileName.trim().length > 0;
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      try {
+        const { compressDataUrl } = await import('@/utils/compressImage');
+        const compressedBlob = await compressDataUrl(dataUrl, { maxWidth: 1080, maxHeight: 1080, quality: 0.8 });
+        const compressedReader = new FileReader();
+        compressedReader.onloadend = () => {
+          setPhotoBase64(compressedReader.result as string);
+        };
+        compressedReader.readAsDataURL(compressedBlob);
+      } catch (err) {
+        console.error('Image compression failed:', err);
+        setPhotoBase64(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const loadProfile = async () => {
     let name = '';
@@ -153,7 +187,7 @@ export default function StudentPortal() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('feedback').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+        const { data } = await supabase.from('maintenance_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
         if (data) setMyFeedbacks(data);
       } catch (e) { console.error('Load feedback error:', e); }
     }
@@ -163,10 +197,46 @@ export default function StudentPortal() {
     if (!feedbackText.trim()) return;
     if (!profileComplete) { setShowProfile(true); return; }
     setFeedbackSubmitting(true);
+
+    let photoUrl = null;
+    if (photoBase64 && !isMockDatabase) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const res = await fetch(photoBase64);
+        const blob = await res.blob();
+        const path = `evidence/maintenance_${Date.now()}.jpg`;
+        const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, {
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
+        if (!uploadErr) {
+          const { data } = supabase.storage.from('unit-media').getPublicUrl(path);
+          photoUrl = data?.publicUrl || null;
+        } else {
+          console.error('Photo upload error:', uploadErr);
+        }
+      } catch (e) {
+        console.error('Upload photo failed:', e);
+      }
+    }
+
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
-      all.unshift({ id: `fb-${Date.now()}`, user_id: tenantId, content: feedbackText.trim(), status: 'pending', admin_reply: null, created_at: new Date().toISOString() });
+      all.unshift({
+        id: `fb-${Date.now()}`,
+        user_id: tenantId,
+        lease_id: lease?.id || null,
+        category: feedbackCategory,
+        content: feedbackText.trim(),
+        photo_url: photoBase64,
+        status: 'pending',
+        admin_reply: null,
+        assigned_to: null,
+        rating: null,
+        created_at: new Date().toISOString()
+      });
       localStorage.setItem('ez_feedback', JSON.stringify(all));
     } else {
       try {
@@ -174,16 +244,50 @@ export default function StudentPortal() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { error } = await supabase.from('feedback').insert({ user_id: user.id, content: feedbackText.trim() });
+        const { error } = await supabase.from('maintenance_requests').insert({
+          user_id: user.id,
+          lease_id: lease?.id || null,
+          category: feedbackCategory,
+          content: feedbackText.trim(),
+          photo_url: photoUrl,
+          status: 'pending'
+        });
         if (error) { console.error('Submit feedback error:', error); setFeedbackSubmitting(false); return; }
       } catch (e) { console.error('Submit feedback error:', e); setFeedbackSubmitting(false); return; }
     }
     setFeedbackText('');
+    setPhotoBase64(null);
     setFeedbackSubmitting(false);
     setFeedbackSuccess(true);
     setTimeout(() => setFeedbackSuccess(false), 3000);
     loadMyFeedbacks();
   };
+
+  const submitRating = async (id: string, stars: number) => {
+    if (isMockDatabase) {
+      const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
+      const idx = all.findIndex((f: any) => f.id === id);
+      if (idx !== -1) {
+        all[idx].rating = stars;
+        localStorage.setItem('ez_feedback', JSON.stringify(all));
+        loadMyFeedbacks();
+      }
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { error } = await supabase.from('maintenance_requests').update({ rating: stars }).eq('id', id);
+        if (!error) {
+          loadMyFeedbacks();
+        } else {
+          console.error('Rating update error:', error);
+        }
+      } catch (e) {
+        console.error('Submit rating error:', e);
+      }
+    }
+  };
+
 
   useEffect(() => { load(); loadProfile(); }, [tick]);
 
@@ -370,7 +474,7 @@ export default function StudentPortal() {
         <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
       </div>
 
-      {/* Feedback */}
+      {/* Maintenance Request Panel */}
       <div className="glass-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
@@ -390,14 +494,107 @@ export default function StudentPortal() {
               <span style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>{t('profileRequired')}</span>
             </div>
           )}
+
+          {/* Category selection */}
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>{t('feedbackCategory')}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {['Aircon', 'Plumbing', 'Electrical', 'Furniture', 'Appliance', 'Others'].map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setFeedbackCategory(cat)}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  border: '1px solid ' + (feedbackCategory === cat ? 'var(--primary)' : 'var(--glass-border)'),
+                  background: feedbackCategory === cat ? 'var(--primary-light)' : 'none',
+                  color: feedbackCategory === cat ? 'var(--primary)' : 'var(--text-body)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {lang === 'zh' ? {
+                  Aircon: '空调冷气',
+                  Plumbing: '水管漏水',
+                  Electrical: '电路照明',
+                  Furniture: '家具五金',
+                  Appliance: '家用电器',
+                  Others: '其他问题'
+                }[cat] : cat}
+              </button>
+            ))}
+          </div>
+
           <textarea
             className="form-textarea"
             rows={3}
             value={feedbackText}
             onChange={e => setFeedbackText(e.target.value)}
             placeholder={t('feedbackPlaceholder')}
-            style={{ resize: 'vertical', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+            style={{ resize: 'vertical', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
           />
+
+          {/* Photo upload field */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--glass-border)',
+              background: 'var(--bg-surface)',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--text-body)',
+              transition: 'all 0.2s'
+            }}>
+              <Camera size={14} style={{ color: 'var(--primary)' }} />
+              <span>{t('feedbackPhoto')}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {photoBase64 && (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photoBase64}
+                  alt="Preview"
+                  style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoBase64(null)}
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 14,
+                    height: 14,
+                    fontSize: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             {feedbackSuccess && (
               <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('feedbackSuccess')}</span>
@@ -416,22 +613,86 @@ export default function StudentPortal() {
             {myFeedbacks.length === 0 ? (
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>{t('feedbackNoItems')}</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 240, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
                 {myFeedbacks.map(f => (
-                  <div key={f.id} style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: f.status === 'resolved' ? 'var(--success-light)' : 'var(--warning-light)', color: f.status === 'resolved' ? 'var(--success)' : 'var(--warning)', fontWeight: 700 }}>
-                        {f.status === 'resolved' ? t('feedbackResolved') : t('feedbackPending')}
+                  <div key={f.id} style={{ padding: '12px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
+                          {lang === 'zh' ? {
+                            Aircon: '空调冷气',
+                            Plumbing: '水管漏水',
+                            Electrical: '电路照明',
+                            Furniture: '家具五金',
+                            Appliance: '家用电器',
+                            Others: '其他问题'
+                          }[f.category || 'Others'] : f.category}
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: '0.65rem',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        background: f.status === 'resolved' ? 'var(--success-light)' : f.status === 'in_progress' ? 'var(--info-light)' : 'var(--warning-light)',
+                        color: f.status === 'resolved' ? 'var(--success)' : f.status === 'in_progress' ? 'var(--info)' : 'var(--warning)',
+                        fontWeight: 700
+                      }}>
+                        {f.status === 'resolved' ? t('feedbackResolved') : f.status === 'in_progress' ? t('feedbackStatusInProgress') : t('feedbackPending')}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: 0, whiteSpace: 'pre-wrap' }}>{f.content}</p>
+
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: '4px 0 6px', whiteSpace: 'pre-wrap' }}>{f.content}</p>
+
+                    {f.photo_url && (
+                      <div style={{ marginBottom: 8 }}>
+                        <a href={f.photo_url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={f.photo_url}
+                            alt="Evidence"
+                            style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: 6, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer' }}
+                          />
+                        </a>
+                      </div>
+                    )}
+
                     {f.admin_reply && (
                       <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>{t('feedbackReply')}：</span>
                         <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{f.admin_reply}</p>
+                      </div>
+                    )}
+
+                    {/* Service rating if resolved */}
+                    {f.status === 'resolved' && (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('feedbackRating')}:</span>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          {[1, 2, 3, 4, 5].map(star => {
+                            const isClickable = !f.rating;
+                            return (
+                              <button
+                                key={star}
+                                disabled={!isClickable}
+                                onClick={() => submitRating(f.id, star)}
+                                style={{ background: 'none', border: 'none', padding: 2, cursor: isClickable ? 'pointer' : 'default', transition: 'transform 0.1s' }}
+                              >
+                                <Star
+                                  size={14}
+                                  fill={star <= (f.rating || 0) ? 'var(--accent)' : 'none'}
+                                  stroke={star <= (f.rating || 0) ? 'var(--accent)' : 'var(--text-muted)'}
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {f.rating && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--success)', fontWeight: 600 }}>
+                            {t('feedbackRatingSuccess')}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -441,6 +702,7 @@ export default function StudentPortal() {
           </div>
         )}
       </div>
+
     </div>
   );
 }
