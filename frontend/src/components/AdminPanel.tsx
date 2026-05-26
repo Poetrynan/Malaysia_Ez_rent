@@ -6,6 +6,7 @@ import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
+import { isMockDatabase } from '@/lib/supabase';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
@@ -113,6 +114,14 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const [previewOpen, setPreviewOpen] = useState<string | null>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
+
+  // Mobile upload session for property media
+  const [mobileUploadSessionId, setMobileUploadSessionId] = useState<string | null>(null);
+  const [showMobileUploadModal, setShowMobileUploadModal] = useState(false);
+  const [mobileUploadUrl, setMobileUploadUrl] = useState('');
+  const [mobileUploadedCount, setMobileUploadedCount] = useState(0);
+  const [mobileUploadedUrls, setMobileUploadedUrls] = useState<string[]>([]);
+  const pollIntervalRef = useRef<any>(null);
 
   // ── Leases state ──
   const [leases, setLeases] = useState<LeaseWithMeta[]>([]);
@@ -312,11 +321,23 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   const canCopyUnit = (u: Unit) =>
     adminRole === 'super_admin' || (!!currentUserId && u.agent_id === currentUserId);
 
-  const visibleLeases = adminRole === 'super_admin'
-    ? leases
-    : leases.filter(l => l.unitData?.agent_id === currentUserId || !l.unitData?.agent_id);
+  const visibleLeases = useMemo(() => {
+    const raw = adminRole === 'super_admin'
+      ? leases
+      : leases.filter(l => l.unitData?.agent_id === currentUserId || !l.unitData?.agent_id);
+    
+    // Sort leases: active first, then terminated, then transferred, then completed
+    const statusOrder: Record<string, number> = { active: 0, terminated: 1, transferred: 2, completed: 3 };
+    return [...raw].sort((a, b) => {
+      const aVal = statusOrder[a.status] ?? 0;
+      const bVal = statusOrder[b.status] ?? 0;
+      return aVal - bVal;
+    });
+  }, [leases, adminRole, currentUserId]);
 
   const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
+
+  const terminatedLeases = useMemo(() => visibleLeases.filter(l => l.status === 'terminated'), [visibleLeases]);
 
   // ── Feedback state ──
   interface FeedbackItem {
@@ -482,7 +503,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         return !unit || unit.agent_id === currentUserId || !unit.agent_id;
       });
 
-  const leasesPendingCount = pendingCount + visibleInterests.filter(i => i.status === 'interested').length;
+  const leasesPendingCount = pendingCount + visibleInterests.filter(i => i.status === 'interested').length + terminatedLeases.length;
 
   useEffect(() => {
     if (onPendingCountsChange) {
@@ -1253,6 +1274,98 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     }
   };
 
+  const startMobileUploadSession = async () => {
+    const sessId = `prop-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    setMobileUploadSessionId(sessId);
+    setMobileUploadedCount(0);
+    setMobileUploadedUrls([]);
+    setShowMobileUploadModal(true);
+
+    const uploadUrl = `${window.location.origin}/mobile-upload-property/${sessId}`;
+    setMobileUploadUrl(uploadUrl);
+
+    // Initialize session state
+    if (isMockDatabase) {
+      localStorage.setItem(`ez_mobile_upload_session_${sessId}`, JSON.stringify([]));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabaseClient = createClient();
+        await supabaseClient.from('mobile_upload_sessions').insert({ id: sessId, media_urls: [] });
+      } catch (err) {
+        console.error('Supabase session init error:', err);
+      }
+    }
+
+    // Polling interval
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(async () => {
+      if (isMockDatabase) {
+        const stored = localStorage.getItem(`ez_mobile_upload_session_${sessId}`);
+        if (stored) {
+          try {
+            const urls = JSON.parse(stored);
+            if (Array.isArray(urls)) {
+              handleNewMobileUrls(urls);
+            }
+          } catch (e) {}
+        }
+      } else {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabaseClient = createClient();
+          const { data } = await supabaseClient
+            .from('mobile_upload_sessions')
+            .select('media_urls')
+            .eq('id', sessId)
+            .maybeSingle();
+          if (data && Array.isArray(data.media_urls)) {
+            handleNewMobileUrls(data.media_urls);
+          }
+        } catch (err) {}
+      }
+    }, 1500);
+  };
+
+  const handleNewMobileUrls = (urls: string[]) => {
+    setMobileUploadedUrls(urls);
+    if (urls.length > mobileUploadedCount) {
+      // Find what's new and append to mediaImages
+      setMediaImages(prev => {
+        const updated = [...prev];
+        urls.forEach(u => {
+          if (!updated.includes(u) && updated.length < 9) {
+            updated.push(u);
+          }
+        });
+        return updated;
+      });
+      setMobileUploadedCount(urls.length);
+      showToast(
+        lang === 'zh' 
+          ? `📱 收到手机上传的图片 (${urls.length}张)` 
+          : `📱 Received image from mobile (${urls.length})`, 
+        'success'
+      );
+    }
+  };
+
+  const closeMobileUploadSession = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setShowMobileUploadModal(false);
+    setMobileUploadSessionId(null);
+  };
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
   const handleVideoFile = async (file: File | null) => {
     if (!file) return;
     const maxBytes = 150 * 1024 * 1024;
@@ -1418,6 +1531,26 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     }
     loadAll();
     showToast(t('validationDeleted'), 'success');
+  };
+
+  const handleArchiveTerminatedLease = async (leaseId: string) => {
+    if (isLive) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { error } = await supabase.from('leases').update({ status: 'completed' }).eq('id', leaseId);
+        if (error) { showToast(error.message, 'error'); return; }
+      } catch (e: any) { showToast(e.message, 'error'); return; }
+    } else {
+      const allLeases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const idx = allLeases.findIndex(l => l.id === leaseId);
+      if (idx !== -1) {
+        allLeases[idx].status = 'completed';
+        localStorage.setItem('ez_leases', JSON.stringify(allLeases));
+      }
+    }
+    loadAll();
+    showToast(lang === 'zh' ? '已成功结算并归档租约' : 'Lease settled and archived successfully', 'success');
   };
 
   const executeTenantSubstitution = async () => {
@@ -1994,6 +2127,10 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   onClick={() => imgInputRef.current?.click()} disabled={mediaImages.length >= 9}>
                   <ImagePlus size={14} /> {t('uploadImages')} ({mediaImages.length}/9)
                 </button>
+                <button type="button" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: '0.8rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                  onClick={startMobileUploadSession} disabled={mediaImages.length >= 9}>
+                  <QrCode size={14} /> {lang === 'zh' ? '扫码手机上传' : 'Scan to Upload'}
+                </button>
                 <input ref={vidInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={e => handleVideoFile(e.target.files?.[0] || null)} />
                 <button type="button" className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem' }}
                   onClick={() => vidInputRef.current?.click()} disabled={videoCompressing}>
@@ -2177,9 +2314,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             </button>
             <button style={tabStyle(leasesView === 'review')} onClick={() => setLeasesView('review')}>
               {t('reviewPending')}
-              {pendingCount > 0 && (
+              {(pendingCount + terminatedLeases.length) > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.2' }}>
-                  {pendingCount}
+                  {pendingCount + terminatedLeases.length}
                 </span>
               )}
             </button>
@@ -2207,35 +2344,30 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   className="form-select" 
                   value={leaseForm.tenant_id} 
                   onChange={e => setLeaseForm(f => ({ ...f, tenant_id: e.target.value }))}
+                  disabled={!leaseForm.unit_id}
                 >
-                  <option value="">{t('selectTenant')}</option>
-                  
-                  {/* Group 1: Confirmed tenants for this unit */}
-                  {(() => {
-                    const confirmedInterests = interests.filter(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed');
-                    if (confirmedInterests.length === 0) return null;
-                    return (
-                      <optgroup label={lang === 'zh' ? '📄 意向已确认的合租/整租人' : '📄 Confirmed Interested Tenants'}>
-                        {confirmedInterests.map(i => (
+                  {!leaseForm.unit_id ? (
+                    <option value="">{lang === 'zh' ? '-- 请先选择房源 --' : '-- Please select a unit first --'}</option>
+                  ) : (
+                    <>
+                      <option value="">{t('selectTenant')}</option>
+                      {(() => {
+                        const confirmedInterests = interests.filter(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed');
+                        if (confirmedInterests.length === 0) {
+                          return (
+                            <option value="" disabled style={{ color: 'var(--danger)' }}>
+                              {lang === 'zh' ? '⚠️ 该房源暂无已确认意向的租客' : '⚠️ No confirmed interested tenants'}
+                            </option>
+                          );
+                        }
+                        return confirmedInterests.map(i => (
                           <option key={i.user_id} value={i.user_id}>
                             {i.full_name || i.email || i.user_id.slice(0, 8)} ({i.email || i.phone || 'No Contact'})
                           </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })()}
-                  
-                  {/* Group 2: All registered users in the database */}
-                  <optgroup label={lang === 'zh' ? '👥 所有注册的房客名单' : '👥 All Registered Tenants'}>
-                    {allUsers
-                      .filter(u => !adminIds.includes(u.id) && !interests.some(i => i.unit_id === leaseForm.unit_id && i.status === 'confirmed' && i.user_id === u.id))
-                      .map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name || (lang === 'zh' ? '未设置姓名' : 'Unnamed Tenant')} ({u.phone || 'No Phone'})
-                        </option>
-                      ))
-                    }
-                  </optgroup>
+                        ));
+                      })()}
+                    </>
+                  )}
                 </select>
               </div>
               <div className="form-group"><label>{t('monthlyRent')} (RM)</label><input type="number" min={0} className="form-input" value={leaseForm.monthly_rent} onChange={e => setLeaseForm(f => ({ ...f, monthly_rent: nonNegativeInputValue(e.target.value) }))} /></div>
@@ -2256,13 +2388,83 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 <span style={{ background: 'var(--warning)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{pendingCount}</span>
               )}
             </h3>
-            {pendingCount === 0 ? (
+            {pendingCount === 0 && terminatedLeases.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
                 <CheckCircle2 size={36} style={{ color: 'var(--success)', marginBottom: 12, opacity: 0.8 }} />
                 <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('noReviewPending')}</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
+              <div>
+                {/* Terminated Leases Awaiting Settlement */}
+                {terminatedLeases.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <h4 style={{ fontSize: '0.82rem', color: 'var(--danger)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <AlertTriangle size={14} />
+                      {lang === 'zh' ? '待结算归档的已终止租约 (租客退租)' : 'Terminated Leases Awaiting Settlement'} ({terminatedLeases.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {terminatedLeases.map(l => {
+                        const { unit, community } = resolveLeaseUnit(l, units, communities);
+                        const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                        const notesLines = (l.admin_notes || '').split('\n');
+                        const termLine = notesLines.find((ln: string) => ln.includes('Terminated by tenant'));
+                        return (
+                          <div key={l.id} style={{
+                            padding: '12px 16px',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'rgba(239, 68, 68, 0.04)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 16
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <strong style={{ fontSize: '0.88rem', color: 'var(--text-h)' }}>{l.tenantName}</strong>
+                                <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
+                                  {lang === 'zh' ? '已终止' : 'Terminated'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>
+                                {propertyLabel}
+                              </div>
+                              {termLine && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontWeight: 500 }}>
+                                  {termLine}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleArchiveTerminatedLease(l.id)}
+                              className="btn btn-primary"
+                              style={{
+                                background: 'var(--danger)',
+                                borderColor: 'var(--danger)',
+                                padding: '6px 12px',
+                                fontSize: '0.78rem',
+                                color: 'white',
+                                fontWeight: 600
+                              }}
+                            >
+                              {lang === 'zh' ? '确认已结算并归档' : 'Settle & Archive'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {pendingCount > 0 && <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '20px 0' }} />}
+                  </div>
+                )}
+
+                {/* Pending Payments Review */}
+                {pendingCount > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: '0.82rem', color: 'var(--warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <Clock size={14} />
+                      {lang === 'zh' ? '待审核房租账单凭证' : 'Pending Payment Voucher Reviews'} ({pendingCount})
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
                 {visibleLeases.flatMap(l =>
                   (l.payments || [])
                     .filter(p => p.status === 'pending_review' && p.evidence_url)
@@ -2311,6 +2513,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                         </div>
                       );
                     })
+                )}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -2373,9 +2578,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           )}
 
           {/* Leases Table */}
-          <div className="glass-card" style={{ display: (leasesView === 'overview' || leasesView === 'ledger') ? 'block' : 'none' }}>
+          <div className="glass-card" style={{ display: leasesView === 'ledger' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>
-              {leasesView === 'overview' ? (lang === 'zh' ? '有效租约列表' : 'Active Leases List') : t('leaseSubtabLedger')}
+              {t('leaseSubtabLedger')}
             </h3>
             {visibleLeases.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>{t('noLeases')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
@@ -2384,16 +2589,48 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
               const { unit, community } = resolveLeaseUnit(l, units, communities);
               const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
               return (
-                <div key={l.id} style={{ border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', marginBottom: 12, overflow: 'hidden' }}>
+                <div key={l.id} style={{ 
+                  border: l.status === 'terminated' 
+                    ? '1px solid rgba(239, 68, 68, 0.3)' 
+                    : l.status === 'completed'
+                      ? '1px solid rgba(16, 185, 129, 0.2)'
+                      : '1px solid var(--glass-border)', 
+                  borderRadius: 'var(--radius-md)', 
+                  marginBottom: 12, 
+                  overflow: 'hidden',
+                  opacity: l.status === 'completed' ? 0.75 : 1,
+                  background: l.status === 'terminated'
+                    ? 'rgba(239, 68, 68, 0.02)'
+                    : l.status === 'completed'
+                      ? 'rgba(16, 185, 129, 0.01)'
+                      : 'transparent'
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)' }} onClick={() => setExpandedLease(isExpanded ? null : l.id)}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>{l.tenantName}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>{l.tenantName}</div>
+                        {l.status === 'terminated' && (
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '已终止' : 'Terminated'}
+                          </span>
+                        )}
+                        {l.status === 'completed' && (
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(16,185,129,0.12)', color: 'var(--success)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '已归档' : 'Archived'}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>
                         {propertyLabel}
                       </div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                         RM {l.monthly_rent}/mo · {l.start_date} → {l.end_date}
                       </div>
+                      {l.status === 'terminated' && l.admin_notes && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontStyle: 'italic' }}>
+                          {(l.admin_notes.split('\n').find((ln: string) => ln.includes('Terminated by tenant')) || l.admin_notes)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {t('colDeposit')}: <strong style={{ color: 'var(--text-h)' }}>RM {l.deposit_amount?.toLocaleString()}</strong>
@@ -3087,6 +3324,75 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         </div>
       )}
 
+      {/* ── Mobile QR Property Upload Modal ── */}
+      {showMobileUploadModal && (
+        <div className="modal-overlay" onClick={closeMobileUploadSession} style={{ zIndex: 300 }}>
+          <div className="modal-content" style={{ width: 440, maxWidth: '95vw', textAlign: 'center', position: 'relative', padding: '24px 20px' }} onClick={e => e.stopPropagation()}>
+            <button onClick={closeMobileUploadSession}
+              style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+              <X size={18} />
+            </button>
+
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 12, color: 'var(--text-h)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <QrCode size={20} style={{ color: 'var(--primary)' }} />
+              {lang === 'zh' ? '手机扫码上传房源照片' : 'Mobile Scan Upload Photos'}
+            </h3>
+            
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+              {lang === 'zh'
+                ? '支持多张照片连续上传。使用手机微信或浏览器扫码，从相册选择照片直接提交，电脑端会自动实时接收。'
+                : 'Supports continuous uploading of multiple photos. Scan using WeChat/camera to upload directly.'}
+            </p>
+
+            <div style={{ background: 'white', padding: 12, borderRadius: 16, display: 'inline-block', margin: '0 auto 16px', border: '1px solid var(--glass-border)' }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mobileUploadUrl)}`} 
+                alt="Upload QR Code" 
+                style={{ width: 180, height: 180, display: 'block' }} 
+              />
+            </div>
+
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', animation: 'pulse 1.5s infinite' }} />
+              {lang === 'zh' ? '正在等待手机上传照片…' : 'Waiting for mobile uploads…'}
+            </div>
+
+            {/* Thumbnail previews of uploaded files in current session */}
+            {mobileUploadedUrls.length > 0 ? (
+              <div style={{ background: 'var(--primary-light)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '12px 14px', textAlign: 'left' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{lang === 'zh' ? '📱 手机端已成功上传' : '📱 Uploaded from mobile'}</span>
+                  <span>{mobileUploadedUrls.length} / 9</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                  {mobileUploadedUrls.map((url, i) => (
+                    <div key={i} style={{ width: 56, height: 42, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--glass-border)', flexShrink: 0 }}>
+                      <img src={url} alt={`uploaded-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '16px 12px', border: '1px dashed var(--glass-border)', borderRadius: 12, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                {lang === 'zh' ? '手机端暂未上传图片' : 'No photos uploaded yet'}
+              </div>
+            )}
+
+            <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: 20, fontSize: '0.85rem' }} onClick={closeMobileUploadSession}>
+              {lang === 'zh' ? '完成并关闭' : 'Done & Close'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.5; }
+          50% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.5; }
+        }
+      `}</style>
+
       {/* Lightbox */}
       {previewOpen && (
         <div className="modal-overlay" onClick={() => setPreviewOpen(null)} style={{ zIndex: 400 }}>
@@ -3136,33 +3442,21 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 onChange={e => setIncomingTenantId(e.target.value)}
               >
                 <option value="">{t('selectTenant')}</option>
-                
-                {/* Group 1: Confirmed interested co-tenants for this unit */}
                 {(() => {
                   const confirmedInterests = interests.filter(i => i.unit_id === substituteLease.unit_id && i.status === 'confirmed' && i.user_id !== substituteLease.tenant_id);
-                  if (confirmedInterests.length === 0) return null;
-                  return (
-                    <optgroup label={lang === 'zh' ? '📄 意向已确认的替换房客候选人' : '📄 Confirmed Candidate Roommates'}>
-                      {confirmedInterests.map(i => (
-                        <option key={i.user_id} value={i.user_id}>
-                          {i.full_name || i.email || i.user_id.slice(0, 8)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })()}
-                
-                {/* Group 2: All registered users in the database */}
-                <optgroup label={lang === 'zh' ? '👥 所有其他注册房客' : '👥 All Registered Tenants'}>
-                  {allUsers
-                    .filter(u => u.id !== substituteLease.tenant_id && !adminIds.includes(u.id) && !interests.some(i => i.unit_id === substituteLease.unit_id && i.status === 'confirmed' && i.user_id === u.id))
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.full_name || (lang === 'zh' ? '未设置姓名' : 'Unnamed Tenant')}
+                  if (confirmedInterests.length === 0) {
+                    return (
+                      <option value="" disabled style={{ color: 'var(--danger)' }}>
+                        {lang === 'zh' ? '⚠️ 该房源暂无已确认意向的替换房客候选人' : '⚠️ No confirmed candidate roommates'}
                       </option>
-                    ))
+                    );
                   }
-                </optgroup>
+                  return confirmedInterests.map(i => (
+                    <option key={i.user_id} value={i.user_id}>
+                      {i.full_name || i.email || i.user_id.slice(0, 8)} ({i.email || i.phone || 'No Contact'})
+                    </option>
+                  ));
+                })()}
               </select>
             </div>
 

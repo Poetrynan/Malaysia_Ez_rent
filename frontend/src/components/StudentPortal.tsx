@@ -68,28 +68,44 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         leases[idx].status = 'terminated';
         leases[idx].admin_notes = ((leases[idx].admin_notes || '') + '\n' + `[${new Date().toISOString().split('T')[0]}] Terminated by tenant.`).trim();
         localStorage.setItem('ez_leases', JSON.stringify(leases));
+        
+        // Also mark the unit as available again in mock mode
+        const units: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+        const uIdx = units.findIndex(u => u.id === lease.unit_id);
+        if (uIdx !== -1) {
+          units[uIdx].status = 'available';
+          localStorage.setItem('ez_units', JSON.stringify(units));
+        }
       }
       setTimeout(() => {
+        setLease(null);
+        setPayments([]);
+        setUnit(null);
+        setCommunity(null);
+        setRoommates([]);
         setTerminateSubmitting(false);
         setShowTerminateConfirm(false);
-        load();
-      }, 500);
+      }, 300);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         
         // Use the secure RPC backend function instead of a direct UPDATE.
-        // Direct updates fail because tenants only have SELECT privileges via RLS.
         const { error } = await supabase.rpc('tenant_terminate_lease', {
           p_lease_id: lease.id
         });
         
         if (error) throw error;
         
+        // Instant state clearing for optimistic UI update
+        setLease(null);
+        setPayments([]);
+        setUnit(null);
+        setCommunity(null);
+        setRoommates([]);
         setTerminateSubmitting(false);
         setShowTerminateConfirm(false);
-        load();
       } catch (e) {
         console.error('Terminate lease error:', e);
         setTerminateSubmitting(false);
@@ -212,7 +228,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
 
         const { data: leaseData } = await supabase
           .from('leases').select('*')
-          .eq('tenant_id', user.id).eq('status', 'active').limit(1).single();
+          .eq('tenant_id', user.id).eq('status', 'active').maybeSingle();
 
         if (leaseData) {
           setLease(leaseData);
@@ -260,8 +276,22 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           } else {
             setRoommates([]);
           }
+        } else {
+          // Explicitly clear state if no active lease exists
+          setLease(null);
+          setPayments([]);
+          setUnit(null);
+          setCommunity(null);
+          setRoommates([]);
         }
-      } catch (e) { console.error('StudentPortal load error:', e); }
+      } catch (e) {
+        console.error('StudentPortal load error:', e);
+        setLease(null);
+        setPayments([]);
+        setUnit(null);
+        setCommunity(null);
+        setRoommates([]);
+      }
     }
     await loadMyFeedbacks();
     setLoading(false);
@@ -949,19 +979,25 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
 
       {/* Terminate Lease Modal */}
       {showTerminateConfirm && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20
-        }}>
-          <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
-            borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
-            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-            position: 'relative'
-          }}>
+        <div 
+          onClick={() => setShowTerminateConfirm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+              borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              position: 'relative'
+            }}
+          >
             <button 
               onClick={() => setShowTerminateConfirm(false)}
               style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
