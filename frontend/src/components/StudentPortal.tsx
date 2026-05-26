@@ -12,6 +12,7 @@ interface Lease {
   monthly_rent: number; deposit_amount: number;
   security_deposit_months?: number; utility_deposit_months?: number;
   status: string;
+  admin_notes?: string;
 }
 interface Payment {
   id: string; lease_id: string; billing_month: string;
