@@ -943,12 +943,20 @@ export default function PropertyListings() {
                           }}>{t('coRentJoin')}</button>
                         )}
                         {hasMyInterest && (
-                          <button onClick={() => cancelInterest(selected.id)} disabled={submittingInterest} style={{
+                          <button onClick={() => {
+                            if (myEntry?.status === 'confirmed') {
+                              alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                            } else {
+                              if (window.confirm(lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.')) {
+                                cancelInterest(selected.id);
+                              }
+                            }
+                          }} disabled={submittingInterest} style={{
                             padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
                             background: 'transparent', color: 'var(--danger)',
                             fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                           }}>
-                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '已租：联系中介取消' : 'Rented: Contact Agent to Cancel') : t('coRentCancel')}
+                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
                           </button>
                         )}
                         {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
@@ -1050,9 +1058,11 @@ export default function PropertyListings() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (i.status === 'confirmed') {
-                                        alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”办理终止手续或联系中介。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to "My Lease" or contact the agent.');
+                                        alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
                                       } else {
-                                        cancelInterest(selected.id);
+                                        if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
+                                          cancelInterest(selected.id);
+                                        }
                                       }
                                     }}
                                     disabled={submittingInterest}

@@ -421,7 +421,36 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       {mode === 'lease' && (
         <>
           {/* Hero lease card */}
-          <div className="glass-card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--bg-surface) 100%)' }}>
+          <div className="glass-card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--bg-surface) 100%)', position: 'relative' }}>
+            
+            {/* Terminate Lease action (Moved to top right of the hero card) */}
+            <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+              <button
+                onClick={() => setShowTerminateConfirm(true)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: 'var(--danger)',
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  backdropFilter: 'blur(4px)',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
+                title={lang === 'zh' ? '提前终止您的租房合同' : 'Early terminate your lease contract'}
+              >
+                <AlertCircle size={14} />
+                {lang === 'zh' ? '终止合约' : 'Terminate'}
+              </button>
+            </div>
+
             <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* SVG Ring */}
               <div className="countdown-svg-container" style={{ width: 160, height: 160 }}>
@@ -522,32 +551,6 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
               <span style={{ color: 'var(--primary)' }}>RM {(lease.monthly_rent * ((lease.security_deposit_months ?? 2) + (lease.utility_deposit_months ?? 0.5))).toLocaleString()}</span>
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
-          </div>
-
-          {/* Terminate Lease action */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 16 }}>
-            <button
-              onClick={() => setShowTerminateConfirm(true)}
-              style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                color: 'var(--danger)',
-                padding: '12px 24px',
-                borderRadius: 8,
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
-            >
-              <AlertCircle size={16} />
-              {lang === 'zh' ? '终止租房合同' : 'Terminate Lease'}
-            </button>
           </div>
         </>
       )}
