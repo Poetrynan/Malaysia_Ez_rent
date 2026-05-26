@@ -185,18 +185,18 @@ export default function LeaseLedgerCard({
         {t('ledgerTitle')}
       </div>
 
-      {/* Progress Flow (Issue Fix) */}
+      {/* Progress Flow */}
       <div style={{ marginBottom: 24, padding: '16px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-          {/* Connector Line */}
-          <div style={{ position: 'absolute', top: 12, left: 24, right: 24, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+          {/* Base Grey Line */}
+          <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
           
           {/* Animated Progress Line with Extension Effect */}
           <div style={{ 
             position: 'absolute', 
-            top: 12, 
-            left: 24, 
-            width: 'calc(100% - 48px)', 
+            top: 10, 
+            left: 20, 
+            width: 'calc(100% - 40px)', 
             height: 2, 
             background: 'var(--primary)', 
             zIndex: 0, 
@@ -208,8 +208,8 @@ export default function LeaseLedgerCard({
           {/* Animated glow at the end of the line */}
           <div style={{ 
             position: 'absolute', 
-            top: 10, 
-            right: 24,
+            top: 8, 
+            right: 20,
             width: 6, 
             height: 6, 
             borderRadius: '50%',
@@ -231,17 +231,17 @@ export default function LeaseLedgerCard({
               transform: step.active ? 'scale(1.05)' : 'scale(1)'
             }}>
               <div style={{ 
-                width: 24, height: 24, borderRadius: '50%', 
+                width: 20, height: 20, borderRadius: '50%', 
                 background: step.active ? 'var(--primary)' : 'var(--bg-card)',
                 border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.5s ease',
                 boxShadow: step.active ? '0 0 10px rgba(var(--primary-rgb), 0.4)' : 'none'
               }}>
-                <CheckCircle2 size={14} color={step.active ? 'white' : 'var(--text-muted)'} />
+                <CheckCircle2 size={12} color={step.active ? 'white' : 'var(--text-muted)'} />
               </div>
               <span style={{ 
-                fontSize: '0.65rem', fontWeight: 700, 
+                fontSize: '0.6rem', fontWeight: 700, 
                 color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
                 transition: 'color 0.5s ease'
               }}>{step.label}</span>

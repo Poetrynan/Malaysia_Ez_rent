@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-26 (UTC+8)
+Last updated: 2026-05-27 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -314,4 +314,69 @@ Recommended checks after major changes:
 - mobile upload path: scan/upload/review
 - live mode + mock mode parity for touched features
 - co-rent path: Whole Unit → submit interest → see count/list → self-cancel → admin confirm
+
+
+
+## 12) Progress Line Animation Enhancement (2026-05-27)
+
+### Overview
+Added dynamic line extension animations to progress flow components to enhance visual feedback and user engagement.
+
+### Affected Components
+
+| Component | Location | Animation Type |
+|-----------|----------|----------------|
+| `PropertyListings.tsx` | Co-renting progress (lines 1010-1065) | Dynamic line + pulsing glow dot |
+| `PropertyListings.tsx` | Whole unit progress (lines 1127-1160) | Dynamic line + pulsing glow dot |
+| `LeaseLedgerCard.tsx` | Lease progress (lines 188-215) | Extending line + sliding glow dot |
+| `globals.css` | End of file | 4 new CSS animations |
+
+### Animation Details
+
+**Line Extension:**
+- Lines grow from 0% to 100% width based on progress state
+- Duration: 0.8s (PropertyListings) / 1.5s (LeaseLedgerCard)
+- Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for smooth acceleration/deceleration
+- Transform origin: `left center` for left-to-right growth
+
+**Glow Dot:**
+- 6px circular dot at the end of the progress line
+- Pulsing animation with expanding shadows
+- Follows the line as it extends
+- Infinite pulse cycle (1.5s period)
+
+**Node Animation:**
+- Active nodes scale up (1.05-1.1x)
+- Glow shadow effect on activation
+- Smooth color transitions (0.5s)
+
+### CSS Animations Added
+
+1. **`@keyframes extendLine`**: Line width 0 → 100%, opacity 0 → 0.6
+2. **`@keyframes slideToEnd`**: Dot position from start → end
+3. **`@keyframes glowPulse`**: Shadow expansion 12px → 36px, scale 1.0 → 1.2
+4. **`@keyframes pulse`**: Simplified pulse for PropertyListings dots
+
+### Technical Implementation
+
+**No Breaking Changes:**
+- Pure CSS animations, no JavaScript logic changes
+- No database schema modifications
+- No API changes
+- Graceful degradation for older browsers
+- Respects `prefers-reduced-motion` accessibility setting
+
+**Performance:**
+- GPU-accelerated CSS transforms
+- No main thread blocking
+- Minimal performance impact
+
+### Deployment Safety
+
+✅ **Zero Risk Deployment:**
+- No database migrations required
+- No environment variable changes
+- No user data affected
+- Backward compatible
+- Fails gracefully (shows static version if animations unsupported)
 

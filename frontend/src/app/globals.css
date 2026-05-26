@@ -670,18 +670,18 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
     opacity: 0;
   }
   to { 
-    width: calc(100% - 48px);
+    width: calc(100% - 40px);
     opacity: 0.6;
   }
 }
 
 @keyframes slideToEnd {
   from { 
-    right: calc(100% - 24px);
+    right: calc(100% - 20px);
     opacity: 0;
   }
   to { 
-    right: 24px;
+    right: 20px;
     opacity: 1;
   }
 }

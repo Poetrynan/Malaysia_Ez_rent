@@ -188,3 +188,157 @@ useEffect(() => {
 3. 文本内容，**决不允许在玻璃层上因为对比度不足而模糊难辨**。
 4. 任何媒体文件上传，**在网络发送前必须完成客户端静默压缩**。
 5. 所有的联系界面，**严禁外链站外平台，全部设计为站内复制闭环**。
+
+
+---
+
+## 9. 进度可视化与动态反馈 (Progress Visualization & Dynamic Feedback)
+
+在多步骤流程（如合租意向、租约进度）中，静态的进度指示器无法有效传达"正在进行"的状态感知。动态的视觉反馈能够显著提升用户对流程推进的感知度和参与感。
+
+### 设计原则
+* **线条延伸动画 (Line Extension Animation)**：
+  * 进度连接线应从起点向终点"生长"，而非瞬间出现。
+  * 使用缓动函数（如 `cubic-bezier(0.4, 0, 0.2, 1)`）模拟自然的加速减速过程。
+  * 持续时间建议 0.8-1.5 秒，过快会让用户错过，过慢会造成等待焦虑。
+
+* **光点引导 (Glow Dot Guidance)**：
+  * 在进度线末端添加脉动的光点，吸引用户视线跟随进度。
+  * 光点应跟随线条延伸移动，提供连续的视觉引导。
+  * 使用多层阴影（`box-shadow`）和缩放动画（`scale`）制造呼吸感。
+
+* **节点状态反馈 (Node State Feedback)**：
+  * 激活的节点应有明显的视觉变化：放大（scale 1.05-1.1x）、发光阴影、颜色加深。
+  * 所有状态变化必须带有平滑过渡（`transition: all 0.5s ease`），避免突兀的跳变。
+  * 未激活节点保持低对比度，但仍需清晰可见（不能完全隐藏）。
+
+* **可访问性考虑 (Accessibility)**：
+  * 必须支持 `prefers-reduced-motion` 媒体查询。
+  * 当用户启用"减少动画"设置时，动画应自动禁用，显示静态版本。
+  * 动画不应是传达信息的唯一方式，文字标签和图标必须同时存在。
+
+### 典型实现 (PropertyListings 进度流程)
+
+```typescript
+{/* 基础灰线 - 始终显示完整路径 */}
+<div style={{ 
+  position: 'absolute', 
+  top: 10, 
+  left: 20, 
+  right: 20, 
+  height: 2, 
+  background: 'var(--glass-border)', 
+  zIndex: 0 
+}} />
+
+{/* 动态蓝线 - 根据进度状态延伸 */}
+<div style={{ 
+  position: 'absolute', 
+  top: 10, 
+  left: 20, 
+  width: `calc(${progressWidth} - 40px)`, 
+  height: 2, 
+  background: 'var(--primary)', 
+  zIndex: 0, 
+  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+  boxShadow: '0 0 8px var(--primary)',
+  transformOrigin: 'left center'
+}} />
+
+{/* 脉动光点 - 跟随线条末端 */}
+<div style={{ 
+  position: 'absolute', 
+  top: 8, 
+  left: calculateDotPosition(progressWidth),
+  width: 6, 
+  height: 6, 
+  borderRadius: '50%',
+  background: 'var(--primary)',
+  boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+  zIndex: 1,
+  opacity: progressWidth !== '0%' ? 1 : 0,
+  transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+  animation: progressWidth !== '0%' ? 'pulse 1.5s ease-in-out infinite' : 'none'
+}} />
+```
+
+### CSS 动画定义
+
+```css
+/* 线条延伸 */
+@keyframes extendLine {
+  from { 
+    width: 0;
+    opacity: 0;
+  }
+  to { 
+    width: calc(100% - 48px);
+    opacity: 0.6;
+  }
+}
+
+/* 光点脉动 */
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.7;
+    transform: scale(1.3);
+  }
+}
+
+/* 发光脉冲 */
+@keyframes glowPulse {
+  0%, 100% { 
+    box-shadow: 0 0 12px var(--primary), 0 0 20px var(--primary);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 16px var(--primary), 0 0 28px var(--primary), 0 0 36px var(--primary);
+    transform: scale(1.2);
+  }
+}
+
+/* 可访问性支持 */
+@media (prefers-reduced-motion: reduce) {
+  .progress-line,
+  .progress-dot,
+  .progress-node {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+```
+
+### 性能优化
+* **使用 CSS 动画而非 JavaScript**：CSS 动画由浏览器的合成器线程处理，不会阻塞主线程。
+* **GPU 加速**：使用 `transform` 和 `opacity` 属性触发 GPU 加速，避免使用 `width`/`height` 等会触发重排的属性（在必要时除外）。
+* **避免过度动画**：一个界面中不应同时出现超过 3-4 个独立的动画循环，否则会分散用户注意力。
+
+### 实际应用场景
+| 场景 | 动画类型 | 持续时间 | 触发时机 |
+|------|---------|---------|---------|
+| 合租意向提交 | 线条延伸 + 光点脉动 | 0.8s | 用户提交意向成功后 |
+| 租约进度更新 | 线条延伸 + 节点放大 | 1.5s | 管理员确认租约后 |
+| 支付流程 | 光点移动 + 节点高亮 | 1.0s | 账单状态变更时 |
+
+### 用户体验收益
+1. **进度感知增强**：用户能清晰看到"从哪里到哪里"的过程。
+2. **等待焦虑缓解**：动画提供视觉缓冲，减少用户对加载时间的敏感度。
+3. **操作反馈即时**：动态效果让用户确信"系统收到了我的操作"。
+4. **品牌质感提升**：精致的动画传达产品的专业性和用心程度。
+
+---
+
+## 总结（更新于 2026-05-27）
+
+高级的 UI 往往不是靠堆砌花哨的特效，而是体现在对**对比度**、**点击热区**、**动效细节**、**进度可视化**与**操作心智成本**的极致打磨上。后续开发时请牢记：
+1. 重要的可交互元素，**绝不使用无背景的微小文字链接**。
+2. 每一个 Modal 弹窗，**必配 Light Dismiss（点击背景关闭）**。
+3. 文本内容，**决不允许在玻璃层上因为对比度不足而模糊难辨**。
+4. 任何媒体文件上传，**在网络发送前必须完成客户端静默压缩**。
+5. 所有的联系界面，**严禁外链站外平台，全部设计为站内复制闭环**。
+6. **进度流程必须有动态反馈**，线条延伸、光点引导、节点动画缺一不可。
+7. **所有动画必须支持 `prefers-reduced-motion`**，尊重用户的可访问性设置。
