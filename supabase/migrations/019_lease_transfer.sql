@@ -58,15 +58,7 @@ CREATE OR REPLACE FUNCTION substitute_co_tenant(
 DECLARE
   v_orig record;
   v_new_lease_id UUID;
-  v_m_start DATE;
-  v_m_end DATE;
-  v_total_days INT;
-  v_exit_days INT;
-  v_income_days INT;
-  v_exit_rent DECIMAL(10,2);
-  v_income_rent DECIMAL(10,2);
   v_curr_billing_month DATE;
-  v_next_billing_month DATE;
   v_loop_month DATE;
   v_inc_email TEXT;
 BEGIN
