@@ -491,8 +491,9 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             <MessageSquare size={16} style={{ color: 'var(--primary)' }} /> {t('feedback')}
           </h4>
           <button onClick={() => { setShowMyFeedbacks(!showMyFeedbacks); if (!showMyFeedbacks) loadMyFeedbacks(); }}
-            style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-            {t('feedbackMy')} ({myFeedbacks.length})
+            style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>{t('feedbackMy')} ({myFeedbacks.length})</span>
+            {showMyFeedbacks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
 

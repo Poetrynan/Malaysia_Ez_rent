@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -1370,7 +1370,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             </button>
           )}
           <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
-            <MessageSquare size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
+            <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
             {feedbackPendingCount > 0 && (
               <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
                 {feedbackPendingCount}

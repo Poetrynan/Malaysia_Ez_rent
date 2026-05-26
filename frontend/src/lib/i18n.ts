@@ -29,8 +29,8 @@ export const translations = {
     userAdminRole: '管理员账号',
 
     // Mode banner
-    sandboxMode: '数据库已连通，Status:●测试中',
-    liveMode: '数据库已连通，Status:●正常',
+    sandboxMode: '数据库已连通',
+    liveMode: '数据库已连通',
 
     // AI Chat
     chatWelcome: '您好！我是您的 AI 留学生活助手。我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
@@ -352,8 +352,8 @@ export const translations = {
     userStudentRole: 'Student Tenant',
     userAdminRole: 'Admin Account',
 
-    sandboxMode: 'Database Connected, Status:●Sandbox',
-    liveMode: 'Database Connected, Status:●Normal',
+    sandboxMode: 'Database Connected',
+    liveMode: 'Database Connected',
 
     chatWelcome: "Hi! I'm your Malaysia Student AI Assistant. I can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer student life guides.",
     chatPlaceholder: 'Ask about commute route, currency, holidays, or life in KL…',

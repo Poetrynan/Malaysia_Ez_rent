@@ -161,9 +161,9 @@ export default function Home() {
                   </li>
                 )}
                 <li onClick={() => setActiveTab('admin-feedback')} className={`nav-item ${activeTab === 'admin-feedback' ? 'active' : ''}`}>
-                  <MessageSquare size={16} />
+                  <Wrench size={16} />
                   <span style={{ display: 'flex', alignItems: 'center' }}>
-                    {lang === 'zh' ? '意见箱' : 'Feedback'}
+                    {t('feedback')}
                     {pendingCounts.feedback > 0 && (
                       <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
                         {pendingCounts.feedback}
