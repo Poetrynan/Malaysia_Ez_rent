@@ -38,6 +38,11 @@ BEGIN
         UPDATE units
         SET status = 'available'
         WHERE id = v_unit_id;
+
+        -- 5. Also mark the tenant interest as 'left' so it doesn't show up in listings as active
+        UPDATE tenant_interests
+        SET status = 'left'
+        WHERE unit_id = v_unit_id AND user_id = v_tenant_id;
     END IF;
 END;
 $$;

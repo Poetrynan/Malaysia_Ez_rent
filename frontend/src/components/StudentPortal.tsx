@@ -76,6 +76,15 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           units[uIdx].status = 'available';
           localStorage.setItem('ez_units', JSON.stringify(units));
         }
+
+        // Also update tenant_interests to 'left' in mock mode
+        const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+        const interests = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+        const iIdx = interests.findIndex((i: any) => i.unit_id === lease.unit_id && i.user_id === tenantId);
+        if (iIdx !== -1) {
+          interests[iIdx].status = 'left';
+          localStorage.setItem('ez_interests', JSON.stringify(interests));
+        }
       }
       setTimeout(() => {
         setLease(null);

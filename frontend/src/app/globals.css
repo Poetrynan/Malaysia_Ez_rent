@@ -708,3 +708,26 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   }
 }
 
+/* 进度延伸动画：从当前位置循环延伸到下一个节点 */
+@keyframes loopExtend {
+  0% { 
+    width: var(--start-width);
+    opacity: 0.4;
+  }
+  70%, 100% { 
+    width: var(--end-width);
+    opacity: 0.8;
+  }
+}
+
+@keyframes loopGlow {
+  0% { 
+    left: var(--start-left);
+    opacity: 0.6;
+  }
+  70%, 100% { 
+    left: var(--end-left);
+    opacity: 1;
+  }
+}
+

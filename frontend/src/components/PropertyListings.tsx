@@ -99,6 +99,152 @@ const contactIconWrap = (size: number, color: string): React.CSSProperties => ({
   background: 'transparent',
 });
 
+const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
+  // 节点位置：0% (10px), 33.33% (calc(33.33% - 13.33px + 20px)), 66.66%, 100%
+  // 我们需要计算动画的起点和终点
+  let startWidth = '0px';
+  let endWidth = 'calc(33.33% - 13.33px)';
+  let startLeft = '20px';
+  let endLeft = 'calc(33.33% + 6.66px)';
+
+  if (isActive) {
+    // 已完成，显示静止全长线
+    return (
+      <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+          <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+          <div style={{ 
+            position: 'absolute', 
+            top: 10, 
+            left: 20, 
+            width: 'calc(100% - 40px)',
+            height: 2, 
+            background: 'var(--primary)', 
+            zIndex: 0, 
+            opacity: 0.6
+          }} />
+          {[
+            { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+            { label: lang === 'zh' ? '中介同意' : 'Agreed', active: true },
+            { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: true },
+            { label: lang === 'zh' ? '租房中' : 'Renting', active: true },
+          ].map((step, idx) => (
+            <div key={idx} style={{ 
+              zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              transition: 'transform 0.3s ease',
+              transform: 'scale(1.1)'
+            }}>
+              <div style={{ 
+                width: 20, height: 20, borderRadius: '50%', 
+                background: 'var(--primary)',
+                border: '2px solid var(--primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.5s ease',
+                boxShadow: '0 0 12px var(--primary)'
+              }}>
+                <CheckCircle2 size={12} color="white" />
+              </div>
+              <span style={{ 
+                fontSize: '0.6rem', fontWeight: 700, 
+                color: 'var(--text-h)',
+                transition: 'color 0.5s ease'
+              }}>{step.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  } else if (isAgreed) {
+    // 已到“中介同意/合约生成”，向“租房中”延伸
+    startWidth = 'calc(66.66% - 26.66px)';
+    endWidth = 'calc(100% - 40px)';
+    startLeft = 'calc(66.66% + 13.33px)';
+    endLeft = 'calc(100% - 20px)';
+  } else {
+    // 已发起，向“中介同意”延伸
+    startWidth = '0px';
+    endWidth = 'calc(33.33% - 13.33px)';
+    startLeft = '20px';
+    endLeft = 'calc(33.33% + 6.66px)';
+  }
+
+  return (
+    <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+        <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+        {/* 已完成部分的固定实线 */}
+        <div style={{ 
+          position: 'absolute', 
+          top: 10, 
+          left: 20, 
+          width: startWidth,
+          height: 2, 
+          background: 'var(--primary)', 
+          zIndex: 0, 
+          opacity: 0.6
+        }} />
+        {/* 正在进行部分的循环延伸线 */}
+        <div style={{ 
+          position: 'absolute', 
+          top: 10, 
+          left: 20, 
+          height: 2, 
+          background: 'var(--primary)', 
+          zIndex: 0, 
+          // @ts-ignore
+          '--start-width': startWidth,
+          '--end-width': endWidth,
+          animation: 'loopExtend 2s infinite ease-in-out'
+        } as React.CSSProperties} />
+        {/* 循环移动的光点 */}
+        <div style={{ 
+          position: 'absolute', 
+          top: 8, 
+          width: 6, 
+          height: 6, 
+          borderRadius: '50%',
+          background: 'var(--primary)',
+          boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+          zIndex: 1,
+          // @ts-ignore
+          '--start-left': startLeft,
+          '--end-left': endLeft,
+          animation: 'loopGlow 2s infinite ease-in-out, glowPulse 1.5s ease-in-out infinite'
+        } as React.CSSProperties} />
+
+        {[
+          { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+          { label: lang === 'zh' ? '中介同意' : 'Agreed', active: isAgreed },
+          { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: isAgreed },
+          { label: lang === 'zh' ? '租房中' : 'Renting', active: false },
+        ].map((step, idx) => (
+          <div key={idx} style={{ 
+            zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            transition: 'transform 0.3s ease',
+            transform: step.active ? 'scale(1.1)' : 'scale(1)'
+          }}>
+            <div style={{ 
+              width: 20, height: 20, borderRadius: '50%', 
+              background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+              border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.5s ease',
+              boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
+            }}>
+              {step.active && <CheckCircle2 size={12} color="white" />}
+            </div>
+            <span style={{ 
+              fontSize: '0.6rem', fontWeight: 700, 
+              color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+              transition: 'color 0.5s ease'
+            }}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ display: 'block' }}>
@@ -1006,80 +1152,7 @@ export default function PropertyListings() {
 
                         {/* Progress Flow - Always show if user has interest OR is already leasing */}
                         {(hasMyInterest || isLeasedByMe) && (
-                          <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-                              {/* Base Grey Line */}
-                              <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
-                              
-                              {/* Animated Progress Line with Extension Effect */}
-                              {(() => {
-                                const isAgreed = myEntry?.status === 'confirmed';
-                                const isActive = isLeasedByMe;
-                                let width = 'calc(33.33% - 13.33px)'; // 默认已发起
-                                if (isActive) width = 'calc(100% - 40px)';
-                                else if (isAgreed) width = 'calc(66.66% - 26.66px)';
-                                
-                                return (
-                                  <>
-                                    <div style={{ 
-                                      position: 'absolute', 
-                                      top: 10, 
-                                      left: 20, 
-                                      width: width,
-                                      height: 2, 
-                                      background: 'var(--primary)', 
-                                      zIndex: 0, 
-                                      opacity: 0.6,
-                                      transformOrigin: 'left center',
-                                      animation: 'extendLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                                    }} />
-                                    {/* Animated glow at the end of the line */}
-                                    <div style={{ 
-                                      position: 'absolute', 
-                                      top: 8, 
-                                      right: isActive ? '20px' : isAgreed ? 'calc(33.33% + 6.66px)' : 'calc(66.66% + 13.33px)',
-                                      width: 6, 
-                                      height: 6, 
-                                      borderRadius: '50%',
-                                      background: 'var(--primary)',
-                                      boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
-                                      zIndex: 1,
-                                      animation: 'glowPulse 1.5s ease-in-out infinite, slideToEnd 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                                    }} />
-                                  </>
-                                );
-                              })()}
-
-                              {[
-                                { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
-                                { label: lang === 'zh' ? '中介同意' : 'Agreed', active: myEntry?.status === 'confirmed' || isLeasedByMe },
-                                { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: myEntry?.status === 'confirmed' || isLeasedByMe },
-                                { label: lang === 'zh' ? '租房中' : 'Renting', active: isLeasedByMe },
-                              ].map((step, idx) => (
-                                <div key={idx} style={{ 
-                                  zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                                  transition: 'transform 0.3s ease',
-                                  transform: step.active ? 'scale(1.1)' : 'scale(1)'
-                                }}>
-                                  <div style={{ 
-                                    width: 20, height: 20, borderRadius: '50%', 
-                                    background: step.active ? 'var(--primary)' : 'var(--bg-card)',
-                                    border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.5s ease',
-                                    boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
-                                  }}>
-                                    {step.active && <CheckCircle2 size={12} color="white" />}
-                                  </div>
-                                  <span style={{ 
-                                    fontSize: '0.6rem', fontWeight: 700, 
-                                    color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
-                                    transition: 'color 0.5s ease'
-                                  }}>{step.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                          <ProgressFlow isAgreed={myEntry?.status === 'confirmed'} isActive={isLeasedByMe} lang={lang} />
                         )}
 
                         {isLeasedByMe ? (
@@ -1148,80 +1221,7 @@ export default function PropertyListings() {
 
                       {/* Interest Progress Flow (Whole Unit) */}
                       {(hasMyInterest || isLeasedByMe) && (
-                        <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-                            {/* Base Grey Line */}
-                            <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
-                            
-                            {/* Animated Progress Line with Extension Effect */}
-                            {(() => {
-                              const isAgreed = myEntry?.status === 'confirmed';
-                              const isActive = isLeasedByMe;
-                              let width = 'calc(33.33% - 13.33px)'; // 默认已发起
-                              if (isActive) width = 'calc(100% - 40px)';
-                              else if (isAgreed) width = 'calc(66.66% - 26.66px)';
-                              
-                              return (
-                                <>
-                                  <div style={{ 
-                                    position: 'absolute', 
-                                    top: 10, 
-                                    left: 20, 
-                                    width: width,
-                                    height: 2, 
-                                    background: 'var(--primary)', 
-                                    zIndex: 0, 
-                                    opacity: 0.6,
-                                    transformOrigin: 'left center',
-                                    animation: 'extendLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                                  }} />
-                                  {/* Animated glow at the end of the line */}
-                                  <div style={{ 
-                                    position: 'absolute', 
-                                    top: 8, 
-                                    right: isActive ? '20px' : isAgreed ? 'calc(33.33% + 6.66px)' : 'calc(66.66% + 13.33px)',
-                                    width: 6, 
-                                    height: 6, 
-                                    borderRadius: '50%',
-                                    background: 'var(--primary)',
-                                    boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
-                                    zIndex: 1,
-                                    animation: 'glowPulse 1.5s ease-in-out infinite, slideToEnd 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                                  }} />
-                                </>
-                              );
-                            })()}
-                            
-                            {[
-                              { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
-                              { label: lang === 'zh' ? '中介同意' : 'Agreed', active: myEntry?.status === 'confirmed' || isLeasedByMe },
-                              { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: myEntry?.status === 'confirmed' || isLeasedByMe },
-                              { label: lang === 'zh' ? '租房中' : 'Renting', active: isLeasedByMe },
-                            ].map((step, idx) => (
-                              <div key={idx} style={{ 
-                                zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                                transition: 'transform 0.3s ease',
-                                transform: step.active ? 'scale(1.1)' : 'scale(1)'
-                              }}>
-                                <div style={{ 
-                                  width: 20, height: 20, borderRadius: '50%', 
-                                  background: step.active ? 'var(--primary)' : 'var(--bg-card)',
-                                  border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: 'all 0.5s ease',
-                                  boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
-                                }}>
-                                  {step.active && <CheckCircle2 size={12} color="white" />}
-                                </div>
-                                <span style={{ 
-                                  fontSize: '0.6rem', fontWeight: 700, 
-                                  color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
-                                  transition: 'color 0.5s ease'
-                                }}>{step.label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <ProgressFlow isAgreed={myEntry?.status === 'confirmed'} isActive={isLeasedByMe} lang={lang} />
                       )}
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
