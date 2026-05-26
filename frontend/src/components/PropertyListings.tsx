@@ -2050,29 +2050,28 @@ export default function PropertyListings() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(0, 0, 0, 0.45)',
             backdropFilter: 'blur(8px)',
           }}
           onClick={confirmDialog.isAlert ? () => confirmDialog.onConfirm() : confirmDialog.onCancel}
         >
           <div
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(20px) saturate(160%)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: '#ffffff',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
               borderRadius: 16,
               padding: '24px 28px',
               maxWidth: 360,
-              width: '90%',
-              boxShadow: '0 24px 50px rgba(0, 0, 0, 0.4)',
-              color: 'var(--text-h)',
+              width: '95%',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
+              color: '#1f2937',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-h)' }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '1.05rem', fontWeight: 700, color: '#111827' }}>
               {confirmDialog.title}
             </h4>
-            <p style={{ margin: '0 0 20px 0', fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 20px 0', fontSize: '0.88rem', color: '#4b5563', lineHeight: 1.5 }}>
               {confirmDialog.message}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -2082,16 +2081,16 @@ export default function PropertyListings() {
                   style={{
                     padding: '8px 16px',
                     borderRadius: 8,
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    border: '1px solid rgba(0, 0, 0, 0.12)',
                     background: 'transparent',
-                    color: 'var(--text-body)',
+                    color: '#4b5563',
                     fontSize: '0.82rem',
                     fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                     fontFamily: 'inherit',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   {lang === 'zh' ? '取消' : 'Cancel'}
