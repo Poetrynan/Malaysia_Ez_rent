@@ -2446,16 +2446,16 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
 
       {/* ── PROFILE TAB ── */}
       {tab === 'profile' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="glass-card" style={{ maxWidth: 650 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+          <div className="glass-card" style={{ width: '100%' }}>
             <h3 style={{ fontSize: '1.05rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Edit3 size={18} style={{ color: 'var(--primary)' }} />
               {lang === 'zh' ? '中介个人主页与联系设置' : 'Agent Profile & Contact Settings'}
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
               {lang === 'zh' 
-                ? '此处填写的个人与中介信息（包含资质证书、从业经验、擅长区域等）将以 iProperty 风格的中介主页格式展示给学生，提升专业度与信任感。' 
-                : 'The personal and agency profile information filled here will be displayed to students in a professional iProperty-style Agent Profile page.'}
+                ? '此处填写的个人与中介信息（资质证书、从业经验、擅长区域等）将在学生端以专业中介主页形式展示，提升信任感。' 
+                : 'The personal and agency information you enter here will be shown to students on your professional agent profile page.'}
             </p>
 
             {/* Section 1: Basic Info */}
@@ -2471,47 +2471,49 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                   onError={(e: any) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'; }}
                 />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div>
-                    <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: 4, fontWeight: 600 }}>
-                      {lang === 'zh' ? '上传头像 (选择本地照片进行自动压缩)' : 'Upload Avatar (Auto-compressed)'}
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const dataUrl = await compressImageToDataUrl(file, {
-                            maxWidth: 300,
-                            maxHeight: 300,
-                            quality: 0.82,
-                            mimeType: 'image/jpeg',
-                            skipBelowBytes: 40 * 1024
-                          });
-                          setMyProfile(prev => ({ ...prev, avatar_url: dataUrl }));
-                          showToast(lang === 'zh' ? '头像已自动压缩成功！' : 'Avatar auto-compressed successfully!', 'success');
-                        } catch (err) {
-                          console.error('Avatar compression error:', err);
-                          showToast(lang === 'zh' ? '压缩头像图片失败' : 'Failed to compress avatar', 'error');
-                        }
-                      }}
-                      style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.72rem', display: 'block', marginBottom: 2, color: 'var(--text-muted)' }}>
-                      {lang === 'zh' ? '或 输入头像图片网址' : 'Or enter Avatar Image URL'}
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={myProfile.avatar_url}
-                      onChange={e => setMyProfile(prev => ({ ...prev, avatar_url: e.target.value }))}
-                      placeholder="https://example.com/avatar.jpg"
-                      style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                    />
-                  </div>
+                  <label style={{ fontSize: '0.78rem', display: 'block', fontWeight: 600 }}>
+                    {lang === 'zh' ? '上传头像' : 'Upload Avatar'}
+                  </label>
+                  <input
+                    id="admin-avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const dataUrl = await compressImageToDataUrl(file, {
+                          maxWidth: 300,
+                          maxHeight: 300,
+                          quality: 0.82,
+                          mimeType: 'image/jpeg',
+                          skipBelowBytes: 40 * 1024
+                        });
+                        setMyProfile(prev => ({ ...prev, avatar_url: dataUrl }));
+                      } catch (err) {
+                        console.error('Avatar compression error:', err);
+                        showToast(lang === 'zh' ? '头像上传失败，请换一张图片重试' : 'Avatar upload failed, please try another image', 'error');
+                      } finally {
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="admin-avatar-upload"
+                    className="btn"
+                    style={{
+                      width: 'fit-content',
+                      padding: '8px 16px',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      background: 'var(--glass-bg)',
+                      border: '1px solid var(--glass-border)',
+                      color: 'var(--text-body)',
+                    }}
+                  >
+                    {lang === 'zh' ? '选择图片' : 'Choose Image'}
+                  </label>
                 </div>
               </div>
 
