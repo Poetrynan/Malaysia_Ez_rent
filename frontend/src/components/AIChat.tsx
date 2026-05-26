@@ -16,11 +16,15 @@ interface Message {
 }
 
 export default function AIChat() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<Message[]>([{
     id: 'welcome', role: 'assistant', content: t('chatWelcome')
   }]);
+
+  useEffect(() => {
+    setMessages(prev => prev.map(m => m.id === 'welcome' ? { ...m, content: t('chatWelcome') } : m));
+  }, [lang, t]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});

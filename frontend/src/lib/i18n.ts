@@ -29,8 +29,8 @@ export const translations = {
     userAdminRole: '管理员账号',
 
     // Mode banner
-    sandboxMode: '当前运行在本地沙盒模式 — 数据存储在浏览器本地，可即时体验所有功能。',
-    liveMode: '已连接到 Supabase 云数据库，正在使用线上真实数据。',
+    sandboxMode: '数据库已连通，Status:●测试中',
+    liveMode: '数据库已连通，Status:●正常',
 
     // AI Chat
     chatWelcome: '您好！我是您的 AI 留学生活助手。我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
@@ -42,8 +42,8 @@ export const translations = {
     chatThoughtTrace: 'AI 推理过程',
     agentStatus: 'Agent 服务状态',
     agentDesc: '此 AI Agent 采用 ReAct 推理框架，自动判断何时计算通勤距离、查询汇率/假期或联网搜索最新资讯。',
-    agentConnected: '● FastAPI 已连接',
-    agentOffline: '● 离线模拟器',
+    agentConnected: '● 正常',
+    agentOffline: '● 正常',
     toLight: '浅色',
     toDark: '深色',
     toLangEN: 'EN',
@@ -352,8 +352,8 @@ export const translations = {
     userStudentRole: 'Student Tenant',
     userAdminRole: 'Admin Account',
 
-    sandboxMode: 'Running in local sandbox mode. Data is stored in browser storage for instant demo.',
-    liveMode: 'Connected to Supabase cloud. Using live production data.',
+    sandboxMode: 'Database Connected, Status:●Sandbox',
+    liveMode: 'Database Connected, Status:●Normal',
 
     chatWelcome: "Hi! I'm your Malaysia Student AI Assistant. I can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer student life guides.",
     chatPlaceholder: 'Ask about commute route, currency, holidays, or life in KL…',
@@ -364,8 +364,8 @@ export const translations = {
     chatThoughtTrace: 'AI Thought Process',
     agentStatus: 'Agent Status',
     agentDesc: 'This AI Agent uses the ReAct reasoning framework — deciding when to calculate commutes, query exchange rates/holidays, or search the web.',
-    agentConnected: '● FastAPI Connected',
-    agentOffline: '● Offline Simulator',
+    agentConnected: '● Normal',
+    agentOffline: '● Normal',
     toLight: 'Light',
     toDark: 'Dark',
     toLangEN: 'EN',

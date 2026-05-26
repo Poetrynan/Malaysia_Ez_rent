@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -120,6 +120,11 @@ export default function Home() {
                 <li onClick={() => setActiveTab('student')} className={`nav-item ${activeTab === 'student' ? 'active' : ''}`}>
                   <User size={16} />
                   <span>{t('navPortal')}</span>
+                  <span className="role-badge student">{t('roleTenantBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('maintenance')} className={`nav-item ${activeTab === 'maintenance' ? 'active' : ''}`}>
+                  <Wrench size={16} />
+                  <span>{t('feedback')}</span>
                   <span className="role-badge student">{t('roleTenantBadge')}</span>
                 </li>
               </>
@@ -246,8 +251,11 @@ export default function Home() {
           <div style={{ display: role === 'student' && activeTab === 'chat' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <AIChat />
           </div>
-          <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
-            <StudentPortal />
+           <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
+            <StudentPortal mode="lease" />
+          </div>
+          <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
+            <StudentPortal mode="maintenance" />
           </div>
           <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') ? 'block' : 'none' }}>
             <AdminPanel 
