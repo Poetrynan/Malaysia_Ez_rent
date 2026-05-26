@@ -328,7 +328,8 @@ CREATE POLICY "admin update QR" ON admin_users FOR UPDATE
 **A:** **软删除**——把 `tenant_interests.status` 改为 `'left'`，数据保留在数据库里。
 
 - **学生可自行取消**：在 Whole Unit 详情点 **「取消意向」**（顶部或自己那一行），调用 RPC **`cancel_tenant_interest`**（**015 迁移**），**无需等管理员拒绝**
-- 学生端：查询时过滤 `.neq('status', 'left')`，看不到已取消的
+- **合约终止自动重置**：当租客终止合约时，系统通过 RPC **`tenant_terminate_lease`**（**018 迁移**）自动将该用户的意向状态设为 `'left'` 并将房源设为 `'available'`。
+- 学生端：查询时过滤 `.neq('status', 'left')`，并结合房源状态校验，看不到已取消或已过期的意向。
 - 管理员端：可以看到所有状态（interested / confirmed / left），方便追溯历史
 
 为什么不用硬删除？因为管理员需要知道"这个人曾经来过又走了"，有助于判断房间热度。

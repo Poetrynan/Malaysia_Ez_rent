@@ -1178,7 +1178,7 @@ export default function PropertyListings() {
                                 padding: '10px 24px', borderRadius: 8, border: 'none',
                                 background: 'var(--primary)', color: 'white',
                                 fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                              }}>{lang === 'zh' ? '提交租房意向' : 'Express Interest'}</button>
+                              }}>{lang === 'zh' ? '我要租' : 'Express Interest'}</button>
                             )}
                             {hasMyInterest && (
                               <button onClick={() => {
