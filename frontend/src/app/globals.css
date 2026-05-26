@@ -662,3 +662,49 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── PROGRESS LINE EXTENSION ANIMATIONS ── */
+@keyframes extendLine {
+  from { 
+    width: 0;
+    opacity: 0;
+  }
+  to { 
+    width: calc(100% - 48px);
+    opacity: 0.6;
+  }
+}
+
+@keyframes slideToEnd {
+  from { 
+    right: calc(100% - 24px);
+    opacity: 0;
+  }
+  to { 
+    right: 24px;
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% { 
+    box-shadow: 0 0 12px var(--primary), 0 0 20px var(--primary);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 16px var(--primary), 0 0 28px var(--primary), 0 0 36px var(--primary);
+    transform: scale(1.2);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.7;
+    transform: scale(1.3);
+  }
+}
+

@@ -1012,22 +1012,70 @@ export default function PropertyListings() {
                             {hasMyInterest && (
                               <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
+                                  {/* Base Grey Line */}
                                   <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+                                  
+                                  {/* Dynamic Progress Line with Extension Animation */}
+                                  {(() => {
+                                    const isAgreed = myEntry?.status === 'confirmed';
+                                    const isActive = myLeasedUnitIds.includes(selected.id);
+                                    let width = '0%';
+                                    if (isActive) width = '100%';
+                                    else if (isAgreed) width = '50%';
+                                    
+                                    return (
+                                      <>
+                                        <div style={{ 
+                                          position: 'absolute', top: 10, left: 20, width: `calc(${width} - 40px)`, 
+                                          height: 2, background: 'var(--primary)', zIndex: 0, 
+                                          transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                                          boxShadow: '0 0 8px var(--primary)',
+                                          transformOrigin: 'left center'
+                                        }} />
+                                        {/* Animated glow effect at the end of the line */}
+                                        <div style={{ 
+                                          position: 'absolute', 
+                                          top: 8, 
+                                          left: width === '0%' ? '20px' : width === '50%' ? 'calc(50% - 20px)' : 'calc(100% - 60px)',
+                                          width: 6, 
+                                          height: 6, 
+                                          borderRadius: '50%',
+                                          background: 'var(--primary)',
+                                          boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+                                          zIndex: 1,
+                                          opacity: width !== '0%' ? 1 : 0,
+                                          transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+                                          animation: width !== '0%' ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                                        }} />
+                                      </>
+                                    );
+                                  })()}
+
                                   {[
                                     { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
                                     { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
                                     { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
                                   ].map((step, idx) => (
-                                    <div key={idx} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <div key={idx} style={{ 
+                                      zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                                      transition: 'transform 0.3s ease',
+                                      transform: step.active ? 'scale(1.1)' : 'scale(1)'
+                                    }}>
                                       <div style={{ 
                                         width: 20, height: 20, borderRadius: '50%', 
                                         background: step.active ? 'var(--primary)' : 'var(--bg-card)',
                                         border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'all 0.5s ease',
+                                        boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
                                       }}>
                                         {step.active && <CheckCircle2 size={12} color="white" />}
                                       </div>
-                                      <span style={{ fontSize: '0.6rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+                                      <span style={{ 
+                                        fontSize: '0.6rem', fontWeight: 700, 
+                                        color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+                                        transition: 'color 0.5s ease'
+                                      }}>{step.label}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1096,22 +1144,70 @@ export default function PropertyListings() {
                       {hasMyInterest && !isLeasedByMe && (
                         <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
+                            {/* Base Grey Line */}
                             <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+                            
+                            {/* Dynamic Progress Line with Extension Animation */}
+                            {(() => {
+                              const isAgreed = myEntry?.status === 'confirmed';
+                              const isActive = myLeasedUnitIds.includes(selected.id);
+                              let width = '0%';
+                              if (isActive) width = '100%';
+                              else if (isAgreed) width = '50%';
+                              
+                              return (
+                                <>
+                                  <div style={{ 
+                                    position: 'absolute', top: 10, left: 20, width: `calc(${width} - 40px)`, 
+                                    height: 2, background: 'var(--primary)', zIndex: 0, 
+                                    transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    boxShadow: '0 0 8px var(--primary)',
+                                    transformOrigin: 'left center'
+                                  }} />
+                                  {/* Animated glow effect at the end of the line */}
+                                  <div style={{ 
+                                    position: 'absolute', 
+                                    top: 8, 
+                                    left: width === '0%' ? '20px' : width === '50%' ? 'calc(50% - 20px)' : 'calc(100% - 60px)',
+                                    width: 6, 
+                                    height: 6, 
+                                    borderRadius: '50%',
+                                    background: 'var(--primary)',
+                                    boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+                                    zIndex: 1,
+                                    opacity: width !== '0%' ? 1 : 0,
+                                    transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+                                    animation: width !== '0%' ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                                  }} />
+                                </>
+                              );
+                            })()}
+                            
                             {[
                               { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
                               { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
                               { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
                             ].map((step, idx) => (
-                              <div key={idx} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                              <div key={idx} style={{ 
+                                zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                                transition: 'transform 0.3s ease',
+                                transform: step.active ? 'scale(1.1)' : 'scale(1)'
+                              }}>
                                 <div style={{ 
                                   width: 20, height: 20, borderRadius: '50%', 
                                   background: step.active ? 'var(--primary)' : 'var(--bg-card)',
                                   border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.5s ease',
+                                  boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
                                 }}>
                                   {step.active && <CheckCircle2 size={12} color="white" />}
                                 </div>
-                                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+                                <span style={{ 
+                                  fontSize: '0.6rem', fontWeight: 700, 
+                                  color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+                                  transition: 'color 0.5s ease'
+                                }}>{step.label}</span>
                               </div>
                             ))}
                           </div>

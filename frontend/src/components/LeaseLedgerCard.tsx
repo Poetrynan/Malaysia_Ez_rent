@@ -190,7 +190,34 @@ export default function LeaseLedgerCard({
         <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
           {/* Connector Line */}
           <div style={{ position: 'absolute', top: 12, left: 24, right: 24, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
-          <div style={{ position: 'absolute', top: 12, left: 24, width: '100%', height: 2, background: 'var(--primary)', zIndex: 0, opacity: 0.6 }} />
+          
+          {/* Animated Progress Line with Extension Effect */}
+          <div style={{ 
+            position: 'absolute', 
+            top: 12, 
+            left: 24, 
+            width: 'calc(100% - 48px)', 
+            height: 2, 
+            background: 'var(--primary)', 
+            zIndex: 0, 
+            opacity: 0.6,
+            transformOrigin: 'left center',
+            animation: 'extendLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+          }} />
+          
+          {/* Animated glow at the end of the line */}
+          <div style={{ 
+            position: 'absolute', 
+            top: 10, 
+            right: 24,
+            width: 6, 
+            height: 6, 
+            borderRadius: '50%',
+            background: 'var(--primary)',
+            boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+            zIndex: 1,
+            animation: 'glowPulse 1.5s ease-in-out infinite, slideToEnd 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+          }} />
 
           {[
             { key: 'step1', label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
@@ -198,17 +225,26 @@ export default function LeaseLedgerCard({
             { key: 'step3', label: lang === 'zh' ? '合约生成' : 'Lease Created', active: true },
             { key: 'step4', label: lang === 'zh' ? '租房中' : 'Renting', active: true },
           ].map((step, idx) => (
-            <div key={step.key} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div key={step.key} style={{ 
+              zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              transition: 'transform 0.3s ease',
+              transform: step.active ? 'scale(1.05)' : 'scale(1)'
+            }}>
               <div style={{ 
                 width: 24, height: 24, borderRadius: '50%', 
                 background: step.active ? 'var(--primary)' : 'var(--bg-card)',
                 border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.5s ease',
                 boxShadow: step.active ? '0 0 10px rgba(var(--primary-rgb), 0.4)' : 'none'
               }}>
                 <CheckCircle2 size={14} color={step.active ? 'white' : 'var(--text-muted)'} />
               </div>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+              <span style={{ 
+                fontSize: '0.65rem', fontWeight: 700, 
+                color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+                transition: 'color 0.5s ease'
+              }}>{step.label}</span>
             </div>
           ))}
         </div>
