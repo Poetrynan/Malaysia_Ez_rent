@@ -53,6 +53,48 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   const [profileSaved, setProfileSaved] = useState(false);
   const profileComplete = profileName.trim().length > 0;
 
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
+  const [terminateSubmitting, setTerminateSubmitting] = useState(false);
+
+  const handleTerminateLease = async () => {
+    if (!lease?.id) return;
+    setTerminateSubmitting(true);
+    if (isMockDatabase) {
+      const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const idx = leases.findIndex(l => l.id === lease.id);
+      if (idx !== -1) {
+        leases[idx].status = 'terminated';
+        leases[idx].admin_notes = ((leases[idx].admin_notes || '') + '\n' + `[${new Date().toISOString().split('T')[0]}] Terminated by tenant.`).trim();
+        localStorage.setItem('ez_leases', JSON.stringify(leases));
+      }
+      setTimeout(() => {
+        setTerminateSubmitting(false);
+        setShowTerminateConfirm(false);
+        load();
+      }, 500);
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        
+        // Use the secure RPC backend function instead of a direct UPDATE.
+        // Direct updates fail because tenants only have SELECT privileges via RLS.
+        const { error } = await supabase.rpc('tenant_terminate_lease', {
+          p_lease_id: lease.id
+        });
+        
+        if (error) throw error;
+        
+        setTerminateSubmitting(false);
+        setShowTerminateConfirm(false);
+        load();
+      } catch (e) {
+        console.error('Terminate lease error:', e);
+        setTerminateSubmitting(false);
+      }
+    }
+  };
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -480,6 +522,32 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
           </div>
+
+          {/* Terminate Lease action */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 16 }}>
+            <button
+              onClick={() => setShowTerminateConfirm(true)}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: 'var(--danger)',
+                padding: '12px 24px',
+                borderRadius: 8,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+            >
+              <AlertCircle size={16} />
+              {lang === 'zh' ? '终止租房合同' : 'Terminate Lease'}
+            </button>
+          </div>
         </>
       )}
 
@@ -712,6 +780,86 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             )}
           </div>
         )}
+        </div>
+      )}
+
+      {/* Terminate Lease Modal */}
+      {showTerminateConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20
+        }}>
+          <div style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+            borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
+            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setShowTerminateConfirm(false)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertCircle size={20} color="var(--danger)" />
+              </div>
+              <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-h)' }}>
+                {lang === 'zh' ? '确定要终止租约吗？' : 'Terminate Lease?'}
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 24 }}>
+              {lang === 'zh' ? (
+                <>
+                  依照您的租房合同条款，如果是非特殊情况在租约期内自行终止租房合同，
+                  <strong style={{ color: 'var(--danger)' }}>您的押金将不予退还</strong>。<br/><br/>
+                  管理端将会记录您单方面终止了该租约。点击确定则代表您同意合同中的相关违约内容。
+                </>
+              ) : (
+                <>
+                  According to your lease terms, if you terminate the lease before the end date without special circumstances, 
+                  <strong style={{ color: 'var(--danger)' }}> your deposit will not be refunded</strong>.<br/><br/>
+                  The administration will record this early termination. Clicking confirm means you agree to these penalty terms.
+                </>
+              )}
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowTerminateConfirm(false)}
+                style={{
+                  padding: '10px 16px', background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--text-h)', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer'
+                }}
+                disabled={terminateSubmitting}
+              >
+                {lang === 'zh' ? '我再想想' : 'Cancel'}
+              </button>
+              <button 
+                onClick={handleTerminateLease}
+                style={{
+                  padding: '10px 16px', background: 'var(--danger)', border: 'none',
+                  color: 'white', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 8
+                }}
+                disabled={terminateSubmitting}
+              >
+                {terminateSubmitting ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    {lang === 'zh' ? '处理中...' : 'Processing...'}
+                  </>
+                ) : (
+                  lang === 'zh' ? '确定终止并放弃押金' : 'Terminate & Forfeit Deposit'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

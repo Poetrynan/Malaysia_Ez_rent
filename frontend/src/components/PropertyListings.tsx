@@ -947,7 +947,9 @@ export default function PropertyListings() {
                             padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
                             background: 'transparent', color: 'var(--danger)',
                             fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                          }}>{t('coRentCancel')}</button>
+                          }}>
+                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '已租：联系中介取消' : 'Rented: Contact Agent to Cancel') : t('coRentCancel')}
+                          </button>
                         )}
                         {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                       </div>
@@ -978,7 +980,9 @@ export default function PropertyListings() {
                             background: 'transparent', color: 'var(--danger)',
                             fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                             opacity: submittingInterest ? 0.7 : 1,
-                          }}>{t('coRentCancel')}</button>
+                          }}>
+                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '已租：联系中介取消' : 'Rented: Contact Agent to Cancel') : t('coRentCancel')}
+                          </button>
                         )}
                         {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                       </div>
@@ -1043,14 +1047,23 @@ export default function PropertyListings() {
                                 {isMe ? (
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); cancelInterest(selected.id); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (i.status === 'confirmed') {
+                                        alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”办理终止手续或联系中介。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to "My Lease" or contact the agent.');
+                                      } else {
+                                        cancelInterest(selected.id);
+                                      }
+                                    }}
                                     disabled={submittingInterest}
                                     style={{
                                       padding: '4px 10px', borderRadius: 6, border: '1px solid var(--danger)',
                                       background: 'transparent', color: 'var(--danger)',
                                       fontSize: '0.68rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                                     }}
-                                  >{t('coRentCancel')}</button>
+                                  >
+                                    {i.status === 'confirmed' ? (lang === 'zh' ? '已租：不可直接取消' : 'Rented') : t('coRentCancel')}
+                                  </button>
                                 ) : (
                                   i.note && <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: expandedNote === i.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                                 )}
