@@ -868,6 +868,10 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
    * 发现由于原 `WeChatIcon` 的 SVG 矢量路径只包含单边气泡（微信双气泡中的右侧部分）且 viewBox 不匹配，导致图标看起来像“被白色容器遮挡了一半”。
    * 替换为了官方标准的 24x24 微信双气泡完整矢量路径，彻底解决了微信图标显示残缺的视觉 Bug。
 
+4. **收银台模态框关闭按钮与遮罩层点击关闭优化 (`LeaseLedgerCard.tsx`)**：
+   * 针对学生端账单支付（缴纳租金）弹窗在暗色遮罩背景下关闭按钮（X）不明显的问题，将其移至外层并用圆形的纯白实体背景包裹（`width/height: 36px`, `background: #ffffff`, `color: #374151`, 带有精致的柔和阴影），使其极具可读性和点击亲和力。
+   * 同时为外层 `modal-overlay` 增加了点击关闭事件，并对 `.modal-content` 设定了防穿透的 `e.stopPropagation()`，支持点击空白处快速退出的便捷交互。
+
 ---
 
 *由 Antigravity AI 辅助生成 · Malaysia Ez Rent Project*

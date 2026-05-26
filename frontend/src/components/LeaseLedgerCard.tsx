@@ -211,15 +211,46 @@ export default function LeaseLedgerCard({
 
       {/* Payment Modal */}
       {selectedPayment && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ width: 520, textAlign: 'left', overflow: 'hidden' }}>
-            {/* Close button */}
-            <button
-              onClick={() => setSelectedPayment(null)}
-              style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
-            >
-              <X size={18} />
-            </button>
+        <div className="modal-overlay" onClick={() => setSelectedPayment(null)}>
+          {/* Close button wrapped in a white circle */}
+          <button
+            onClick={() => setSelectedPayment(null)}
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: '#ffffff',
+              border: 'none',
+              color: '#374151',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              transition: 'all 0.2s',
+              zIndex: 999,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+
+          <div
+            className="modal-content"
+            style={{ position: 'relative', width: 520, textAlign: 'left', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
 
             <h3 style={{ fontSize: '1.05rem', marginBottom: 4, color: 'var(--text-h)' }}>{t('paymentTitle')}</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
