@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star, Users } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
 
 interface Lease {
-  id: string; unit_id: string; tenant_id: string;
+  id: string; unit_id: string; lease_group_id?: string; tenant_id: string;
   start_date: string; end_date: string;
   monthly_rent: number; deposit_amount: number;
   security_deposit_months?: number; utility_deposit_months?: number;
@@ -24,6 +24,7 @@ interface Community { id: string; name: string; }
 export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'maintenance' }) {
   const { t, lang } = useApp();
   const [lease, setLease] = useState<Lease | null>(null);
+  const [roommates, setRoommates] = useState<{ id: string; tenant_id: string; tenantName: string; status: string; start_date: string; end_date: string; }[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
@@ -185,6 +186,22 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         const u = units.find(u => u.id === myLease.unit_id) || null;
         setUnit(u);
         if (u) setCommunity(communities.find(c => c.id === u.community_id) || null);
+
+        // Fetch roommates if lease_group_id is set
+        if (myLease.lease_group_id) {
+          const groupLeases = leases.filter(l => l.lease_group_id === myLease.lease_group_id && l.id !== myLease.id);
+          const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+          setRoommates(groupLeases.map(gl => ({
+            id: gl.id,
+            tenant_id: gl.tenant_id,
+            tenantName: users.find((x: any) => x.id === gl.tenant_id)?.full_name || gl.tenant_id,
+            status: gl.status,
+            start_date: gl.start_date,
+            end_date: gl.end_date
+          })));
+        } else {
+          setRoommates([]);
+        }
       }
     } else {
       try {
@@ -212,6 +229,36 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             setUnit(unitRes.data);
             const { data: commData } = await supabase.from('communities').select('id, name').eq('id', unitRes.data.community_id).single();
             if (commData) setCommunity(commData);
+          }
+
+          // Fetch roommates in live mode
+          if (leaseData.lease_group_id) {
+            const { data: groupLeases } = await supabase
+              .from('leases')
+              .select('id, tenant_id, status, start_date, end_date')
+              .eq('lease_group_id', leaseData.lease_group_id)
+              .neq('id', leaseData.id);
+            
+            if (groupLeases && groupLeases.length > 0) {
+              const tenantIds = groupLeases.map(gl => gl.tenant_id);
+              const { data: usersData } = await supabase
+                .from('users')
+                .select('id, full_name')
+                .in('id', tenantIds);
+              
+              setRoommates(groupLeases.map(gl => ({
+                id: gl.id,
+                tenant_id: gl.tenant_id,
+                tenantName: usersData?.find(x => x.id === gl.tenant_id)?.full_name || gl.tenant_id,
+                status: gl.status,
+                start_date: gl.start_date,
+                end_date: gl.end_date
+              })));
+            } else {
+              setRoommates([]);
+            }
+          } else {
+            setRoommates([]);
           }
         }
       } catch (e) { console.error('StudentPortal load error:', e); }
@@ -517,6 +564,119 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
               </div>
             )}
           </div>
+
+          {unit?.room_type === 'Whole Unit' && roommates.length > 0 && (
+            <div className="glass-card">
+              <h4 style={{ fontSize: '0.9rem', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Users size={16} style={{ color: 'var(--primary)' }} />
+                {lang === 'zh' ? '合租室友名单 (联保整租)' : 'Co-tenants (Joint Lease)'}
+              </h4>
+              
+              {/* Roommate departure alerts */}
+              {roommates.some(rm => rm.status === 'transferred') && (
+                <div style={{
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  marginBottom: 16,
+                  color: 'var(--text-h)',
+                  fontSize: '0.82rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--danger)', marginBottom: 6 }}>
+                    <AlertCircle size={16} />
+                    <span>{lang === 'zh' ? '⚠️ 合租联保退租警示' : '⚠️ Joint Tenancy Breach Warning'}</span>
+                  </div>
+                  <p style={{ margin: 0, lineHeight: 1.5, color: 'var(--text-body)' }}>
+                    {lang === 'zh' 
+                      ? `您的合租室友 [${roommates.filter(rm => rm.status === 'transferred').map(rm => rm.tenantName).join(', ')}] 已办理提前退租。根据合租联保规定，退出者须在生效日前找到继租人完成更替，否则其余人员须共同承担退出者租金份额，或在未能成功替换时面临整组违约责任。请尽快寻找继租人并联系管理员 Nick Chan 办理继租！`
+                      : `Your co-tenant [${roommates.filter(rm => rm.status === 'transferred').map(rm => rm.tenantName).join(', ')}] has requested early termination. Under joint lease liability, exiting members must be substituted before departure; otherwise, remaining roommates are jointly responsible for rent or subject to contract breach. Please find a replacement roommate and contact admin Nick Chan immediately.`
+                    }
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {/* Me */}
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--primary)',
+                  background: 'var(--primary-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10
+                }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
+                    {profileName ? profileName.slice(0, 1).toUpperCase() : 'ME'}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-h)' }}>
+                      {profileName || (lang === 'zh' ? '我' : 'Me')} ({lang === 'zh' ? '当前承租' : 'Currently Renting'})
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {lease.start_date} ~ {lease.end_date}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other Roommates */}
+                {roommates.map(rm => {
+                  const isTransferred = rm.status === 'transferred';
+                  return (
+                    <div key={rm.id} style={{
+                      padding: '12px 14px',
+                      borderRadius: 10,
+                      border: `1px solid ${isTransferred ? 'rgba(239, 68, 68, 0.2)' : 'var(--glass-border)'}`,
+                      background: isTransferred ? 'rgba(239, 68, 68, 0.03)' : 'var(--glass-bg)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10
+                    }}>
+                      <div style={{ 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: '50%', 
+                        background: isTransferred ? 'var(--text-muted)' : 'var(--accent)', 
+                        color: 'white', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: 700, 
+                        fontSize: '0.85rem' 
+                      }}>
+                        {rm.tenantName.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.82rem', 
+                          color: isTransferred ? 'var(--text-muted)' : 'var(--text-h)',
+                          textDecoration: isTransferred ? 'line-through' : 'none'
+                        }}>
+                          {rm.tenantName} 
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            marginLeft: 4, 
+                            fontWeight: 600,
+                            color: isTransferred ? 'var(--danger)' : 'var(--success)'
+                          }}>
+                            {isTransferred 
+                              ? (lang === 'zh' ? '(已退出/变更中)' : '(Exited/Transferring)') 
+                              : (lang === 'zh' ? '(合租承租)' : '(Active Roommate)')
+                            }
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {rm.start_date} ~ {rm.end_date}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Ledger */}
           <LeaseLedgerCard

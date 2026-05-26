@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -22,7 +22,7 @@ const AMENITIES = [
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
 interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
-interface Lease { id: string; unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; }
+interface Lease { id: string; unit_id: string; lease_group_id?: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; admin_notes?: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
 interface LeaseWithMeta extends Lease { unitData?: Unit; communityData?: Community; tenantName?: string; payments?: Payment[]; }
@@ -121,6 +121,14 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   interface UserProfile { id: string; full_name: string | null; phone?: string | null; }
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminIds, setAdminIds] = useState<string[]>([]);
+
+  // ── Lease Substitution state ──
+  const [substituteLease, setSubstituteLease] = useState<LeaseWithMeta | null>(null);
+  const [incomingTenantId, setIncomingTenantId] = useState<string>('');
+  const [transferDate, setTransferDate] = useState<string>('');
+  const [depositHandle, setDepositHandle] = useState<'transfer_to_new' | 'refunded' | 'forfeited'>('transfer_to_new');
+  const [substitutionNotes, setSubstitutionNotes] = useState<string>('');
+  const [isSubmittingSubstitution, setIsSubmittingSubstitution] = useState<boolean>(false);
 
   // ── Toast & Validation ──
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'warning' | 'success' } | null>(null);
@@ -1412,6 +1420,161 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     showToast(t('validationDeleted'), 'success');
   };
 
+  const executeTenantSubstitution = async () => {
+    if (!substituteLease) return;
+    if (!incomingTenantId) {
+      showToast(lang === 'zh' ? '请选择继租人' : 'Please select incoming tenant', 'error');
+      return;
+    }
+    if (!transferDate) {
+      showToast(lang === 'zh' ? '请选择生效日期' : 'Please select effective date', 'error');
+      return;
+    }
+
+    setIsSubmittingSubstitution(true);
+    if (isLive) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        
+        const { data, error } = await supabase.rpc('substitute_co_tenant', {
+          p_lease_group_id: substituteLease.lease_group_id || null,
+          p_exiting_lease_id: substituteLease.id,
+          p_incoming_user_id: incomingTenantId,
+          p_transfer_date: transferDate,
+          p_deposit_handle: depositHandle,
+          p_notes: substitutionNotes
+        });
+
+        if (error) throw error;
+        showToast(lang === 'zh' ? '租约变更成功！' : 'Lease substitution successful!', 'success');
+        setSubstituteLease(null);
+        setIncomingTenantId('');
+        setTransferDate('');
+        setSubstitutionNotes('');
+        loadAll();
+      } catch (e: any) {
+        showToast(e.message || 'Error executing substitution', 'error');
+      } finally {
+        setIsSubmittingSubstitution(false);
+      }
+    } else {
+      // Mock execution in local storage
+      try {
+        const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+        const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+        const ints: any[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+        const users: any[] = JSON.parse(localStorage.getItem('ez_users') || '[]');
+
+        const origLeaseIdx = leases.findIndex(l => l.id === substituteLease.id);
+        if (origLeaseIdx === -1) throw new Error('Original lease not found');
+        const origLease = leases[origLeaseIdx];
+
+        // 1. Update original lease
+        leases[origLeaseIdx] = {
+          ...origLease,
+          status: 'transferred',
+          end_date: new Date(new Date(transferDate).getTime() - 24*60*60*1000).toISOString().split('T')[0],
+          admin_notes: ((origLease.admin_notes || '') + `\n[System] Transferred to new tenant on ${transferDate}`).trim()
+        };
+
+        // 2. Create new lease
+        const newLeaseId = `l-sub-${Date.now()}`;
+        const newLease: Lease = {
+          id: newLeaseId,
+          unit_id: origLease.unit_id,
+          lease_group_id: origLease.lease_group_id || `lg-mock-${Date.now()}`,
+          tenant_id: incomingTenantId,
+          start_date: transferDate,
+          end_date: origLease.end_date,
+          monthly_rent: origLease.monthly_rent,
+          deposit_amount: depositHandle === 'transfer_to_new' ? origLease.deposit_amount : 0,
+          security_deposit_months: origLease.security_deposit_months,
+          utility_deposit_months: origLease.utility_deposit_months,
+          status: 'active',
+          admin_notes: `[System] Substituted from tenant lease ID: ${origLease.id}. Notes: ${substitutionNotes}`
+        };
+        leases.push(newLease);
+
+        // 3. Billing adjustment for new tenant and exiting tenant (No pro-rating)
+        const transferMonth = transferDate.substring(0, 7) + '-01'; // e.g. 2026-05-01
+        let filteredPayments: Payment[] = [];
+        let nextBillingMonthDate: Date;
+        
+        const isFirstDayOfMonth = transferDate.endsWith('-01');
+        
+        if (isFirstDayOfMonth) {
+          // If transfer date is exactly the 1st of the month, the exiting tenant is not responsible for this month
+          // Delete the current month's unpaid bill and all future unpaid bills for the exiting tenant
+          filteredPayments = payments.filter(p => !(p.lease_id === origLease.id && p.billing_month >= transferMonth && !p.paid));
+          // Start billing the incoming tenant from the current month
+          nextBillingMonthDate = new Date(transferMonth);
+        } else {
+          // If transfer date is after the 1st, the exiting tenant is responsible for this entire month
+          // Delete all future unpaid bills of the exiting tenant after the current month
+          filteredPayments = payments.filter(p => !(p.lease_id === origLease.id && p.billing_month > transferMonth && !p.paid));
+          // Start billing the incoming tenant from the next month
+          const curDate = new Date(transferDate);
+          nextBillingMonthDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 1);
+        }
+
+        // Generate standard monthly payments for incoming tenant
+        const endMonth = new Date(newLease.end_date);
+        while (nextBillingMonthDate <= endMonth) {
+          const yr = nextBillingMonthDate.getFullYear();
+          const mo = String(nextBillingMonthDate.getMonth() + 1).padStart(2, '0');
+          filteredPayments.push({
+            id: `p-sub-${filteredPayments.length}-${Date.now()}`,
+            lease_id: newLeaseId,
+            billing_month: `${yr}-${mo}-01`,
+            paid: false,
+            paid_date: null,
+            admin_notes: `[System] Standard Monthly Rent`
+          });
+          nextBillingMonthDate.setMonth(nextBillingMonthDate.getMonth() + 1);
+        }
+
+        // 4. Update tenant interests status
+        const exitInterestIdx = ints.findIndex(i => i.unit_id === origLease.unit_id && i.user_id === origLease.tenant_id);
+        if (exitInterestIdx !== -1) {
+          ints[exitInterestIdx].status = 'left';
+        }
+        
+        const incomingUser = users.find(u => u.id === incomingTenantId);
+        const incomingInterestIdx = ints.findIndex(i => i.unit_id === origLease.unit_id && i.user_id === incomingTenantId);
+        if (incomingInterestIdx !== -1) {
+          ints[incomingInterestIdx].status = 'confirmed';
+        } else {
+          ints.push({
+            id: `int-${Date.now()}`,
+            unit_id: origLease.unit_id,
+            user_id: incomingTenantId,
+            email: incomingUser?.email || 'mock@student.my',
+            full_name: incomingUser?.full_name || 'Incoming Tenant',
+            status: 'confirmed',
+            created_at: new Date().toISOString()
+          });
+        }
+
+        // Save back to localStorage
+        localStorage.setItem('ez_leases', JSON.stringify(leases));
+        localStorage.setItem('ez_payments', JSON.stringify(filteredPayments));
+        localStorage.setItem('ez_interests', JSON.stringify(ints));
+
+        showToast(lang === 'zh' ? '租约变更成功！(沙盒模拟)' : 'Lease substitution successful! (Sandbox Mock)', 'success');
+        setSubstituteLease(null);
+        setIncomingTenantId('');
+        setTransferDate('');
+        setSubstitutionNotes('');
+        loadAll();
+      } catch (e: any) {
+        showToast(e.message || 'Error executing substitution', 'error');
+      } finally {
+        setIsSubmittingSubstitution(false);
+      }
+    }
+  };
+
   const deleteUnit = async (unitId: string) => {
     if (!confirm(t('confirmDeleteUnit'))) return;
     if (isLive) {
@@ -2238,6 +2401,18 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                     <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
                       {isExpanded ? <><ChevronUp size={13} /> {t('hideLedger')}</> : <><ChevronDown size={13} /> {t('showLedger')}</>}
                     </button>
+                    {l.status === 'active' && unit?.room_type === 'Whole Unit' && (
+                      <button onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setSubstituteLease(l);
+                        setIncomingTenantId('');
+                        setTransferDate(new Date().toISOString().split('T')[0]);
+                        setDepositHandle('transfer_to_new');
+                        setSubstitutionNotes('');
+                      }} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4, borderColor: 'var(--primary)', color: 'var(--primary)' }} title={lang === 'zh' ? '退租继租变更' : 'Replace Tenant'}>
+                        <RefreshCw size={13} /> {lang === 'zh' ? '退租继租变更' : 'Replace Tenant'}
+                      </button>
+                    )}
                     <button onClick={(e) => { e.stopPropagation(); deleteLease(l.id); }} style={{
                       background: 'none', border: 'none', color: 'var(--danger)',
                       cursor: 'pointer', padding: 6, borderRadius: 6,
@@ -2925,6 +3100,143 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         </div>
       )}
 
+      {/* ── Lease Tenant Substitution Modal ── */}
+      {substituteLease && (
+        <div className="modal-overlay" onClick={() => setSubstituteLease(null)}>
+          <div className="modal-content" style={{ width: 500, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSubstituteLease(null)}
+              style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+              <X size={18} />
+            </button>
+
+            <h3 style={{ fontSize: '1.05rem', marginBottom: 16, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RefreshCw size={18} style={{ color: 'var(--primary)' }} />
+              {lang === 'zh' ? '办理退租继租变更 (整组联保)' : 'Manage Co-tenant Substitution'}
+            </h3>
+
+            <div style={{ background: 'var(--primary-light)', padding: '12px 16px', borderRadius: 10, border: '1px solid var(--glass-border)', marginBottom: 20 }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                {lang === 'zh' ? '原租客：' : 'Exiting Tenant: '} {substituteLease.tenantName}
+              </p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '合同期限：' : 'Lease Period: '} {substituteLease.start_date} ~ {substituteLease.end_date}
+              </p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '租金金额：' : 'Rent Amount: '} RM {substituteLease.monthly_rent} · {lang === 'zh' ? '押金存续：' : 'Deposit: '} RM {substituteLease.deposit_amount}
+              </p>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                {lang === 'zh' ? '选择新继租房客' : 'Select Incoming Tenant'}
+              </label>
+              <select 
+                className="form-select" 
+                value={incomingTenantId} 
+                onChange={e => setIncomingTenantId(e.target.value)}
+              >
+                <option value="">{t('selectTenant')}</option>
+                
+                {/* Group 1: Confirmed interested co-tenants for this unit */}
+                {(() => {
+                  const confirmedInterests = interests.filter(i => i.unit_id === substituteLease.unit_id && i.status === 'confirmed' && i.user_id !== substituteLease.tenant_id);
+                  if (confirmedInterests.length === 0) return null;
+                  return (
+                    <optgroup label={lang === 'zh' ? '📄 意向已确认的替换房客候选人' : '📄 Confirmed Candidate Roommates'}>
+                      {confirmedInterests.map(i => (
+                        <option key={i.user_id} value={i.user_id}>
+                          {i.full_name || i.email || i.user_id.slice(0, 8)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })()}
+                
+                {/* Group 2: All registered users in the database */}
+                <optgroup label={lang === 'zh' ? '👥 所有其他注册房客' : '👥 All Registered Tenants'}>
+                  {allUsers
+                    .filter(u => u.id !== substituteLease.tenant_id && !adminIds.includes(u.id) && !interests.some(i => i.unit_id === substituteLease.unit_id && i.status === 'confirmed' && i.user_id === u.id))
+                    .map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.full_name || (lang === 'zh' ? '未设置姓名' : 'Unnamed Tenant')}
+                      </option>
+                    ))
+                  }
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                {lang === 'zh' ? '替换生效日期' : 'Transfer Effective Date'}
+              </label>
+              <input 
+                type="date" 
+                className="form-input" 
+                value={transferDate} 
+                min={substituteLease.start_date}
+                max={substituteLease.end_date}
+                onChange={e => setTransferDate(e.target.value)} 
+              />
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '⚠️ 租金按整月计收。生效当月租金由原房客承担；新房客的租金账单自生效日期次月起开始生成（若生效日正好是该月1日，则为当月）。' : '⚠️ Rent is charged on a full-month basis. Exiting tenant pays for the transfer month; incoming tenant starts billing from the following month (or the current month if starting on the 1st).'}
+              </p>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                {lang === 'zh' ? '原押金处理方案' : 'Deposit Handling Plan'}
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', cursor: 'pointer' }}>
+                  <input type="radio" name="depositHandle" checked={depositHandle === 'transfer_to_new'} onChange={() => setDepositHandle('transfer_to_new')} />
+                  <span>{lang === 'zh' ? '直接转让给新房客 (继承押金额 RM ' : 'Transfer directly to incoming tenant (Inherit RM '}{substituteLease.deposit_amount})</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', cursor: 'pointer' }}>
+                  <input type="radio" name="depositHandle" checked={depositHandle === 'refunded'} onChange={() => setDepositHandle('refunded')} />
+                  <span>{lang === 'zh' ? '已全额退还给原房客 (新房客需另行交纳押金)' : 'Fully refunded to exiting tenant (incoming must pay separately)'}</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', cursor: 'pointer' }}>
+                  <input type="radio" name="depositHandle" checked={depositHandle === 'forfeited'} onChange={() => setDepositHandle('forfeited')} />
+                  <span>{lang === 'zh' ? '扣除没收原押金 (原房客违约，新房客需另行交纳)' : 'Forfeit exiting tenant\'s deposit (breach of contract, incoming pays separately)'}</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                {lang === 'zh' ? '管理员备注 / 变更条款' : 'Admin Notes / Transfer Clauses'}
+              </label>
+              <textarea 
+                className="form-textarea" 
+                rows={2} 
+                value={substitutionNotes} 
+                onChange={e => setSubstitutionNotes(e.target.value)} 
+                placeholder={lang === 'zh' ? '输入任何特定变更约定或补偿性说明...' : 'Enter any specific transfer arrangements or adjustments...'}
+                style={{ fontSize: '0.82rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={executeTenantSubstitution}
+                disabled={isSubmittingSubstitution}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer', opacity: isSubmittingSubstitution ? 0.7 : 1 }}
+              >
+                {isSubmittingSubstitution ? (lang === 'zh' ? '正在提交...' : 'Submitting...') : (lang === 'zh' ? '确认并应用租约变更' : 'Confirm & Apply Transfer')}
+              </button>
+              <button 
+                onClick={() => setSubstituteLease(null)}
+                disabled={isSubmittingSubstitution}
+                style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-h)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}
+              >
+                {lang === 'zh' ? '取消' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Toast Notification ── */}
       {toast && (
         <div style={{
@@ -2933,18 +3245,33 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 20px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 24px', borderRadius: 12,
             fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
             minWidth: 280, maxWidth: '90vw',
-            background:
-              toast.type === 'error'   ? 'var(--danger)'  :
-              toast.type === 'warning' ? '#d97706'        :
-              '#059669',
-            color: 'white',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            color: 'var(--text-h)',
+            border: `1px solid ${
+              toast.type === 'error' ? 'rgba(239, 68, 68, 0.45)' :
+              toast.type === 'warning' ? 'rgba(217, 119, 6, 0.45)' :
+              'rgba(16, 185, 129, 0.45)'
+            }`,
+            boxShadow: `0 8px 32px ${
+              toast.type === 'error' ? 'rgba(239, 68, 68, 0.12)' :
+              toast.type === 'warning' ? 'rgba(217, 119, 6, 0.12)' :
+              'rgba(16, 185, 129, 0.12)'
+            }, inset 0 1px 1px rgba(255,255,255,0.1)`,
           }}>
-            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>
+            <span style={{ 
+              fontSize: '1.1rem', 
+              lineHeight: 1,
+              color: 
+                toast.type === 'error' ? '#ef4444' :
+                toast.type === 'warning' ? '#f59e0b' :
+                '#10b981'
+            }}>
               {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '✅'}
             </span>
             <span>{toast.msg}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Search, SlidersHorizontal, MapPin, Bed, Bath, DollarSign, Tag,
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
@@ -112,12 +112,13 @@ function WeChatIcon({ size = 18 }: { size?: number }) {
     <svg
       width={size}
       height={size}
-      viewBox="-1 -1 26 26"
+      viewBox="0 0 16 16"
       fill="currentColor"
       aria-hidden
       style={{ display: 'block', flexShrink: 0, overflow: 'visible' }}
     >
-      <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.67l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.328.328 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.082 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-3.733 0-6.76 2.873-6.76 6.414 0 .349.028.695.082 1.036a8.06 8.06 0 0 0 1.228-.094c4.066-.413 7.262-3.626 7.262-7.514a6.86 6.86 0 0 0-.812-3.842zm-3.01 3.355c.519 0 .94.43.94.96a.953.953 0 0 1-.94.961.953.953 0 0 1-.939-.96c0-.531.421-.96.94-.96zm4.845 0c.519 0 .939.43.939.96a.953.953 0 0 1-.939.961.953.953 0 0 1-.94-.96c0-.531.42-.96.94-.96z" />
+      <path d="M11.176 14.429c-2.665 0-4.826-1.8-4.826-4.018 0-2.22 2.159-4.02 4.824-4.02S16 8.191 16 10.411c0 1.21-.65 2.301-1.666 3.036a.32.32 0 0 0-.12.366l.218.81a.6.6 0 0 1 .029.117.166.166 0 0 1-.162.162.2.2 0 0 1-.092-.03l-1.057-.61a.5.5 0 0 0-.256-.074.5.5 0 0 0-.142.021 5.7 5.7 0 0 1-1.576.22M9.064 9.542a.647.647 0 1 0 .557-1 .645.645 0 0 0-.646.647.6.6 0 0 0 .09.353Zm3.232.001a.646.646 0 1 0 .546-1 .645.645 0 0 0-.644.644.63.63 0 0 0 .098.356" />
+      <path d="M0 6.826c0 1.455.781 2.765 2.001 3.656a.385.385 0 0 1 .143.439l-.161.6-.1.373a.5.5 0 0 0-.032.14.19.19 0 0 0 .193.193q.06 0 .111-.029l1.268-.733a.6.6 0 0 1 .308-.088q.088 0 .171.025a6.8 6.8 0 0 0 1.625.26 4.5 4.5 0 0 1-.177-1.251c0-2.936 2.785-5.02 5.824-5.02l.15.002C10.587 3.429 8.392 2 5.796 2 2.596 2 0 4.16 0 6.826m4.632-1.555a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0m3.875 0a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0" />
     </svg>
   );
 }
@@ -229,7 +230,15 @@ export default function PropertyListings() {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [submittingInterest, setSubmittingInterest] = useState(false);
-  const [interestFeedback, setInterestFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [myLeasedUnitIds, setMyLeasedUnitIds] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3800);
+  }, []);
 
   // Agent profile modal states
   const [showAgentProfile, setShowAgentProfile] = useState<AdminContact | null>(null);
@@ -260,6 +269,26 @@ export default function PropertyListings() {
         // We look for ANY entry that isn't 'left' TO DRIVE THE UI.
         const mine = data.find((i: TenantInterest) => String(i.user_id) === String(uid) && i.status !== 'left');
         setMyInterest(mine ? mine.unit_id : null);
+
+        // Fetch active leases to see if the user is currently renting any units
+        if (isMockDatabase) {
+          const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+          const activeLeasedUnitIds = mockLeases
+            .filter((l: any) => String(l.tenant_id) === String(uid) && l.status === 'active')
+            .map((l: any) => l.unit_id);
+          setMyLeasedUnitIds(activeLeasedUnitIds);
+        } else {
+          const { data: leasesData, error: leasesError } = await supabase
+            .from('leases')
+            .select('unit_id')
+            .eq('tenant_id', uid)
+            .eq('status', 'active');
+          if (!leasesError && leasesData) {
+            setMyLeasedUnitIds(leasesData.map(l => l.unit_id));
+          } else {
+            console.error('[refreshInterests leases]', leasesError);
+          }
+        }
       }
     }
   };
@@ -415,12 +444,21 @@ export default function PropertyListings() {
       setInterests(active);
       const mine = active.find(i => i.user_id === 'tenant-123');
       if (mine) setMyInterest(mine.unit_id);
+
+      const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const activeLeasedUnitIds = mockLeases
+        .filter((l: any) => String(l.tenant_id) === 'tenant-123' && l.status === 'active')
+        .map((l: any) => l.unit_id);
+      setMyLeasedUnitIds(activeLeasedUnitIds);
     } else {
       (async () => {
         try {
           const { createClient } = await import('@/utils/supabase/client');
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setAuthUserId(user.id);
+          }
           await refreshInterests(supabase, user?.id);
         } catch (e) {
           console.error('[load interests]', e);
@@ -443,7 +481,6 @@ export default function PropertyListings() {
 
   const expressInterest = async (unitId: string, noteOverride?: string) => {
     const note = (noteOverride ?? noteInput).trim();
-    setInterestFeedback(null);
 
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
@@ -462,7 +499,7 @@ export default function PropertyListings() {
       setMyInterest(unitId);
       setNoteInput('');
       setShowNoteInput(false);
-      setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
+      showToast(t('coRentSubmitSuccess'), 'success');
       return;
     }
 
@@ -472,7 +509,7 @@ export default function PropertyListings() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        showToast(t('coRentLoginRequired'), 'error');
         return;
       }
 
@@ -485,13 +522,13 @@ export default function PropertyListings() {
         setMyInterest(unitId);
         setNoteInput('');
         setShowNoteInput(false);
-        setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
+        showToast(t('coRentSubmitSuccess'), 'success');
         await refreshInterests(supabase, user.id);
         return;
       }
 
       if (rpcResult?.error === 'not_authenticated') {
-        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        showToast(t('coRentLoginRequired'), 'error');
         return;
       }
 
@@ -523,23 +560,23 @@ export default function PropertyListings() {
 
       if (error) {
         console.error('[expressInterest]', rpcError || error);
-        setInterestFeedback({
-          type: 'error',
-          msg: rpcError?.message?.includes('submit_tenant_interest')
+        showToast(
+          rpcError?.message?.includes('submit_tenant_interest')
             ? (lang === 'zh' ? '请在 Supabase 执行 015_tenant_interest_rpc.sql 后重试' : 'Run migration 015_tenant_interest_rpc.sql in Supabase, then retry')
             : t('coRentSubmitFailed'),
-        });
+          'error'
+        );
         return;
       }
 
       setMyInterest(unitId);
       setNoteInput('');
       setShowNoteInput(false);
-      setInterestFeedback({ type: 'success', msg: t('coRentSubmitSuccess') });
+      showToast(t('coRentSubmitSuccess'), 'success');
       await refreshInterests(supabase, user.id);
     } catch (e) {
       console.error(e);
-      setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+      showToast(t('coRentSubmitFailed'), 'error');
     } finally {
       setSubmittingInterest(false);
     }
@@ -548,14 +585,13 @@ export default function PropertyListings() {
   const cancelInterest = async (unitIdOverride?: string) => {
     const unitId = unitIdOverride ?? myInterest ?? selected?.id;
     if (!unitId) return;
-    setInterestFeedback(null);
     if (isMockDatabase) {
       const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
       const updated = all.map(i => (i.unit_id === unitId && i.user_id === 'tenant-123') ? { ...i, status: 'left' } : i);
       localStorage.setItem('ez_interests', JSON.stringify(updated));
       setInterests(updated.filter(i => i.status !== 'left'));
       setMyInterest(null);
-      setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
+      showToast(t('coRentCancelSuccess'), 'success');
       return;
     }
     setSubmittingInterest(true);
@@ -564,7 +600,7 @@ export default function PropertyListings() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setInterestFeedback({ type: 'error', msg: t('coRentLoginRequired') });
+        showToast(t('coRentLoginRequired'), 'error');
         return;
       }
 
@@ -574,7 +610,7 @@ export default function PropertyListings() {
 
       if (!rpcError && rpcResult?.success) {
         if (myInterest === unitId) setMyInterest(null);
-        setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
+        showToast(t('coRentCancelSuccess'), 'success');
         await refreshInterests(supabase, user.id);
         return;
       }
@@ -587,11 +623,11 @@ export default function PropertyListings() {
 
       if (error) {
         console.error('[cancelInterest]', rpcError || error);
-        setInterestFeedback({ type: 'error', msg: t('coRentSubmitFailed') });
+        showToast(t('coRentSubmitFailed'), 'error');
         return;
       }
       if (myInterest === unitId) setMyInterest(null);
-      setInterestFeedback({ type: 'success', msg: t('coRentCancelSuccess') });
+      showToast(t('coRentCancelSuccess'), 'success');
       await refreshInterests(supabase, user.id);
     } catch (e) {
       console.error(e);
@@ -939,38 +975,48 @@ export default function PropertyListings() {
 
                   // Non–Whole Unit: simple rent button
                   if (!isWholeUnit) {
+                    const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {!hasMyInterest && !isFull && (
-                          <button onClick={() => expressInterest(selected.id)} style={{
-                            padding: '10px 24px', borderRadius: 8, border: 'none',
-                            background: 'var(--primary)', color: 'white',
-                            fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                          }}>{t('coRentJoin')}</button>
+                        {isLeasedByMe ? (
+                          <span style={{ fontSize: '0.88rem', color: 'var(--success)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this room'}
+                          </span>
+                        ) : (
+                          <>
+                            {!hasMyInterest && !isFull && (
+                              <button onClick={() => expressInterest(selected.id)} style={{
+                                padding: '10px 24px', borderRadius: 8, border: 'none',
+                                background: 'var(--primary)', color: 'white',
+                                fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                              }}>{t('coRentJoin')}</button>
+                            )}
+                            {hasMyInterest && (
+                              <button onClick={() => {
+                                if (myEntry?.status === 'confirmed') {
+                                  alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                                } else {
+                                  if (window.confirm(lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.')) {
+                                    cancelInterest(selected.id);
+                                  }
+                                }
+                              }} disabled={submittingInterest} style={{
+                                padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
+                                background: 'transparent', color: 'var(--danger)',
+                                fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                              }}>
+                                {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
+                              </button>
+                            )}
+                            {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
+                          </>
                         )}
-                        {hasMyInterest && (
-                          <button onClick={() => {
-                            if (myEntry?.status === 'confirmed') {
-                              alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
-                            } else {
-                              if (window.confirm(lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.')) {
-                                cancelInterest(selected.id);
-                              }
-                            }
-                          }} disabled={submittingInterest} style={{
-                            padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
-                            background: 'transparent', color: 'var(--danger)',
-                            fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                          }}>
-                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
-                          </button>
-                        )}
-                        {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                       </div>
                     );
                   }
 
                   // Whole Unit: full co-renting flow
+                  const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
                   return (
                     <>
                       <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
@@ -981,44 +1027,41 @@ export default function PropertyListings() {
                             ({t('coRentOccupancyConfirmed')} {confirmed} · {t('coRentInterested')} {interested})
                           </span>
                         </span>
-                        {!hasMyInterest && !isFull && !showNoteInput && (
-                          <button onClick={() => { setShowNoteInput(true); setInterestFeedback(null); }} disabled={submittingInterest} style={{
-                            padding: '8px 18px', borderRadius: 8, border: 'none',
-                            background: 'var(--primary)', color: 'white',
-                            fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                          }}>{t('coRentJoin')}</button>
+                        {isLeasedByMe ? (
+                          <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600, marginLeft: 12 }}>
+                            {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this unit'}
+                          </span>
+                        ) : (
+                          <>
+                            {!hasMyInterest && !isFull && !showNoteInput && (
+                              <button onClick={() => { setShowNoteInput(true); }} disabled={submittingInterest} style={{
+                                padding: '8px 18px', borderRadius: 8, border: 'none',
+                                background: 'var(--primary)', color: 'white',
+                                fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                              }}>{t('coRentJoin')}</button>
+                            )}
+                            {hasMyInterest && (
+                              <button onClick={() => {
+                                if (myEntry?.status === 'confirmed') {
+                                  alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                                } else {
+                                  if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
+                                    cancelInterest(selected.id);
+                                  }
+                                }
+                              }} disabled={submittingInterest} style={{
+                                padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
+                                background: 'transparent', color: 'var(--danger)',
+                                fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                opacity: submittingInterest ? 0.7 : 1,
+                              }}>
+                                {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
+                              </button>
+                            )}
+                            {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
+                          </>
                         )}
-                        {hasMyInterest && (
-                          <button onClick={() => {
-                            if (myEntry?.status === 'confirmed') {
-                              alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
-                            } else {
-                              if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
-                                cancelInterest(selected.id);
-                              }
-                            }
-                          }} disabled={submittingInterest} style={{
-                            padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
-                            background: 'transparent', color: 'var(--danger)',
-                            fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                            opacity: submittingInterest ? 0.7 : 1,
-                          }}>
-                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
-                          </button>
-                        )}
-                        {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
                       </div>
-
-                      {interestFeedback && (
-                        <div style={{
-                          marginBottom: 12, padding: '10px 12px', borderRadius: 8, fontSize: '0.78rem',
-                          background: interestFeedback.type === 'success' ? 'rgba(22,163,74,0.1)' : 'rgba(239,68,68,0.1)',
-                          color: interestFeedback.type === 'success' ? '#16A34A' : 'var(--danger)',
-                          border: `1px solid ${interestFeedback.type === 'success' ? 'rgba(22,163,74,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                        }}>
-                          {interestFeedback.msg}
-                        </div>
-                      )}
 
                       {/* Note input */}
                       {showNoteInput && !hasMyInterest && (
@@ -1934,6 +1977,47 @@ export default function PropertyListings() {
           </div>
         );
       })()}
+      {/* ── Toast Notification ── */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, pointerEvents: 'none',
+          animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 24px', borderRadius: 12,
+            fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
+            minWidth: 280, maxWidth: '90vw',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            color: 'var(--text-h)',
+            border: `1px solid ${
+              toast.type === 'error' ? 'rgba(239, 68, 68, 0.45)' :
+              toast.type === 'warning' ? 'rgba(217, 119, 6, 0.45)' :
+              'rgba(16, 185, 129, 0.45)'
+            }`,
+            boxShadow: `0 8px 32px ${
+              toast.type === 'error' ? 'rgba(239, 68, 68, 0.12)' :
+              toast.type === 'warning' ? 'rgba(217, 119, 6, 0.12)' :
+              'rgba(16, 185, 129, 0.12)'
+            }, inset 0 1px 1px rgba(255,255,255,0.1)`,
+          }}>
+            <span style={{ 
+              fontSize: '1.1rem', 
+              lineHeight: 1,
+              color: 
+                toast.type === 'error' ? '#ef4444' :
+                toast.type === 'warning' ? '#f59e0b' :
+                '#10b981'
+            }}>
+              {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '✅'}
+            </span>
+            <span>{toast.msg}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
