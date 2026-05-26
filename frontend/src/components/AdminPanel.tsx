@@ -2675,14 +2675,22 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                           const isArchived = l.status === 'completed' || l.status === 'terminated';
                           const cellBg = p.paid ? 'var(--success-light)' : isPending ? 'rgba(245,158,11,0.12)' : isRejected ? 'rgba(239,68,68,0.12)' : 'var(--danger-light)';
                           const cellBorder = p.paid ? 'var(--success)' : isPending ? 'var(--warning)' : isRejected ? 'var(--danger)' : 'var(--danger)';
-                          const canInteract = !isArchived || !!p.evidence_url;
                           return (
                             <div key={p.id} onClick={() => {
-                              if (!canInteract && isArchived && !p.paid) return;
-                              if (p.evidence_url) { setReviewingPayment(p); setAdminNote(p.admin_notes || ''); }
-                              else togglePaid(p.id, p.paid);
+                              if (p.evidence_url) { 
+                                setReviewingPayment(p); 
+                                setAdminNote(p.admin_notes || ''); 
+                              } else {
+                                // For archived leases, prevent status toggling and show warning
+                                if (isArchived) {
+                                  showToast(lang === 'zh' ? '无法查看，该月份不存在支付凭证。' : 'Cannot view, no payment evidence exists for this month.', 'warning');
+                                } else {
+                                  // For active leases, preserve the original toggling behavior
+                                  togglePaid(p.id, p.paid);
+                                }
+                              }
                             }} className="ledger-cycle-cell"
-                              style={{ background: cellBg, borderColor: cellBorder, cursor: canInteract ? 'pointer' : 'default', opacity: (!p.paid && isArchived) ? 0.6 : 1 }}>
+                              style={{ background: cellBg, borderColor: cellBorder, cursor: 'pointer', opacity: (!p.paid && isArchived) ? 0.6 : 1 }}>
                               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>{fmtMonth(p.billing_month)}</div>
                               {p.paid
                                 ? <CheckCircle2 size={18} style={{ color: 'var(--success)' }} />
