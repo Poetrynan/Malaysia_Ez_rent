@@ -181,8 +181,37 @@ export default function LeaseLedgerCard({
         </span>
       </div>
 
-      <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>
+      <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 12 }}>
         {t('ledgerTitle')}
+      </div>
+
+      {/* Progress Flow (Issue Fix) */}
+      <div style={{ marginBottom: 24, padding: '16px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+          {/* Connector Line */}
+          <div style={{ position: 'absolute', top: 12, left: 24, right: 24, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+          <div style={{ position: 'absolute', top: 12, left: 24, width: '100%', height: 2, background: 'var(--primary)', zIndex: 0, opacity: 0.6 }} />
+
+          {[
+            { key: 'step1', label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+            { key: 'step2', label: lang === 'zh' ? '中介同意' : 'Agreed', active: true },
+            { key: 'step3', label: lang === 'zh' ? '合约生成' : 'Lease Created', active: true },
+            { key: 'step4', label: lang === 'zh' ? '租房中' : 'Renting', active: true },
+          ].map((step, idx) => (
+            <div key={step.key} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{ 
+                width: 24, height: 24, borderRadius: '50%', 
+                background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+                border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: step.active ? '0 0 10px rgba(var(--primary-rgb), 0.4)' : 'none'
+              }}>
+                <CheckCircle2 size={14} color={step.active ? 'white' : 'var(--text-muted)'} />
+              </div>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="payment-grid">

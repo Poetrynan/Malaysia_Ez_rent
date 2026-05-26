@@ -1007,40 +1007,80 @@ export default function PropertyListings() {
                             {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this room'}
                           </span>
                         ) : (
-                          <>
-                            {!hasMyInterest && !isFull && (
-                              <button onClick={() => expressInterest(selected.id)} style={{
-                                padding: '10px 24px', borderRadius: 8, border: 'none',
-                                background: 'var(--primary)', color: 'white',
-                                fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                              }}>{t('coRentJoin')}</button>
-                            )}
+                          <div style={{ width: '100%' }}>
+                            {/* Interest Progress Flow */}
                             {hasMyInterest && (
-                              <button onClick={() => {
-                                if (myEntry?.status === 'confirmed') {
-                                  showConfirm(
-                                    lang === 'zh' ? '提示' : 'Notice',
-                                    lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.',
-                                    () => {},
-                                    true
-                                  );
-                                } else {
-                                  showConfirm(
-                                    lang === 'zh' ? '取消租房意向' : 'Cancel Interest',
-                                    lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.',
-                                    () => cancelInterest(selected.id)
-                                  );
-                                }
-                              }} disabled={submittingInterest} style={{
-                                padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
-                                background: 'transparent', color: 'var(--danger)',
-                                fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
-                              }}>
-                                {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
-                              </button>
+                              <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
+                                  <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+                                  {[
+                                    { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
+                                    { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
+                                    { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
+                                  ].map((step, idx) => (
+                                    <div key={idx} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                      <div style={{ 
+                                        width: 20, height: 20, borderRadius: '50%', 
+                                        background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+                                        border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                      }}>
+                                        {step.active && <CheckCircle2 size={12} color="white" />}
+                                      </div>
+                                      <span style={{ fontSize: '0.6rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
-                            {isFull && <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
-                          </>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              {!hasMyInterest && !isFull && (
+                                <button onClick={() => expressInterest(selected.id)} style={{
+                                  padding: '10px 24px', borderRadius: 8, border: 'none',
+                                  background: 'var(--primary)', color: 'white',
+                                  fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                }}>{t('coRentJoin')}</button>
+                              )}
+                              {hasMyInterest && (
+                                <button onClick={() => {
+                                  if (myEntry?.status === 'confirmed') {
+                                    // Check if the lease actually exists for this user and unit
+                                    const leaseExists = myLeasedUnitIds.includes(selected.id);
+                                    
+                                    if (leaseExists) {
+                                      showConfirm(
+                                        lang === 'zh' ? '提示' : 'Notice',
+                                        lang === 'zh' ? '您的租约已生效。如需查看详情或缴纳房租，请前往“我的租约”面板。' : 'Your lease is active. Please visit the "My Lease" panel to view details or pay rent.',
+                                        () => {},
+                                        true
+                                      );
+                                    } else {
+                                      showConfirm(
+                                        lang === 'zh' ? '处理中' : 'Processing',
+                                        lang === 'zh' ? '中介已同意您的入住意向，正在为您准备正式合约，请稍后再次查看。' : 'Agent has agreed to your interest and is preparing the official lease. Please check back shortly.',
+                                        () => {},
+                                        true
+                                      );
+                                    }
+                                  } else {
+                                    showConfirm(
+                                      lang === 'zh' ? '取消租房意向' : 'Cancel Interest',
+                                      lang === 'zh' ? '确定要取消对该房源的租房意向吗？取消后您可以随时重新提交。' : 'Are you sure you want to cancel your interest in this listing? You can always resubmit later.',
+                                      () => cancelInterest(selected.id)
+                                    );
+                                  }
+                                }} disabled={submittingInterest} style={{
+                                  padding: '10px 24px', borderRadius: 8, border: '1px solid var(--danger)',
+                                  background: 'transparent', color: 'var(--danger)',
+                                  fontSize: '0.88rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                  width: '100%', textAlign: 'center'
+                                }}>
+                                  {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看状态 / 合约' : 'View Status / Lease') : t('coRentCancel')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
@@ -1051,6 +1091,33 @@ export default function PropertyListings() {
                   return (
                     <>
                       <h3 style={{ fontSize: '1rem', marginBottom: 10 }}>{t('coRentTitle')}</h3>
+
+                      {/* Interest Progress Flow (Whole Unit) */}
+                      {hasMyInterest && !isLeasedByMe && (
+                        <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 5px' }}>
+                            <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+                            {[
+                              { label: lang === 'zh' ? '已发起' : 'Sent', active: true },
+                              { label: lang === 'zh' ? '已同意' : 'Agreed', active: myEntry?.status === 'confirmed' },
+                              { label: lang === 'zh' ? '已生效' : 'Active', active: myLeasedUnitIds.includes(selected.id) },
+                            ].map((step, idx) => (
+                              <div key={idx} style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <div style={{ 
+                                  width: 20, height: 20, borderRadius: '50%', 
+                                  background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+                                  border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                  {step.active && <CheckCircle2 size={12} color="white" />}
+                                </div>
+                                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: step.active ? 'var(--text-h)' : 'var(--text-muted)' }}>{step.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                           {t('coRentOccupancy')}: <strong style={{ color: 'var(--text-h)' }}>{registered}/{max}</strong>
