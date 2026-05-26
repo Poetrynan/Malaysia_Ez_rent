@@ -243,15 +243,21 @@ export default function PropertyListings() {
   const [submittingEnquiry, setSubmittingEnquiry] = useState(false);
 
   const refreshInterests = async (supabase: Awaited<ReturnType<typeof import('@/utils/supabase/client').createClient>>, userId?: string) => {
-    const { data, error } = await supabase.from('tenant_interests').select('*').neq('status', 'left');
+    // Note: We include 'left' status here so we can detect if a confirmed tenant tried to cancel,
+    // ensuring we don't show the "I Want to Rent" button to an active tenant.
+    const { data, error } = await supabase.from('tenant_interests').select('*');
     if (error) {
       console.error('[refreshInterests]', error);
       return;
     }
     if (data) {
-      setInterests(data);
+      // For general display (occupancy count), filter out 'left'
+      setInterests(data.filter((i: TenantInterest) => i.status !== 'left'));
+      
       const uid = userId ?? authUserId;
       if (uid) {
+        // Find MY active/confirmed interest. 
+        // We look for ANY entry that isn't 'left' TO DRIVE THE UI.
         const mine = data.find((i: TenantInterest) => String(i.user_id) === String(uid) && i.status !== 'left');
         setMyInterest(mine ? mine.unit_id : null);
       }
@@ -983,13 +989,21 @@ export default function PropertyListings() {
                           }}>{t('coRentJoin')}</button>
                         )}
                         {hasMyInterest && (
-                          <button onClick={() => cancelInterest(selected.id)} disabled={submittingInterest} style={{
+                          <button onClick={() => {
+                            if (myEntry?.status === 'confirmed') {
+                              alert(lang === 'zh' ? '您已被确认为该房源租客并生成租约合同。如需终止租约，请前往“我的租约”面板办理终止手续。' : 'You are confirmed as a tenant with an active lease. To terminate, please go to the "My Lease" panel.');
+                            } else {
+                              if (window.confirm(lang === 'zh' ? '确定要取消对该房源的合租意向吗？' : 'Are you sure you want to cancel your interest?')) {
+                                cancelInterest(selected.id);
+                              }
+                            }
+                          }} disabled={submittingInterest} style={{
                             padding: '8px 18px', borderRadius: 8, border: '1px solid var(--danger)',
                             background: 'transparent', color: 'var(--danger)',
                             fontSize: '0.82rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                             opacity: submittingInterest ? 0.7 : 1,
                           }}>
-                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '已租：联系中介取消' : 'Rented: Contact Agent to Cancel') : t('coRentCancel')}
+                            {myEntry?.status === 'confirmed' ? (lang === 'zh' ? '查看合约状态' : 'View Lease Status') : t('coRentCancel')}
                           </button>
                         )}
                         {isFull && <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('coRentFull')}</span>}
