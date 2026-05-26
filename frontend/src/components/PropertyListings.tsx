@@ -129,7 +129,7 @@ function hasConfiguredContact(value: string | null | undefined): value is string
 }
 
 /** Units listed on an agent profile — strict agent_id match only. */
-function getUnitsForAgent(agentId: string | undefined, allUnits: Unit[]): Unit[] {
+function getUnitsForAgent(agentId: string | undefined, allUnits: UnitWithCommunity[]): UnitWithCommunity[] {
   if (!agentId) return [];
   return allUnits.filter(u => u.agent_id === agentId);
 }
