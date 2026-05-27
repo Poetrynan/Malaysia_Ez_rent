@@ -126,6 +126,7 @@ class MockQueryBuilder {
   filters: any[] = [];
   sortField: string = '';
   sortAsc: boolean = true;
+  isDelete: boolean = false;
 
   constructor(tableName: string) {
     this.tableName = tableName;
@@ -146,7 +147,39 @@ class MockQueryBuilder {
     return this;
   }
 
+  delete() {
+    this.isDelete = true;
+    return this;
+  }
+
   async execute() {
+    if (this.isDelete) {
+      const storageKey = getStorageKey(this.tableName);
+      let rawList = [];
+      if (this.tableName === 'communities') rawList = getLocalData(storageKey, DEFAULT_COMMUNITIES);
+      else if (this.tableName === 'units') rawList = getLocalData(storageKey, DEFAULT_UNITS);
+      else if (this.tableName === 'leases') rawList = getLocalData(storageKey, DEFAULT_LEASES);
+      else if (this.tableName === 'payment_records') rawList = getLocalData(storageKey, DEFAULT_PAYMENTS);
+      else if (this.tableName === 'users') rawList = getLocalData(storageKey, DEFAULT_USERS);
+      else if (this.tableName === 'admin_users') rawList = getLocalData(storageKey, DEFAULT_ADMINS);
+      else if (this.tableName === 'tenant_interests') rawList = getLocalData(storageKey, []);
+      else rawList = getLocalData(storageKey, []);
+
+      const remainingList = rawList.filter((item: any) => {
+        let matchesAll = true;
+        for (const f of this.filters) {
+          if (f.type === 'eq' && item[f.field] !== f.value) {
+            matchesAll = false;
+            break;
+          }
+        }
+        return !matchesAll;
+      });
+
+      setLocalData(storageKey, remainingList);
+      return { data: [], error: null };
+    }
+
     let data = [];
     const communities = getLocalData(getStorageKey('communities'), DEFAULT_COMMUNITIES);
     const units = getLocalData(getStorageKey('units'), DEFAULT_UNITS);

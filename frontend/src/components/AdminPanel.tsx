@@ -99,6 +99,12 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
 
   // ── Delete Confirmation state ──
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [genericConfirm, setGenericConfirm] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+    isDanger?: boolean;
+  } | null>(null);
 
   // ── Properties state ──
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -192,16 +198,22 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
-  const handleDeleteAdmin = async (id: string) => {
-    if (!confirm('确定删除该管理员？')) return;
-    try {
-      const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      const { error } = await supabase.from('admin_users').delete().eq('id', id);
-      if (error) { showToast(error.message, 'error'); return; }
-      showToast('已删除', 'success');
-      fetchAdmins();
-    } catch (e: any) { showToast(e.message, 'error'); }
+  const handleDeleteAdmin = (id: string) => {
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认删除管理员' : 'Delete Admin',
+      message: lang === 'zh' ? '确定删除该管理员？此操作无法撤销。' : 'Are you sure you want to delete this admin? This action cannot be undone.',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { error } = await supabase.from('admin_users').delete().eq('id', id);
+          if (error) { showToast(error.message, 'error'); return; }
+          showToast('已删除', 'success');
+          fetchAdmins();
+        } catch (e: any) { showToast(e.message, 'error'); }
+      }
+    });
   };
 
   // ── Payment review state ──
@@ -270,44 +282,50 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     showToast(lang === 'zh' ? '审核已驳回！可在下方“有效租约 & 收租核查表”展开该租约查看详情。' : 'Review rejected! You can expand this lease in the "Active Leases" table below to check details.', 'warning');
   };
 
-  const clearEvidence = async (paymentId: string) => {
-    if (!confirm(t('confirmClearEvidence'))) return;
-    const evidenceUrl =
-      reviewingPayment?.id === paymentId ? reviewingPayment.evidence_url
-        : leases.flatMap(l => l.payments || []).find(p => p.id === paymentId)?.evidence_url;
-    if (isLive) {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const storagePath = evidenceUrl
-          ? unitMediaStoragePath(evidenceUrl)
-          : `evidence/${paymentId}.jpg`;
-        if (storagePath) await removeUnitMediaFiles(supabase, [storagePath]);
-        const { error } = await supabase.from('payment_records').update({
-          evidence_url: null,
-          status: 'unpaid',
-          paid: false,
-          paid_date: null,
-          admin_notes: null,
-        }).eq('id', paymentId);
-        if (error) { showToast(error.message, 'error'); return; }
-      } catch (e: any) { showToast(e.message, 'error'); return; }
-    } else {
-      const all: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
-      const idx = all.findIndex(p => p.id === paymentId);
-      if (idx !== -1) {
-        all[idx].evidence_url = null;
-        all[idx].status = 'unpaid';
-        all[idx].paid = false;
-        all[idx].paid_date = null;
-        all[idx].admin_notes = undefined;
-        localStorage.setItem('ez_payments', JSON.stringify(all));
+  const clearEvidence = (paymentId: string) => {
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认清除凭证' : 'Clear Payment Evidence',
+      message: t('confirmClearEvidence'),
+      isDanger: true,
+      onConfirm: async () => {
+        const evidenceUrl =
+          reviewingPayment?.id === paymentId ? reviewingPayment.evidence_url
+            : leases.flatMap(l => l.payments || []).find(p => p.id === paymentId)?.evidence_url;
+        if (isLive) {
+          try {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            const storagePath = evidenceUrl
+              ? unitMediaStoragePath(evidenceUrl)
+              : `evidence/${paymentId}.jpg`;
+            if (storagePath) await removeUnitMediaFiles(supabase, [storagePath]);
+            const { error } = await supabase.from('payment_records').update({
+              evidence_url: null,
+              status: 'unpaid',
+              paid: false,
+              paid_date: null,
+              admin_notes: null,
+            }).eq('id', paymentId);
+            if (error) { showToast(error.message, 'error'); return; }
+          } catch (e: any) { showToast(e.message, 'error'); return; }
+        } else {
+          const all: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+          const idx = all.findIndex(p => p.id === paymentId);
+          if (idx !== -1) {
+            all[idx].evidence_url = null;
+            all[idx].status = 'unpaid';
+            all[idx].paid = false;
+            all[idx].paid_date = null;
+            all[idx].admin_notes = undefined;
+            localStorage.setItem('ez_payments', JSON.stringify(all));
+          }
+        }
+        setReviewingPayment(null);
+        setAdminNote('');
+        loadAll();
+        showToast(t('evidenceCleared'), 'success');
       }
-    }
-    setReviewingPayment(null);
-    setAdminNote('');
-    loadAll();
-    showToast(t('evidenceCleared'), 'success');
+    });
   };
 
   const visibleUnits = adminRole === 'super_admin'
@@ -469,20 +487,26 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     showToast(t('feedbackReplied'), 'success');
   };
 
-  const deleteFeedback = async (id: string) => {
-    if (!confirm(t('feedbackConfirmDelete'))) return;
-    if (!isLive) {
-      const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
-      localStorage.setItem('ez_feedback', JSON.stringify(all.filter((f: FeedbackItem) => f.id !== id)));
-    } else {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        await supabase.from('maintenance_requests').delete().eq('id', id);
-      } catch (e) { console.error('Delete feedback error:', e); }
-    }
-    fetchFeedbacks();
-    showToast(t('feedbackDelete'), 'success');
+  const deleteFeedback = (id: string) => {
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认删除工单反馈' : 'Delete Maintenance Request',
+      message: t('feedbackConfirmDelete'),
+      isDanger: true,
+      onConfirm: async () => {
+        if (!isLive) {
+          const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
+          localStorage.setItem('ez_feedback', JSON.stringify(all.filter((f: FeedbackItem) => f.id !== id)));
+        } else {
+          try {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            await supabase.from('maintenance_requests').delete().eq('id', id);
+          } catch (e) { console.error('Delete feedback error:', e); }
+        }
+        fetchFeedbacks();
+        showToast(t('feedbackDelete'), 'success');
+      }
+    });
   };
 
   const visibleFeedbacks = adminRole === 'super_admin'
@@ -990,31 +1014,36 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     showToast(lang === 'zh' ? '小区保存成功！现在可以在下方“2. 新增房间”中选择该小区来录入房间。' : 'Community saved successfully! You can now select it under "2. Add Room Unit" below to list a room.', 'success');
   };
 
-  const deleteCommunity = async (communityId: string) => {
+  const deleteCommunity = (communityId: string) => {
     const linkedUnits = units.filter(u => u.community_id === communityId);
     if (linkedUnits.length > 0) {
       showToast(t('communityHasUnits'), 'error');
       return;
     }
-    if (!confirm(t('confirmDeleteCommunity'))) return;
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认删除小区' : 'Delete Community',
+      message: t('confirmDeleteCommunity'),
+      isDanger: true,
+      onConfirm: async () => {
+        if (isLive) {
+          try {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            const { error } = await supabase.from('communities').delete().eq('id', communityId);
+            if (error) { showToast(error.message, 'error'); return; }
+          } catch (e: any) { showToast(e.message, 'error'); return; }
+        } else {
+          const list: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+          localStorage.setItem('ez_communities', JSON.stringify(list.filter(c => c.id !== communityId)));
+        }
 
-    if (isLive) {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { error } = await supabase.from('communities').delete().eq('id', communityId);
-        if (error) { showToast(error.message, 'error'); return; }
-      } catch (e: any) { showToast(e.message, 'error'); return; }
-    } else {
-      const list: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-      localStorage.setItem('ez_communities', JSON.stringify(list.filter(c => c.id !== communityId)));
-    }
-
-    if (unitForm.community_id === communityId) {
-      setUnitForm(f => ({ ...f, community_id: '' }));
-    }
-    loadAll();
-    showToast(t('validationDeleted'), 'success');
+        if (unitForm.community_id === communityId) {
+          setUnitForm(f => ({ ...f, community_id: '' }));
+        }
+        loadAll();
+        showToast(t('validationDeleted'), 'success');
+      }
+    });
   };
 
   const getCommunityOptionLabel = (c: Community) => {
@@ -1449,21 +1478,27 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     }
   };
 
-  const removeQR = async () => {
-    if (!confirm('确定删除收款码？删除后学生将无法扫码付款。')) return;
-    setAdminQR(null);
-    localStorage.removeItem('ez_admin_qr_code');
-    if (isLive) {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await removeUnitMediaFiles(supabase, [`qr/${user.id}.jpg`]);
-          await supabase.from('admin_users').update({ payment_qr_code: null }).eq('id', user.id);
+  const removeQR = () => {
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认删除收款码' : 'Delete QR Code',
+      message: lang === 'zh' ? '确定删除收款码？删除后学生将无法扫码付款。' : 'Are you sure you want to delete this payment QR code? Students will not be able to scan and pay.',
+      isDanger: true,
+      onConfirm: async () => {
+        setAdminQR(null);
+        localStorage.removeItem('ez_admin_qr_code');
+        if (isLive) {
+          try {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await removeUnitMediaFiles(supabase, [`qr/${user.id}.jpg`]);
+              await supabase.from('admin_users').update({ payment_qr_code: null }).eq('id', user.id);
+            }
+          } catch {}
         }
-      } catch {}
-    }
+      }
+    });
   };
 
   const createLease = async () => {
@@ -1516,6 +1551,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         const supabase = createClient();
         // Delete payment records first
         await supabase.from('payment_records').delete().eq('lease_id', leaseId);
+        // Delete lease transfers referencing this lease
+        await supabase.from('lease_transfers').delete().eq('exiting_lease_id', leaseId);
+        await supabase.from('lease_transfers').delete().eq('incoming_lease_id', leaseId);
         // Delete lease
         const { error } = await supabase.from('leases').delete().eq('id', leaseId);
         if (error) { showToast(error.message, 'error'); return; }
@@ -1527,6 +1565,9 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       localStorage.setItem('ez_leases', JSON.stringify(allLeases.filter(l => l.id !== leaseId)));
       const allP: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
       localStorage.setItem('ez_payments', JSON.stringify(allP.filter(p => p.lease_id !== leaseId)));
+      // Also delete mock transfers
+      const allTransfers = JSON.parse(localStorage.getItem('ez_lease_transfers') || '[]');
+      localStorage.setItem('ez_lease_transfers', JSON.stringify(allTransfers.filter((t: any) => t.exiting_lease_id !== leaseId && t.incoming_lease_id !== leaseId)));
       if (lease?.unit_id) {
         const uList: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
         const idx = uList.findIndex(u => u.id === lease.unit_id);
@@ -1712,36 +1753,77 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
     }
   };
 
-  const deleteUnit = async (unitId: string) => {
-    if (!confirm(t('confirmDeleteUnit'))) return;
-    if (isLive) {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        // Delete storage media
-        const unit = units.find(u => u.id === unitId);
-        if (unit?.media_urls && unit.media_urls.length > 0) {
-          const paths = unit.media_urls
-            .map(url => unitMediaStoragePath(url))
-            .filter(Boolean) as string[];
-          if (paths.length > 0) await removeUnitMediaFiles(supabase, paths);
+  const deleteUnit = (unitId: string) => {
+    setGenericConfirm({
+      title: lang === 'zh' ? '确认删除房源' : 'Delete Property Unit',
+      message: t('confirmDeleteUnit'),
+      isDanger: true,
+      onConfirm: async () => {
+        if (isLive) {
+          try {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            // Delete storage media
+            const unit = units.find(u => u.id === unitId);
+            if (unit?.media_urls && unit.media_urls.length > 0) {
+              const paths = unit.media_urls
+                .map(url => unitMediaStoragePath(url))
+                .filter(Boolean) as string[];
+              if (paths.length > 0) await removeUnitMediaFiles(supabase, paths);
+            }
+            if (unit?.video_url) {
+              const vPath = unitMediaStoragePath(unit.video_url);
+              if (vPath) await removeUnitMediaFiles(supabase, [vPath]);
+            }
+
+            // CASCADE DELETION
+            // 1. Get all leases associated with this unit
+            const { data: unitLeases } = await supabase.from('leases').select('id').eq('unit_id', unitId);
+            if (unitLeases && unitLeases.length > 0) {
+              const leaseIds = unitLeases.map((l: any) => l.id);
+              // 2. Delete payments and transfers first to avoid foreign key restrict errors
+              for (const lId of leaseIds) {
+                await supabase.from('payment_records').delete().eq('lease_id', lId);
+                await supabase.from('lease_transfers').delete().eq('exiting_lease_id', lId);
+                await supabase.from('lease_transfers').delete().eq('incoming_lease_id', lId);
+              }
+              // 3. Delete leases themselves
+              for (const lId of leaseIds) {
+                await supabase.from('leases').delete().eq('id', lId);
+              }
+            }
+
+            // 4. Delete unit (this cascades interests in database)
+            const { error } = await supabase.from('units').delete().eq('id', unitId);
+            if (error) { showToast(error.message, 'error'); return; }
+          } catch (e: any) { showToast(e.message, 'error'); return; }
+        } else {
+          const list: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
+          localStorage.setItem('ez_units', JSON.stringify(list.filter(u => u.id !== unitId)));
+          const media = JSON.parse(localStorage.getItem('ez_unit_media') || '{}');
+          delete media[unitId];
+          localStorage.setItem('ez_unit_media', JSON.stringify(media));
+
+          // Mock Cascade Deletion
+          const allLeases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+          const unitLeases = allLeases.filter(l => l.unit_id === unitId);
+          const leaseIds = unitLeases.map(l => l.id);
+          
+          localStorage.setItem('ez_leases', JSON.stringify(allLeases.filter(l => l.unit_id !== unitId)));
+
+          const allP: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+          localStorage.setItem('ez_payments', JSON.stringify(allP.filter(p => !leaseIds.includes(p.lease_id))));
+
+          const allTransfers = JSON.parse(localStorage.getItem('ez_lease_transfers') || '[]');
+          localStorage.setItem('ez_lease_transfers', JSON.stringify(allTransfers.filter((t: any) => !leaseIds.includes(t.exiting_lease_id) && !leaseIds.includes(t.incoming_lease_id))));
+
+          const ints = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+          localStorage.setItem('ez_interests', JSON.stringify(ints.filter((i: any) => i.unit_id !== unitId)));
         }
-        if (unit?.video_url) {
-          const vPath = unitMediaStoragePath(unit.video_url);
-          if (vPath) await removeUnitMediaFiles(supabase, [vPath]);
-        }
-        const { error } = await supabase.from('units').delete().eq('id', unitId);
-        if (error) { showToast(error.message, 'error'); return; }
-      } catch (e: any) { showToast(e.message, 'error'); return; }
-    } else {
-      const list: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-      localStorage.setItem('ez_units', JSON.stringify(list.filter(u => u.id !== unitId)));
-      const media = JSON.parse(localStorage.getItem('ez_unit_media') || '{}');
-      delete media[unitId];
-      localStorage.setItem('ez_unit_media', JSON.stringify(media));
-    }
-    loadAll();
-    showToast(t('validationDeleted'), 'success');
+        loadAll();
+        showToast(t('validationDeleted'), 'success');
+      }
+    });
   };
 
   const togglePaid = async (paymentId: string, currentPaid: boolean) => {
@@ -3497,6 +3579,43 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                 }} 
                 className="btn btn-primary" 
                 style={{ flex: 1, padding: '10px', background: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 700 }}
+              >
+                {t('confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generic Confirmation Modal */}
+      {genericConfirm && (
+        <div className="modal-overlay" onClick={() => setGenericConfirm(null)} style={{ zIndex: 600 }}>
+          <div className="modal-content" style={{ width: 380, textAlign: 'center', padding: '30px 24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: genericConfirm.isDanger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: genericConfirm.isDanger ? 'var(--danger)' : 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={32} />
+            </div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 12, color: 'var(--text-h)' }}>
+              {genericConfirm.title}
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
+              {genericConfirm.message}
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setGenericConfirm(null)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '10px' }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={async () => {
+                  const callback = genericConfirm.onConfirm;
+                  setGenericConfirm(null);
+                  await callback();
+                }} 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '10px', background: genericConfirm.isDanger ? 'var(--danger)' : 'var(--primary)', borderColor: genericConfirm.isDanger ? 'var(--danger)' : 'var(--primary)', fontWeight: 700 }}
               >
                 {t('confirm')}
               </button>
