@@ -1549,7 +1549,19 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        // Delete payment records first
+        
+        // 1. Fetch payment records for this lease to delete their storage images
+        const { data: payments } = await supabase.from('payment_records').select('id, evidence_url').eq('lease_id', leaseId);
+        if (payments && payments.length > 0) {
+          const paths = payments
+            .map(p => p.evidence_url ? unitMediaStoragePath(p.evidence_url) : null)
+            .filter(Boolean) as string[];
+          if (paths.length > 0) {
+            await removeUnitMediaFiles(supabase, paths);
+          }
+        }
+
+        // 2. Delete payment records first
         await supabase.from('payment_records').delete().eq('lease_id', leaseId);
         // Delete lease transfers referencing this lease
         await supabase.from('lease_transfers').delete().eq('exiting_lease_id', leaseId);
