@@ -84,21 +84,19 @@ DROP POLICY IF EXISTS "Super admin delete admins" ON admin_users;
 CREATE POLICY "Anyone can read admin contact"
   ON admin_users FOR SELECT USING (true);
 
--- 允许用户注册/插入自己的管理员行 (首位默认 super_admin，其余默认为 editor 角色以防越权)
+-- 允许首位超级管理员自动注册，或由超级管理员直接添加其他管理员
 CREATE POLICY "Allow self insert admin"
   ON admin_users FOR INSERT
   WITH CHECK (
     id = auth.uid() 
-    AND (
-      (role = 'super_admin' AND email = 'admin@ezrent.my')
-      OR (role = 'editor')
-    )
+    AND email = 'admin@ezrent.my'
+    AND role = 'super_admin'
   );
 
--- 允许用户更新自己的管理员行 (包括头像、联系方式、收款二维码等)
+-- 允许用户更新自己的管理员行 (包含初次登录时将随机 ID 变更为 auth.uid())
 CREATE POLICY "Allow self update admin"
   ON admin_users FOR UPDATE
-  USING (id = auth.uid());
+  USING (id = auth.uid() OR email = auth.jwt()->>'email');
 
 -- 超级管理员可增删改其他管理员
 CREATE POLICY "Super admin insert admins"

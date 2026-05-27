@@ -276,12 +276,10 @@ CREATE POLICY "Users can edit own profile" ON users FOR ALL USING (auth.uid() = 
 CREATE POLICY "Admin check policy" ON admin_users FOR SELECT USING (true);
 CREATE POLICY "Allow self insert admin" ON admin_users FOR INSERT WITH CHECK (
   id = auth.uid() 
-  AND (
-    (role = 'super_admin' AND email = 'admin@ezrent.my')
-    OR (role = 'editor')
-  )
+  AND email = 'admin@ezrent.my'
+  AND role = 'super_admin'
 );
-CREATE POLICY "Allow self update admin" ON admin_users FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "Allow self update admin" ON admin_users FOR UPDATE USING (id = auth.uid() OR email = auth.jwt()->>'email');
 CREATE POLICY "Super admin can manage admins" ON admin_users FOR ALL USING (
   EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid() AND role = 'super_admin')
 );

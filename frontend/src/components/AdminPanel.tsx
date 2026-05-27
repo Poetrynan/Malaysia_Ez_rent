@@ -662,17 +662,17 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               console.error('[Admin Auth] failed to update id for email:', user.email, updErr);
               adminData = byEmail;
             }
-          } else {
-            // Self-register default admin row
-            const defaultRole = user.email.toLowerCase() === 'admin@ezrent.my' ? 'super_admin' : 'editor';
-            const defaultName = user.email.split('@')[0];
+          } else if (user.email.toLowerCase() === 'admin@ezrent.my') {
+            // Self-register ONLY the root super admin row
+            const defaultRole = 'super_admin';
+            const defaultName = 'admin';
             const newAdminRow = {
               id: user.id,
               email: user.email,
               display_name: defaultName,
               phone: '+60123456789',
               role: defaultRole,
-              job_title: defaultRole === 'super_admin' ? 'Senior Rental Manager' : 'Real Estate Negotiator',
+              job_title: 'Senior Rental Manager',
               agency_name: 'Malaysia Ez Rent'
             };
             const { error: insErr } = await supabase.from('admin_users').insert(newAdminRow);

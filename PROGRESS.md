@@ -1052,3 +1052,10 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 - **2026-05-27 门牌号校验提示文案同步更新**
   - **同步本地化翻译**：已更新中英双语的 `validationUnitRequired` 提示，移除废弃的“门牌号”必填文本，提示精简为“请选择小区和月租后再保存”（中国语）与“Please select a community and monthly rent before saving”（英语），使其与实际无需门牌号的校验机制逻辑完全吻合。
+
+- **2026-05-27 管理员自注册安全性收紧与漏动修复**
+  - **漏洞起因**：由于 React 挂载 `AdminPanel` 时，即使针对学生角色通过样式 `display: none` 进行了隐藏，其内部生命周期 `useEffect` 依然会针对所有已登录用户运行。这会导致普通学生用户登录时触发自注册逻辑，自动将自己写入 `admin_users` 表成为 editor 级别管理员。
+  - **安全修复**：
+    - **前端限制**：在 `AdminPanel.tsx` 初始化时，限制仅允许根超级管理员邮箱 `admin@ezrent.my` 执行缺省自注册插入，普通学生/其他邮箱不作任何自注册操作，只进行已有邮箱 ID 的绑定与匹配。
+    - **后端 RLS 加固**：修改 `Allow self insert admin` 的 SQL 安全策略，强制仅允许 `admin@ezrent.my` 作为首位超级管理员在注册时插入记录，且只能设为 `super_admin` 角色，堵死通过该通道注册任何 `editor` 角色的可能性。
+    - **安全映射策略**：为 `Allow self update admin` 策略增加基于 `email = auth.jwt()->>'email'` 的校验。支持普通管理员（由超级管理员手动添加了邮箱）在首次登录时通过自己绑定的邮箱，安全地将自己预存的随机 UUID 记录更新为自己的真实 `auth.uid()`。
