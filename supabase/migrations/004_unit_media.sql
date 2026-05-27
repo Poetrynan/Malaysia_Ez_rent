@@ -84,6 +84,22 @@ DROP POLICY IF EXISTS "Super admin delete admins" ON admin_users;
 CREATE POLICY "Anyone can read admin contact"
   ON admin_users FOR SELECT USING (true);
 
+-- 允许用户注册/插入自己的管理员行 (首位默认 super_admin，其余默认为 editor 角色以防越权)
+CREATE POLICY "Allow self insert admin"
+  ON admin_users FOR INSERT
+  WITH CHECK (
+    id = auth.uid() 
+    AND (
+      (role = 'super_admin' AND email = 'admin@ezrent.my')
+      OR (role = 'editor')
+    )
+  );
+
+-- 允许用户更新自己的管理员行 (包括头像、联系方式、收款二维码等)
+CREATE POLICY "Allow self update admin"
+  ON admin_users FOR UPDATE
+  USING (id = auth.uid());
+
 -- 超级管理员可增删改其他管理员
 CREATE POLICY "Super admin insert admins"
   ON admin_users FOR INSERT
@@ -96,11 +112,6 @@ CREATE POLICY "Super admin update admins"
 CREATE POLICY "Super admin delete admins"
   ON admin_users FOR DELETE
   USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid() AND role = 'super_admin'));
-
--- 所有管理员可更新收款码（全系统共享同一个收款码）
-CREATE POLICY "Admins can update payment QR"
-  ON admin_users FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
 
 -- Storage 策略
 DROP POLICY IF EXISTS "Public can view unit media" ON storage.objects;

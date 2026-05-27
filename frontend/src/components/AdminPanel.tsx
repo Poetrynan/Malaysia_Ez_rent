@@ -74,11 +74,17 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger' | 'settle'>('interests');
+
+  const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
+
+  useEffect(() => {
+    if (propAdminRole) setAdminRole(propAdminRole);
+  }, [propAdminRole]);
 
   useEffect(() => {
     if (defaultTab) {
@@ -641,8 +647,43 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         setCurrentUserId(user.id);
         loadFromSupabase(supabase);
         // Load QR code and profile from admin_users
-        const { data: adminData, error: adminErr } = await supabase.from('admin_users').select('*').eq('id', user.id).maybeSingle();
+        let { data: adminData, error: adminErr } = await supabase.from('admin_users').select('*').eq('id', user.id).maybeSingle();
         console.log('[Admin QR & Profile Load]', { userId: user.id, adminData, adminErr: adminErr?.message });
+        
+        // Auto-bootstrap mapping by email
+        if (!adminData && user.email) {
+          const { data: byEmail } = await supabase.from('admin_users').select('*').eq('email', user.email).maybeSingle();
+          if (byEmail) {
+            // Update random UUID to match auth user.id
+            const { error: updErr } = await supabase.from('admin_users').update({ id: user.id }).eq('email', user.email);
+            if (!updErr) {
+              adminData = { ...byEmail, id: user.id };
+            } else {
+              console.error('[Admin Auth] failed to update id for email:', user.email, updErr);
+              adminData = byEmail;
+            }
+          } else {
+            // Self-register default admin row
+            const defaultRole = user.email.toLowerCase() === 'admin@ezrent.my' ? 'super_admin' : 'editor';
+            const defaultName = user.email.split('@')[0];
+            const newAdminRow = {
+              id: user.id,
+              email: user.email,
+              display_name: defaultName,
+              phone: '+60123456789',
+              role: defaultRole,
+              job_title: defaultRole === 'super_admin' ? 'Senior Rental Manager' : 'Real Estate Negotiator',
+              agency_name: 'Malaysia Ez Rent'
+            };
+            const { error: insErr } = await supabase.from('admin_users').insert(newAdminRow);
+            if (!insErr) {
+              adminData = newAdminRow;
+            } else {
+              console.error('[Admin Auth] Self-insert failed:', insErr);
+            }
+          }
+        }
+
         if (adminData) {
           if (adminData.payment_qr_code) {
             setAdminQR(adminData.payment_qr_code);
@@ -665,6 +706,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             area_expertise: Array.isArray(adminData.area_expertise) ? adminData.area_expertise.join(', ') : (adminData.area_expertise || ''),
             property_types: Array.isArray(adminData.property_types) ? adminData.property_types.join(', ') : (adminData.property_types || ''),
           });
+          setAdminRole(adminData.role || 'editor'); // Sync state role!
           localStorage.setItem('ez_admin_profile', JSON.stringify(adminData));
         }
         return;
@@ -1472,10 +1514,12 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
         const b64 = await compressImageToDataUrl(file, QR_IMAGE_PRESET);
         setAdminQR(b64);
         localStorage.setItem('ez_admin_qr_code', b64);
+        showToast(t('validationSaved'), 'success');
       } catch (e) {
         console.error('QR compress error:', e);
       }
     }
+    if (qrInputRef.current) qrInputRef.current.value = '';
   };
 
   const removeQR = () => {
@@ -1486,6 +1530,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
       onConfirm: async () => {
         setAdminQR(null);
         localStorage.removeItem('ez_admin_qr_code');
+        if (qrInputRef.current) qrInputRef.current.value = '';
         if (isLive) {
           try {
             const { createClient } = await import('@/utils/supabase/client');
@@ -1497,6 +1542,7 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
             }
           } catch {}
         }
+        showToast(lang === 'zh' ? '收款码已成功删除' : 'Payment QR deleted successfully', 'success');
       }
     });
   };
