@@ -79,6 +79,8 @@ DROP POLICY IF EXISTS "Allow public read on admin_users" ON admin_users;
 DROP POLICY IF EXISTS "Super admin insert admins" ON admin_users;
 DROP POLICY IF EXISTS "Super admin update admins" ON admin_users;
 DROP POLICY IF EXISTS "Super admin delete admins" ON admin_users;
+DROP POLICY IF EXISTS "Allow self insert admin" ON admin_users;
+DROP POLICY IF EXISTS "Allow self update admin" ON admin_users;
 
 -- 所有人可读（学生需要读管理员联系方式和收款码）
 CREATE POLICY "Anyone can read admin contact"
