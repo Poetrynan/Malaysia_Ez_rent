@@ -1910,39 +1910,81 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Tab Bar */}
+      {/* Tab Bar and Mode Status Indicator */}
       {!hideTabBar && (
-        <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
-          <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
-            <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
-          </button>
-          <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('interests'); loadAll(); }}>
-            <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
-            {leasesPendingCount > 0 && (
-              <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
-                {leasesPendingCount}
-              </span>
-            )}
-          </button>
-          <button style={tabStyle(tab === 'payment')} onClick={() => setTab('payment')}>
-            <QrCode size={14} style={{ display: 'inline', marginRight: 6 }} />{t('paymentSettings')}
-          </button>
-          {adminRole === 'super_admin' && (
-            <button style={tabStyle(tab === 'admins')} onClick={() => { setTab('admins'); fetchAdmins(); }}>
-              <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', width: '100%' }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
+            <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
+              <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
             </button>
-          )}
-          <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
-            <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
-            {feedbackPendingCount > 0 && (
-              <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
-                {feedbackPendingCount}
-              </span>
+            <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('interests'); loadAll(); }}>
+              <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
+              {leasesPendingCount > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
+                  {leasesPendingCount}
+                </span>
+              )}
+            </button>
+            <button style={tabStyle(tab === 'payment')} onClick={() => setTab('payment')}>
+              <QrCode size={14} style={{ display: 'inline', marginRight: 6 }} />{t('paymentSettings')}
+            </button>
+            {adminRole === 'super_admin' && (
+              <button style={tabStyle(tab === 'admins')} onClick={() => { setTab('admins'); fetchAdmins(); }}>
+                <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
+              </button>
             )}
-          </button>
-          <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
-            <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
-          </button>
+            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
+              <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
+              {feedbackPendingCount > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
+                  {feedbackPendingCount}
+                </span>
+              )}
+            </button>
+            <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
+              <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
+            </button>
+          </div>
+
+          {/* Database Mode Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', fontWeight: 700,
+              padding: '6px 12px', borderRadius: 8,
+              background: isLive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.12)',
+              border: isLive ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.25)',
+              color: isLive ? '#10B981' : '#F59E0B'
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: isLive ? '#10B981' : '#F59E0B',
+                boxShadow: isLive ? '0 0 6px #10B981' : '0 0 6px #F59E0B'
+              }} />
+              {isLive 
+                ? (lang === 'zh' ? '实时联机数据库 (Supabase)' : 'Live Database (Supabase)') 
+                : (lang === 'zh' ? '离线模拟模式 (LocalStorage)' : 'Mock Mode (LocalStorage)')
+              }
+            </div>
+            {!isLive && (
+              <button
+                onClick={() => {
+                  if (window.confirm(lang === 'zh' ? '确认清除本地浏览器模拟数据吗？清除后将恢复默认初始假数据。' : 'Are you sure you want to clear local browser mock data? This resets to default mock data.')) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#EF4444', padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                  fontSize: '0.72rem', fontWeight: 700, transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.18)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+              >
+                {lang === 'zh' ? '重置模拟缓存' : 'Reset Mock Cache'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
