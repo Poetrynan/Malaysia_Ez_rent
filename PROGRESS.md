@@ -1059,3 +1059,7 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
     - **前端限制**：在 `AdminPanel.tsx` 初始化时，限制仅允许根超级管理员邮箱 `admin@ezrent.my` 执行缺省自注册插入，普通学生/其他邮箱不作任何自注册操作，只进行已有邮箱 ID 的绑定与匹配。
     - **后端 RLS 加固**：修改 `Allow self insert admin` 的 SQL 安全策略，强制仅允许 `admin@ezrent.my` 作为首位超级管理员在注册时插入记录，且只能设为 `super_admin` 角色，堵死通过该通道注册任何 `editor` 角色的可能性。
     - **安全映射策略**：为 `Allow self update admin` 策略增加基于 `email = auth.jwt()->>'email'` 的校验。支持普通管理员（由超级管理员手动添加了邮箱）在首次登录时通过自己绑定的邮箱，安全地将自己预存的随机 UUID 记录更新为自己的真实 `auth.uid()`。
+
+- **2026-05-27 微信/App内置浏览器环境检测与Google 403报错拦截引导**
+  - **根本原因**：Google OAuth 官方安全策略规定禁止在嵌入式 WebView/内置浏览器中进行授权登录（防止钓鱼劫持），若在微信、QQ、抖音等 App 内部扫码打开直接点击 Google 登录，会报 `403: disallowed_useragent` 错误。
+  - **优化方案**：在 `LoginPage` 中引入客户端 User-Agent 检测逻辑（覆盖 WeChat, QQ, Weibo, Lark/Feishu, DingTalk 以及 Android/iOS 各种嵌入式 Webviews），一旦检测到处于内置浏览器环境，登录页面的 Google 登录按钮上方会自动弹出红色警告提示卡，指引用户“点击右上角菜单选择「在浏览器中打开 / Open in Safari / Chrome」”，实现完美避坑。

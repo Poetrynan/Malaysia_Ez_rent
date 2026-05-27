@@ -13,6 +13,23 @@ export default function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [mockModal, setMockModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      const isWeChat = ua.includes('micromessenger');
+      const isQQ = ua.includes('mqqbrowser') || ua.includes('qq/');
+      const isWeibo = ua.includes('weibo');
+      const isFeishu = ua.includes('lark') || ua.includes('feishu');
+      const isDingTalk = ua.includes('dingtalk');
+      const isWebview = ua.includes('webview') || ua.includes('fbav') || ua.includes('instagram') || (ua.includes('android') && ua.includes('wv'));
+      
+      if (isWeChat || isQQ || isWeibo || isFeishu || isDingTalk || isWebview) {
+        setIsInAppBrowser(true);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +197,30 @@ export default function LoginPage() {
           </div>
         ) : (
           <div>
+            {/* In-App Browser Alert */}
+            {isInAppBrowser && (
+              <div style={{
+                marginBottom: 16, padding: '12px 14px', borderRadius: 10,
+                background: 'var(--danger-light)', border: '1px solid var(--danger)',
+                color: 'var(--danger)', fontSize: '0.75rem', display: 'flex', gap: 8,
+                alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.4,
+                boxShadow: '0 4px 12px rgba(239,68,68,0.08)'
+              }}>
+                <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: 'var(--danger)' }} />
+                <div>
+                  <strong style={{ display: 'block', marginBottom: 4, fontWeight: 700 }}>
+                    {lang === 'zh' ? '⚠️ 微信/App 内置浏览器受限' : '⚠️ Embedded Webview Restricted'}
+                  </strong>
+                  <span style={{ color: 'var(--text-body)' }}>
+                    {lang === 'zh' 
+                      ? '由于 Google 官方安全策略，第三方 App（如微信、飞书、QQ等）内置浏览器无法直接使用 Google 登录。请点击右上角菜单，选择「在浏览器中打开」后即可正常登录。' 
+                      : 'Google blocks sign-ins from in-app browsers (WeChat, Feishu, etc.) for security. Please tap the top-right menu and choose "Open in Safari/Chrome" to continue.'
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Google Login */}
             <button onClick={handleGoogleLogin} style={{
               width: '100%', padding: '11px 16px', borderRadius: 10,
