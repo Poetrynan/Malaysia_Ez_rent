@@ -588,50 +588,99 @@ Supabase 免费版不限制管理员数量（限制的是数据库大小 500MB�
 
 ```
 ┌──────────────────────────────────────────────────┐
-│                    Supabase                        │
-│                                                    │
-│  ┌──────────────────┐    ┌──────────────────────┐ │
-│  │   auth.users     │    │  users（学生业务数据） │ │
-│  │  （Supabase 管理） │    │  admin_users（管理员）│ │
-│  ├──────────────────┤    ├──────────────────────┤ │
-│  │ • id             │    │ • id（关联 auth）     │ │
-│  │ • email          │◄───│ • full_name          │ │
-│  │ • encrypted_pwd  │    │ • avatar_url         │ │
-│  │ • provider_id    │    │ • phone              │ │
-│  └──────────────────┘    └──────────────────────┘ │
-│                                                    │
-│         管登录                        管业务       │
-│    （你不用管）                   （触发器自动同步） │
-└──────────────────────────────────────────────────┘
-```
-
----
-
-## 你现在需要做的事
+�## 你现在需要做的事（更新于 2026-05-27）
 
 | 步骤 | 做什么 | 状态 |
 |------|--------|------|
 | 1️⃣ | 在 Supabase SQL Editor 运行 `supabase/schema.sql`（建表 + 触发器 + RLS） | ✅ 已执行 |
-| 2️⃣ | 运行 `supabase/migrations/004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
-| 3️⃣ | 运行 **`supabase/migrations/007_mobile_upload.sql`**（手机上传凭证 RPC） | ⚠️ 必做 |
-| 4️⃣ | 运行 **`supabase/migrations/008_whole_unit_room_type.sql`**（Whole Unit 房型） | ⚠️ 若后台保存整租报错则必做 |
-| 5️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
-| 6️⃣ | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
-
-> 完整清单见文档末尾 **「你现在需要做的事（更新于 2026-05-24）」** 一节。
+| 2️⃣ | 运行 `004_unit_media.sql`（加列 + Storage + 策略） | ✅ 已执行 |
+| 3️⃣ | 运行 **`007_mobile_upload.sql`**（手机匿名上传凭证 RPC + Storage evidence/ 策略） | ⚠️ **必做**，否则手机上传失败 |
+| 4️⃣ | 运行 **`008_whole_unit_room_type.sql`**（Whole Unit 房型） | ⚠️ 保存整租报错时必做 |
+| 5️⃣ | 运行 **`009_unit_video_url.sql`**（看房视频 URL 字段） | ⚠️ Live 模式上传视频时必做 |
+| 6️⃣ | 运行 **`010_agent_qr_separation.sql`**（收款码与审核隔离） | ⚠️ 按 Agent 隔离权限 and 收款码时必做 |
+| 7️⃣ | 运行 **`011_optional_unit_number.sql`**（门牌号可选化） | ⚠️ 隐藏门牌号时必做 |
+| 8️⃣ | 运行 **`012_remove_unit_number_display.sql`**（彻底隐藏门牌号） | ⚠️ 隐藏门牌号时必做 |
+| 8️⃣b | 运行 **`013_landlord_payment_details.sql`**（后续月租付房东） | ⚠️ 学生第二个月起付房东时必做 |
+| 8️⃣c | 运行 **`014_tenant_interests_user_update.sql`** + **`015_tenant_interest_rpc.sql`** | ⚠️ **Whole Unit 合租提交/取消必做** |
+| 8️⃣d | 运行 **`016_maintenance_requests.sql`**（维修工单系统表） | ⚠️ 启用报修工单必做 |
+| 8️⃣e | 运行 **`017_agent_profile_fields.sql`**（中介主页基本资料扩展字段） | ⚠️ **更新中介个人主页时必做** |
+| 8️⃣f | 运行 **`018_tenant_terminate_lease.sql`**（租客自主退约） | ⚠️ **租客自主终止租约必做** |
+| 8️⃣g | 运行 **`019_lease_transfer.sql`**（合租成员变更继租） | ⚠️ **联保合租替换继租必做** |
+| 8️⃣h | 运行 **`020_anon_property_upload.sql`**（移动端房源图片上传） | ⚠️ **手机匿名上传房源照片必做** |
+| 9️⃣ | 测试 Google 登录，确认 `users` 表自动创建了记录 | ✅ 已测试 |
+| 🔟 | 在 `admin_users` 表手动添加管理员（或让 super_admin 在前端添加） | 按需做 |
+| 1️⃣1️⃣ | 本地手机扫码测试：用 `192.168.x.x:3000` 而非 `localhost` | 见第 8 节 |
+| 1️⃣2️⃣ | 生产环境 Redirect URLs 加入正式域名 `/auth/callback` | 部署时做 |
+| 1️⃣3️⃣ | **Logo 更新**：提交 `frontend/public/logo.png` 后 `git push` | ❌ 无需 SQL，见第 16 节 |
 
 ---
 
-### Q: NEXT_PUBLIC_SUPABASE_ANON_KEY 和 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 为什么是一样的？
-**A:** 它们本质上都是指 Supabase 项目提供的 `anon` `public` 客户端公开密钥。不同库对它的命名习惯不同：
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`：Supabase 前端 SDK 的常规命名，在前端 API 初始化时使用。
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`：Supabase SSR 验证框架组件（如 `@supabase/ssr`）及中间件模板的习惯命名。
+## 20. 登录页多语言、深色模式与生产环境 SMTP 警告
 
-为了兼容代码中这两种不同命名形式的调用，在配置文件中它们配置为相同的值。
+### 多语言与深色模式支持
+* 登录页面（`/login`）现在完整接入了全局 the ThemeProvider，通过顶部右侧的语言与主题切换按钮，允许用户随时切换“中/英”语言和“深/浅”主题。
+* 解决了此前部分环境里登录页面被强行锁定为浅色模式的问题。
 
-### Q: 为什么项目没有直接把本地带有真实秘钥的 backend/.env 提交到 GitHub？
-**A:** **安全起见。** `SUPABASE_SERVICE_ROLE_KEY` 具有绕过数据库 RLS（行级安全）策略的最高权限，可以任意删除和篡改数据，绝对不能提交到 GitHub（公开泄露会导致数据库被黑）。
-- 我们在根目录的 `.gitignore` 中忽略了 `backend/.env`，使得包含真实密钥的本地配置文件只保留在电脑本地。
+### 生产环境发信限制警告
+* 针对免费或受限 SMTP 发信服务在发送 Magic Link 时可能会在 QQ 邮箱等国内邮箱产生拦截或延迟的问题，新增了高亮的双语警告框。
+* **特别注意**：**严禁**在此文案中使用“沙箱”、“Sandbox”等技术术语，以防止普通用户产生混淆。统一采用“免费发信服务器通道限制”、“垃圾邮件箱检查”等业务层面的通俗指引。
+
+---
+
+## 21. 房源列表 Grid/List 视图模式与精简卡片
+
+### 网格/列表切换
+* 房源列表头部筛选 Bar 中增加了网格与列表切换按钮。
+* 网格卡片高度和间距得到优化，使默认的网格布局卡片更紧凑精致。
+* 列表模式采用通栏横向排列的 `PropertyRow` 组件展示，视觉层次更优美。
+
+---
+
+## 22. iProperty中介主页借鉴、头像压缩与去除社交外链
+
+### 详情面板中介名片
+* 房源详情抽屉中嵌入了中介个人名片，展示中介的头像、姓名、职位、代理公司名、执照编号等核心身份信息。
+* 点击名片可打开完整的中介个人主页 Modal。
+
+### 中介主页 Modal
+* 个人主页采用卡片与 Tabs 交互，包含主营房源、个人简介、擅长领域。
+* 主营房源 Tab 支持按最低/最高租金筛选，并有一键找房跳转功能。
+* 包含带有前台规则验证的留言/预约意向表单，提交后弹窗提示成功，用户选择房间时可智能导流至租约与账单。
+
+### 头像文件压缩
+* 中介上传头像时使用 Canvas 压缩，强制转成 JPEG 且大小限制在 ≤30KB，节省云存储空间。
+
+### 移除社交外链以限定内部闭环
+* 移除了 Facebook URL 与个人 Website URL 两个外推引流字段，将用户的交互完全锁定在 Malaysia Ez Rent 平台内，由内建的预约和电话/微信/WhatsApp等联系方式满足服务闭环。
+
+## 23. 学生租约状态按钮隐藏与磨砂玻璃 Toast 通知组件重构
+
+### 学生已租房源防重复预定
+* 房源详情抽屉中集成了对 `leases` 表的实时状态查询。如果当前登录的学生已拥有一份针对该房源 of 活跃（`active`）租约，详情页底部原先的“我要租”（合租意向/租房意向）按钮将被隐藏，并替换为绿色的非交互状态标签：“您已承租此房源” (You are currently renting this unit/room)，以防止学生重复表达意向。
+
+### 意向取消状态的 Toast 提醒
+* 移除了详情页中用以提示“已取消意向”的持久化状态横幅，解决学生切换不同房源时历史操作横幅仍然存在的问题。
+* 所有的意向申请和取消操作均改由临时 Toast 进行提示，该 Toast 在弹出 3.8 秒后自动淡出消失。
+
+### 统一的高级磨砂玻璃 (Glassmorphic) 动效
+* 为了符合平台的整体高端美学规范，学生端 (`PropertyListings.tsx`) 和管理端 (`AdminPanel.tsx`) 的 Toast 提示组件完成了统一升级。
+* 新的 Toast 采用半透明玻璃卡片背景 (`rgba(...)` 配合 `backdrop-filter: blur(16px)`)、根据通知类型（`success`/`warning`/`error`）呈现不同的微光阴影边缘，以及平滑的向下划入动效 (`slideDown`)。
+
+---
+
+## 24. 进度条线条延伸与呼吸点落点精度校准 (2026-05-27)
+* 修正 Node 2 (合约生成) 阶段延伸终点坐标为 `calc(66.66% - 6.66px)`，解决了偏右 overshooting 偏离 Bug，使呼吸灯光点精准降落在节点正中心。
+
+---
+
+## 25. 学生端加载并发联表性能优化 (2026-05-27)
+* 将 sequential 查询重构为并发 `Promise.all` 查询 leases 与 tenant_interests。
+* 使用 PostgREST 联表 `select('*, units(*, communities(*))')` 实现 1 次网络往返拉取全部关联实体，消除了白屏延迟。
+
+---
+
+*文档更新：2026-05-27 · 并行联表消除加载延迟、进度条动画落点校准、018/019/020 迁移入册*
+使得包含真实密钥的本地配置文件只保留在电脑本地。
 - 在 **Render** 的高级设置中，我们以环境变量的形式单独安全地配置了 `SUPABASE_SERVICE_ROLE_KEY`，云端服务运行时会自动读取。
 
 ---

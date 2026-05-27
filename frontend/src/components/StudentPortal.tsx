@@ -78,7 +78,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
     startWidth = 'calc(33.33% - 13.33px)';
     endWidth = 'calc(66.66% - 26.66px)';
     startLeft = 'calc(33.33% + 6.66px)';
-    endLeft = 'calc(66.66% + 13.33px)';
+    endLeft = 'calc(66.66% - 6.66px)';
   } else {
     // 已发起，向“中介同意”延伸
     startWidth = '0px';
@@ -396,9 +396,34 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
 
-        const { data: leaseData } = await supabase
-          .from('leases').select('*')
-          .eq('tenant_id', user.id).eq('status', 'active').maybeSingle();
+        const [leaseRes, interestRes] = await Promise.all([
+          supabase
+            .from('leases')
+            .select('*')
+            .eq('tenant_id', user.id)
+            .eq('status', 'active')
+            .maybeSingle(),
+          supabase
+            .from('tenant_interests')
+            .select(`
+              *,
+              units (
+                id,
+                community_id,
+                room_type,
+                communities (
+                  id,
+                  name
+                )
+              )
+            `)
+            .eq('user_id', user.id)
+            .neq('status', 'left')
+            .maybeSingle()
+        ]);
+
+        const leaseData = leaseRes.data;
+        const interestData = interestRes.data;
 
         if (leaseData) {
           setLease(leaseData);
@@ -457,22 +482,26 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           setCommunity(null);
           setRoommates([]);
 
-          // Fetch active tenant interest
-          const { data: interestData } = await supabase
-            .from('tenant_interests')
-            .select('*')
-            .eq('user_id', user.id)
-            .neq('status', 'left')
-            .maybeSingle();
-
           if (interestData) {
             setInterest(interestData);
-            // Fetch interest unit & community details
-            const { data: uData } = await supabase.from('units').select('id, community_id, unit_number, room_type').eq('id', interestData.unit_id).single();
-            if (uData) {
-              setInterestUnit(uData);
-              const { data: cData } = await supabase.from('communities').select('id, name').eq('id', uData.community_id).single();
-              if (cData) setInterestCommunity(cData);
+            if (interestData.units) {
+              const uObj = interestData.units;
+              setInterestUnit({
+                id: uObj.id,
+                community_id: uObj.community_id,
+                room_type: uObj.room_type
+              });
+              if (uObj.communities) {
+                setInterestCommunity({
+                  id: uObj.communities.id,
+                  name: uObj.communities.name
+                });
+              } else {
+                setInterestCommunity(null);
+              }
+            } else {
+              setInterestUnit(null);
+              setInterestCommunity(null);
             }
           } else {
             setInterest(null);

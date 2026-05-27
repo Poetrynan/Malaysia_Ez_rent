@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-26 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏“我要租”并置灰显示“已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告**
+> 最后更新：2026-05-27 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏“我要租”并置灰显示“已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复**
 
 
 ---
@@ -344,6 +344,9 @@ Storage Bucket：
 | `015_tenant_interest_rpc.sql` | RPC **`submit_tenant_interest`** / **`cancel_tenant_interest`**（SECURITY DEFINER upsert） |
 | `016_maintenance_requests.sql` | **维修工单系统**：`maintenance_requests` 表（category 校验、RLS 权限控制、图片存储、认领状态） |
 | `017_agent_profile_fields.sql` | **中介个人主页扩展**：为 `admin_users` 新增 `job_title`, `agency_name`, `agency_license`, `agency_address`, `bio`, `experience_years`, `experience_months`, `area_expertise`, `property_types` 中介信息字段，并限制只在平台内部维护、移除外部社交链接引流 |
+| `018_tenant_terminate_lease.sql` | **租客自主终止租约**：`tenant_terminate_lease` RPC (SECURITY DEFINER) 允许学生自主发起退租并释放房源 |
+| `019_lease_transfer.sql` | **整组联保租约变更与退租替换**：`substitute_co_tenant` RPC 原子更替合租室友并生成接续账单与退/转押金 |
+| `020_anon_property_upload.sql` | **移动端房源图片上传**：允许移动端匿名上传图片至 `property/` 目录，并创建 `mobile_upload_sessions` 表暂存上传批次 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -379,6 +382,9 @@ supabase/migrations/
 └── 015_tenant_interest_rpc.sql  # 合租 submit/cancel RPC
 └── 016_maintenance_requests.sql # 维修工单系统 (替换旧意见箱表)
 └── 017_agent_profile_fields.sql # 中介个人主页扩展字段
+└── 018_tenant_terminate_lease.sql # 租客自主终止租约 RPC
+└── 019_lease_transfer.sql       # 整组联保租约变更与退租替换 RPC
+└── 020_anon_property_upload.sql # 移动端房源上传 session 表与 property 存储策略
 ```
 
 迁移原则：
@@ -989,4 +995,33 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 ---
 
-*文档更新：2026-05-27 · 新增进度节点线条动态延伸动画*
+## 二十五、学生门户加载性能与网络延迟优化（2026-05-27）
+
+### 背景与优化
+在学生端登录后打开“我的租约”时，以前的代码采取串行多次请求：查租约 -> 查不到则查合租意向 -> 查到后再查房源与小区。这种串行等待导致页面切换有明显的白屏卡顿与渲染延迟。
+- **并行合并请求**：重构 `StudentPortal.tsx` 的 `load` 数据接口，使用 `Promise.all` 将原本串行的 `leases` 和 `tenant_interests` 进行并行查询。
+- **PostgREST 嵌套联表**：将 `tenant_interests` 的查询改用 PostgREST 的嵌套选择：
+  ```typescript
+  supabase.from('tenant_interests').select('*, units(*, communities(*))')
+  ```
+  这直接在一次数据库请求中将意向房源及其关联的小区信息一次性加载并解析完毕。
+- **优化效果**：页面加载网络延迟大幅降低，从多次往返优化为仅 1 次并行联表网络往返，页面切换顺滑，无加载停顿。
+
+---
+
+## 二十六、进度流延伸与呼吸光点落点位置校准（2026-05-27）
+
+### 背景与优化
+在此前进度流程（ProgressFlow）的 CSS 动画坐标定义中，中介同意（Node 1）向合约生成（Node 2）延伸的动画终点位置公式计算有偏差，导致流光线末端的循环呼吸点存在偏离、超出的视觉溢出 Bug。
+- **圆心坐标精准标定**：
+  * Node 0（发起确认）：`20px`
+  * Node 1（中介同意）：`calc(33.33% + 6.66px)`
+  * Node 2（合约生成）：修正为 **`calc(66.66% - 6.66px)`**（原为 `+ 13.33px`，导致向右偏出约 20px）
+  * Node 3（已入住）：`calc(100% - 20px)`
+- **修改组件**：同步修复了 `PropertyListings.tsx` 与 `StudentPortal.tsx` 两处组件中的进度光点结束坐标。
+- **优化效果**：流光线条末端跟随的呼吸光点在延伸至“合约生成”节点时，能 100% 完美落在节点圆圈的正中心，无任何溢出或偏离。
+
+---
+
+*文档更新：2026-05-27 · 并行联表消除加载延迟、进度条动画落点校准、019/020 迁移入册*
+

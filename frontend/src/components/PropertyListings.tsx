@@ -156,7 +156,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
     startWidth = 'calc(33.33% - 13.33px)';
     endWidth = 'calc(66.66% - 26.66px)';
     startLeft = 'calc(33.33% + 6.66px)';
-    endLeft = 'calc(66.66% + 13.33px)';
+    endLeft = 'calc(66.66% - 6.66px)';
   } else {
     // 已发起，向“中介同意”延伸
     startWidth = '0px';
