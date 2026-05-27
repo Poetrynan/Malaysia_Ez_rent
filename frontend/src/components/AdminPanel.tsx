@@ -2312,6 +2312,11 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6, width: 'fit-content' }}>
             <button style={tabStyle(leasesView === 'interests')} onClick={() => setLeasesView('interests')}>
               {t('leaseSubtabInterests')}
+              {visibleInterests.filter(i => i.status === 'interested').length > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--primary)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                  {visibleInterests.filter(i => i.status === 'interested').length}
+                </span>
+              )}
             </button>
             <button style={tabStyle(leasesView === 'overview')} onClick={() => setLeasesView('overview')}>
               {t('leaseSubtabOverview')}
@@ -2531,6 +2536,57 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
           </div>
 
           {/* Tenant Interests */}
+          {/* ── Terminated Leases Awaiting Settlement (separate section) ── */}
+          {leasesView === 'overview' && terminatedLeases.length > 0 && (
+            <div className="glass-card" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.02)' }}>
+              <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)' }}>
+                <AlertTriangle size={16} />
+                {lang === 'zh' ? '待结算归档的已终止租约' : 'Terminated Leases Awaiting Settlement'}
+                <span style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{terminatedLeases.length}</span>
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {terminatedLeases.map(l => {
+                  const { unit, community } = resolveLeaseUnit(l, units, communities);
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  const notesLines = (l.admin_notes || '').split('\n');
+                  const termLine = notesLines.find((ln: string) => ln.includes('Terminated by tenant'));
+                  // Translate the English termination note to Chinese if needed
+                  const displayTermLine = termLine && lang === 'zh'
+                    ? termLine
+                        .replace('Terminated by tenant on', '租客于')
+                        .replace('Reason:', '退租原因:')
+                        .replace(/\.$/, '')
+                        .replace(/ at /, ' 终止合约。')
+                    : termLine;
+                  return (
+                    <div key={l.id} style={{
+                      padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                      background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <strong style={{ fontSize: '0.88rem', color: 'var(--text-h)' }}>{l.tenantName}</strong>
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '已终止' : 'Terminated'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginTop: 3 }}>{propertyLabel}</div>
+                        {displayTermLine && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontWeight: 500 }}>{displayTermLine}</div>
+                        )}
+                      </div>
+                      <button onClick={() => handleArchiveTerminatedLease(l.id)} className="btn btn-primary"
+                        style={{ background: 'var(--danger)', borderColor: 'var(--danger)', padding: '6px 12px', fontSize: '0.78rem', color: 'white', fontWeight: 600 }}>
+                        {lang === 'zh' ? '确认已结算并归档' : 'Settle & Archive'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {leasesView === 'interests' && (
             <div className="glass-card">
               <h3 style={{ fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2679,20 +2735,21 @@ export default function AdminPanel({ adminRole, defaultTab, hideTabBar = false, 
                           const cellBorder = p.paid ? 'var(--success)' : isPending ? 'var(--warning)' : isRejected ? 'var(--danger)' : 'var(--danger)';
                           return (
                             <div key={p.id} onClick={() => {
-                              if (p.evidence_url) { 
+                              if (isArchived) {
+                                // Archived/terminated leases: completely read-only, no toggling or reviewing
+                                if (p.evidence_url) {
+                                  setPreviewOpen(p.evidence_url);
+                                } else {
+                                  showToast(lang === 'zh' ? '该租约已归档，无法修改支付状态。' : 'This lease is archived. Payment status cannot be changed.', 'warning');
+                                }
+                              } else if (p.evidence_url) { 
                                 setReviewingPayment(p); 
                                 setAdminNote(p.admin_notes || ''); 
                               } else {
-                                // For archived leases, prevent status toggling and show warning
-                                if (isArchived) {
-                                  showToast(lang === 'zh' ? '无法查看，该月份不存在支付凭证。' : 'Cannot view, no payment evidence exists for this month.', 'warning');
-                                } else {
-                                  // For active leases, preserve the original toggling behavior
-                                  togglePaid(p.id, p.paid);
-                                }
+                                togglePaid(p.id, p.paid);
                               }
                             }} className="ledger-cycle-cell"
-                              style={{ background: cellBg, borderColor: cellBorder, cursor: 'pointer', opacity: (!p.paid && isArchived) ? 0.6 : 1 }}>
+                              style={{ background: cellBg, borderColor: cellBorder, cursor: isArchived && !p.evidence_url && !p.paid ? 'not-allowed' : 'pointer', opacity: (!p.paid && isArchived) ? 0.5 : 1 }}>
                               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>{fmtMonth(p.billing_month)}</div>
                               {p.paid
                                 ? <CheckCircle2 size={18} style={{ color: 'var(--success)' }} />

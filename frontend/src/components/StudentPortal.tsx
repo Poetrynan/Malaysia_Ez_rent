@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star, Users } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star, Users, Trash2, CheckCircle2 } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
@@ -21,8 +21,153 @@ interface Payment {
 interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
 interface Community { id: string; name: string; }
 
+const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
+  let startWidth = '0px';
+  let endWidth = 'calc(33.33% - 13.33px)';
+  let startLeft = '20px';
+  let endLeft = 'calc(33.33% + 6.66px)';
+
+  if (isActive) {
+    return (
+      <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+          <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+          <div style={{ 
+            position: 'absolute', 
+            top: 10, 
+            left: 20, 
+            width: 'calc(100% - 40px)',
+            height: 2, 
+            background: 'var(--primary)', 
+            zIndex: 0, 
+            opacity: 0.6
+          }} />
+          {[
+            { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+            { label: lang === 'zh' ? '中介同意' : 'Agreed', active: true },
+            { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: true },
+            { label: lang === 'zh' ? '租房中' : 'Renting', active: true },
+          ].map((step, idx) => (
+            <div key={idx} style={{ 
+              zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              transition: 'transform 0.3s ease',
+              transform: 'scale(1.1)'
+            }}>
+              <div style={{ 
+                width: 20, height: 20, borderRadius: '50%', 
+                background: 'var(--primary)',
+                border: '2px solid var(--primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.5s ease',
+                boxShadow: '0 0 12px var(--primary)'
+              }}>
+                <CheckCircle2 size={12} color="white" />
+              </div>
+              <span style={{ 
+                fontSize: '0.6rem', fontWeight: 700, 
+                color: 'var(--text-h)',
+                transition: 'color 0.5s ease'
+              }}>{step.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  } else if (isAgreed) {
+    // 已到“中介同意”，向“合约生成”延伸
+    startWidth = 'calc(33.33% - 13.33px)';
+    endWidth = 'calc(66.66% - 26.66px)';
+    startLeft = 'calc(33.33% + 6.66px)';
+    endLeft = 'calc(66.66% + 13.33px)';
+  } else {
+    // 已发起，向“中介同意”延伸
+    startWidth = '0px';
+    endWidth = 'calc(33.33% - 13.33px)';
+    startLeft = '20px';
+    endLeft = 'calc(33.33% + 6.66px)';
+  }
+
+  return (
+    <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+        <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+        <div style={{ 
+          position: 'absolute', 
+          top: 10, 
+          left: 20, 
+          width: startWidth,
+          height: 2, 
+          background: 'var(--primary)', 
+          zIndex: 0, 
+          opacity: 0.6
+        }} />
+        <div style={{ 
+          position: 'absolute', 
+          top: 10, 
+          left: 20, 
+          height: 2, 
+          background: 'var(--primary)', 
+          zIndex: 0, 
+          // @ts-ignore
+          '--start-width': startWidth,
+          '--end-width': endWidth,
+          animation: 'loopExtend 2s infinite ease-in-out'
+        } as React.CSSProperties} />
+        <div style={{ 
+          position: 'absolute', 
+          top: 8, 
+          width: 6, 
+          height: 6, 
+          borderRadius: '50%',
+          background: 'var(--primary)',
+          boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
+          zIndex: 1,
+          // @ts-ignore
+          '--start-left': startLeft,
+          '--end-left': endLeft,
+          animation: 'loopGlow 2s infinite ease-in-out, glowPulse 1.5s ease-in-out infinite'
+        } as React.CSSProperties} />
+
+        {[
+          { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
+          { label: lang === 'zh' ? '中介同意' : 'Agreed', active: isAgreed },
+          { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: false },
+          { label: lang === 'zh' ? '租房中' : 'Renting', active: false },
+        ].map((step, idx) => (
+          <div key={idx} style={{ 
+            zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            transition: 'transform 0.3s ease',
+            transform: step.active ? 'scale(1.1)' : 'scale(1)'
+          }}>
+            <div style={{ 
+              width: 20, height: 20, borderRadius: '50%', 
+              background: step.active ? 'var(--primary)' : 'var(--bg-card)',
+              border: `2px solid ${step.active ? 'var(--primary)' : 'var(--glass-border)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.5s ease',
+              boxShadow: step.active ? '0 0 12px var(--primary)' : 'none'
+            }}>
+              {step.active && <CheckCircle2 size={12} color="white" />}
+            </div>
+            <span style={{ 
+              fontSize: '0.6rem', fontWeight: 700, 
+              color: step.active ? 'var(--text-h)' : 'var(--text-muted)',
+              transition: 'color 0.5s ease'
+            }}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'maintenance' }) {
   const { t, lang } = useApp();
+  const [interest, setInterest] = useState<any | null>(null);
+  const [interestUnit, setInterestUnit] = useState<Unit | null>(null);
+  const [interestCommunity, setInterestCommunity] = useState<Community | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [lease, setLease] = useState<Lease | null>(null);
   const [roommates, setRoommates] = useState<{ id: string; tenant_id: string; tenantName: string; status: string; start_date: string; end_date: string; }[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -227,6 +372,22 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         } else {
           setRoommates([]);
         }
+        setInterest(null);
+        setInterestUnit(null);
+        setInterestCommunity(null);
+      } else {
+        const allInterests = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+        const mine = allInterests.find((i: any) => i.user_id === tenantId && i.status !== 'left');
+        if (mine) {
+          setInterest(mine);
+          const u = units.find(x => x.id === mine.unit_id) || null;
+          setInterestUnit(u);
+          if (u) setInterestCommunity(communities.find(c => c.id === u.community_id) || null);
+        } else {
+          setInterest(null);
+          setInterestUnit(null);
+          setInterestCommunity(null);
+        }
       }
     } else {
       try {
@@ -241,6 +402,9 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
 
         if (leaseData) {
           setLease(leaseData);
+          setInterest(null);
+          setInterestUnit(null);
+          setInterestCommunity(null);
           const [payRes, unitRes] = await Promise.all([
             supabase
               .from('payment_records')
@@ -292,6 +456,29 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           setUnit(null);
           setCommunity(null);
           setRoommates([]);
+
+          // Fetch active tenant interest
+          const { data: interestData } = await supabase
+            .from('tenant_interests')
+            .select('*')
+            .eq('user_id', user.id)
+            .neq('status', 'left')
+            .maybeSingle();
+
+          if (interestData) {
+            setInterest(interestData);
+            // Fetch interest unit & community details
+            const { data: uData } = await supabase.from('units').select('id, community_id, unit_number, room_type').eq('id', interestData.unit_id).single();
+            if (uData) {
+              setInterestUnit(uData);
+              const { data: cData } = await supabase.from('communities').select('id, name').eq('id', uData.community_id).single();
+              if (cData) setInterestCommunity(cData);
+            }
+          } else {
+            setInterest(null);
+            setInterestUnit(null);
+            setInterestCommunity(null);
+          }
         }
       } catch (e) {
         console.error('StudentPortal load error:', e);
@@ -419,21 +606,207 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   };
 
 
+  const cancelMyInterest = async (interestId: string, unitId: string) => {
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelInterest = async () => {
+    if (!interest) return;
+    setCancelSubmitting(true);
+    if (isMockDatabase) {
+      const all: any[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+      const updated = all.filter(i => !(i.unit_id === interest.unit_id && i.user_id === 'tenant-123'));
+      localStorage.setItem('ez_interests', JSON.stringify(updated));
+      setInterest(null);
+      setInterestUnit(null);
+      setInterestCommunity(null);
+      setCancelSubmitting(false);
+      setShowCancelConfirm(false);
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { error } = await supabase.rpc('cancel_tenant_interest', { p_unit_id: interest.unit_id });
+        if (error) {
+          const { error: updErr } = await supabase
+            .from('tenant_interests')
+            .update({ status: 'left' })
+            .eq('id', interest.id);
+          if (updErr) {
+            console.error('Cancel interest error:', updErr);
+            setCancelSubmitting(false);
+            return;
+          }
+        }
+        setInterest(null);
+        setInterestUnit(null);
+        setInterestCommunity(null);
+        setCancelSubmitting(false);
+        setShowCancelConfirm(false);
+      } catch (e: any) {
+        console.error('Cancel interest error:', e);
+        setCancelSubmitting(false);
+      }
+    }
+  };
+
   useEffect(() => { load(); loadProfile(); }, [tick]);
+
+  // Realtime subscription for StudentPortal
+  useEffect(() => {
+    if (isMockDatabase) return;
+    let channelInterests: any = null;
+    let channelLeases: any = null;
+    let supabaseClient: any = null;
+
+    (async () => {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        supabaseClient = createClient();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        channelInterests = supabaseClient
+          .channel(`public:tenant_interests_student_${user.id}`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'tenant_interests', filter: `user_id=eq.${user.id}` },
+            async () => {
+              setTick(t => t + 1);
+            }
+          )
+          .subscribe();
+
+        channelLeases = supabaseClient
+          .channel(`public:leases_student_${user.id}`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'leases', filter: `tenant_id=eq.${user.id}` },
+            async () => {
+              setTick(t => t + 1);
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.error('Student Realtime subscription error:', err);
+      }
+    })();
+
+    return () => {
+      if (supabaseClient) {
+        if (channelInterests) supabaseClient.removeChannel(channelInterests);
+        if (channelLeases) supabaseClient.removeChannel(channelLeases);
+      }
+    };
+  }, []);
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>{t('loadingApp')}</div>;
 
-  if (!lease) return (
-    <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
-      <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
-      <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
-        {mode === 'maintenance' 
-          ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
-          : t('noLeaseDesc')}
-      </p>
-    </div>
-  );
+  if (!lease) {
+    if (mode !== 'maintenance' && interest) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="glass-card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--bg-surface) 100%)', position: 'relative', padding: '32px 24px' }}>
+            <h3 style={{ fontSize: '1.15rem', marginBottom: 6, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp size={20} color="var(--primary)" />
+              {lang === 'zh' ? '租约申请与意向进度' : 'Lease Application Progress'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 24 }}>
+              {lang === 'zh' ? '您对以下房源提交了入住意向。中介确认意向后，将在此处为您生成租约合同。' : 'You expressed interest in the property below. The contract will appear here once the agent confirms.'}
+            </p>
+
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)',
+              borderRadius: 12, padding: '16px 20px', marginBottom: 24
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                    {lang === 'zh' ? '意向房源' : 'Property'}
+                  </div>
+                  <strong style={{ fontSize: '1.05rem', color: 'var(--text-h)' }}>
+                    {interestCommunity?.name || (lang === 'zh' ? '未知公寓' : 'Unknown Community')} 
+                    {interestUnit?.room_type ? ` (${interestUnit.room_type})` : ''}
+                  </strong>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{
+                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 20, fontWeight: 700,
+                    background: interest.status === 'confirmed' ? 'rgba(22,163,74,0.12)' : 'rgba(245,158,11,0.12)',
+                    color: interest.status === 'confirmed' ? '#16A34A' : 'var(--warning)',
+                    border: `1px solid ${interest.status === 'confirmed' ? 'rgba(22,163,74,0.2)' : 'rgba(245,158,11,0.2)'}`
+                  }}>
+                    {interest.status === 'confirmed' 
+                      ? (lang === 'zh' ? '中介已同意' : 'Approved by Agent') 
+                      : (lang === 'zh' ? '中介审核中' : 'Awaiting Approval')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <ProgressFlow
+              isAgreed={interest.status === 'confirmed'}
+              isActive={false}
+              lang={lang}
+            />
+
+            {interest.status === 'interested' ? (
+              <div style={{
+                padding: '12px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.06)',
+                border: '1px solid rgba(245,158,11,0.15)', color: 'var(--warning)',
+                fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: 16, marginBottom: 24, lineHeight: 1.4
+              }}>
+                <Clock size={16} style={{ flexShrink: 0 }} />
+                <span>{lang === 'zh' ? '意向已成功提交给房源中介，请等待中介进行确认。您也可以随时在下方取消该意向。' : 'Interest submitted to agent. Waiting for confirmation. You can withdraw the interest below.'}</span>
+              </div>
+            ) : (
+              <div style={{
+                padding: '12px 16px', borderRadius: 12, background: 'rgba(22,163,74,0.06)',
+                border: '1px solid rgba(22,163,74,0.15)', color: '#16A34A',
+                fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: 16, marginBottom: 24, lineHeight: 1.4
+              }}>
+                <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                <span>{lang === 'zh' ? '🎉 中介已同意您的意向申请！正在为您制作正式租约，生成后此处将自动转为租约及账单界面，请稍后再次查看。' : '🎉 The agent approved your request! Preparing lease contract. Once created, this tab will automatically sync.'}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={() => cancelMyInterest(interest.id, interest.unit_id)}
+                disabled={cancelSubmitting}
+                style={{
+                  padding: '8px 20px', borderRadius: 20, border: '1px solid rgba(239,68,68,0.4)',
+                  background: 'rgba(239,68,68,0.04)', color: 'var(--danger)',
+                  fontSize: '0.78rem', fontWeight: 600, cursor: cancelSubmitting ? 'wait' : 'pointer',
+                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.04)'; }}
+              >
+                <Trash2 size={14} />
+                {lang === 'zh' ? '取消并撤回意向' : 'Withdraw Interest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
+        <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
+        <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
+          {mode === 'maintenance' 
+            ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
+            : t('noLeaseDesc')}
+        </p>
+      </div>
+    );
+  }
 
   const today = new Date();
   const start = new Date(lease.start_date);
@@ -1065,6 +1438,88 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                   </>
                 ) : (
                   lang === 'zh' ? '确定终止并放弃押金' : 'Terminate & Forfeit Deposit'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Interest Modal */}
+      {showCancelConfirm && (
+        <div 
+          onClick={() => setShowCancelConfirm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+              borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              position: 'relative'
+            }}
+          >
+            <button 
+              onClick={() => setShowCancelConfirm(false)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertCircle size={20} color="var(--danger)" />
+              </div>
+              <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-h)' }}>
+                {lang === 'zh' ? '确定要取消租房意向吗？' : 'Cancel Rent Interest?'}
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 24 }}>
+              {lang === 'zh' ? (
+                <>
+                  取消该意向后，系统将会把此房源的确认进度清空。您以后可以重新对其他房源提交租房意向。
+                </>
+              ) : (
+                <>
+                  Canceling this interest will clear your application progress. You will be able to submit interest for other listings in the future.
+                </>
+              )}
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  padding: '10px 16px', background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--text-h)', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer'
+                }}
+                disabled={cancelSubmitting}
+              >
+                {lang === 'zh' ? '暂不取消' : 'No, Keep It'}
+              </button>
+              <button 
+                onClick={confirmCancelInterest}
+                style={{
+                  padding: '10px 16px', background: 'var(--danger)', border: 'none',
+                  color: 'white', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 8
+                }}
+                disabled={cancelSubmitting}
+              >
+                {cancelSubmitting ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    {lang === 'zh' ? '处理中...' : 'Processing...'}
+                  </>
+                ) : (
+                  lang === 'zh' ? '确定取消意向' : 'Confirm Cancel'
                 )}
               </button>
             </div>

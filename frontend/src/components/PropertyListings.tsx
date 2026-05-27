@@ -100,15 +100,12 @@ const contactIconWrap = (size: number, color: string): React.CSSProperties => ({
 });
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
-  // 节点位置：0% (10px), 33.33% (calc(33.33% - 13.33px + 20px)), 66.66%, 100%
-  // 我们需要计算动画的起点和终点
   let startWidth = '0px';
   let endWidth = 'calc(33.33% - 13.33px)';
   let startLeft = '20px';
   let endLeft = 'calc(33.33% + 6.66px)';
 
   if (isActive) {
-    // 已完成，显示静止全长线
     return (
       <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
@@ -155,11 +152,11 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
       </div>
     );
   } else if (isAgreed) {
-    // 已到“中介同意/合约生成”，向“租房中”延伸
-    startWidth = 'calc(66.66% - 26.66px)';
-    endWidth = 'calc(100% - 40px)';
-    startLeft = 'calc(66.66% + 13.33px)';
-    endLeft = 'calc(100% - 20px)';
+    // 已到“中介同意”，向“合约生成”延伸
+    startWidth = 'calc(33.33% - 13.33px)';
+    endWidth = 'calc(66.66% - 26.66px)';
+    startLeft = 'calc(33.33% + 6.66px)';
+    endLeft = 'calc(66.66% + 13.33px)';
   } else {
     // 已发起，向“中介同意”延伸
     startWidth = '0px';
@@ -215,7 +212,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
         {[
           { label: lang === 'zh' ? '发起确认' : 'Initiated', active: true },
           { label: lang === 'zh' ? '中介同意' : 'Agreed', active: isAgreed },
-          { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: isAgreed },
+          { label: lang === 'zh' ? '合约生成' : 'Lease Created', active: false },
           { label: lang === 'zh' ? '租房中' : 'Renting', active: false },
         ].map((step, idx) => (
           <div key={idx} style={{ 
@@ -639,6 +636,7 @@ export default function PropertyListings() {
 
   useEffect(() => {
     if (!selected || isMockDatabase) return;
+    // Initial load
     (async () => {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -647,6 +645,16 @@ export default function PropertyListings() {
         await refreshInterests(supabase, user?.id);
       } catch {}
     })();
+    // Poll every 10s so student sees admin confirmation in near-real-time
+    const pollId = setInterval(async () => {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        await refreshInterests(supabase, user?.id);
+      } catch {}
+    }, 10000);
+    return () => clearInterval(pollId);
   }, [selected?.id]);
 
   const expressInterest = async (unitId: string, noteOverride?: string) => {
@@ -1150,7 +1158,10 @@ export default function PropertyListings() {
                   
                   // Filter out confirmed interest if no lease exists and unit is available (stale data)
                   const isLeasedByMe = myLeasedUnitIds.includes(selected.id);
-                  const hasMyInterest = !!myEntry && !(myEntry.status === 'confirmed' && !isLeasedByMe && selected.status === 'available');
+                  // Keep interest visible as long as it exists and isn't 'left'
+                  // Previously this incorrectly hid confirmed interests when no lease existed yet,
+                  // causing the button to revert to "我要租" after admin confirmation
+                  const hasMyInterest = !!myEntry;
                   
                   const isWholeUnit = selected.room_type === 'Whole Unit';
 
