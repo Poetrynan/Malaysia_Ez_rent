@@ -229,7 +229,7 @@ export const translations = {
     qrPreview: '收款码预览',
     // Validation
     validationCommunityRequired: '请填写小区名称和完整地址后再保存',
-    validationUnitRequired: '请选择小区、填写门牌号和月租后再保存',
+    validationUnitRequired: '请选择小区和月租后再保存',
     validationNoMedia: '该房间暂未上传任何图片或视频，建议添加照片以吸引租客',
     validationSaved: '保存成功！',
     validationDeleted: '已删除！',
@@ -549,7 +549,7 @@ export const translations = {
     qrPreview: 'QR Code Preview',
     // Validation
     validationCommunityRequired: 'Please fill in the community name and full address before saving',
-    validationUnitRequired: 'Please select a community, enter the unit number and monthly rent before saving',
+    validationUnitRequired: 'Please select a community and monthly rent before saving',
     validationNoMedia: 'No photos or video uploaded. Adding photos helps attract tenants',
     validationSaved: 'Saved successfully!',
     validationDeleted: 'Deleted successfully!',
