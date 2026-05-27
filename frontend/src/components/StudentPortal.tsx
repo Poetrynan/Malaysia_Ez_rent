@@ -22,21 +22,21 @@ interface Unit { id: string; community_id: string; unit_number?: string | null; 
 interface Community { id: string; name: string; }
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
-  let startWidth = '0px';
-  let endWidth = 'calc(33.33% - 13.33px)';
-  let startLeft = '20px';
-  let endLeft = 'calc(33.33% + 6.66px)';
+  let startWidth = '0%';
+  let endWidth = '25%';
+  let startLeft = '12.5%';
+  let endLeft = '37.5%';
 
   if (isActive) {
     return (
       <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-          <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+        <div style={{ display: 'flex', position: 'relative', width: '100%' }}>
+          <div style={{ position: 'absolute', top: 10, left: '12.5%', right: '12.5%', height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
           <div style={{ 
             position: 'absolute', 
             top: 10, 
-            left: 20, 
-            width: 'calc(100% - 40px)',
+            left: '12.5%', 
+            width: '75%',
             height: 2, 
             background: 'var(--primary)', 
             zIndex: 0, 
@@ -49,6 +49,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
             { label: lang === 'zh' ? '租房中' : 'Renting', active: true },
           ].map((step, idx) => (
             <div key={idx} style={{ 
+              flex: 1,
               zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               transition: 'transform 0.3s ease',
               transform: 'scale(1.1)'
@@ -75,36 +76,38 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
     );
   } else if (isAgreed) {
     // 已到“中介同意”，向“合约生成”延伸
-    startWidth = 'calc(33.33% - 13.33px)';
-    endWidth = 'calc(66.66% - 26.66px)';
-    startLeft = 'calc(33.33% + 6.66px)';
-    endLeft = 'calc(66.66% - 6.66px)';
+    startWidth = '25%';
+    endWidth = '50%';
+    startLeft = '37.5%';
+    endLeft = '62.5%';
   } else {
     // 已发起，向“中介同意”延伸
-    startWidth = '0px';
-    endWidth = 'calc(33.33% - 13.33px)';
-    startLeft = '20px';
-    endLeft = 'calc(33.33% + 6.66px)';
+    startWidth = '0%';
+    endWidth = '25%';
+    startLeft = '12.5%';
+    endLeft = '37.5%';
   }
 
   return (
     <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-        <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+      <div style={{ display: 'flex', position: 'relative', width: '100%' }}>
+        <div style={{ position: 'absolute', top: 10, left: '12.5%', right: '12.5%', height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+        {/* 已完成部分的固定实线 */}
         <div style={{ 
           position: 'absolute', 
           top: 10, 
-          left: 20, 
+          left: '12.5%', 
           width: startWidth,
           height: 2, 
           background: 'var(--primary)', 
           zIndex: 0, 
           opacity: 0.6
         }} />
+        {/* 正在进行部分的循环延伸线 */}
         <div style={{ 
           position: 'absolute', 
           top: 10, 
-          left: 20, 
+          left: '12.5%', 
           height: 2, 
           background: 'var(--primary)', 
           zIndex: 0, 
@@ -113,6 +116,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
           '--end-width': endWidth,
           animation: 'loopExtend 2s infinite ease-in-out'
         } as React.CSSProperties} />
+        {/* 循环移动的光点 */}
         <div style={{ 
           position: 'absolute', 
           top: 8, 
@@ -122,6 +126,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
           background: 'var(--primary)',
           boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
           zIndex: 1,
+          marginLeft: '-3px',
           // @ts-ignore
           '--start-left': startLeft,
           '--end-left': endLeft,
@@ -135,6 +140,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
           { label: lang === 'zh' ? '租房中' : 'Renting', active: false },
         ].map((step, idx) => (
           <div key={idx} style={{ 
+            flex: 1,
             zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             transition: 'transform 0.3s ease',
             transform: step.active ? 'scale(1.1)' : 'scale(1)'

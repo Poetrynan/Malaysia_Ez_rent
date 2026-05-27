@@ -100,21 +100,21 @@ const contactIconWrap = (size: number, color: string): React.CSSProperties => ({
 });
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
-  let startWidth = '0px';
-  let endWidth = 'calc(33.33% - 13.33px)';
-  let startLeft = '20px';
-  let endLeft = 'calc(33.33% + 6.66px)';
+  let startWidth = '0%';
+  let endWidth = '25%';
+  let startLeft = '12.5%';
+  let endLeft = '37.5%';
 
   if (isActive) {
     return (
       <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-          <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+        <div style={{ display: 'flex', position: 'relative', width: '100%' }}>
+          <div style={{ position: 'absolute', top: 10, left: '12.5%', right: '12.5%', height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
           <div style={{ 
             position: 'absolute', 
             top: 10, 
-            left: 20, 
-            width: 'calc(100% - 40px)',
+            left: '12.5%', 
+            width: '75%',
             height: 2, 
             background: 'var(--primary)', 
             zIndex: 0, 
@@ -127,6 +127,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
             { label: lang === 'zh' ? '租房中' : 'Renting', active: true },
           ].map((step, idx) => (
             <div key={idx} style={{ 
+              flex: 1,
               zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               transition: 'transform 0.3s ease',
               transform: 'scale(1.1)'
@@ -153,27 +154,27 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
     );
   } else if (isAgreed) {
     // 已到“中介同意”，向“合约生成”延伸
-    startWidth = 'calc(33.33% - 13.33px)';
-    endWidth = 'calc(66.66% - 26.66px)';
-    startLeft = 'calc(33.33% + 6.66px)';
-    endLeft = 'calc(66.66% - 6.66px)';
+    startWidth = '25%';
+    endWidth = '50%';
+    startLeft = '37.5%';
+    endLeft = '62.5%';
   } else {
     // 已发起，向“中介同意”延伸
-    startWidth = '0px';
-    endWidth = 'calc(33.33% - 13.33px)';
-    startLeft = '20px';
-    endLeft = 'calc(33.33% + 6.66px)';
+    startWidth = '0%';
+    endWidth = '25%';
+    startLeft = '12.5%';
+    endLeft = '37.5%';
   }
 
   return (
     <div style={{ marginBottom: 16, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
-        <div style={{ position: 'absolute', top: 10, left: 20, right: 20, height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
+      <div style={{ display: 'flex', position: 'relative', width: '100%' }}>
+        <div style={{ position: 'absolute', top: 10, left: '12.5%', right: '12.5%', height: 2, background: 'var(--glass-border)', zIndex: 0 }} />
         {/* 已完成部分的固定实线 */}
         <div style={{ 
           position: 'absolute', 
           top: 10, 
-          left: 20, 
+          left: '12.5%', 
           width: startWidth,
           height: 2, 
           background: 'var(--primary)', 
@@ -184,7 +185,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
         <div style={{ 
           position: 'absolute', 
           top: 10, 
-          left: 20, 
+          left: '12.5%', 
           height: 2, 
           background: 'var(--primary)', 
           zIndex: 0, 
@@ -203,6 +204,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
           background: 'var(--primary)',
           boxShadow: '0 0 12px var(--primary), 0 0 20px var(--primary)',
           zIndex: 1,
+          marginLeft: '-3px',
           // @ts-ignore
           '--start-left': startLeft,
           '--end-left': endLeft,
@@ -216,6 +218,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
           { label: lang === 'zh' ? '租房中' : 'Renting', active: false },
         ].map((step, idx) => (
           <div key={idx} style={{ 
+            flex: 1,
             zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             transition: 'transform 0.3s ease',
             transform: step.active ? 'scale(1.1)' : 'scale(1)'
@@ -658,6 +661,15 @@ export default function PropertyListings() {
   }, [selected?.id]);
 
   const expressInterest = async (unitId: string, noteOverride?: string) => {
+    if (myLeasedUnitIds.length > 0) {
+      showToast(
+        lang === 'zh'
+          ? '您当前已有生效的租约合同，无法在其他房源下发起新的意向。'
+          : 'You already have an active lease contract and cannot submit new interests.',
+        'warning'
+      );
+      return;
+    }
     const note = (noteOverride ?? noteInput).trim();
 
     if (isMockDatabase) {
@@ -1258,7 +1270,18 @@ export default function PropertyListings() {
                         ) : (
                           <>
                             {!hasMyInterest && !isFull && !showNoteInput && (
-                              <button onClick={() => { setShowNoteInput(true); }} disabled={submittingInterest} style={{
+                              <button onClick={() => {
+                                if (myLeasedUnitIds.length > 0) {
+                                  showToast(
+                                    lang === 'zh'
+                                      ? '您当前已有生效的租约合同，无法在其他房源下发起新的意向。'
+                                      : 'You already have an active lease contract and cannot submit new interests.',
+                                    'warning'
+                                  );
+                                  return;
+                                }
+                                setShowNoteInput(true);
+                              }} disabled={submittingInterest} style={{
                                 padding: '8px 18px', borderRadius: 8, border: 'none',
                                 background: 'var(--primary)', color: 'white',
                                 fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
