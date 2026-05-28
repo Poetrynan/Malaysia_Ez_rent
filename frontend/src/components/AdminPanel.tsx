@@ -452,6 +452,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     photo_url?: string | null;
     user_name?: string;
     user_phone?: string;
+    unit_number?: string;
     unit_info?: string;
   }
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
@@ -480,7 +481,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (!unitInfo && u?.unit_number) {
           unitInfo = u.unit_number;
         }
-        return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), user_phone: u?.phone || '', unit_info: unitInfo || undefined };
+        return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), user_phone: u?.phone || '', unit_number: u?.unit_number || '', unit_info: unitInfo || undefined };
       });
       setFeedbacks(enriched);
     } else {
@@ -588,6 +589,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             replies: replies || [],
             user_name: u?.full_name || `未找到用户 (${f.user_id?.slice(0, 8)})`,
             user_phone: u?.phone || '',
+            unit_number: u?.unit_number || '',
             unit_info: unitInfo || undefined,
           };
         });
@@ -3454,9 +3456,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                             {f.user_phone}
                           </span>
                         )}
-                        {f.unit_info && (
+                        {(f.unit_info || f.unit_number) && (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            {f.unit_info}
+                            {f.unit_info || f.unit_number}
                           </span>
                         )}
                       </div>
