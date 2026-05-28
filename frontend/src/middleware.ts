@@ -10,7 +10,9 @@ export async function middleware(request: NextRequest) {
 
   // Block /diagnose in production (live mode)
   if (pathname.startsWith('/diagnose') && !isMockMode) {
-    return NextResponse.redirect(request.nextUrl.clone().setPathname('/'));
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
   }
 
   // Always allow static assets and auth routes
