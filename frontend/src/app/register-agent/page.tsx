@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Building2, Upload, CheckCircle2, AlertCircle, Loader2, Sun, Moon, Globe, ArrowLeft, Camera, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Building2, Upload, CheckCircle2, AlertCircle, Loader2, Sun, Moon, Globe, ArrowLeft, Camera, X, Bell } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { supabase, isMockDatabase } from '@/lib/supabase';
 import { compressImageFile, EVIDENCE_IMAGE_PRESET } from '@/utils/compressImage';
@@ -26,10 +26,69 @@ export default function RegisterAgentPage() {
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [existingStatus, setExistingStatus] = useState('');
+  const [realtimeBanner, setRealtimeBanner] = useState<{ type: 'approved' | 'rejected'; message: string } | null>(null);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     checkAuth();
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, []);
+
+  // Subscribe to Realtime for status changes (live mode only)
+  useEffect(() => {
+    if (isMockDatabase || !userId || !alreadySubmitted) return;
+
+    const setupRealtime = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabaseClient = createClient();
+
+      const channel = supabaseClient
+        .channel('agent-reg-status')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_registrations',
+          filter: `auth_user_id=eq.${userId}`,
+        }, (payload: any) => {
+          const newStatus = payload.new?.verification_status;
+          if (newStatus && newStatus !== existingStatus) {
+            setExistingStatus(newStatus);
+            if (newStatus === 'approved') {
+              setRealtimeBanner({
+                type: 'approved',
+                message: lang === 'zh'
+                  ? '恭喜！您的中介申请已通过审核，请重新登录以访问管理后台。'
+                  : 'Congratulations! Your agent application has been approved. Please log in again to access the admin panel.',
+              });
+              // Save notification to localStorage for sidebar dot
+              localStorage.setItem('ez_agent_approved', 'true');
+            } else if (newStatus === 'rejected') {
+              setRealtimeBanner({
+                type: 'rejected',
+                message: lang === 'zh'
+                  ? '很抱歉，您的中介申请未通过审核。请联系管理员了解详情。'
+                  : 'Sorry, your agent application was not approved. Please contact admin for details.',
+              });
+            }
+          }
+        })
+        .subscribe();
+
+      channelRef.current = channel;
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [userId, alreadySubmitted]);
 
   const checkAuth = async () => {
     if (isMockDatabase) {
@@ -142,6 +201,7 @@ export default function RegisterAgentPage() {
         regs.push({
           id: `reg-${Date.now()}`,
           auth_user_id: userId,
+          email: userEmail,
           full_name: fullName.trim(),
           phone: normalizedPhone,
           whatsapp: normalizedWhatsapp,
@@ -173,6 +233,7 @@ export default function RegisterAgentPage() {
         // Insert registration
         const { error: insertErr } = await supabaseClient.from('agent_registrations').insert({
           auth_user_id: userId,
+          email: userEmail,
           full_name: fullName.trim(),
           phone: normalizedPhone,
           whatsapp: normalizedWhatsapp,
@@ -252,6 +313,38 @@ export default function RegisterAgentPage() {
             {lang === 'zh' ? '填写以下信息，审核通过后即可发布房源' : 'Fill in your details. After approval you can publish listings.'}
           </p>
         </div>
+
+        {/* Realtime notification banner */}
+        {realtimeBanner && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 16px', borderRadius: 10,
+            marginBottom: 16, animation: 'scaleIn 0.3s ease',
+            background: realtimeBanner.type === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${realtimeBanner.type === 'approved' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+          }}>
+            <Bell size={18} style={{ color: realtimeBanner.type === 'approved' ? 'var(--success)' : 'var(--danger)', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: realtimeBanner.type === 'approved' ? 'var(--success)' : 'var(--danger)', marginBottom: 4 }}>
+                {realtimeBanner.type === 'approved'
+                  ? (lang === 'zh' ? '审核已通过！' : 'Application Approved!')
+                  : (lang === 'zh' ? '审核未通过' : 'Application Rejected')}
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{realtimeBanner.message}</p>
+              {realtimeBanner.type === 'approved' && (
+                <a href="/login" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10,
+                  padding: '8px 16px', borderRadius: 8, background: 'var(--success)', color: 'white',
+                  fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  <ArrowLeft size={13} /> {lang === 'zh' ? '重新登录' : 'Log in again'}
+                </a>
+              )}
+            </div>
+            <button onClick={() => setRealtimeBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <X size={16} style={{ color: 'var(--text-muted)' }} />
+            </button>
+          </div>
+        )}
 
         {/* Already submitted */}
         {alreadySubmitted && (

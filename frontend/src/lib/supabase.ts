@@ -448,10 +448,12 @@ const mockSupabase = {
     async signInWithOtp({ email, options }: { email: string; options?: { emailRedirectTo?: string } }) {
       // Mock: simulate Magic Link send, auto-login after delay
       if (typeof window !== 'undefined') {
-        const role = email === 'admin@ezrent.my' ? 'admin' : 'student';
+        const tenantId = email === 'admin@ezrent.my' ? 'admin-999' : 'tenant-123';
+        const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        const isAdmin = email === 'admin@ezrent.my' || admins.some((a: any) => a.id === tenantId);
         localStorage.setItem('ez_user_email', email);
-        localStorage.setItem('ez_user_role', role);
-        localStorage.setItem('ez_tenant_id', role === 'admin' ? 'admin-999' : 'tenant-123');
+        localStorage.setItem('ez_user_role', isAdmin ? 'admin' : 'student');
+        localStorage.setItem('ez_tenant_id', tenantId);
       }
       return { data: {}, error: null };
     },

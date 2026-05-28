@@ -252,7 +252,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       if (idx !== -1) { regs[idx].verification_status = 'approved'; localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
       // Add to admin_users mock
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      admins.push({ id: reg.auth_user_id || reg.id, email: `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator' });
+      admins.push({ id: reg.auth_user_id || reg.id, email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator' });
       localStorage.setItem('ez_admins', JSON.stringify(admins));
     } else {
       try {
@@ -262,7 +262,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         // Create admin_users record
         await supabase.from('admin_users').insert({
           id: reg.auth_user_id || crypto.randomUUID(),
-          email: `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`,
+          email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`,
           display_name: reg.full_name,
           phone: reg.phone,
           whatsapp: reg.whatsapp,
@@ -3489,6 +3489,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                     <div>
                       <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>{reg.full_name}</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{reg.agency_name}</div>
+                      {reg.email && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{reg.email}</div>}
                     </div>
                     <span style={{
                       fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,

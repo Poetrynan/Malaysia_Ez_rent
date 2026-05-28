@@ -73,9 +73,12 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setErrorMsg(null);
     if (isMockDatabase) {
+      const tenantId = 'tenant-123';
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      const isAdmin = admins.some((a: any) => a.id === tenantId);
       localStorage.setItem('ez_user_email', 'google-user@gmail.com');
-      localStorage.setItem('ez_user_role', 'student');
-      localStorage.setItem('ez_tenant_id', 'tenant-123');
+      localStorage.setItem('ez_user_role', isAdmin ? 'admin' : 'student');
+      localStorage.setItem('ez_tenant_id', tenantId);
       localStorage.setItem('ez_logged_in', '1');
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
       window.location.href = '/';

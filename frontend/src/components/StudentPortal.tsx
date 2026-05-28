@@ -207,6 +207,15 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const profileComplete = profileName.trim().length > 0 && profileUnit.trim().length > 0;
+  const [profilePassport, setProfilePassport] = useState('');
+  const [profileSchool, setProfileSchool] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileLocalId, setProfileLocalId] = useState('');
+  const [profileDocUrl, setProfileDocUrl] = useState<string | null>(null);
+  const [profileDocBase64, setProfileDocBase64] = useState<string | null>(null);
+  const [profileDocUploading, setProfileDocUploading] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
@@ -297,21 +306,63 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     reader.readAsDataURL(file);
   };
 
+  const handleDocChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      try {
+        const { compressDataUrl } = await import('@/utils/compressImage');
+        const compressedBlob = await compressDataUrl(dataUrl, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 });
+        const compressedReader = new FileReader();
+        compressedReader.onloadend = () => {
+          setProfileDocBase64(compressedReader.result as string);
+        };
+        compressedReader.readAsDataURL(compressedBlob);
+      } catch (err) {
+        console.error('Document compression failed:', err);
+        setProfileDocBase64(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const loadProfile = async () => {
     let name = '';
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
       const u = users.find((u: any) => u.id === tenantId);
-      if (u) { name = u.full_name || ''; setProfileName(name); setProfilePhone(u.phone || ''); setProfileUnit(u.unit_number || ''); }
+      if (u) {
+        name = u.full_name || '';
+        setProfileName(name);
+        setProfilePhone(u.phone || '');
+        setProfileUnit(u.unit_number || '');
+        setProfilePassport(u.passport_number || '');
+        setProfileSchool(u.school || '');
+        setProfileCompany(u.company || '');
+        setProfileLocalId(u.local_id_number || '');
+        setProfileDocUrl(u.document_url || null);
+      }
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('users').select('full_name, phone, unit_number').eq('id', user.id).single();
-        if (data) { name = data.full_name || ''; setProfileName(name); setProfilePhone(data.phone || ''); setProfileUnit(data.unit_number || ''); }
+        const { data } = await supabase.from('users').select('full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url').eq('id', user.id).single();
+        if (data) {
+          name = data.full_name || '';
+          setProfileName(name);
+          setProfilePhone(data.phone || '');
+          setProfileUnit(data.unit_number || '');
+          setProfilePassport(data.passport_number || '');
+          setProfileSchool(data.school || '');
+          setProfileCompany(data.company || '');
+          setProfileLocalId(data.local_id_number || '');
+          setProfileDocUrl(data.document_url || null);
+        }
       } catch (e) { console.error('Load profile error:', e); }
     }
     if (!name) setShowProfile(true);
@@ -320,31 +371,69 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   const saveProfile = async () => {
     if (!profileName.trim()) return;
     setProfileSaving(true);
+
+    // Upload document if new one selected
+    let docUrl = profileDocUrl;
+    if (profileDocBase64 && !isMockDatabase) {
+      setProfileDocUploading(true);
+      try {
+        const { compressDataUrl } = await import('@/utils/compressImage');
+        const blob = await compressDataUrl(profileDocBase64, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 });
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const path = `documents/${Date.now()}.jpg`;
+        const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+        if (!uploadErr) {
+          const { data } = supabase.storage.from('unit-media').getPublicUrl(path);
+          docUrl = data?.publicUrl || null;
+        }
+      } catch (e) { console.error('Document upload error:', e); }
+      setProfileDocUploading(false);
+    } else if (profileDocBase64 && isMockDatabase) {
+      docUrl = profileDocBase64;
+    }
+
+    const profileData: Record<string, string | null> = {
+      full_name: profileName.trim(),
+      phone: profilePhone.trim(),
+      unit_number: profileUnit.trim(),
+      passport_number: profilePassport.trim() || null,
+      school: profileSchool.trim() || null,
+      company: profileCompany.trim() || null,
+      local_id_number: profileLocalId.trim() || null,
+      document_url: docUrl,
+    };
+
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
       const idx = users.findIndex((u: any) => u.id === tenantId);
       if (idx !== -1) {
-        users[idx].full_name = profileName.trim();
-        users[idx].phone = profilePhone.trim();
-        users[idx].unit_number = profileUnit.trim();
+        Object.assign(users[idx], profileData);
       } else {
-        users.push({ id: tenantId, full_name: profileName.trim(), phone: profilePhone.trim(), unit_number: profileUnit.trim() });
+        users.push({ id: tenantId, ...profileData });
       }
       localStorage.setItem('ez_users', JSON.stringify(users));
+      if (profileDocBase64) setProfileDocUrl(profileDocBase64);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setProfileSaving(false); return; }
-        const { error } = await supabase.from('users').upsert({ id: user.id, full_name: profileName.trim(), phone: profilePhone.trim(), unit_number: profileUnit.trim() });
+        const { error } = await supabase.from('users').upsert({ id: user.id, ...profileData });
         if (error) { console.error('Save profile error:', error); setProfileSaving(false); return; }
+        if (docUrl) setProfileDocUrl(docUrl);
       } catch (e) { console.error('Save profile error:', e); setProfileSaving(false); return; }
     }
     setProfileSaving(false);
     setProfileSaved(true);
+    setProfileDocBase64(null);
     setTimeout(() => setProfileSaved(false), 3000);
+    window.dispatchEvent(new Event('ez_profile_updated'));
+    setToastMsg(lang === 'zh' ? '个人信息已保存' : 'Profile saved');
+    setToastType('success');
+    setTimeout(() => setToastMsg(null), 2500);
   };
 
   const load = async () => {
@@ -695,6 +784,13 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     }
   };
 
+  // Listen for profile updates from other StudentPortal instances
+  useEffect(() => {
+    const handler = () => { loadProfile(); };
+    window.addEventListener('ez_profile_updated', handler);
+    return () => window.removeEventListener('ez_profile_updated', handler);
+  }, []);
+
   useEffect(() => { load(); loadProfile(); }, [tick]);
 
   // Realtime subscription for StudentPortal
@@ -915,14 +1011,102 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                 style={{ width: '100%', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim() || !profileUnit.trim()}
+
+            {/* Additional fields */}
+            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 14, marginTop: 4 }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileExtraHint')}</p>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={profilePassport}
+                onChange={e => setProfilePassport(e.target.value)}
+                placeholder={t('profilePassportPlaceholder')}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={profileSchool}
+                onChange={e => setProfileSchool(e.target.value)}
+                placeholder={t('profileSchoolPlaceholder')}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={profileCompany}
+                onChange={e => setProfileCompany(e.target.value)}
+                placeholder={t('profileCompanyPlaceholder')}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={profileLocalId}
+                onChange={e => setProfileLocalId(e.target.value)}
+                placeholder={t('profileLocalIdPlaceholder')}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Document upload */}
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 8px' }}>{t('profileDocumentDesc')}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid var(--glass-border)', background: 'var(--bg-surface)',
+                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                  color: 'var(--text-body)', transition: 'all 0.2s'
+                }}>
+                  <Camera size={14} style={{ color: 'var(--primary)' }} />
+                  <span>{t('profileDocumentUpload')}</span>
+                  <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
+                </label>
+                {(profileDocBase64 || profileDocUrl) && (
+                  <div style={{ position: 'relative' }}>
+                    <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={profileDocBase64 || profileDocUrl || ''}
+                        alt="Document"
+                        style={{ width: 56, height: 56, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
+                      />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
+                      style={{
+                        position: 'absolute', top: -6, right: -6,
+                        background: 'var(--danger)', color: 'white', border: 'none',
+                        borderRadius: '50%', width: 16, height: 16, fontSize: '10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', fontWeight: 'bold'
+                      }}
+                    >×</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 8, border: 'none', background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed' }}>
-                <Save size={14} /> {profileSaving ? t('saving') : t('profileSave')}
+                <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
               </button>
-              {profileSaved && (
-                <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
-              )}
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{t('profileHint')}</p>
           </div>
@@ -1510,6 +1694,20 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toastMsg && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, padding: '12px 24px', borderRadius: 10,
+          background: toastType === 'success' ? 'var(--success)' : 'var(--danger)',
+          color: 'white', fontWeight: 600, fontSize: '0.85rem',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          animation: 'fadeInUp 0.3s ease-out'
+        }}>
+          {toastMsg}
         </div>
       )}
 

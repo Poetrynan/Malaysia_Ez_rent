@@ -17,6 +17,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string>('');
   const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0 });
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [agentRegStatus, setAgentRegStatus] = useState<string | null>(null);
 
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
@@ -32,9 +33,12 @@ export default function Home() {
         window.location.href = '/login';
         return;
       }
-      // Restore role from localStorage
-      const savedRole = localStorage.getItem('ez_user_role') as 'student' | 'admin' | null;
-      const finalRole = savedRole || 'student';
+      // Check admin_users in localStorage to determine role
+      const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      const isAdmin = admins.some((a: any) => a.id === tenantId);
+      const finalRole: 'student' | 'admin' = isAdmin ? 'admin' : 'student';
+      localStorage.setItem('ez_user_role', finalRole);
       setRole(finalRole);
       setActiveTab(finalRole === 'admin' ? 'admin-properties' : 'listings');
       setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
@@ -61,6 +65,15 @@ export default function Home() {
         setActiveTab(activeRole === 'admin' ? 'admin-properties' : 'listings');
         setUserEmail(user.email || '');
         localStorage.setItem('ez_tenant_id', user.id);
+        // Check agent registration status if student
+        if (!adminRecord) {
+          const { data: agentReg } = await supabase
+            .from('agent_registrations')
+            .select('verification_status')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+          if (agentReg) setAgentRegStatus(agentReg.verification_status);
+        }
       };
       checkSession();
     }
@@ -82,8 +95,22 @@ export default function Home() {
   const handleDeleteAccount = async () => {
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+      // Remove user record
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
       localStorage.setItem('ez_users', JSON.stringify(users.filter((u: any) => u.id !== tenantId)));
+      // Remove tenant interests
+      const interests = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+      localStorage.setItem('ez_interests', JSON.stringify(interests.filter((i: any) => i.user_id !== tenantId)));
+      // Remove maintenance requests
+      const feedbacks = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
+      localStorage.setItem('ez_feedback', JSON.stringify(feedbacks.filter((f: any) => f.user_id !== tenantId)));
+      // Remove agent registration if exists
+      const agentRegs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      localStorage.setItem('ez_agent_registrations', JSON.stringify(agentRegs.filter((r: any) => r.auth_user_id !== tenantId)));
+      // Remove admin record if exists
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      localStorage.setItem('ez_admins', JSON.stringify(admins.filter((a: any) => a.id !== tenantId)));
+      // Note: leases and payment_records are preserved — they are the agent's financial records
       localStorage.removeItem('ez_logged_in');
       localStorage.removeItem('ez_user_role');
       localStorage.removeItem('ez_tenant_id');
@@ -93,8 +120,15 @@ export default function Home() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('users').delete().eq('id', user.id);
+      // Delete tenant-specific records (preserves leases & payment_records for agent's ledger)
+      await supabase.from('tenant_interests').delete().eq('user_id', user.id);
+      await supabase.from('maintenance_requests').delete().eq('user_id', user.id);
+      // Delete identity records
+      await supabase.from('agent_registrations').delete().eq('auth_user_id', user.id);
       await supabase.from('admin_users').delete().eq('id', user.id);
+      // Delete user profile row, then auth user (which may cascade to users table)
+      await supabase.from('users').delete().eq('id', user.id);
+      await supabase.auth.admin.deleteUser(user.id).catch(() => {});
       await supabase.auth.signOut();
       localStorage.clear();
       window.location.href = '/login';
@@ -219,6 +253,25 @@ export default function Home() {
 
         <div>
           <div className="sidebar-divider" />
+
+          {/* Agent registration status banner */}
+          {role === 'student' && agentRegStatus && (
+            <div style={{
+              margin: '0 12px 8px', padding: '8px 10px', borderRadius: 8, fontSize: '0.72rem',
+              background: agentRegStatus === 'approved' ? 'rgba(16,185,129,0.1)' : agentRegStatus === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+              border: `1px solid ${agentRegStatus === 'approved' ? 'rgba(16,185,129,0.25)' : agentRegStatus === 'rejected' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`,
+              color: agentRegStatus === 'approved' ? 'var(--success)' : agentRegStatus === 'rejected' ? 'var(--danger)' : 'var(--warning)',
+              fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Building2 size={13} />
+              {agentRegStatus === 'approved'
+                ? (lang === 'zh' ? '中介申请已通过，请重新登录' : 'Agent approved, re-login')
+                : agentRegStatus === 'rejected'
+                ? (lang === 'zh' ? '中介申请未通过' : 'Agent application rejected')
+                : (lang === 'zh' ? '中介申请审核中' : 'Agent application pending')}
+            </div>
+          )}
+
           {/* Role Switcher — sandbox only */}
           {isMockDatabase && (<div className="role-switcher">
             <span className="role-switcher-label">{t('sandboxSwitch')}</span>
