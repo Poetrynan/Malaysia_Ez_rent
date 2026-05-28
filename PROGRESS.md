@@ -351,6 +351,7 @@ Storage Bucket：
 | `021_user_unit_number.sql` | **用户门牌号关联**：`users` 表新增 `unit_number` 字段，学生可绑定当前租住房号 |
 | `022_agent_registrations.sql` | **中介注册系统**：`agent_registrations` 表（REN 验证 + 审核工作流）+ 马来西亚手机号/REN 编号标准化函数 + Storage `ren-tags/` 策略 |
 | `023_user_profile_extended.sql` | **个人信息扩展**：`users` 表新增 `passport_number`、`school`、`company`、`local_id_number`、`document_url` 字段，支持外国人护照/本地人 IC 双轨填写 |
+| `024_maintenance_conversation.sql` | **工单对话线程**：`admin_reply` TEXT 改为 `replies` JSONB（支持最多 3 轮 Agent↔Student 对话），移除 `rating` 列 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -392,6 +393,7 @@ supabase/migrations/
 └── 021_user_unit_number.sql    # users 表加 unit_number 字段
 └── 022_agent_registrations.sql # 中介注册系统（REN验证 + 审核工作流）
 └── 023_user_profile_extended.sql # 个人信息扩展（护照/IC/学校/公司/证件上传）
+└── 024_maintenance_conversation.sql # 工单对话线程（admin_reply TEXT → replies JSONB，移除 rating）
 ```
 
 迁移原则：
@@ -1167,7 +1169,42 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 - 卸载时 `removeEventListener` 清理
 
 **Toast 通知组件：**
-- 保存成功/失败时显示底部居中浮层（`position: fixed; bottom: 32; left: 50%; transform: translateX(-50%)`）
+- 保存成功/失败时显示顶部居中浮层（`position: fixed; top: 24; left: 50%; transform: translateX(-50%)`）
 - 成功绿色（`var(--success)`）、失败红色（`var(--danger)`）
 - 3 秒后自动消失（`setTimeout` 清空 `toastMsg`）
 - 无需引入第三方库，零依赖实现
+
+---
+
+## 三十一、工单对话线程重构与评分移除（2026-05-28）
+
+**目标：** 工单系统支持 Agent↔Student 最多 3 轮对话，答复不再自动归档，移除鸡肋的星级评分。
+
+**问题：**
+- 原设计：Agent 点"答复"后自动 `status = 'resolved'` 归档，学生无法继续沟通
+- 原设计：仅支持单条 `admin_reply`，无对话能力
+- 原设计：有星级评分功能，实际无人使用
+
+**数据库迁移：** `024_maintenance_conversation.sql`
+- `admin_reply TEXT` → `replies JSONB DEFAULT '[]'`，存储格式：`[{role: 'agent'|'student', content: '...', at: '...'}]`
+- 迁移旧数据：现有 `admin_reply` 自动转为 `[{role:'agent', content:..., at:...}]`
+- 删除 `rating` 列
+- 新增 `updated_at` 自动更新触发器
+
+**AdminPanel 改动：**
+- `replyFeedback` → `sendFeedbackReply`：追加到 `replies` 数组，设 `status = 'in_progress'`（不自动归档）
+- 显示对话线程：Agent 消息靠右（蓝色背景），Student 消息靠左（中性背景）
+- 回复计数：显示 `(0/3)`、`(1/3)` 等，达到 3 次后禁用输入
+- "解决并归档"按钮始终可用，由 Agent 手动触发
+- 移除星级评分显示
+- 侧边栏红点改为检测新 Student 回复（`feedbackHasNewReply`）
+
+**StudentPortal 改动：**
+- 移除 `submitRating` 函数和星级评分 UI
+- 新增 `sendStudentReply`：追加到 `replies` 数组
+- 显示对话线程：Agent 消息靠左（蓝色背景），Student 消息靠右（中性背景）
+- 回复输入框：仅在工单未关闭且 Agent 已回复时显示，Student 回复数不能超过 Agent 回复数
+- 侧边栏通知：检测新 Agent 回复
+
+**Toast 统一：**
+- 所有三个组件（AdminPanel、PropertyListings、StudentPortal）的 Toast 统一为：顶部居中、磨砂玻璃、Lucide 图标（`CheckCircle2`/`XCircle`/`AlertTriangle`）

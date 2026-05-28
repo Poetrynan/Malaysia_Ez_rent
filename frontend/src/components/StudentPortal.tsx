@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Star, Users, Trash2, CheckCircle2 } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
@@ -191,13 +191,13 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     id: string;
     content: string;
     status: string;
-    admin_reply: string | null;
+    replies?: Array<{ role: 'agent' | 'student'; content: string; at: string }>;
     created_at: string;
     category?: string;
     photo_url?: string | null;
-    rating?: number | null;
     assigned_to?: string | null;
   }[]>([]);
+  const [studentReply, setStudentReply] = useState<Record<string, string>>({});
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(mode === 'maintenance');
   const [feedbackHasNewReply, setFeedbackHasNewReply] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -635,12 +635,16 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         if (data) setMyFeedbacks(data);
       } catch (e) { console.error('Load feedback error:', e); }
     }
-    // Check for unseen admin replies
+    // Check for unseen agent replies
     const lastSeen = parseInt(localStorage.getItem('ez_feedback_last_seen') || '0', 10);
     const feedbacksToCheck = isMockDatabase
       ? JSON.parse(localStorage.getItem('ez_feedback') || '[]').filter((f: any) => f.user_id === (localStorage.getItem('ez_tenant_id') || 'tenant-123'))
       : myFeedbacks;
-    const hasNew = feedbacksToCheck.some((f: any) => f.admin_reply && new Date(f.updated_at || f.created_at).getTime() > lastSeen);
+    const hasNew = feedbacksToCheck.some((f: any) => {
+      if (!f.replies || f.replies.length === 0) return false;
+      const lastReply = f.replies[f.replies.length - 1];
+      return lastReply.role === 'agent' && new Date(lastReply.at).getTime() > lastSeen;
+    });
     setFeedbackHasNewReply(hasNew);
   };
 
@@ -683,9 +687,8 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         content: feedbackText.trim(),
         photo_url: photoBase64,
         status: 'pending',
-        admin_reply: null,
+        replies: [],
         assigned_to: null,
-        rating: null,
         created_at: new Date().toISOString()
       });
       localStorage.setItem('ez_feedback', JSON.stringify(all));
@@ -714,12 +717,16 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     loadMyFeedbacks();
   };
 
-  const submitRating = async (id: string, stars: number) => {
+  const sendStudentReply = async (id: string) => {
+    const reply = studentReply[id]?.trim();
+    if (!reply) return;
+    const newEntry = { role: 'student' as const, content: reply, at: new Date().toISOString() };
     if (isMockDatabase) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const idx = all.findIndex((f: any) => f.id === id);
       if (idx !== -1) {
-        all[idx].rating = stars;
+        if (!all[idx].replies) all[idx].replies = [];
+        all[idx].replies.push(newEntry);
         localStorage.setItem('ez_feedback', JSON.stringify(all));
         loadMyFeedbacks();
       }
@@ -727,16 +734,15 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { error } = await supabase.from('maintenance_requests').update({ rating: stars }).eq('id', id);
-        if (!error) {
-          loadMyFeedbacks();
-        } else {
-          console.error('Rating update error:', error);
-        }
+        const { data: existing } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
+        const updated = [...(existing?.replies || []), newEntry];
+        await supabase.from('maintenance_requests').update({ replies: updated }).eq('id', id);
+        loadMyFeedbacks();
       } catch (e) {
-        console.error('Submit rating error:', e);
+        console.error('Student reply error:', e);
       }
     }
+    setStudentReply(prev => { const n = { ...prev }; delete n[id]; return n; });
   };
 
 
@@ -1534,43 +1540,52 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                       </div>
                     )}
 
-                    {f.admin_reply && (
-                      <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>{t('feedbackReply')}：</span>
-                        <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{f.admin_reply}</p>
+                    {/* Conversation thread */}
+                    {f.replies && f.replies.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                        {f.replies.map((r, i) => (
+                          <div key={i} style={{
+                            padding: '8px 10px', borderRadius: 6,
+                            background: r.role === 'agent' ? 'var(--primary-light)' : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${r.role === 'agent' ? 'var(--primary-glow)' : 'var(--glass-border)'}`,
+                            marginLeft: r.role === 'student' ? 0 : 16,
+                            marginRight: r.role === 'agent' ? 0 : 16,
+                          }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: r.role === 'agent' ? 'var(--primary)' : 'var(--success)' }}>
+                              {r.role === 'agent' ? (lang === 'zh' ? '中介回复' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
+                              <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                                {new Date(r.at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </span>
+                            <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.content}</p>
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    {/* Service rating if resolved */}
-                    {f.status === 'resolved' && (
-                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('feedbackRating')}:</span>
-                        <div style={{ display: 'flex', gap: 2 }}>
-                          {[1, 2, 3, 4, 5].map(star => {
-                            const isClickable = !f.rating;
-                            return (
-                              <button
-                                key={star}
-                                disabled={!isClickable}
-                                onClick={() => submitRating(f.id, star)}
-                                style={{ background: 'none', border: 'none', padding: 2, cursor: isClickable ? 'pointer' : 'default', transition: 'transform 0.1s' }}
-                              >
-                                <Star
-                                  size={14}
-                                  fill={star <= (f.rating || 0) ? 'var(--accent)' : 'none'}
-                                  stroke={star <= (f.rating || 0) ? 'var(--accent)' : 'var(--text-muted)'}
-                                />
-                              </button>
-                            );
-                          })}
+                    {/* Student reply input — only when ticket is open and agent has replied */}
+                    {f.status !== 'resolved' && f.replies && f.replies.length > 0 && (() => {
+                      const agentReplies = f.replies.filter(r => r.role === 'agent').length;
+                      const studentReplies = f.replies.filter(r => r.role === 'student').length;
+                      const canReply = studentReplies < agentReplies && studentReplies < 3;
+                      if (!canReply) return null;
+                      return (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={studentReply[f.id] || ''}
+                            onChange={e => setStudentReply(prev => ({ ...prev, [f.id]: e.target.value }))}
+                            placeholder={lang === 'zh' ? '回复中介…' : 'Reply to agent…'}
+                            style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
+                          />
+                          <button onClick={() => sendStudentReply(f.id)} disabled={!studentReply[f.id]?.trim()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: studentReply[f.id]?.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: studentReply[f.id]?.trim() ? 'pointer' : 'not-allowed' }}>
+                            <Send size={12} /> {lang === 'zh' ? '发送' : 'Send'}
+                          </button>
                         </div>
-                        {f.rating && (
-                          <span style={{ fontSize: '0.72rem', color: 'var(--success)', fontWeight: 600 }}>
-                            {t('feedbackRatingSuccess')}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -1669,14 +1684,36 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       {/* Toast notification */}
       {toastMsg && (
         <div style={{
-          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, padding: '12px 24px', borderRadius: 10,
-          background: toastType === 'success' ? 'var(--success)' : 'var(--danger)',
-          color: 'white', fontWeight: 600, fontSize: '0.85rem',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          animation: 'fadeInUp 0.3s ease-out'
+          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, pointerEvents: 'none',
+          animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
-          {toastMsg}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 24px', borderRadius: 12,
+            fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
+            minWidth: 280, maxWidth: '90vw',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            color: 'var(--text-h)',
+            border: `1px solid ${
+              toastType === 'error' ? 'rgba(239, 68, 68, 0.45)' :
+              'rgba(16, 185, 129, 0.45)'
+            }`,
+            boxShadow: `0 8px 32px ${
+              toastType === 'error' ? 'rgba(239, 68, 68, 0.12)' :
+              'rgba(16, 185, 129, 0.12)'
+            }, inset 0 1px 1px rgba(255,255,255,0.1)`,
+          }}>
+            <span style={{
+              display: 'flex', alignItems: 'center',
+              color: toastType === 'error' ? '#ef4444' : '#10b981'
+            }}>
+              {toastType === 'error' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+            </span>
+            <span>{toastMsg}</span>
+          </div>
         </div>
       )}
 

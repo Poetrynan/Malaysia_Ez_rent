@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -446,9 +446,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     category?: string;
     content: string;
     status: string;
-    admin_reply: string | null;
-    assigned_to?: string | null;
-    rating?: number | null;
+    replies?: Array<{ role: 'agent' | 'student'; content: string; at: string }>;
     created_at: string;
     updated_at?: string;
     photo_url?: string | null;
@@ -486,57 +484,51 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { data } = await supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false });
-        if (!data) { setFeedbacks([]); return; }
+        const { data, error } = await supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false });
+        if (error || !data) { setFeedbacks([]); return; }
 
-        const enriched = await Promise.all(data.map(async (f: FeedbackItem) => {
-          let userName = f.user_id.slice(0, 8);
-          let userPhone = '';
+        // Batch-load all users to avoid N+1 queries
+        const userIds = [...new Set(data.map((f: any) => f.user_id).filter(Boolean))];
+        const { data: allUsers } = await supabase.from('users').select('id, full_name, email, phone, unit_number').in('id', userIds);
+        const userMap = new Map((allUsers || []).map((u: any) => [u.id, u]));
+
+        // Batch-load active leases + units + communities
+        const { data: allLeases } = await supabase.from('leases').select('tenant_id, unit_id').eq('status', 'active').in('tenant_id', userIds);
+        const leaseMap = new Map((allLeases || []).map((l: any) => [l.tenant_id, l]));
+        const unitIds = [...new Set((allLeases || []).map((l: any) => l.unit_id).filter(Boolean))];
+        const { data: allUnits } = unitIds.length > 0
+          ? await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds)
+          : { data: [] };
+        const unitMap = new Map((allUnits || []).map((u: any) => [u.id, u]));
+        const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
+        const { data: allComms } = commIds.length > 0
+          ? await supabase.from('communities').select('id, name').in('id', commIds)
+          : { data: [] };
+        const commMap = new Map((allComms || []).map((c: any) => [c.id, c]));
+
+        const enriched = data.map((f: any) => {
+          const u = userMap.get(f.user_id);
+          const lease = leaseMap.get(f.user_id);
           let unitInfo = '';
-
-          const { data: userData } = await supabase.from('users').select('full_name, email, phone, unit_number').eq('id', f.user_id).single();
-          if (userData) {
-            userName = userData.full_name || userData.email || userName;
-            userPhone = userData.phone || '';
-            if (userData.unit_number) unitInfo = userData.unit_number;
-          }
-
-          const { data: leaseData } = await supabase.from('leases').select('unit_id').eq('tenant_id', f.user_id).eq('status', 'active').limit(1).single();
-          if (leaseData) {
-            const { data: unitData } = await supabase.from('units').select('room_type, unit_number, community_id').eq('id', leaseData.unit_id).single();
-            if (unitData) {
-              const { data: commData } = await supabase.from('communities').select('name').eq('id', unitData.community_id).single();
-              const parts = [commData?.name, unitData.unit_number, unitData.room_type].filter(Boolean);
+          if (lease) {
+            const unit = unitMap.get(lease.unit_id);
+            if (unit) {
+              const comm = commMap.get(unit.community_id);
+              const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
               if (parts.length) unitInfo = parts.join(' · ');
             }
           }
-
-          return { ...f, user_name: userName, user_phone: userPhone, unit_info: unitInfo || undefined };
-        }));
+          return {
+            ...f,
+            user_name: u?.full_name || u?.email || f.user_id?.slice(0, 8) || 'Unknown',
+            user_phone: u?.phone || '',
+            unit_info: unitInfo || undefined,
+          };
+        });
 
         setFeedbacks(enriched);
       } catch (e) { console.error('Fetch feedback error:', e); }
     }
-  };
-
-  const claimFeedback = async (id: string) => {
-    if (!isLive) {
-      const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
-      const idx = all.findIndex((f: FeedbackItem) => f.id === id);
-      if (idx !== -1) {
-        all[idx].status = 'in_progress';
-        all[idx].assigned_to = currentUserId;
-        localStorage.setItem('ez_feedback', JSON.stringify(all));
-      }
-    } else {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        await supabase.from('maintenance_requests').update({ status: 'in_progress', assigned_to: currentUserId }).eq('id', id);
-      } catch (e) { console.error('Claim feedback error:', e); }
-    }
-    fetchFeedbacks();
-    showToast(lang === 'zh' ? '已成功认领工单！' : 'Claimed request successfully!', 'success');
   };
 
   const resolveFeedback = async (id: string) => {
@@ -555,18 +547,26 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     showToast(t('feedbackResolved'), 'success');
   };
 
-  const replyFeedback = async (id: string) => {
+  const sendFeedbackReply = async (id: string) => {
     const reply = feedbackReply[id]?.trim();
     if (!reply) return;
+    const newEntry = { role: 'agent' as const, content: reply, at: new Date().toISOString() };
     if (!isLive) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const idx = all.findIndex((f: FeedbackItem) => f.id === id);
-      if (idx !== -1) { all[idx].admin_reply = reply; all[idx].status = 'resolved'; localStorage.setItem('ez_feedback', JSON.stringify(all)); }
+      if (idx !== -1) {
+        if (!all[idx].replies) all[idx].replies = [];
+        all[idx].replies.push(newEntry);
+        all[idx].status = 'in_progress';
+        localStorage.setItem('ez_feedback', JSON.stringify(all));
+      }
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        await supabase.from('maintenance_requests').update({ admin_reply: reply, status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+        const { data: existing } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
+        const updated = [...(existing?.replies || []), newEntry];
+        await supabase.from('maintenance_requests').update({ replies: updated, status: 'in_progress' }).eq('id', id);
       } catch (e) { console.error('Reply feedback error:', e); }
     }
     setFeedbackReply(prev => { const n = { ...prev }; delete n[id]; return n; });
@@ -607,11 +607,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const feedbackPendingCount = visibleFeedbacks.filter(f => f.status === 'pending').length;
 
-  const [feedbackHasNewRating, setFeedbackHasNewRating] = useState(false);
+  const [feedbackHasNewReply, setFeedbackHasNewReply] = useState(false);
   useEffect(() => {
     const lastSeen = parseInt(localStorage.getItem('ez_admin_feedback_last_seen') || '0', 10);
-    const hasNew = visibleFeedbacks.some(f => f.rating && f.status === 'resolved' && new Date(f.updated_at || f.created_at).getTime() > lastSeen);
-    setFeedbackHasNewRating(hasNew);
+    const hasNew = visibleFeedbacks.some(f => {
+      if (!f.replies || f.replies.length === 0) return false;
+      const lastReply = f.replies[f.replies.length - 1];
+      return lastReply.role === 'student' && new Date(lastReply.at).getTime() > lastSeen;
+    });
+    setFeedbackHasNewReply(hasNew);
   }, [visibleFeedbacks]);
 
   // ── Tenant interests state ──
@@ -2127,14 +2131,14 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
               </button>
             )}
-            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); localStorage.setItem('ez_admin_feedback_last_seen', Date.now().toString()); setFeedbackHasNewRating(false); }}>
+            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); localStorage.setItem('ez_admin_feedback_last_seen', Date.now().toString()); setFeedbackHasNewReply(false); }}>
               <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
               {feedbackPendingCount > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
                   {feedbackPendingCount}
                 </span>
               )}
-              {feedbackHasNewRating && (
+              {feedbackHasNewReply && (
                 <span style={{ marginLeft: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', verticalAlign: 'middle' }} />
               )}
             </button>
@@ -3322,8 +3326,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {visibleFeedbacks.map(f => {
-                  const isClaimedByMe = f.assigned_to === currentUserId;
-                  const isUnassigned = !f.assigned_to;
                   return (
                     <div key={f.id} style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -3374,7 +3376,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                          {f.user_name || f.user_id.slice(0, 8)}
+                          {f.user_name || f.user_id?.slice(0, 8) || 'Unknown'}
                         </span>
                         {f.user_phone && (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
@@ -3386,71 +3388,70 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                             {f.unit_info}
                           </span>
                         )}
-                        {f.assigned_to && (
-                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: isClaimedByMe ? 'var(--success-light)' : 'rgba(255,255,255,0.06)', color: isClaimedByMe ? 'var(--success)' : 'var(--text-muted)', fontWeight: 600 }}>
-                            {isClaimedByMe ? (lang === 'zh' ? '由我处理中' : 'Assigned to Me') : (lang === 'zh' ? '由其他Agent处理中' : 'Assigned to Agent')}
-                          </span>
-                        )}
                       </div>
 
-                      {/* Admin reply display */}
-                      {f.admin_reply && (
-                        <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--primary-light)', border: '1px solid var(--primary-glow)', marginBottom: 10 }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>{t('feedbackReply')}：</span>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{f.admin_reply}</p>
+                      {/* Conversation thread */}
+                      {f.replies && f.replies.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                          {f.replies.map((r, i) => (
+                            <div key={i} style={{
+                              padding: '8px 10px', borderRadius: 8,
+                              background: r.role === 'agent' ? 'var(--primary-light)' : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${r.role === 'agent' ? 'var(--primary-glow)' : 'var(--glass-border)'}`,
+                              marginLeft: r.role === 'student' ? 0 : 20,
+                              marginRight: r.role === 'agent' ? 0 : 20,
+                            }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: r.role === 'agent' ? 'var(--primary)' : 'var(--success)' }}>
+                                {r.role === 'agent' ? (lang === 'zh' ? '中介回复' : 'Agent') : (lang === 'zh' ? '租客' : 'Tenant')}
+                                <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                                  {new Date(r.at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </span>
+                              <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.content}</p>
+                            </div>
+                          ))}
                         </div>
                       )}
 
-                      {/* Rating display if resolved */}
-                      {f.status === 'resolved' && f.rating && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, background: 'rgba(251,191,36,0.06)', padding: '6px 10px', borderRadius: 6, width: 'fit-content' }}>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 600 }}>{t('feedbackRating')}:</span>
-                          <div style={{ display: 'flex', gap: 2 }}>
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <Star
-                                key={star}
-                                size={12}
-                                fill={star <= (f.rating || 0) ? 'var(--accent)' : 'none'}
-                                stroke={star <= (f.rating || 0) ? 'var(--accent)' : 'var(--text-muted)'}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Claim and Reply flows */}
+                      {/* Reply + Resolve — directly available, no claim needed */}
                       {f.status !== 'resolved' && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                          {isUnassigned ? (
-                            <button onClick={() => claimFeedback(f.id)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 6, border: 'none', background: 'var(--primary)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}>
-                              <User size={12} /> {t('feedbackClaim')}
-                            </button>
-                          ) : isClaimedByMe ? (
-                            <>
-                              <input
-                                type="text"
-                                className="form-input"
-                                value={feedbackReply[f.id] || ''}
-                                onChange={e => setFeedbackReply(prev => ({ ...prev, [f.id]: e.target.value }))}
-                                placeholder={t('feedbackReplyPlaceholder')}
-                                style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
-                              />
-                              <button onClick={() => replyFeedback(f.id)} disabled={!feedbackReply[f.id]?.trim()}
-                                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: feedbackReply[f.id]?.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: feedbackReply[f.id]?.trim() ? 'pointer' : 'not-allowed' }}>
-                                <Send size={12} /> {t('feedbackReply')}
-                              </button>
-                              <button onClick={() => resolveFeedback(f.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: 'var(--success)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}>
-                                <CheckCircle2 size={12} /> {t('feedbackMarkResolved')}
-                              </button>
-                            </>
-                          ) : (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                              {lang === 'zh' ? '该工单已由其他 Agent 认领，您无法编辑' : 'This request is claimed by another agent and cannot be edited.'}
-                            </span>
-                          )}
+                          {(() => {
+                            const agentReplyCount = (f.replies || []).filter(r => r.role === 'agent').length;
+                            const canReply = agentReplyCount < 3;
+                            return (
+                              <>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  value={feedbackReply[f.id] || ''}
+                                  onChange={e => setFeedbackReply(prev => ({ ...prev, [f.id]: e.target.value }))}
+                                  placeholder={canReply
+                                    ? (lang === 'zh' ? `输入回复… (${agentReplyCount}/3)` : `Enter reply… (${agentReplyCount}/3)`)
+                                    : (lang === 'zh' ? '已达回复上限，点击右侧归档' : 'Reply limit reached — resolve to close')
+                                  }
+                                  disabled={!canReply}
+                                  style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
+                                />
+                                {canReply && (
+                                  <button onClick={() => sendFeedbackReply(f.id)} disabled={!feedbackReply[f.id]?.trim()}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: feedbackReply[f.id]?.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: feedbackReply[f.id]?.trim() ? 'pointer' : 'not-allowed' }}>
+                                    <Send size={12} /> {lang === 'zh' ? '发送' : 'Send'}
+                                  </button>
+                                )}
+                                <button onClick={() => resolveFeedback(f.id)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: 'var(--success)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}>
+                                  <CheckCircle2 size={12} /> {t('feedbackMarkResolved')}
+                                </button>
+                              </>
+                            );
+                          })()}
                         </div>
+                      )}
+                      {f.status !== 'resolved' && (
+                        <p style={{ fontSize: '0.68rem', color: 'var(--warning)', marginTop: 6, fontStyle: 'italic' }}>
+                          {lang === 'zh' ? '处理完毕后请点击「解决并归档」，否则工单将一直处于处理中状态。' : 'After resolving, please click "Resolve & Archive" — otherwise the request stays open.'}
+                        </p>
                       )}
                     </div>
                   );
@@ -4224,15 +4225,14 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               'rgba(16, 185, 129, 0.12)'
             }, inset 0 1px 1px rgba(255,255,255,0.1)`,
           }}>
-            <span style={{ 
-              fontSize: '1.1rem', 
-              lineHeight: 1,
-              color: 
+            <span style={{
+              display: 'flex', alignItems: 'center',
+              color:
                 toast.type === 'error' ? '#ef4444' :
                 toast.type === 'warning' ? '#f59e0b' :
                 '#10b981'
             }}>
-              {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '✅'}
+              {toast.type === 'error' ? <XCircle size={18} /> : toast.type === 'warning' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
             </span>
             <span>{toast.msg}</span>
           </div>

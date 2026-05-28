@@ -6,7 +6,7 @@ import {
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store,
-  Grid, List, User, Calendar, Globe, MessageSquare
+  Grid, List, User, Calendar, Globe, MessageSquare, XCircle, AlertTriangle
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -2241,15 +2241,14 @@ export default function PropertyListings() {
               'rgba(16, 185, 129, 0.12)'
             }, inset 0 1px 1px rgba(255,255,255,0.1)`,
           }}>
-            <span style={{ 
-              fontSize: '1.1rem', 
-              lineHeight: 1,
-              color: 
+            <span style={{
+              display: 'flex', alignItems: 'center',
+              color:
                 toast.type === 'error' ? '#ef4444' :
                 toast.type === 'warning' ? '#f59e0b' :
                 '#10b981'
             }}>
-              {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '✅'}
+              {toast.type === 'error' ? <XCircle size={18} /> : toast.type === 'warning' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
             </span>
             <span>{toast.msg}</span>
           </div>
