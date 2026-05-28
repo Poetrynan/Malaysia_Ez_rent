@@ -485,26 +485,41 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data, error } = await supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false });
-        if (error || !data) { setFeedbacks([]); return; }
+        if (error) { console.error('Fetch maintenance_requests error:', error); setFeedbacks([]); return; }
+        if (!data || data.length === 0) { setFeedbacks([]); return; }
 
         // Batch-load all users to avoid N+1 queries
         const userIds = [...new Set(data.map((f: any) => f.user_id).filter(Boolean))];
-        const { data: allUsers } = await supabase.from('users').select('id, full_name, email, phone, unit_number').in('id', userIds);
-        const userMap = new Map((allUsers || []).map((u: any) => [u.id, u]));
+        const userMap = new Map<string, any>();
+        if (userIds.length > 0) {
+          const { data: allUsers, error: usersErr } = await supabase.from('users').select('id, full_name, email, phone, unit_number').in('id', userIds);
+          if (usersErr) console.error('Fetch users error:', usersErr);
+          (allUsers || []).forEach((u: any) => userMap.set(u.id, u));
+        }
 
         // Batch-load active leases + units + communities
-        const { data: allLeases } = await supabase.from('leases').select('tenant_id, unit_id').eq('status', 'active').in('tenant_id', userIds);
-        const leaseMap = new Map((allLeases || []).map((l: any) => [l.tenant_id, l]));
-        const unitIds = [...new Set((allLeases || []).map((l: any) => l.unit_id).filter(Boolean))];
-        const { data: allUnits } = unitIds.length > 0
-          ? await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds)
-          : { data: [] };
-        const unitMap = new Map((allUnits || []).map((u: any) => [u.id, u]));
-        const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
-        const { data: allComms } = commIds.length > 0
-          ? await supabase.from('communities').select('id, name').in('id', commIds)
-          : { data: [] };
-        const commMap = new Map((allComms || []).map((c: any) => [c.id, c]));
+        const leaseMap = new Map<string, any>();
+        const unitMap = new Map<string, any>();
+        const commMap = new Map<string, any>();
+        if (userIds.length > 0) {
+          const { data: allLeases, error: leaseErr } = await supabase.from('leases').select('tenant_id, unit_id').eq('status', 'active').in('tenant_id', userIds);
+          if (leaseErr) console.error('Fetch leases error:', leaseErr);
+          (allLeases || []).forEach((l: any) => leaseMap.set(l.tenant_id, l));
+
+          const unitIds = [...new Set((allLeases || []).map((l: any) => l.unit_id).filter(Boolean))];
+          if (unitIds.length > 0) {
+            const { data: allUnits, error: unitErr } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
+            if (unitErr) console.error('Fetch units error:', unitErr);
+            (allUnits || []).forEach((u: any) => unitMap.set(u.id, u));
+
+            const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
+            if (commIds.length > 0) {
+              const { data: allComms, error: commErr } = await supabase.from('communities').select('id, name').in('id', commIds);
+              if (commErr) console.error('Fetch communities error:', commErr);
+              (allComms || []).forEach((c: any) => commMap.set(c.id, c));
+            }
+          }
+        }
 
         const enriched = data.map((f: any) => {
           const u = userMap.get(f.user_id);
@@ -518,8 +533,14 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               if (parts.length) unitInfo = parts.join(' · ');
             }
           }
+          // Fallback: if replies column doesn't exist yet (migration 024 not applied), convert admin_reply
+          let replies = f.replies;
+          if (!replies && f.admin_reply) {
+            replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
+          }
           return {
             ...f,
+            replies: replies || [],
             user_name: u?.full_name || u?.email || f.user_id?.slice(0, 8) || 'Unknown',
             user_phone: u?.phone || '',
             unit_info: unitInfo || undefined,
@@ -564,10 +585,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { data: existing } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
-        const updated = [...(existing?.replies || []), newEntry];
-        await supabase.from('maintenance_requests').update({ replies: updated, status: 'in_progress' }).eq('id', id);
-      } catch (e) { console.error('Reply feedback error:', e); }
+        const { data: existing, error: selErr } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
+        if (selErr) {
+          // replies column doesn't exist yet (migration 024 not applied) — fallback to admin_reply
+          await supabase.from('maintenance_requests').update({ admin_reply: reply, status: 'in_progress' }).eq('id', id);
+        } else {
+          const updated = [...(existing?.replies || []), newEntry];
+          await supabase.from('maintenance_requests').update({ replies: updated, status: 'in_progress' }).eq('id', id);
+        }
+      } catch (e) { console.error('Reply feedback error:', e); showToast(lang === 'zh' ? '回复失败，请重试' : 'Reply failed, please try again', 'error'); }
     }
     setFeedbackReply(prev => { const n = { ...prev }; delete n[id]; return n; });
     fetchFeedbacks();
@@ -4206,10 +4232,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
             padding: '12px 24px', borderRadius: 12,
             fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-            minWidth: 280, maxWidth: '90vw',
+            width: 'fit-content', maxWidth: '90vw',
             background: 'var(--glass-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',

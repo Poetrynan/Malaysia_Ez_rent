@@ -632,7 +632,16 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const { data } = await supabase.from('maintenance_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-        if (data) setMyFeedbacks(data);
+        if (data) {
+          const normalized = data.map((f: any) => {
+            let replies = f.replies;
+            if (!replies && f.admin_reply) {
+              replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
+            }
+            return { ...f, replies: replies || [] };
+          });
+          setMyFeedbacks(normalized);
+        }
       } catch (e) { console.error('Load feedback error:', e); }
     }
     // Check for unseen agent replies
@@ -734,10 +743,15 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { data: existing } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
-        const updated = [...(existing?.replies || []), newEntry];
-        await supabase.from('maintenance_requests').update({ replies: updated }).eq('id', id);
-        loadMyFeedbacks();
+        const { data: existing, error: selErr } = await supabase.from('maintenance_requests').select('replies').eq('id', id).single();
+        if (selErr) {
+          // replies column doesn't exist yet (migration 024 not applied)
+          console.warn('replies column not available, student reply requires migration 024');
+        } else {
+          const updated = [...(existing?.replies || []), newEntry];
+          await supabase.from('maintenance_requests').update({ replies: updated }).eq('id', id);
+          loadMyFeedbacks();
+        }
       } catch (e) {
         console.error('Student reply error:', e);
       }
@@ -1689,10 +1703,10 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
             padding: '12px 24px', borderRadius: 12,
             fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-            minWidth: 280, maxWidth: '90vw',
+            width: 'fit-content', maxWidth: '90vw',
             background: 'var(--glass-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',

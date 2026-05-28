@@ -91,6 +91,21 @@ export default function RegisterAgentPage() {
   }, [userId, alreadySubmitted]);
 
   const checkAuth = async () => {
+    // Restore saved form draft if exists
+    const draft = localStorage.getItem('ez_agent_draft');
+    if (draft) {
+      try {
+        const d = JSON.parse(draft);
+        if (d.fullName) setFullName(d.fullName);
+        if (d.phone) setPhone(d.phone);
+        if (d.whatsapp) setWhatsapp(d.whatsapp);
+        if (d.agencyName) setAgencyName(d.agencyName);
+        if (d.renNumber) setRenNumber(d.renNumber);
+        if (d.renTagImage) { setRenTagImage(d.renTagImage); }
+      } catch {}
+      localStorage.removeItem('ez_agent_draft');
+    }
+
     if (isMockDatabase) {
       const loggedIn = localStorage.getItem('ez_logged_in');
       if (!loggedIn) {
@@ -178,7 +193,7 @@ export default function RegisterAgentPage() {
     if (!phone.trim()) { setError(lang === 'zh' ? '请填写手机号' : 'Please enter your phone number'); return; }
     if (!agencyName.trim()) { setError(lang === 'zh' ? '请填写公司名称' : 'Please enter your agency name'); return; }
     if (!renNumber.trim()) { setError(lang === 'zh' ? '请填写 REN 编号' : 'Please enter your REN number'); return; }
-    if (!renTagFile) { setError(lang === 'zh' ? '请上传 REN 执照照片' : 'Please upload your REN tag image'); return; }
+    if (!renTagFile && !renTagImage) { setError(lang === 'zh' ? '请上传 REN 执照照片' : 'Please upload your REN tag image'); return; }
 
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) { setError(lang === 'zh' ? '手机号格式不正确（马来西亚手机号）' : 'Invalid Malaysian phone number format'); return; }
@@ -188,6 +203,20 @@ export default function RegisterAgentPage() {
 
     const normalizedREN = normalizeREN(renNumber);
     if (!normalizedREN) { setError(lang === 'zh' ? 'REN 编号格式不正确（如 REN12345）' : 'Invalid REN number format (e.g. REN12345)'); return; }
+
+    // If not logged in, save form data and redirect to login
+    if (!userId) {
+      localStorage.setItem('ez_agent_draft', JSON.stringify({
+        fullName: fullName.trim(),
+        phone: normalizedPhone,
+        whatsapp: normalizedWhatsapp,
+        agencyName: agencyName.trim(),
+        renNumber: normalizedREN,
+        renTagImage: renTagImage,
+      }));
+      window.location.href = '/login';
+      return;
+    }
 
     setSubmitting(true);
 
@@ -217,13 +246,22 @@ export default function RegisterAgentPage() {
         const { createClient } = await import('@/utils/supabase/client');
         const supabaseClient = createClient();
 
-        const compressed = await compressImageFile(renTagFile, EVIDENCE_IMAGE_PRESET);
+        // renTagFile may be null if restored from draft — convert data URL to blob
+        let uploadBlob: Blob;
+        if (renTagFile) {
+          uploadBlob = await compressImageFile(renTagFile, EVIDENCE_IMAGE_PRESET);
+        } else if (renTagImage) {
+          const res = await fetch(renTagImage);
+          uploadBlob = await res.blob();
+        } else {
+          throw new Error('No REN tag image');
+        }
         const fileName = `ren-tag-${Date.now()}.jpg`;
         const path = `ren-tags/${fileName}`;
 
         const { error: uploadErr } = await supabaseClient.storage
           .from('unit-media')
-          .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+          .upload(path, uploadBlob, { upsert: true, contentType: 'image/jpeg' });
 
         if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
 
@@ -261,24 +299,7 @@ export default function RegisterAgentPage() {
     );
   }
 
-  if (!userId) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', padding: 20 }}>
-        <div style={{ textAlign: 'center', maxWidth: 360 }}>
-          <AlertCircle size={40} style={{ color: 'var(--warning)', marginBottom: 16 }} />
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
-            {lang === 'zh' ? '请先登录' : 'Please log in first'}
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>
-            {lang === 'zh' ? '您需要先登录才能申请成为中介。' : 'You need to log in before applying as an agent.'}
-          </p>
-          <a href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 10, background: 'var(--primary)', color: 'white', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none' }}>
-            <ArrowLeft size={14} /> {lang === 'zh' ? '去登录' : 'Go to Login'}
-          </a>
-        </div>
-      </div>
-    );
-  }
+  // No login gate — form is always visible. Login is required only on submit.
 
   return (
     <div style={{
@@ -406,6 +427,14 @@ export default function RegisterAgentPage() {
         {/* Form */}
         {!alreadySubmitted && !success && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {!userId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--info-light)', border: '1px solid var(--info)' }}>
+                <AlertCircle size={15} style={{ color: 'var(--info)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>
+                  {lang === 'zh' ? '您可以先填写表单，提交时会要求您登录。' : 'You can fill in the form first. You will be asked to log in when submitting.'}
+                </span>
+              </div>
+            )}
             {error && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                 <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />

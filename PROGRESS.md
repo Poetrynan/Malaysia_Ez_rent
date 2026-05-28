@@ -1176,6 +1176,37 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 ---
 
+## 三十二、Toast 全局统一优化（2026-05-29）
+
+**目标：** 所有 Toast 组件风格、位置、图标完全统一，消除空白和 emoji。
+
+**改动：**
+- 三个组件（AdminPanel、PropertyListings、StudentPortal）Toast 全部统一：
+  - 顶部居中（`position: fixed; top: 24; left: 50%; transform: translateX(-50%)`）
+  - 磨砂玻璃质感（`backdrop-filter: blur(16px)` + `var(--glass-bg)`）
+  - Lucide 图标（`CheckCircle2` / `XCircle` / `AlertTriangle`），不用 emoji
+  - 文字居中（`justify-content: center`）
+  - 宽度自适应内容（`width: fit-content`），消除多余空白
+  - 入场动画 `slideDown 0.3s cubic-bezier(0.16,1,0.3,1)`
+- 工单 enrichment 查询加详细错误日志（`console.error` 每一步），方便 F12 调试
+- 024 迁移未执行时自动 fallback：读取 `admin_reply` → 转为 `replies` 格式显示
+
+---
+
+## 三十三、中介注册页去除登录前置（2026-05-29）
+
+**目标：** 未登录用户也能先填写中介注册表单，提交时再要求登录。
+
+**改动：**
+- 移除 `register-agent` 页面的登录拦截（原来未登录直接显示"请先登录"）
+- 表单始终可见，未登录时顶部显示蓝色提示"您可以先填写表单，提交时会要求您登录"
+- 提交时如果未登录：将表单数据（含 REN 执照 data URL）保存到 `localStorage('ez_agent_draft')`，跳转 `/login`
+- 登录后返回 `/register-agent`：`checkAuth` 自动从 localStorage 恢复表单数据，用户只需再点一次提交
+- 修复验证逻辑：draft 恢复后 `renTagFile` 为 null，改为同时检查 `renTagFile || renTagImage`
+- 修复上传逻辑：draft 恢复后从 data URL 转 blob 上传（`fetch(dataUrl).blob()`）
+
+---
+
 ## 三十一、工单对话线程重构与评分移除（2026-05-28）
 
 **目标：** 工单系统支持 Agent↔Student 最多 3 轮对话，答复不再自动归档，移除鸡肋的星级评分。

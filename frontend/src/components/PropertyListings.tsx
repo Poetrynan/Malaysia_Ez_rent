@@ -2222,10 +2222,10 @@ export default function PropertyListings() {
           animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
             padding: '12px 24px', borderRadius: 12,
             fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-            minWidth: 280, maxWidth: '90vw',
+            width: 'fit-content', maxWidth: '90vw',
             background: 'var(--glass-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
