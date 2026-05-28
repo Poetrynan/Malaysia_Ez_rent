@@ -199,6 +199,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     assigned_to?: string | null;
   }[]>([]);
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(mode === 'maintenance');
+  const [feedbackHasNewReply, setFeedbackHasNewReply] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
@@ -543,6 +544,13 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         if (data) setMyFeedbacks(data);
       } catch (e) { console.error('Load feedback error:', e); }
     }
+    // Check for unseen admin replies
+    const lastSeen = parseInt(localStorage.getItem('ez_feedback_last_seen') || '0', 10);
+    const feedbacksToCheck = isMockDatabase
+      ? JSON.parse(localStorage.getItem('ez_feedback') || '[]').filter((f: any) => f.user_id === (localStorage.getItem('ez_tenant_id') || 'tenant-123'))
+      : myFeedbacks;
+    const hasNew = feedbacksToCheck.some((f: any) => f.admin_reply && new Date(f.updated_at || f.created_at).getTime() > lastSeen);
+    setFeedbackHasNewReply(hasNew);
   };
 
   const submitFeedback = async () => {
@@ -1169,9 +1177,20 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
             <MessageSquare size={16} style={{ color: 'var(--primary)' }} /> {t('feedback')}
           </h4>
-          <button onClick={() => { setShowMyFeedbacks(!showMyFeedbacks); if (!showMyFeedbacks) loadMyFeedbacks(); }}
-            style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => {
+            const opening = !showMyFeedbacks;
+            setShowMyFeedbacks(opening);
+            if (opening) {
+              loadMyFeedbacks();
+              localStorage.setItem('ez_feedback_last_seen', Date.now().toString());
+              setFeedbackHasNewReply(false);
+            }
+          }}
+            style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
             <span>{t('feedbackMy')} ({myFeedbacks.length})</span>
+            {feedbackHasNewReply && (
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+            )}
             {showMyFeedbacks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
@@ -1306,7 +1325,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
                 {myFeedbacks.map(f => (
                   <div key={f.id} style={{ padding: '12px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -1334,6 +1353,11 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                       </span>
                     </div>
 
+                    {(community?.name || unit?.unit_number || unit?.room_type) && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        {[community?.name, unit?.unit_number, unit?.room_type].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: '4px 0 6px', whiteSpace: 'pre-wrap' }}>{f.content}</p>
 
                     {f.photo_url && (

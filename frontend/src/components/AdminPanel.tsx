@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -102,6 +102,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [adminQR, setAdminQR] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
+  const [qrMobileSession, setQrMobileSession] = useState<string | null>(null);
+  const qrPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // ── Delete Confirmation state ──
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -378,8 +380,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     assigned_to?: string | null;
     rating?: number | null;
     created_at: string;
+    updated_at?: string;
     photo_url?: string | null;
     user_name?: string;
+    user_phone?: string;
     unit_info?: string;
   }
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
@@ -401,10 +405,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           const unit = unitsData.find((un: any) => un.id === lease.unit_id);
           if (unit) {
             const comm = communitiesData.find((c: any) => c.id === unit.community_id);
-            unitInfo = `${comm?.name || ''}${unit.room_type ? ` · ${unit.room_type}` : ''}`;
+            const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
+            unitInfo = parts.join(' · ');
           }
         }
-        return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), unit_info: unitInfo || undefined };
+        return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), user_phone: u?.phone || '', unit_info: unitInfo || undefined };
       });
       setFeedbacks(enriched);
     } else {
@@ -416,21 +421,26 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
         const enriched = await Promise.all(data.map(async (f: FeedbackItem) => {
           let userName = f.user_id.slice(0, 8);
+          let userPhone = '';
           let unitInfo = '';
 
-          const { data: userData } = await supabase.from('users').select('full_name, email').eq('id', f.user_id).single();
-          if (userData) userName = userData.full_name || userData.email || userName;
+          const { data: userData } = await supabase.from('users').select('full_name, email, phone').eq('id', f.user_id).single();
+          if (userData) {
+            userName = userData.full_name || userData.email || userName;
+            userPhone = userData.phone || '';
+          }
 
           const { data: leaseData } = await supabase.from('leases').select('unit_id').eq('tenant_id', f.user_id).eq('status', 'active').limit(1).single();
           if (leaseData) {
-            const { data: unitData } = await supabase.from('units').select('room_type, community_id').eq('id', leaseData.unit_id).single();
+            const { data: unitData } = await supabase.from('units').select('room_type, unit_number, community_id').eq('id', leaseData.unit_id).single();
             if (unitData) {
               const { data: commData } = await supabase.from('communities').select('name').eq('id', unitData.community_id).single();
-              unitInfo = `${commData?.name || ''}${unitData.room_type ? ` · ${unitData.room_type}` : ''}`;
+              const parts = [commData?.name, unitData.unit_number, unitData.room_type].filter(Boolean);
+              unitInfo = parts.join(' · ');
             }
           }
 
-          return { ...f, user_name: userName, unit_info: unitInfo || undefined };
+          return { ...f, user_name: userName, user_phone: userPhone, unit_info: unitInfo || undefined };
         }));
 
         setFeedbacks(enriched);
@@ -525,6 +535,13 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       });
 
   const feedbackPendingCount = visibleFeedbacks.filter(f => f.status === 'pending').length;
+
+  const [feedbackHasNewRating, setFeedbackHasNewRating] = useState(false);
+  useEffect(() => {
+    const lastSeen = parseInt(localStorage.getItem('ez_admin_feedback_last_seen') || '0', 10);
+    const hasNew = visibleFeedbacks.some(f => f.rating && f.status === 'resolved' && new Date(f.updated_at || f.created_at).getTime() > lastSeen);
+    setFeedbackHasNewRating(hasNew);
+  }, [visibleFeedbacks]);
 
   // ── Tenant interests state ──
   const [interests, setInterests] = useState<TenantInterest[]>([]);
@@ -1522,6 +1539,66 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     if (qrInputRef.current) qrInputRef.current.value = '';
   };
 
+  // ── Mobile QR scan upload ──
+  const startMobileQRUpload = () => {
+    const sessionId = `qr-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    setQrMobileSession(sessionId);
+
+    // Poll for uploaded image every 3 seconds
+    if (qrPollRef.current) clearInterval(qrPollRef.current);
+    let attempts = 0;
+    qrPollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > 120) { // Stop after ~6 minutes
+        if (qrPollRef.current) clearInterval(qrPollRef.current);
+        return;
+      }
+      try {
+        if (isMockDatabase) {
+          const stored = localStorage.getItem(`ez_qr_upload_${sessionId}`);
+          if (stored) {
+            setAdminQR(stored);
+            setQrMobileSession(null);
+            if (qrPollRef.current) clearInterval(qrPollRef.current);
+            showToast(lang === 'zh' ? '收款码已同步' : 'QR code synced', 'success');
+          }
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data } = await supabase
+            .from('mobile_upload_sessions')
+            .select('media_urls')
+            .eq('id', sessionId)
+            .maybeSingle();
+          if (data?.media_urls?.[0]) {
+            const url = data.media_urls[0];
+            setAdminQR(url);
+            setQrMobileSession(null);
+            if (qrPollRef.current) clearInterval(qrPollRef.current);
+            // Save to admin_users table
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await supabase.from('admin_users').update({ payment_qr_code: url }).eq('id', user.id);
+            }
+            showToast(lang === 'zh' ? '收款码已同步' : 'QR code synced', 'success');
+          }
+        }
+      } catch {}
+    }, 3000);
+  };
+
+  const cancelMobileQRUpload = () => {
+    setQrMobileSession(null);
+    if (qrPollRef.current) clearInterval(qrPollRef.current);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (qrPollRef.current) clearInterval(qrPollRef.current);
+    };
+  }, []);
+
   const removeQR = () => {
     setGenericConfirm({
       title: lang === 'zh' ? '确认删除收款码' : 'Delete QR Code',
@@ -1979,12 +2056,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
               </button>
             )}
-            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); }}>
+            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); localStorage.setItem('ez_admin_feedback_last_seen', Date.now().toString()); setFeedbackHasNewRating(false); }}>
               <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
               {feedbackPendingCount > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
                   {feedbackPendingCount}
                 </span>
+              )}
+              {feedbackHasNewRating && (
+                <span style={{ marginLeft: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', verticalAlign: 'middle' }} />
               )}
             </button>
             <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
@@ -3022,10 +3102,41 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             )}
 
             <input ref={qrInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleQRFile(e.target.files?.[0] || null)} />
-            
-            <button className="btn btn-secondary" onClick={() => qrInputRef.current?.click()}>
-              {adminQR ? t('uploadQR') : t('uploadQR')}
-            </button>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => qrInputRef.current?.click()}>
+                {adminQR ? t('uploadQR') : t('uploadQR')}
+              </button>
+              <button className="btn btn-secondary" onClick={startMobileQRUpload} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Camera size={14} />
+                {lang === 'zh' ? '手机扫码上传' : 'Scan to Upload'}
+              </button>
+            </div>
+
+            {/* Mobile QR Scan Modal */}
+            {qrMobileSession && (
+              <div style={{ marginTop: 16, padding: 16, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', marginBottom: 12 }}>
+                  {lang === 'zh' ? '用手机扫描下方二维码，从相册选择收款码图片上传' : 'Scan the QR code below with your phone to upload your payment QR image'}
+                </p>
+                <div style={{ display: 'inline-block', background: 'white', padding: 10, borderRadius: 10, border: '1px solid var(--glass-border)' }}>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/mobile-upload-qr/${qrMobileSession}`)}`}
+                    alt="Scan to upload"
+                    style={{ width: 180, height: 180, display: 'block' }}
+                  />
+                </div>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                  {lang === 'zh' ? '上传后此页面会自动同步...' : 'This page will sync automatically after upload...'}
+                </p>
+                <button onClick={cancelMobileQRUpload} style={{
+                  marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)',
+                  fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
+                }}>
+                  {lang === 'zh' ? '取消' : 'Cancel'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3194,6 +3305,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', fontWeight: 600 }}>
                           {f.user_name || f.user_id.slice(0, 8)}
                         </span>
+                        {f.user_phone && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            {f.user_phone}
+                          </span>
+                        )}
                         {f.unit_info && (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             {f.unit_info}

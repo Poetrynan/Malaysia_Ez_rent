@@ -22,6 +22,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/calculator') ||
     pathname.startsWith('/mobile-upload/') ||
     pathname.startsWith('/mobile-upload-property/') ||
+    pathname.startsWith('/mobile-upload-qr/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
