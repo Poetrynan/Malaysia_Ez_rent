@@ -8,6 +8,11 @@ const isMockMode =
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Block /diagnose in production (live mode)
+  if (pathname.startsWith('/diagnose') && !isMockMode) {
+    return NextResponse.redirect(request.nextUrl.clone().setPathname('/'));
+  }
+
   // Always allow static assets and auth routes
   if (
     pathname.startsWith('/login') ||
