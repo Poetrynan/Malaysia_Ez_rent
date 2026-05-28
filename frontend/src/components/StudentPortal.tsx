@@ -167,7 +167,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
   );
 };
 
-export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'maintenance' }) {
+export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'maintenance' | 'profile' }) {
   const { t, lang } = useApp();
   const [interest, setInterest] = useState<any | null>(null);
   const [interestUnit, setInterestUnit] = useState<Unit | null>(null);
@@ -203,9 +203,10 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   const [showProfile, setShowProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
+  const [profileUnit, setProfileUnit] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
-  const profileComplete = profileName.trim().length > 0;
+  const profileComplete = profileName.trim().length > 0 && profileUnit.trim().length > 0;
 
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
@@ -302,15 +303,15 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
       const u = users.find((u: any) => u.id === tenantId);
-      if (u) { name = u.full_name || ''; setProfileName(name); setProfilePhone(u.phone || ''); }
+      if (u) { name = u.full_name || ''; setProfileName(name); setProfilePhone(u.phone || ''); setProfileUnit(u.unit_number || ''); }
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('users').select('full_name, phone').eq('id', user.id).single();
-        if (data) { name = data.full_name || ''; setProfileName(name); setProfilePhone(data.phone || ''); }
+        const { data } = await supabase.from('users').select('full_name, phone, unit_number').eq('id', user.id).single();
+        if (data) { name = data.full_name || ''; setProfileName(name); setProfilePhone(data.phone || ''); setProfileUnit(data.unit_number || ''); }
       } catch (e) { console.error('Load profile error:', e); }
     }
     if (!name) setShowProfile(true);
@@ -326,8 +327,9 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
       if (idx !== -1) {
         users[idx].full_name = profileName.trim();
         users[idx].phone = profilePhone.trim();
+        users[idx].unit_number = profileUnit.trim();
       } else {
-        users.push({ id: tenantId, full_name: profileName.trim(), phone: profilePhone.trim() });
+        users.push({ id: tenantId, full_name: profileName.trim(), phone: profilePhone.trim(), unit_number: profileUnit.trim() });
       }
       localStorage.setItem('ez_users', JSON.stringify(users));
     } else {
@@ -336,7 +338,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setProfileSaving(false); return; }
-        const { error } = await supabase.from('users').upsert({ id: user.id, full_name: profileName.trim(), phone: profilePhone.trim() });
+        const { error } = await supabase.from('users').upsert({ id: user.id, full_name: profileName.trim(), phone: profilePhone.trim(), unit_number: profileUnit.trim() });
         if (error) { console.error('Save profile error:', error); setProfileSaving(false); return; }
       } catch (e) { console.error('Save profile error:', e); setProfileSaving(false); return; }
     }
@@ -869,23 +871,17 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Profile */}
-      <div className="glass-card">
-        <div
-          onClick={() => setShowProfile(!showProfile)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-        >
-          <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-            <User size={16} style={{ color: profileComplete ? 'var(--primary)' : 'var(--danger)' }} /> {t('myProfile')}
-            {profileComplete && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400 }}>（{profileName}）</span>}
-            {!profileComplete && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />}
+      {/* Profile — standalone page mode */}
+      {mode === 'profile' && (
+        <div className="glass-card">
+          <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
+            <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
           </h4>
-          {showProfile ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
-        </div>
-        {showProfile && (
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 420 }}>
             <div>
-              <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileName')}</label>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
               <input
                 type="text"
                 className="form-input"
@@ -896,7 +892,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
               <input
                 type="tel"
                 className="form-input"
@@ -906,19 +902,32 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                 style={{ width: '100%', boxSizing: 'border-box' }}
               />
             </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                {t('profileUnit')} <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                value={profileUnit}
+                onChange={e => setProfileUnit(e.target.value)}
+                placeholder={t('profileUnitPlaceholder')}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim()}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: profileName.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: profileName.trim() ? 'pointer' : 'not-allowed' }}>
+              <button onClick={saveProfile} disabled={profileSaving || !profileName.trim() || !profileUnit.trim()}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 8, border: 'none', background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed' }}>
                 <Save size={14} /> {profileSaving ? t('saving') : t('profileSave')}
               </button>
               {profileSaved && (
-                <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
               )}
             </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>{t('profileHint')}</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{t('profileHint')}</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {mode === 'lease' && (
         <>

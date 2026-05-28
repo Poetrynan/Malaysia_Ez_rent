@@ -424,10 +424,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           let userPhone = '';
           let unitInfo = '';
 
-          const { data: userData } = await supabase.from('users').select('full_name, email, phone').eq('id', f.user_id).single();
+          const { data: userData } = await supabase.from('users').select('full_name, email, phone, unit_number').eq('id', f.user_id).single();
           if (userData) {
             userName = userData.full_name || userData.email || userName;
             userPhone = userData.phone || '';
+            if (userData.unit_number) unitInfo = userData.unit_number;
           }
 
           const { data: leaseData } = await supabase.from('leases').select('unit_id').eq('tenant_id', f.user_id).eq('status', 'active').limit(1).single();
@@ -436,7 +437,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             if (unitData) {
               const { data: commData } = await supabase.from('communities').select('name').eq('id', unitData.community_id).single();
               const parts = [commData?.name, unitData.unit_number, unitData.room_type].filter(Boolean);
-              unitInfo = parts.join(' · ');
+              if (parts.length) unitInfo = parts.join(' · ');
             }
           }
 

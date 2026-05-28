@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -11,11 +11,12 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
   const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0 });
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
@@ -78,6 +79,28 @@ export default function Home() {
     window.location.href = '/login';
   };
 
+  const handleDeleteAccount = async () => {
+    if (isMockDatabase) {
+      const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+      const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      localStorage.setItem('ez_users', JSON.stringify(users.filter((u: any) => u.id !== tenantId)));
+      localStorage.removeItem('ez_logged_in');
+      localStorage.removeItem('ez_user_role');
+      localStorage.removeItem('ez_tenant_id');
+      window.location.href = '/login';
+    } else {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('users').delete().eq('id', user.id);
+      await supabase.from('admin_users').delete().eq('id', user.id);
+      await supabase.auth.signOut();
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+  };
+
   if (role === null) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-base)' }}>
@@ -120,6 +143,11 @@ export default function Home() {
                 <li onClick={() => setActiveTab('student')} className={`nav-item ${activeTab === 'student' ? 'active' : ''}`}>
                   <User size={16} />
                   <span>{t('navPortal')}</span>
+                  <span className="role-badge student">{t('roleTenantBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('profile')} className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}>
+                  <User size={16} />
+                  <span>{t('myProfile')}</span>
                   <span className="role-badge student">{t('roleTenantBadge')}</span>
                 </li>
                 <li onClick={() => setActiveTab('maintenance')} className={`nav-item ${activeTab === 'maintenance' ? 'active' : ''}`}>
@@ -232,6 +260,15 @@ export default function Home() {
             {lang === 'zh' ? t('toLangEN') : t('toLangZH')}
           </button>
 
+          {/* Delete Account */}
+          <button className="topbar-btn" onClick={() => setShowDeleteAccount(true)}
+            style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'var(--danger)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--danger-light)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--danger)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)'; }}>
+            <UserX size={13} />
+            {lang === 'zh' ? '注销' : 'Delete'}
+          </button>
+
           {/* Logout */}
           <button className="topbar-btn" onClick={handleLogout}
             style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'var(--danger)' }}
@@ -241,6 +278,38 @@ export default function Home() {
             {lang === 'zh' ? '退出' : 'Logout'}
           </button>
         </div>
+
+        {/* Delete Account Modal */}
+        {showDeleteAccount && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setShowDeleteAccount(false)}>
+            <div style={{ background: 'var(--bg-surface-solid)', borderRadius: 16, padding: '28px 32px', maxWidth: 400, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+              onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--danger)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <UserX size={18} /> {lang === 'zh' ? '确认注销账户' : 'Confirm Account Deletion'}
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', margin: '0 0 24px', lineHeight: 1.6 }}>
+                {lang === 'zh'
+                  ? '注销后，您的所有信息（包括个人信息、工单记录等）将被永久删除，此操作无法撤销。请谨慎操作！'
+                  : 'All your data (profile, maintenance requests, etc.) will be permanently deleted. This action cannot be undone. Please proceed with caution!'}
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowDeleteAccount(false)} style={{
+                  padding: '8px 20px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                  color: 'var(--text-body)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+                }}>
+                  {lang === 'zh' ? '取消' : 'Cancel'}
+                </button>
+                <button onClick={handleDeleteAccount} style={{
+                  padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--danger)',
+                  color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+                }}>
+                  {lang === 'zh' ? '确认注销' : 'Delete My Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="main-content">
@@ -253,6 +322,9 @@ export default function Home() {
           </div>
            <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
             <StudentPortal mode="lease" />
+          </div>
+          <div style={{ display: role === 'student' && activeTab === 'profile' ? 'block' : 'none' }}>
+            <StudentPortal mode="profile" />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
             <StudentPortal mode="maintenance" />
