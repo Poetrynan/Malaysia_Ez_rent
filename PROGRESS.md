@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-27 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏“我要租”并置灰显示“已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复**
+> 最后更新：2026-05-28 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知**
 
 
 ---
@@ -61,7 +61,7 @@ Malaysia_Ez_rent/
 │   └── requirements.txt
 │
 ├── docs/              # 项目文档
-│   ├── auth-redirect-explained.md # Supabase Auth 重定向、手机上传、Logo 部署、Memory vs Storage
+│   ├── FAQ.md                     # 常见问题答疑（Supabase Auth、手机上传、Logo 部署、Memory vs Storage、账户注销、中介注册）
 │   ├── ai-architecture.md         # AI Agent 架构与后续开发指南
 │   └── deployment-guide.md        # 部署指南
 │
@@ -347,6 +347,9 @@ Storage Bucket：
 | `018_tenant_terminate_lease.sql` | **租客自主终止租约**：`tenant_terminate_lease` RPC (SECURITY DEFINER) 允许学生自主发起退租并释放房源 |
 | `019_lease_transfer.sql` | **整组联保租约变更与退租替换**：`substitute_co_tenant` RPC 原子更替合租室友并生成接续账单与退/转押金 |
 | `020_anon_property_upload.sql` | **移动端房源图片上传**：允许移动端匿名上传图片至 `property/` 目录，并创建 `mobile_upload_sessions` 表暂存上传批次 |
+| `021_user_unit_number.sql` | **用户门牌号关联**：`users` 表新增 `unit_number` 字段，学生可绑定当前租住房号 |
+| `022_agent_registrations.sql` | **中介注册系统**：`agent_registrations` 表（REN 验证 + 审核工作流）+ 马来西亚手机号/REN 编号标准化函数 + Storage `ren-tags/` 策略 |
+| `023_user_profile_extended.sql` | **个人信息扩展**：`users` 表新增 `passport_number`、`school`、`company`、`local_id_number`、`document_url` 字段，支持外国人护照/本地人 IC 双轨填写 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -385,6 +388,9 @@ supabase/migrations/
 └── 018_tenant_terminate_lease.sql # 租客自主终止租约 RPC
 └── 019_lease_transfer.sql       # 整组联保租约变更与退租替换 RPC
 └── 020_anon_property_upload.sql # 移动端房源上传 session 表与 property 存储策略
+└── 021_user_unit_number.sql    # users 表加 unit_number 字段
+└── 022_agent_registrations.sql # 中介注册系统（REN验证 + 审核工作流）
+└── 023_user_profile_extended.sql # 个人信息扩展（护照/IC/学校/公司/证件上传）
 ```
 
 迁移原则：
@@ -427,7 +433,7 @@ supabase/migrations/
 | 合租提交后数字不变 / 无法取消 | 未跑 **014/015** 或前端旧版 | 执行 `014`+`015` 迁移；`git push` 部署后 Ctrl+F5；见第十九节 |
 | PowerShell 运行 `start.bat` 报错 | PowerShell 不加 `.\` 前缀找不到当前目录的脚本 | 改为 `.\start.bat` |
 
-详见 `docs/auth-redirect-explained.md` 第 8–20 节。
+详见 `docs/FAQ.md`。
 
 ---
 
@@ -646,7 +652,7 @@ WHERE payment_qr_code IS NOT NULL AND length(payment_qr_code) > 1000;
 
 Storage 占用：Dashboard → Storage → `unit-media`，可删测试文件。
 
-详见 `docs/auth-redirect-explained.md` 第 14 节。
+详见 `docs/FAQ.md`。
 
 ---
 
@@ -1062,4 +1068,105 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 - **2026-05-27 微信/App内置浏览器环境检测与Google 403报错拦截引导**
   - **根本原因**：Google OAuth 官方安全策略规定禁止在嵌入式 WebView/内置浏览器中进行授权登录（防止钓鱼劫持），若在微信、QQ、抖音等 App 内部扫码打开直接点击 Google 登录，会报 `403: disallowed_useragent` 错误。
-  - **优化方案**：在 `LoginPage` 中引入客户端 User-Agent 检测逻辑（覆盖 WeChat, QQ, Weibo, Lark/Feishu, DingTalk 以及 Android/iOS 各种嵌入式 Webviews），一旦检测到处于内置浏览器环境，登录页面的 Google 登录按钮上方会自动弹出红色警告提示卡，指引用户“点击右上角菜单选择「在浏览器中打开 / Open in Safari / Chrome」”，实现完美避坑。
+  - **优化方案**：在 `LoginPage` 中引入客户端 User-Agent 检测逻辑（覆盖 WeChat, QQ, Weibo, Lark/Feishu, DingTalk 以及 Android/iOS 各种嵌入式 Webviews），一旦检测到处于内置浏览器环境，登录页面的 Google 登录按钮上方会自动弹出红色警告提示卡，指引用户”点击右上角菜单选择「在浏览器中打开 / Open in Safari / Chrome」”，实现完美避坑。
+
+---
+
+## 二十七、中介注册系统与审核工作流（2026-05-28）
+
+**目标：** 支持中介（REN）自助注册，经超级管理员审核后获得管理员权限。
+
+**数据库迁移：** `022_agent_registrations.sql`
+- 新建 `agent_registrations` 表：`full_name`、`phone`、`whatsapp`、`agency_name`、`ren_number`、`ren_tag_image_url`、`verification_status`（pending/approved/rejected/suspended/banned）
+- 新增标准化函数：`normalize_my_phone()`（马来西亚手机号统一为 `601xxxxxxxx`）、`normalize_ren()`（REN 编号统一为 `REN12345` 格式）
+- CHECK 约束：手机号 `^601[0-9]{8,9}`、REN `^REN[0-9]{4,7}`
+- RLS 策略：匿名可 INSERT（注册页）、用户可读自己的、管理员可读/更新所有
+- Storage 策略：`ren-tags/` 目录允许匿名上传 REN 牌照图片
+
+**前端页面：** `frontend/src/app/register-agent/page.tsx`
+- 登录后可见，未登录自动跳转 `/login`
+- 表单字段：姓名、电话、WhatsApp（选填）、中介公司、REN 编号（自动大写）、REN 牌照图片（压缩后上传）
+- 提交后显示”您的申请已提交，请等待审核”成功页面
+- Mock 模式：存入 localStorage `ez_agent_registrations`
+
+**登录页集成：** `frontend/src/app/login/page.tsx`
+- 底部新增”🏠 申请成为中介（需审核）”链接，跳转 `/register-agent`
+
+**管理端审核：** `AdminPanel.tsx` 新增 `admin-agent-reviews` Tab
+- 超级管理员可见，显示待审核数量红点
+- 列表展示所有申请：姓名、电话、中介公司、REN 编号、REN 牌照图片预览
+- “批准”操作：更新 `verification_status = 'approved'`，自动创建 `admin_users` 记录
+- “拒绝”操作：更新 `verification_status = 'rejected'`，需填写拒绝原因
+
+**i18n 新增键：** `agentRegTitle`、`agentRegDesc`、`agentRegName`、`agentRegPhone`、`agentRegWhatsapp`、`agentRegAgency`、`agentRegREN`、`agentRegTagImage`、`agentRegSubmit`、`agentRegSuccess`、`agentRegPending` 等中英双语翻译
+
+---
+
+## 二十八、个人信息扩展字段与证件上传（2026-05-28）
+
+**目标：** 支持学生填写更多个人信息（护照/IC、学校、公司），上传证件照片供中介参考。
+
+**数据库迁移：** `023_user_profile_extended.sql`
+- `users` 表新增：`passport_number VARCHAR(50)`、`school VARCHAR(120)`、`company VARCHAR(120)`、`local_id_number VARCHAR(50)`、`document_url TEXT`
+
+**StudentPortal.tsx 扩展：**
+- 新增状态变量：`profilePassport`、`profileSchool`、`profileCompany`、`profileLocalId`、`profileDocUrl`、`profileDocBase64`、`profileDocUploading`
+- `loadProfile` 扩展读取 5 个新字段（Mock localStorage / Live Supabase 双模式）
+- `saveProfile` 扩展：如有证件图片，先 `compressDataUrl`（1200×1200, JPEG 75%）压缩后上传至 `documents/{timestamp}.jpg`，URL 写入 `document_url`
+- 证件选择：`handleDocChange` 读取文件 → 压缩 → 预览
+
+**Profile 页面布局重构：**
+- 从单列（maxWidth: 420）改为**两列 CSS Grid**（`gridTemplateColumns: '1fr 1fr'`），右侧空间充分利用
+- 第一区：基本信息（姓名、电话、门牌号、学校、公司）
+- 第二区：蓝色提示框”外国人请填护照号码，马来西亚本地人请填 IC 号码，至少填一项” + 护照/IC 双栏
+- 第三区：证件上传（虚线边框上传按钮 + 预览）
+- 第四区：保存按钮
+
+**i18n 新增键：** `profileExtraHint`、`profileIdHint`、`profilePassport`、`profileSchool`、`profileCompany`、`profileLocalId`、`profileDocument`、`profileDocumentDesc`、`profileDocumentUpload` 等中英双语翻译
+
+---
+
+## 二十九、账户注销 Server Action 彻底清理数据（2026-05-28）
+
+**目标：** 租客注销账户后，所有个人数据从数据库彻底删除，但不影响 Agent 的财务记录（leases、payment_records 保留）。
+
+**数据清理策略：**
+| 表 | 操作 | 原因 |
+|---|---|---|
+| `tenant_interests` | DELETE | 租客个人意向 |
+| `maintenance_requests` | DELETE | 租客报修工单 |
+| `agent_registrations` | DELETE | 如有中介申请记录 |
+| `admin_users` | DELETE | 如有管理员记录 |
+| `users` | DELETE | 租客个人资料 |
+| `auth.users` | DELETE (Server Action) | Supabase 认证账户 |
+| `leases` | **保留** | Agent 的财务台账 |
+| `payment_records` | **保留** | Agent 的收款记录 |
+
+**前端 Mock 模式：** `page.tsx` 的 `handleDeleteAccount` 清理 localStorage 中的 `users`、`tenant_interests`、`maintenance_requests`、`agent_registrations`、`admin_users`，保留 `leases` 和 `payment_records`
+
+**前端 Live 模式：** 调用 Server Action `deleteAccountAction()` → 清除本地状态 → `auth.signOut()` → 跳转 `/login`
+
+**Server Action：** `frontend/src/app/actions/deleteAccount.ts`
+- `'use server'` 指令，在 Vercel 服务端执行
+- 从 cookies 获取当前用户 → 依次删除 5 张表的用户数据
+- 使用 `SUPABASE_SERVICE_ROLE_KEY` 创建 admin client → `auth.admin.deleteUser()` 删除认证账户
+- Service Role Key 仅存于 Vercel 环境变量，不暴露给浏览器
+
+---
+
+## 三十、Profile 跨实例同步与 Toast 通知（2026-05-28）
+
+**目标：** 解决 `page.tsx` 中两个独立 `<StudentPortal>` 实例（mode='profile' 和 mode='maintenance'）状态不同步问题，保存个人信息后自动刷新维修模块的用户数据。
+
+**问题根因：** 两个 `<StudentPortal>` 各自独立 mount，有各自的 `loadProfile` 调用和本地 state。在 profile tab 保存个人信息后，maintenance tab 的 StudentPortal 不知道数据已更新。
+
+**解决方案：** `window.dispatchEvent` + `addEventListener` 事件同步
+- `saveProfile` 成功后 dispatch `new Event('ez_profile_updated')`
+- 每个 StudentPortal 实例 mount 时 `addEventListener('ez_profile_updated', loadProfile)`
+- 卸载时 `removeEventListener` 清理
+
+**Toast 通知组件：**
+- 保存成功/失败时显示底部居中浮层（`position: fixed; bottom: 32; left: 50%; transform: translateX(-50%)`）
+- 成功绿色（`var(--success)`）、失败红色（`var(--danger)`）
+- 3 秒后自动消失（`setTimeout` 清空 `toastMsg`）
+- 无需引入第三方库，零依赖实现

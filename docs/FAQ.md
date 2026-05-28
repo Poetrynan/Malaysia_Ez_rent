@@ -1161,3 +1161,82 @@ PropertyListings → Whole Unit 详情
 2. **进度条等分布局 (ProgressFlow)**：
    * 采用重构后的 `flex: 1` 数学等分原理，使四个节点圆心固定对齐在几何比例位置 (`12.5%`, `37.5%`, `62.5%`, `87.5%`)。
    * 彻底解决了中英文不同字符宽度导致的进度流失与流光呼吸光点偏移问题。
+
+### Q: 注销账户后，数据库里的数据会清干净吗？
+**A:** **会。** 注销账户时，系统通过 Server Action（`deleteAccountAction`）彻底清理所有租客相关的数据行：
+
+| 表 | 操作 | 说明 |
+|---|---|---|
+| `users` | 删除 | 个人信息（姓名、手机、护照号等） |
+| `admin_users` | 删除 | 管理员/中介角色记录 |
+| `agent_registrations` | 删除 | 中介申请记录 |
+| `tenant_interests` | 删除 | 所有租房意向 |
+| `maintenance_requests` | 删除 | 所有维修工单 |
+| `auth.users` | 删除 | 认证记录（通过 service role key） |
+| `leases` | **保留** | 租约合同，中介的台账需要 |
+| `payment_records` | **保留** | 缴租记录，中介的审计需要 |
+
+**为什么保留租约和账单？** 因为这些是中介（Agent）的财务归档记录。租客走了，但中介的台账不能丢。
+
+**注销后能重新注册吗？** 能。用同一个邮箱重新登录（Google/Magic Link），系统会创建新的 auth 用户，所有数据从头开始。
+
+**技术实现：** 前端调用 Server Action（`frontend/src/app/actions/deleteAccount.ts`），服务端用 `SUPABASE_SERVICE_ROLE_KEY` 创建管理员客户端来删除 auth.users。密钥只存在 Vercel 环境变量里，前端看不到。
+
+### Q: SUPABASE_SERVICE_ROLE_KEY 配在哪里？
+**A:** 配在 **Vercel**（不是 Render）。
+
+因为 Server Action 是 Next.js 的功能，跑在 Vercel 的服务器上。
+
+| 步骤 | 做什么 |
+|------|--------|
+| 1 | Supabase 后台 → Settings → API → 复制 `service_role` secret |
+| 2 | Vercel 后台 → 项目 → Settings → Environment Variables |
+| 3 | 添加 `SUPABASE_SERVICE_ROLE_KEY` = 你复制的密钥 |
+| 4 | 重新部署 |
+
+### Q: 中介注册系统怎么用？
+**A:** 流程如下：
+
+```
+用户登录（Google/Magic Link）
+    ↓
+点击「申请成为中介」→ /register-agent
+    ↓
+填写：姓名、手机、WhatsApp、公司名、REN 编号、REN 标签照片
+    ↓
+提交 → agent_registrations 表，status = pending
+    ↓
+超级管理员在管理端「中介审核」Tab 审核
+    ↓
+批准 → 自动创建 admin_users 记录 → 下次登录进入管理端
+驳回 → 填写原因，申请人可重新提交
+```
+
+**数据库迁移：** `022_agent_registrations.sql`（建表 + RLS + Storage 策略）
+
+**REN 号验证：** 正则 `^REN[0-9]{4,7}$`，自动去空格/横杠、转大写。
+
+**手机验证：** 马来西亚格式 `^601[0-9]{8,9}$`，自动去除前缀 `+60` / `0`。
+
+**实时通知：** 批准/驳回后，申请人的页面通过 Supabase Realtime 即时收到状态变化通知（无需刷新）。
+
+### Q: 个人信息页新增了哪些字段？
+**A:** 除了原有的姓名、手机、房间号，新增：
+
+| 字段 | 说明 | 必填 |
+|------|------|------|
+| 护照号码 | 外国人填写 | 选填（护照和IC至少填一项）|
+| IC 号码 | 马来西亚本地人填写 | 选填（护照和IC至少填一项）|
+| 学校/院校 | 如 Monash University | 选填 |
+| 公司/单位 | 如 ABC Sdn Bhd | 选填 |
+| 证件照片 | 护照或 IC 照片（自动压缩）| 选填 |
+
+**数据库迁移：** `023_user_profile_extended.sql`（加 `passport_number`, `school`, `company`, `local_id_number`, `document_url` 五列）
+
+**证件压缩：** 上传时自动调用 `compressDataUrl`，最大 1200×1200，JPEG 75%，存入 Storage `documents/` 目录。
+
+**排版：** 采用两列网格布局，充分利用页面宽度。证件号码区域有蓝色提示："外国人请填护照号码，马来西亚本地人请填 IC 号码，至少填一项。"
+
+---
+
+*文档更新：2026-05-28 · 账户注销 Server Action、中介注册系统、个人信息扩展字段、FAQ 改名*

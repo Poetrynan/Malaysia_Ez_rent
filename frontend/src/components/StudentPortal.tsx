@@ -973,143 +973,112 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
           <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
             <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 420 }}>
+
+          {/* Section 1: Basic info — 2-column grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
             <div>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                 {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
-              <input
-                type="text"
-                className="form-input"
-                value={profileName}
-                onChange={e => setProfileName(e.target.value)}
-                placeholder={t('profileNamePlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
+              <input type="text" className="form-input" value={profileName} onChange={e => setProfileName(e.target.value)}
+                placeholder={t('profileNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
             <div>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
-              <input
-                type="tel"
-                className="form-input"
-                value={profilePhone}
-                onChange={e => setProfilePhone(e.target.value)}
-                placeholder={t('profilePhonePlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
+              <input type="tel" className="form-input" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
+                placeholder={t('profilePhonePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
             <div>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                 {t('profileUnit')} <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
-              <input
-                type="text"
-                className="form-input"
-                value={profileUnit}
-                onChange={e => setProfileUnit(e.target.value)}
-                placeholder={t('profileUnitPlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            {/* Additional fields */}
-            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 14, marginTop: 4 }}>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileExtraHint')}</p>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={profilePassport}
-                onChange={e => setProfilePassport(e.target.value)}
-                placeholder={t('profilePassportPlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
+              <input type="text" className="form-input" value={profileUnit} onChange={e => setProfileUnit(e.target.value)}
+                placeholder={t('profileUnitPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
             <div>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={profileSchool}
-                onChange={e => setProfileSchool(e.target.value)}
-                placeholder={t('profileSchoolPlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
+              <input type="text" className="form-input" value={profileSchool} onChange={e => setProfileSchool(e.target.value)}
+                placeholder={t('profileSchoolPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
             <div>
               <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={profileCompany}
-                onChange={e => setProfileCompany(e.target.value)}
-                placeholder={t('profileCompanyPlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
+              <input type="text" className="form-input" value={profileCompany} onChange={e => setProfileCompany(e.target.value)}
+                placeholder={t('profileCompanyPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
-              <input
-                type="text"
-                className="form-input"
-                value={profileLocalId}
-                onChange={e => setProfileLocalId(e.target.value)}
-                placeholder={t('profileLocalIdPlaceholder')}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              />
-            </div>
+          </div>
 
-            {/* Document upload */}
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 8px' }}>{t('profileDocumentDesc')}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px', borderRadius: 8,
-                  border: '1px solid var(--glass-border)', background: 'var(--bg-surface)',
-                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                  color: 'var(--text-body)', transition: 'all 0.2s'
-                }}>
-                  <Camera size={14} style={{ color: 'var(--primary)' }} />
-                  <span>{t('profileDocumentUpload')}</span>
-                  <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
-                </label>
-                {(profileDocBase64 || profileDocUrl) && (
-                  <div style={{ position: 'relative' }}>
-                    <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={profileDocBase64 || profileDocUrl || ''}
-                        alt="Document"
-                        style={{ width: 56, height: 56, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
-                      />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
-                      style={{
-                        position: 'absolute', top: -6, right: -6,
-                        background: 'var(--danger)', color: 'white', border: 'none',
-                        borderRadius: '50%', width: 16, height: 16, fontSize: '10px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', fontWeight: 'bold'
-                      }}
-                    >×</button>
-                  </div>
-                )}
+          {/* Section 2: ID section */}
+          <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertCircle size={14} />
+              {t('profileIdHint')}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
+                <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
+                  placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
+                <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
+                  placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
               </div>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 8, border: 'none', background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed' }}>
-                <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
-              </button>
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{t('profileHint')}</p>
           </div>
+
+          {/* Section 3: Document upload */}
+          <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>{t('profileDocumentDesc')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '10px 18px', borderRadius: 8,
+                border: '1px dashed var(--primary)', background: 'var(--primary-light)',
+                cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                color: 'var(--primary)', transition: 'all 0.2s'
+              }}>
+                <Camera size={15} />
+                <span>{t('profileDocumentUpload')}</span>
+                <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
+              </label>
+              {(profileDocBase64 || profileDocUrl) && (
+                <div style={{ position: 'relative' }}>
+                  <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
+                    <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
+                      style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 8px var(--primary-glow)' }} />
+                  </a>
+                  <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
+                    style={{
+                      position: 'absolute', top: -8, right: -8,
+                      background: 'var(--danger)', color: 'white', border: 'none',
+                      borderRadius: '50%', width: 20, height: 20, fontSize: '12px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                    }}>×</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Save button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
+                background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)',
+                color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+                cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed',
+                boxShadow: (profileName.trim() && profileUnit.trim()) ? '0 2px 8px var(--primary-glow)' : 'none'
+              }}>
+              <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
+            </button>
+            {profileSaved && (
+              <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
+            )}
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0 0' }}>{t('profileHint')}</p>
         </div>
       )}
 

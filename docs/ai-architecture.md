@@ -171,14 +171,15 @@ Malaysia_Ez_rent/
 
 ### Key tables
 
-- `users`: tenant profile
+- `users`: tenant profile (full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url)
 - `admin_users`: admin identity/role/payment QR metadata
+- `agent_registrations`: agent applications with approval workflow (pending/approved/rejected/suspended/banned)
 - `communities`: housing communities
 - `units`: inventory records
 - `leases`: contract
 - `payment_records`: monthly bills + evidence status
 - `tenant_interests`: co-renting interest (`interested` | `confirmed` | `left`); UNIQUE `(unit_id, user_id)`
-- `feedback`: student suggestions
+- `maintenance_requests`: maintenance work orders with category, photo, rating, assignment
 
 ### Storage
 
@@ -186,6 +187,8 @@ Malaysia_Ez_rent/
   - unit photos: `<unit_id>/...`
   - payment evidence: `evidence/<payment_id>.jpg`
   - admin QR: `qr/<admin_id>.jpg`
+  - REN tag images: `ren-tags/<timestamp>.jpg`
+  - user documents: `documents/<timestamp>.jpg`
 
 ### Important constraints
 
@@ -217,6 +220,9 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 19. `migrations/018_tenant_terminate_lease.sql`
 20. `migrations/019_lease_transfer.sql`
 21. `migrations/020_anon_property_upload.sql`
+22. `migrations/021_user_unit_number.sql`
+23. `migrations/022_agent_registrations.sql`
+24. `migrations/023_user_profile_extended.sql`
 
 Notes:
 
@@ -234,6 +240,9 @@ Notes:
 - `018_tenant_terminate_lease.sql` adds **`tenant_terminate_lease`** RPC (SECURITY DEFINER) to allow tenants to safely terminate their own active leases and free the unit while preserving admin notes.
 - `019_lease_transfer.sql` adds tables and the **`substitute_co_tenant`** RPC (SECURITY DEFINER) to support joint tenancy co-tenant substitution, contract start date splitting, and deposit transfer/refund/forfeiture.
 - `020_anon_property_upload.sql` adds tables and storage permissions for anonymous mobile upload of property pictures to the `property/` folder inside `unit-media`.
+- `021_user_unit_number.sql` adds `unit_number VARCHAR(50)` to `users` for room identification in feedback.
+- `022_agent_registrations.sql` creates `agent_registrations` table for self-service agent application with approval workflow. Includes `normalize_my_phone()` and `normalize_ren()` functions, CHECK constraints, RLS policies, and Storage policy for `ren-tags/` folder.
+- `023_user_profile_extended.sql` adds `passport_number`, `school`, `company`, `local_id_number`, `document_url` to `users` for extended tenant profiles.
 
 
 ## 7) Auth, Roles, and Access Model
@@ -244,8 +253,11 @@ Notes:
 - Frontend middleware allows:
   - `/login`
   - `/auth/*`
+  - `/register-agent` (agent application page)
   - `/mobile-upload/*` (anonymous upload flow)
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
+- **Agent registration flow**: user logs in → `/register-agent` → fills REN/phone/agency info → `agent_registrations` table (pending) → super admin reviews in admin panel → approve creates `admin_users` record → next login gets admin role.
+- **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to delete tenant data (users, tenant_interests, maintenance_requests, agent_registrations, admin_users, auth.users) while preserving leases and payment_records for agent's financial records.
 
 ## 8) Payment Evidence End-to-End
 

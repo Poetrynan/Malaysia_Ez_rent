@@ -116,20 +116,13 @@ export default function Home() {
       localStorage.removeItem('ez_tenant_id');
       window.location.href = '/login';
     } else {
+      const { deleteAccountAction } = await import('@/app/actions/deleteAccount');
+      const result = await deleteAccountAction();
+      if (!result.success) {
+        console.error('Delete account failed:', result.error);
+      }
       const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      // Delete tenant-specific records (preserves leases & payment_records for agent's ledger)
-      await supabase.from('tenant_interests').delete().eq('user_id', user.id);
-      await supabase.from('maintenance_requests').delete().eq('user_id', user.id);
-      // Delete identity records
-      await supabase.from('agent_registrations').delete().eq('auth_user_id', user.id);
-      await supabase.from('admin_users').delete().eq('id', user.id);
-      // Delete user profile row, then auth user (which may cascade to users table)
-      await supabase.from('users').delete().eq('id', user.id);
-      await supabase.auth.admin.deleteUser(user.id).catch(() => {});
-      await supabase.auth.signOut();
+      await createClient().auth.signOut();
       localStorage.clear();
       window.location.href = '/login';
     }
