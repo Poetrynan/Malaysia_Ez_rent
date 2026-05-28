@@ -74,9 +74,9 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
   const { t, lang } = useApp();
-  const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'profile'>('properties');
+  const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('properties');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger' | 'settle'>('interests');
 
@@ -96,6 +96,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         fetchAdmins();
       } else if (defaultTab === 'feedback') {
         fetchFeedbacks();
+      } else if (defaultTab === 'agent-reviews') {
+        fetchAgentRegistrations();
       }
     }
   }, [defaultTab]);
@@ -222,6 +224,74 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         } catch (e: any) { showToast(e.message, 'error'); }
       }
     });
+  };
+
+  // ── Agent registrations state ──
+  const [agentRegistrations, setAgentRegistrations] = useState<any[]>([]);
+  const [agentReviewRejectId, setAgentReviewRejectId] = useState<string | null>(null);
+  const [agentReviewRejectReason, setAgentReviewRejectReason] = useState('');
+
+  const fetchAgentRegistrations = async () => {
+    if (!isLive) {
+      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      setAgentRegistrations(regs);
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data } = await supabase.from('agent_registrations').select('*').order('created_at', { ascending: false });
+        if (data) setAgentRegistrations(data);
+      } catch (e) { console.error('Fetch agent registrations error:', e); }
+    }
+  };
+
+  const approveAgentRegistration = async (reg: any) => {
+    if (!isLive) {
+      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      const idx = regs.findIndex((r: any) => r.id === reg.id);
+      if (idx !== -1) { regs[idx].verification_status = 'approved'; localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
+      // Add to admin_users mock
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      admins.push({ id: reg.auth_user_id || reg.id, email: `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator' });
+      localStorage.setItem('ez_admins', JSON.stringify(admins));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        await supabase.from('agent_registrations').update({ verification_status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', reg.id);
+        // Create admin_users record
+        await supabase.from('admin_users').insert({
+          id: reg.auth_user_id || crypto.randomUUID(),
+          email: `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`,
+          display_name: reg.full_name,
+          phone: reg.phone,
+          whatsapp: reg.whatsapp,
+          role: 'editor',
+          agency_name: reg.agency_name,
+          job_title: 'Real Estate Negotiator',
+        });
+      } catch (e) { console.error('Approve agent error:', e); }
+    }
+    fetchAgentRegistrations();
+    showToast(lang === 'zh' ? '已通过审核' : 'Agent approved', 'success');
+  };
+
+  const rejectAgentRegistration = async (id: string) => {
+    if (!isLive) {
+      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      const idx = regs.findIndex((r: any) => r.id === id);
+      if (idx !== -1) { regs[idx].verification_status = 'rejected'; regs[idx].rejection_reason = agentReviewRejectReason; localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        await supabase.from('agent_registrations').update({ verification_status: 'rejected', rejection_reason: agentReviewRejectReason, reviewed_at: new Date().toISOString() }).eq('id', id);
+      } catch (e) { console.error('Reject agent error:', e); }
+    }
+    setAgentReviewRejectId(null);
+    setAgentReviewRejectReason('');
+    fetchAgentRegistrations();
+    showToast(lang === 'zh' ? '已拒绝' : 'Agent rejected', 'success');
   };
 
   // ── Payment review state ──
@@ -3388,6 +3458,115 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── AGENT REVIEWS TAB ── */}
+      {tab === 'agent-reviews' && (
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building2 size={18} style={{ color: 'var(--primary)' }} />
+            {lang === 'zh' ? '中介申请审核' : 'Agent Registration Reviews'}
+            {agentRegistrations.filter(r => r.verification_status === 'pending').length > 0 && (
+              <span style={{ background: 'var(--warning)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>
+                {agentRegistrations.filter(r => r.verification_status === 'pending').length}
+              </span>
+            )}
+          </h3>
+
+          {agentRegistrations.length === 0 ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>
+              {lang === 'zh' ? '暂无申请记录' : 'No registration applications yet'}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {agentRegistrations.map(reg => (
+                <div key={reg.id} style={{
+                  background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 20,
+                  opacity: reg.verification_status === 'rejected' ? 0.6 : 1,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>{reg.full_name}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{reg.agency_name}</div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                      background: reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)',
+                      color: reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)',
+                    }}>
+                      {reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending')}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 12, fontSize: '0.82rem' }}>
+                    <div><span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '手机号：' : 'Phone: '}</span><span style={{ color: 'var(--text-body)' }}>{reg.phone}</span></div>
+                    {reg.whatsapp && <div><span style={{ color: 'var(--text-muted)' }}>WhatsApp: </span><span style={{ color: 'var(--text-body)' }}>{reg.whatsapp}</span></div>}
+                    <div><span style={{ color: 'var(--text-muted)' }}>REN: </span><span style={{ color: 'var(--text-body)', fontWeight: 600 }}>{reg.ren_number}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '提交时间：' : 'Submitted: '}</span><span style={{ color: 'var(--text-body)' }}>{new Date(reg.created_at).toLocaleDateString()}</span></div>
+                  </div>
+
+                  {/* REN Tag Image */}
+                  {reg.ren_tag_image_url && (
+                    <div style={{ marginBottom: 12 }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>REN {lang === 'zh' ? '执照：' : 'Tag: '}</span>
+                      <a href={reg.ren_tag_image_url} target="_blank" rel="noopener noreferrer">
+                        <img src={reg.ren_tag_image_url} alt="REN Tag" style={{ maxWidth: 240, maxHeight: 160, borderRadius: 8, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer' }} />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Rejection reason */}
+                  {reg.rejection_reason && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginBottom: 8 }}>
+                      {lang === 'zh' ? '拒绝原因：' : 'Rejection reason: '}{reg.rejection_reason}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  {reg.verification_status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                      <button onClick={() => approveAgentRegistration(reg)} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
+                        border: 'none', background: 'var(--success)', color: 'white', fontSize: '0.82rem',
+                        fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        <CheckCircle2 size={14} /> {lang === 'zh' ? '通过' : 'Approve'}
+                      </button>
+                      {agentReviewRejectId === reg.id ? (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
+                          <input type="text" className="form-input" value={agentReviewRejectReason}
+                            onChange={e => setAgentReviewRejectReason(e.target.value)}
+                            placeholder={lang === 'zh' ? '拒绝原因（选填）' : 'Reason (optional)'}
+                            style={{ flex: 1, fontSize: '0.82rem' }} />
+                          <button onClick={() => rejectAgentRegistration(reg.id)} style={{
+                            padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)',
+                            color: 'white', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>
+                            {lang === 'zh' ? '确认拒绝' : 'Confirm'}
+                          </button>
+                          <button onClick={() => { setAgentReviewRejectId(null); setAgentReviewRejectReason(''); }} style={{
+                            padding: '8px 14px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                            color: 'var(--text-body)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>
+                            {lang === 'zh' ? '取消' : 'Cancel'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setAgentReviewRejectId(reg.id)} style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
+                          border: '1px solid var(--danger)', background: 'var(--danger-light)', color: 'var(--danger)',
+                          fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                          <X size={14} /> {lang === 'zh' ? '拒绝' : 'Reject'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

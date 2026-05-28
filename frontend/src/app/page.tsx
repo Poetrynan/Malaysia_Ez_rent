@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -200,6 +200,13 @@ export default function Home() {
                   </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
+                {adminRole === 'super_admin' && (
+                  <li onClick={() => setActiveTab('admin-agent-reviews')} className={`nav-item ${activeTab === 'admin-agent-reviews' ? 'active' : ''}`}>
+                    <Building2 size={16} />
+                    <span>{lang === 'zh' ? '中介审核' : 'Agent Reviews'}</span>
+                    <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                  </li>
+                )}
                 <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
                   <User size={16} />
                   <span>{lang === 'zh' ? '个人设置' : 'Profile Settings'}</span>
@@ -338,7 +345,8 @@ export default function Home() {
                 activeTab === 'admin-payment' ? 'payment' :
                 activeTab === 'admin-admins' ? 'admins' :
                 activeTab === 'admin-feedback' ? 'feedback' :
-                activeTab === 'admin-profile' ? 'profile' : 
+                activeTab === 'admin-agent-reviews' ? 'agent-reviews' :
+                activeTab === 'admin-profile' ? 'profile' :
                 'properties'
               }
               hideTabBar={true}

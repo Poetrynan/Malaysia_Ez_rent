@@ -305,6 +305,19 @@ export default function LoginPage() {
           </a>
         </div>
 
+        {/* Agent registration link */}
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <a href="/register-agent" style={{
+            fontSize: '0.72rem', color: 'var(--primary)', textDecoration: 'none',
+            fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
+          >
+            {lang === 'zh' ? '🏠 申请成为中介（需审核）' : '🏠 Apply as Agent (Requires Approval)'}
+          </a>
+        </div>
+
         {/* Sandbox role switcher */}
         {isMockDatabase && !magicLinkSent && (
           <div style={{ textAlign: 'center', marginTop: 14 }}>

@@ -20,6 +20,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/calculator') ||
+    pathname.startsWith('/register-agent') ||
     pathname.startsWith('/mobile-upload/') ||
     pathname.startsWith('/mobile-upload-property/') ||
     pathname.startsWith('/mobile-upload-qr/') ||
