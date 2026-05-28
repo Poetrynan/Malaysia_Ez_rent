@@ -2116,19 +2116,34 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 {AMENITIES.map(a => {
                   const checked = communityForm.amenities.includes(a.key);
                   return (
-                    <label key={a.key} onClick={() => {
-                      setCommunityForm(f => ({
-                        ...f,
-                        amenities: checked ? f.amenities.filter(k => k !== a.key) : [...f.amenities, a.key],
-                      }));
-                    }} style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                      borderRadius: 8, cursor: 'pointer', fontSize: '0.78rem',
-                      background: checked ? 'rgba(37,99,235,0.08)' : 'transparent',
-                      border: checked ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--glass-border)',
-                      color: checked ? 'var(--primary)' : 'var(--text-body)',
-                      transition: 'all 0.15s',
-                    }}>
+                    <label key={a.key}
+                      onClick={() => {
+                        setCommunityForm(f => ({
+                          ...f,
+                          amenities: checked ? f.amenities.filter(k => k !== a.key) : [...f.amenities, a.key],
+                        }));
+                      }}
+                      onMouseEnter={e => {
+                        if (!checked) {
+                          e.currentTarget.style.background = 'var(--bg-hover)';
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!checked) {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.borderColor = 'var(--glass-border)';
+                        }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                        borderRadius: 8, cursor: 'pointer', fontSize: '0.78rem',
+                        background: checked ? 'rgba(37,99,235,0.08)' : 'transparent',
+                        border: checked ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--glass-border)',
+                        color: checked ? 'var(--primary)' : 'var(--text-body)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
                       <span style={{
                         width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: checked ? 'var(--primary)' : 'transparent',

@@ -292,6 +292,19 @@ export default function LoginPage() {
           ))}
         </div>
 
+        {/* Calculator link */}
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <a href="/calculator" style={{
+            fontSize: '0.72rem', color: 'var(--primary)', textDecoration: 'none',
+            fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
+          >
+            {lang === 'zh' ? '🧮 租金押金计算器（无需登录）' : '🧮 Rent & Deposit Calculator (No login required)'}
+          </a>
+        </div>
+
         {/* Sandbox role switcher */}
         {isMockDatabase && !magicLinkSent && (
           <div style={{ textAlign: 'center', marginTop: 14 }}>
