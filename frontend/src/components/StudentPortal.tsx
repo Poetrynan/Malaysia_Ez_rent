@@ -196,6 +196,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     category?: string;
     photo_url?: string | null;
     assigned_to?: string | null;
+    unit_info?: string;
   }[]>([]);
   const [studentReply, setStudentReply] = useState<Record<string, string>>({});
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(mode === 'maintenance');
@@ -624,7 +625,31 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
     if (isMockDatabase) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
-      setMyFeedbacks(all.filter((f: any) => f.user_id === tenantId));
+      const myRaw = all.filter((f: any) => f.user_id === tenantId);
+      
+      const leasesData = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const unitsData = JSON.parse(localStorage.getItem('ez_units') || '[]');
+      const communitiesData = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+      const usersData = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const u = usersData.find((x: any) => x.id === tenantId);
+
+      const enriched = myRaw.map((f: any) => {
+        const lease = leasesData.find((l: any) => l.id === f.lease_id) || leasesData.find((l: any) => l.tenant_id === f.user_id && l.status === 'active');
+        let unitInfo = '';
+        if (lease) {
+          const unit = unitsData.find((un: any) => un.id === lease.unit_id);
+          if (unit) {
+            const comm = communitiesData.find((c: any) => c.id === unit.community_id);
+            const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
+            unitInfo = parts.join(' · ');
+          }
+        }
+        if (!unitInfo && u?.unit_number) {
+          unitInfo = u.unit_number;
+        }
+        return { ...f, replies: f.replies || [], unit_info: unitInfo || undefined };
+      });
+      setMyFeedbacks(enriched);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -633,12 +658,68 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         if (!user) return;
         const { data } = await supabase.from('maintenance_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
         if (data) {
+          // Load user details
+          const { data: u } = await supabase.from('users').select('unit_number').eq('id', user.id).maybeSingle();
+
+          // Fetch all unique lease IDs and also fetch active leases for user (fallback)
+          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
+          let allLeases: any[] = [];
+          if (leaseIds.length > 0) {
+            const { data: explicitLeases } = await supabase.from('leases').select('id, unit_id, status').in('id', leaseIds);
+            if (explicitLeases) allLeases.push(...explicitLeases);
+          }
+          const existingLeaseIds = new Set(allLeases.map(l => l.id));
+          const { data: activeLeases } = await supabase.from('leases').select('id, unit_id, status').eq('tenant_id', user.id).eq('status', 'active');
+          if (activeLeases) {
+            activeLeases.forEach(al => {
+              if (!existingLeaseIds.has(al.id)) allLeases.push(al);
+            });
+          }
+
+          const leaseByIdMap = new Map<string, any>();
+          let activeLease: any = null;
+          allLeases.forEach(l => {
+            leaseByIdMap.set(l.id, l);
+            if (l.status === 'active') activeLease = l;
+          });
+
+          // Fetch units & communities
+          const unitMap = new Map<string, any>();
+          const commMap = new Map<string, any>();
+          const unitIds = [...new Set(allLeases.map(l => l.unit_id).filter(Boolean))];
+          if (unitIds.length > 0) {
+            const { data: allUnits } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
+            if (allUnits) {
+              allUnits.forEach(un => unitMap.set(un.id, un));
+              const commIds = [...new Set(allUnits.map(un => un.community_id).filter(Boolean))];
+              if (commIds.length > 0) {
+                const { data: allComms } = await supabase.from('communities').select('id, name').in('id', commIds);
+                if (allComms) allComms.forEach(c => commMap.set(c.id, c));
+              }
+            }
+          }
+
           const normalized = data.map((f: any) => {
             let replies = f.replies;
             if (!replies && f.admin_reply) {
               replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
             }
-            return { ...f, replies: replies || [] };
+
+            const lease = leaseByIdMap.get(f.lease_id) || activeLease;
+            let unitInfo = '';
+            if (lease) {
+              const unit = unitMap.get(lease.unit_id);
+              if (unit) {
+                const comm = commMap.get(unit.community_id);
+                const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
+                if (parts.length) unitInfo = parts.join(' · ');
+              }
+            }
+            if (!unitInfo && u?.unit_number) {
+              unitInfo = u.unit_number;
+            }
+
+            return { ...f, replies: replies || [], unit_info: unitInfo || undefined };
           });
           setMyFeedbacks(normalized);
         }
@@ -1535,9 +1616,9 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
                       </span>
                     </div>
 
-                    {(community?.name || unit?.unit_number || unit?.room_type) && (
+                    {f.unit_info && (
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                        {[community?.name, unit?.unit_number, unit?.room_type].filter(Boolean).join(' · ')}
+                        {f.unit_info}
                       </div>
                     )}
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: '4px 0 6px', whiteSpace: 'pre-wrap' }}>{f.content}</p>

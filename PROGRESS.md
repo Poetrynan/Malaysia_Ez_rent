@@ -352,6 +352,7 @@ Storage Bucket：
 | `022_agent_registrations.sql` | **中介注册系统**：`agent_registrations` 表（REN 验证 + 审核工作流）+ 马来西亚手机号/REN 编号标准化函数 + Storage `ren-tags/` 策略 |
 | `023_user_profile_extended.sql` | **个人信息扩展**：`users` 表新增 `passport_number`、`school`、`company`、`local_id_number`、`document_url` 字段，支持外国人护照/本地人 IC 双轨填写 |
 | `024_maintenance_conversation.sql` | **工单对话线程**：`admin_reply` TEXT 改为 `replies` JSONB（支持最多 3 轮 Agent↔Student 对话），移除 `rating` 列 |
+| `025_fix_missing_public_users.sql` | **修复缺失用户行**：重建 `handle_new_auth_user` 触发器 + 补建所有缺失的 `public.users` 行（解决工单列表显示 UUID 问题） |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -394,6 +395,7 @@ supabase/migrations/
 └── 022_agent_registrations.sql # 中介注册系统（REN验证 + 审核工作流）
 └── 023_user_profile_extended.sql # 个人信息扩展（护照/IC/学校/公司/证件上传）
 └── 024_maintenance_conversation.sql # 工单对话线程（admin_reply TEXT → replies JSONB，移除 rating）
+    └── 025_fix_missing_public_users.sql # 修复缺失用户行（重建触发器 + 补建 public.users）
 ```
 
 迁移原则：
@@ -1239,3 +1241,18 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 **Toast 统一：**
 - 所有三个组件（AdminPanel、PropertyListings、StudentPortal）的 Toast 统一为：顶部居中、磨砂玻璃、Lucide 图标（`CheckCircle2`/`XCircle`/`AlertTriangle`）
+
+## 三十五、工单列表用户名修复 — 缺失 users 行补建（2026-05-29）
+
+**问题：** 工单列表显示 UUID 前 8 位而非用户姓名。原因：`handle_new_auth_user` 触发器若未在数据库中创建，Auth 注册不会自动写入 `public.users` 行，导致 enrichment 查询 `users` 表时找不到对应记录。
+
+**数据库迁移：** `025_fix_missing_public_users.sql`
+- 重建 `handle_new_auth_user` 触发器（确保未来新用户自动创建 `public.users` 行）
+- 补建所有缺失的 `public.users` 行：从 `auth.users` 的 `raw_user_meta_data` 提取 `full_name` 和 `avatar_url`
+
+**AdminPanel 改动：**
+- `users` 查询移除不存在的 `email` 字段
+- 新增日志：当 `users` 查询返回空或部分缺失时，在 console 输出缺失的 user_id 列表
+- 名称 fallback：`u?.full_name || u?.email || uuid.slice(0,8)` → `u?.full_name || "未找到用户 (xxx)"`，明确标识数据缺失
+
+**执行方式：** 在 Supabase Dashboard → SQL Editor 中执行 `025_fix_missing_public_users.sql`，或通过 CLI `supabase db push`

@@ -467,7 +467,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       const communitiesData = JSON.parse(localStorage.getItem('ez_communities') || '[]');
       const enriched = all.map((f: FeedbackItem) => {
         const u = users.find((u: any) => u.id === f.user_id);
-        const lease = leasesData.find((l: any) => l.tenant_id === f.user_id && l.status === 'active');
+        const lease = leasesData.find((l: any) => l.id === f.lease_id) || leasesData.find((l: any) => l.tenant_id === f.user_id && l.status === 'active');
         let unitInfo = '';
         if (lease) {
           const unit = unitsData.find((un: any) => un.id === lease.unit_id);
@@ -476,6 +476,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
             unitInfo = parts.join(' · ');
           }
+        }
+        if (!unitInfo && u?.unit_number) {
+          unitInfo = u.unit_number;
         }
         return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), user_phone: u?.phone || '', unit_info: unitInfo || undefined };
       });
@@ -492,21 +495,60 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         const userIds = [...new Set(data.map((f: any) => f.user_id).filter(Boolean))];
         const userMap = new Map<string, any>();
         if (userIds.length > 0) {
-          const { data: allUsers, error: usersErr } = await supabase.from('users').select('id, full_name, email, phone, unit_number').in('id', userIds);
+          const { data: allUsers, error: usersErr } = await supabase.from('users').select('id, full_name, phone, unit_number').in('id', userIds);
           if (usersErr) console.error('Fetch users error:', usersErr);
+          if (!allUsers || allUsers.length === 0) {
+            console.warn(`No users found for ${userIds.length} user_id(s). Check if handle_new_auth_user trigger exists in database.`);
+          } else {
+            const foundIds = new Set(allUsers.map((u: any) => u.id));
+            const missing = userIds.filter(id => !foundIds.has(id));
+            if (missing.length > 0) console.warn('Missing users (no public.users row):', missing);
+          }
           (allUsers || []).forEach((u: any) => userMap.set(u.id, u));
         }
 
-        // Batch-load active leases + units + communities
-        const leaseMap = new Map<string, any>();
+        // Batch-load leases + units + communities (supporting historical leases via explicit lease_id)
+        const leaseByIdMap = new Map<string, any>();
+        const activeLeaseByTenantMap = new Map<string, any>();
         const unitMap = new Map<string, any>();
         const commMap = new Map<string, any>();
-        if (userIds.length > 0) {
-          const { data: allLeases, error: leaseErr } = await supabase.from('leases').select('tenant_id, unit_id').eq('status', 'active').in('tenant_id', userIds);
-          if (leaseErr) console.error('Fetch leases error:', leaseErr);
-          (allLeases || []).forEach((l: any) => leaseMap.set(l.tenant_id, l));
+        
+        if (data.length > 0) {
+          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
+          let allLeases: any[] = [];
 
-          const unitIds = [...new Set((allLeases || []).map((l: any) => l.unit_id).filter(Boolean))];
+          if (leaseIds.length > 0) {
+            const { data: explicitLeases, error: leaseErr } = await supabase
+              .from('leases')
+              .select('id, tenant_id, unit_id, status')
+              .in('id', leaseIds);
+            if (leaseErr) console.error('Fetch explicit leases error:', leaseErr);
+            if (explicitLeases) allLeases.push(...explicitLeases);
+          }
+
+          const existingLeaseIds = new Set(allLeases.map(l => l.id));
+          const { data: activeLeases, error: activeLeaseErr } = await supabase
+            .from('leases')
+            .select('id, tenant_id, unit_id, status')
+            .eq('status', 'active')
+            .in('tenant_id', userIds);
+          if (activeLeaseErr) console.error('Fetch active leases error:', activeLeaseErr);
+          if (activeLeases) {
+            activeLeases.forEach((al: any) => {
+              if (!existingLeaseIds.has(al.id)) {
+                allLeases.push(al);
+              }
+            });
+          }
+
+          allLeases.forEach((l: any) => {
+            leaseByIdMap.set(l.id, l);
+            if (l.status === 'active') {
+              activeLeaseByTenantMap.set(l.tenant_id, l);
+            }
+          });
+
+          const unitIds = [...new Set(allLeases.map((l: any) => l.unit_id).filter(Boolean))];
           if (unitIds.length > 0) {
             const { data: allUnits, error: unitErr } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
             if (unitErr) console.error('Fetch units error:', unitErr);
@@ -523,7 +565,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
         const enriched = data.map((f: any) => {
           const u = userMap.get(f.user_id);
-          const lease = leaseMap.get(f.user_id);
+          const lease = leaseByIdMap.get(f.lease_id) || activeLeaseByTenantMap.get(f.user_id);
           let unitInfo = '';
           if (lease) {
             const unit = unitMap.get(lease.unit_id);
@@ -533,6 +575,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               if (parts.length) unitInfo = parts.join(' · ');
             }
           }
+          if (!unitInfo && u?.unit_number) {
+            unitInfo = u.unit_number;
+          }
           // Fallback: if replies column doesn't exist yet (migration 024 not applied), convert admin_reply
           let replies = f.replies;
           if (!replies && f.admin_reply) {
@@ -541,7 +586,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           return {
             ...f,
             replies: replies || [],
-            user_name: u?.full_name || u?.email || f.user_id?.slice(0, 8) || 'Unknown',
+            user_name: u?.full_name || `未找到用户 (${f.user_id?.slice(0, 8)})`,
             user_phone: u?.phone || '',
             unit_info: unitInfo || undefined,
           };
