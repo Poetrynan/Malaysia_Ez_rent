@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Star, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -11,14 +11,14 @@ import { isMockDatabase } from '@/lib/supabase';
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
 
 const AMENITIES = [
-  { key: 'gym', label: '🏋️ Gym', labelZh: '🏋️ 健身房' },
-  { key: 'pool', label: '🏊 Pool', labelZh: '🏊 游泳池' },
-  { key: 'laundry', label: '👕 Laundry', labelZh: '👕 洗衣房' },
-  { key: 'study', label: '📚 Study Room', labelZh: '📚 自习室' },
-  { key: 'parking', label: '🅿️ Parking', labelZh: '🅿️ 停车位' },
-  { key: 'security', label: '🔒 24h Security', labelZh: '🔒 24小时安保' },
-  { key: 'wifi', label: '📶 WiFi', labelZh: '📶 WiFi覆盖' },
-  { key: 'mart', label: '🛒 Mini Mart', labelZh: '🛒 便利店' },
+  { key: 'gym', label: 'Gym', labelZh: '健身房', icon: React.createElement(Dumbbell, { size: 14 }) },
+  { key: 'pool', label: 'Pool', labelZh: '游泳池', icon: React.createElement(Waves, { size: 14 }) },
+  { key: 'laundry', label: 'Laundry', labelZh: '洗衣房', icon: React.createElement(Shirt, { size: 14 }) },
+  { key: 'study', label: 'Study Room', labelZh: '自习室', icon: React.createElement(BookOpen, { size: 14 }) },
+  { key: 'parking', label: 'Parking', labelZh: '停车位', icon: React.createElement(ParkingCircle, { size: 14 }) },
+  { key: 'security', label: '24h Security', labelZh: '24小时安保', icon: React.createElement(ShieldCheck, { size: 14 }) },
+  { key: 'wifi', label: 'WiFi', labelZh: 'WiFi覆盖', icon: React.createElement(Wifi, { size: 14 }) },
+  { key: 'mart', label: 'Mini Mart', labelZh: '便利店', icon: React.createElement(Store, { size: 14 }) },
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
@@ -2099,7 +2099,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             )}
             {/* Amenities */}
             <div className="form-group">
-              <label style={{ marginBottom: 8, display: 'block' }}>{t('amenitiesLabel')}</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{ margin: 0 }}>{t('amenitiesLabel')}</label>
+                <button type="button" onClick={() => {
+                  const allKeys = AMENITIES.map(a => a.key);
+                  const allSelected = allKeys.every(k => communityForm.amenities.includes(k));
+                  setCommunityForm(f => ({ ...f, amenities: allSelected ? [] : allKeys }));
+                }} style={{
+                  background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit', padding: '2px 0',
+                }}>
+                  {communityForm.amenities.length === AMENITIES.length ? (lang === 'zh' ? '取消全选' : 'Deselect All') : (lang === 'zh' ? '全选' : 'Select All')}
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {AMENITIES.map(a => {
                   const checked = communityForm.amenities.includes(a.key);
@@ -2123,7 +2135,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         border: checked ? 'none' : '1.5px solid var(--glass-border)',
                         color: 'white', fontSize: '0.65rem', fontWeight: 700,
                       }}>{checked ? '✓' : ''}</span>
-                      {lang === 'zh' ? a.labelZh : a.label}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {a.icon}
+                        {lang === 'zh' ? a.labelZh : a.label}
+                      </span>
                     </label>
                   );
                 })}

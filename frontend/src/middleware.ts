@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/') ||
+    pathname.startsWith('/calculator') ||
     pathname.startsWith('/mobile-upload/') ||
     pathname.startsWith('/mobile-upload-property/') ||
     pathname.startsWith('/_next') ||
