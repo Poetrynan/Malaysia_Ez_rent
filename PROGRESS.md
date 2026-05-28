@@ -63,6 +63,7 @@ Malaysia_Ez_rent/
 ├── docs/              # 项目文档
 │   ├── FAQ.md                     # 常见问题答疑（Supabase Auth、手机上传、Logo 部署、Memory vs Storage、账户注销、中介注册）
 │   ├── ai-architecture.md         # AI Agent 架构与后续开发指南
+│   ├── 前后端解释.md               # 前端与后端协作原理详解（Supabase SDK、RLS、HTTP 请求流程）
 │   └── deployment-guide.md        # 部署指南
 │
 └── supabase/          # 数据库 Schema（PostgreSQL + pgvector）
