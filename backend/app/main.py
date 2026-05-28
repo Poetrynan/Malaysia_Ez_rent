@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.agent import agent_stream_router
 from app.config import Config
 import uvicorn
+import jwt
 
 app = FastAPI(
     title="Malaysia Ez Rent AI Agent Service",
@@ -15,15 +16,41 @@ app = FastAPI(
 # Configure CORS for Next.js integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict to Next.js host domain in production
+    allow_origins=[Config.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+def verify_supabase_token(request: Request) -> str:
+    """Extract and verify Supabase JWT from Authorization header. Returns user_id."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+
+    token = auth_header[7:]
+    if not Config.SUPABASE_JWT_SECRET:
+        # Fallback: decode without verification (dev/mock only)
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            return payload.get("sub", "")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        payload = jwt.decode(token, Config.SUPABASE_JWT_SECRET, algorithms=["HS256"])
+        user_id = payload.get("sub", "")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Token missing user ID")
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 class ChatRequest(BaseModel):
     query: str
-    user_id: str = "tenant-123"  # Fallback standard mock user id
 
 @app.on_event("startup")
 def startup_event():
@@ -47,7 +74,7 @@ def get_config_status():
     }
 
 @app.post("/api/embeddings/sync")
-def sync_embeddings():
+def sync_embeddings(user_id: str = Depends(verify_supabase_token)):
     """
     Direct endpoint to trigger immediate generation of embeddings for units missing them.
     """
@@ -63,16 +90,16 @@ def sync_embeddings():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
-async def chat_post(request: ChatRequest):
+async def chat_post(body: ChatRequest, user_id: str = Depends(verify_supabase_token)):
     """
     POST route to trigger the streaming ReAct loop.
     Returns standard Event-Stream (SSE).
     """
-    if not request.query.strip():
+    if not body.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
-        
+
     return StreamingResponse(
-        agent_stream_router(request.query, request.user_id),
+        agent_stream_router(body.query, user_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -84,7 +111,7 @@ async def chat_post(request: ChatRequest):
 @app.get("/api/chat")
 async def chat_get(
     query: str = Query(..., description="User question or preferences"),
-    user_id: str = Query("tenant-123", description="Associated user ID")
+    user_id: str = Depends(verify_supabase_token),
 ):
     """
     GET route to trigger the streaming ReAct loop.
@@ -92,7 +119,7 @@ async def chat_get(
     """
     if not query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
-        
+
     return StreamingResponse(
         agent_stream_router(query, user_id),
         media_type="text/event-stream",

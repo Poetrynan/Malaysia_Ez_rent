@@ -42,6 +42,10 @@ class Config:
     
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
+    # Auth
+    SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://malaysia-ez-rent.vercel.app")
     
     # Mode selectors
     @classmethod

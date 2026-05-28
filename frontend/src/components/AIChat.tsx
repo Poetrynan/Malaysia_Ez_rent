@@ -156,8 +156,19 @@ export default function AIChat() {
     if (backendStatus === 'online') {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
+        // Get auth token from Supabase session
+        let authToken = '';
+        try {
+          const { supabase, isMockDatabase } = await import('@/lib/supabase');
+          if (!isMockDatabase) {
+            const { data: { session } } = await supabase.auth.getSession();
+            authToken = session?.access_token || '';
+          }
+        } catch {}
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         const res = await fetch(`${apiUrl}/api/chat`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers,
           body: JSON.stringify({ query: userText, user_id: activeUserId })
         });
         if (!res.body) throw new Error('no body');

@@ -11,7 +11,10 @@
       "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css?v=1779380918846\")",
       "Bash(taskkill //F //PID 42792)",
       "Bash(taskkill //F //PID 15636)",
-      "Bash(mkdir -p \"c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/mobile-upload/[id]\")"
+      "Bash(mkdir -p \"c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/mobile-upload/[id]\")",
+      "Bash(git log *)",
+      "Bash(git ls-files *)",
+      "Bash(git show *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Administrator\\Desktop\\Malaysia_Ez_rent\\frontend\\src\\app\\mobile-upload"
