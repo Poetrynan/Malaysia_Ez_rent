@@ -1252,7 +1252,39 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 **AdminPanel 改动：**
 - `users` 查询移除不存在的 `email` 字段
-- 新增日志：当 `users` 查询返回空或部分缺失时，在 console 输出缺失的 user_id 列表
+- 新增日志：当 `users` 查询返回空或部分缺失时，在 console 输出缺失 of user_id 列表
 - 名称 fallback：`u?.full_name || u?.email || uuid.slice(0,8)` → `u?.full_name || "未找到用户 (xxx)"`，明确标识数据缺失
 
 **执行方式：** 在 Supabase Dashboard → SQL Editor 中执行 `025_fix_missing_public_users.sql`，或通过 CLI `supabase db push`
+
+---
+
+## 三十六、历史工单关联补丁与未读提醒数优化（2026-05-29）
+
+**目标：** 解决历史工单房源和姓名丢失问题，并重构学生端未读工单的红圈数字提醒机制。
+
+**问题：**
+- **历史房间信息丢失**：系统加载房源时只查询 `status = 'active'`（活跃）的租约。一旦租客到期、退租或发生转租，其工单对应的租约变为非活跃，导致在管理端和学生端显示房间号为空白。
+- **学生端全局租约覆盖**：学生端原渲染逻辑全局使用统一的当前活跃房源，导致退租学生历史工单全白，或换房学生历史工单显示错误的房源。
+- **姓名显示为 UUID**：如果数据库触发器 `handle_new_auth_user` 缺失或创建滞后，租客注册时在 `public.users` 中没有自动建行，导致联查名字失败，退回 UUID。
+- **未读提醒机制局限**：
+  - 侧边栏导航未渲染通知角标：学生侧边栏“维修与反馈”Tab上根本没有消息角标。
+  - 折叠按钮只有纯红点：折叠按钮上的提醒硬编码为 7x7px 纯红点，不带数字。
+  - 异步状态 Bug：计算未读消息时，误读了未完成异步更新的 `myFeedbacks` 空状态数组，导致红圈/红点在页面初次挂载时永远无法被点亮。
+
+**AdminPanel 改动：**
+- 重构了 `fetchFeedbacks` 函数，提取所有工单中记录的 `lease_id`，并**直接按 ID 查询历史租约**（不再过滤 `status = 'active'`），以确保即便租约已失效或已转租，依然能准确查到当时对应的房源。
+- 增加以“租客活跃租约”作为第一层回退；并增加第二层回退：直接读取租客个人资料中的 `unit_number`（房间号）字段。
+
+**StudentPortal 改动：**
+- 增加 `onUnreadFeedbackCountChange` 回调函数，同步未读数量给外层侧边栏。
+- 重构 `loadMyFeedbacks` 的未读计算，使用当前最新获取的数据，彻底避免 React 异步更新 stale state Bug。
+- 在 `myFeedbacks` 的状态类型定义中补全了 `unit_info?: string` 字段，更新折叠页提醒为包裹数字的精美通知角标（`feedbackUnreadCount > 0`）。
+- 将列表渲染从全局租约变量改为每条工单中独立的 `f.unit_info`。
+
+**page.tsx 改动：**
+- 在学生端“维修与反馈”侧边栏菜单挂载了精美红色数字角标，并在学生点击进入该 Tab 时自动消除未读提醒。
+
+**执行方式：**
+- Supabase SQL Editor 中执行 `025_fix_missing_public_users.sql`，重建 `handle_new_auth_user` 触发器并补全缺失的历史用户行。
+

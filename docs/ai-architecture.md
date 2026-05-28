@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-27 (UTC+8)
+Last updated: 2026-05-29 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -58,7 +58,7 @@ Malaysia_Ez_rent/
 ### Core
 
 - `frontend/src/app/page.tsx`
-  - Main app shell with sidebar tabs. Displays dynamic red notification badges on admin tabs by listening to `onPendingCountsChange` from `AdminPanel`.
+  - Main app shell with sidebar tabs. Displays dynamic red notification badges on admin tabs by listening to `onPendingCountsChange` from `AdminPanel`. Displays unread feedback count badges on the student's sidebar navigation by listening to `onUnreadFeedbackCountChange` from `StudentPortal`.
   - Determines `role` (`student` or `admin`) by checking `admin_users`.
   - Mounts all views, toggles visibility for smoother UI state.
   - **Integrates the new top-level Maintenance & Feedback tab (`maintenance`) with a unified Wrench icon.**
@@ -73,7 +73,7 @@ Malaysia_Ez_rent/
 - `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **`loadListings()` / `loadAdmins()`** with error UI, retry, and reload on `SIGNED_IN` / `INITIAL_SESSION`. Listing cards show **`getListingAgentLabel()`** (e.g. `中介：name`) so duplicate rows are distinguishable. Student unit detail shows **「所属中介：」** + agent card (no redundant “contact admin” CTA). **Agent profile modal**: strict `getUnitsForAgent(agentId, units)` (`agent_id` match only, typed `UnitWithCommunity[]`); WhatsApp/WeChat icons with **「暂无」** when empty; rent filter inputs use `agentPriceInputStyle`. Enquiry form shows `currentEnquiryUnit.community?.name` (requires joined community on agent units). **Active lease integration**: queries `leases` table for the authenticated user (`myLeasedUnitIds`), hiding the "我要租" button for their active leased rooms, displaying "您已承租此房源" (You are currently renting this room), and strictly blocking new interest expressions or合租加入 if they already have an active lease contract. **Toast notification system**: replaces persistent drawer-level cancellation status banners with temporary, auto-clearing Toast alerts styled with a premium glassmorphic frosted glass design (`var(--glass-bg)`, `backdrop-filter: blur(16px)`, border-glow and custom colored shadows per type) across both student and admin views. **Cancel interest flow**: both co-renting (Whole Unit) and single renting rooms/studios expose exactly one cancel interest button (next to the main action for room/studio; inside the roommate list card for Whole Unit) and native alert/confirm popups are replaced with a state-driven glassmorphism Modal dialog. **WeChat Icon**: updated to standard 24x24 dual speech bubble SVG path to fix the half-missing visual bug. **Progress Bar**: unified `ProgressFlow` component with loop-extending line animation and pulsing glow dot, utilizing a mathematically uniform `flex: 1` layout (nodes at `12.5%`, `37.5%`, `62.5%`, `87.5%` center coordinates) and `marginLeft: -3px` half-width dot offset to guarantee perfect center alignment regardless of length or locale. **Lease Termination**: integrated state sync between units, leases, and tenant interests to ensure UI resets correctly after termination. clipping.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.**
-- `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator. Supports secure lease termination via the `tenant_terminate_lease` RPC (migration 018).**
+- `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator. Supports secure lease termination via the `tenant_terminate_lease` RPC (migration 018). Added `onUnreadFeedbackCountChange` callback to notify parent layout about unread work orders. The toggle button displays unread replies count wrapped in a red badge circle, resolving the stale React state calculation bug by evaluating newly-fetched arrays directly.**
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Payment copy: **bank transfer, WeChat, or Alipay** (no specific bank brand).
 
 ### Admin path
@@ -223,6 +223,8 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 22. `migrations/021_user_unit_number.sql`
 23. `migrations/022_agent_registrations.sql`
 24. `migrations/023_user_profile_extended.sql`
+25. `migrations/024_maintenance_conversation.sql`
+26. `migrations/025_fix_missing_public_users.sql`
 
 Notes:
 
@@ -243,6 +245,8 @@ Notes:
 - `021_user_unit_number.sql` adds `unit_number VARCHAR(50)` to `users` for room identification in feedback.
 - `022_agent_registrations.sql` creates `agent_registrations` table for self-service agent application with approval workflow. Includes `normalize_my_phone()` and `normalize_ren()` functions, CHECK constraints, RLS policies, and Storage policy for `ren-tags/` folder.
 - `023_user_profile_extended.sql` adds `passport_number`, `school`, `company`, `local_id_number`, `document_url` to `users` for extended tenant profiles.
+- `024_maintenance_conversation.sql` alters `maintenance_requests` to support structured `replies` JSONB array instead of a single string `admin_reply` field and drops `rating`.
+- `025_fix_missing_public_users.sql` rebuilds the `handle_new_auth_user` trigger and backfills missing records from `auth.users` to `public.users` to fix work order tenant names displaying as UUIDs.
 
 
 ## 7) Auth, Roles, and Access Model

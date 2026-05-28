@@ -167,7 +167,13 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
   );
 };
 
-export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'maintenance' | 'profile' }) {
+export default function StudentPortal({ 
+  mode = 'lease', 
+  onUnreadFeedbackCountChange 
+}: { 
+  mode?: 'lease' | 'maintenance' | 'profile'; 
+  onUnreadFeedbackCountChange?: (count: number) => void 
+}) {
   const { t, lang } = useApp();
   const [interest, setInterest] = useState<any | null>(null);
   const [interestUnit, setInterestUnit] = useState<Unit | null>(null);
@@ -200,7 +206,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   }[]>([]);
   const [studentReply, setStudentReply] = useState<Record<string, string>>({});
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(mode === 'maintenance');
-  const [feedbackHasNewReply, setFeedbackHasNewReply] = useState(false);
+  const [feedbackUnreadCount, setFeedbackUnreadCount] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
@@ -622,6 +628,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
   };
 
   const loadMyFeedbacks = async () => {
+    let listToCount: any[] = [];
     if (isMockDatabase) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
@@ -650,6 +657,7 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
         return { ...f, replies: f.replies || [], unit_info: unitInfo || undefined };
       });
       setMyFeedbacks(enriched);
+      listToCount = enriched;
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -722,20 +730,21 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             return { ...f, replies: replies || [], unit_info: unitInfo || undefined };
           });
           setMyFeedbacks(normalized);
+          listToCount = normalized;
         }
       } catch (e) { console.error('Load feedback error:', e); }
     }
     // Check for unseen agent replies
     const lastSeen = parseInt(localStorage.getItem('ez_feedback_last_seen') || '0', 10);
-    const feedbacksToCheck = isMockDatabase
-      ? JSON.parse(localStorage.getItem('ez_feedback') || '[]').filter((f: any) => f.user_id === (localStorage.getItem('ez_tenant_id') || 'tenant-123'))
-      : myFeedbacks;
-    const hasNew = feedbacksToCheck.some((f: any) => {
+    const unreadCount = (listToCount || []).filter((f: any) => {
       if (!f.replies || f.replies.length === 0) return false;
       const lastReply = f.replies[f.replies.length - 1];
       return lastReply.role === 'agent' && new Date(lastReply.at).getTime() > lastSeen;
-    });
-    setFeedbackHasNewReply(hasNew);
+    }).length;
+    setFeedbackUnreadCount(unreadCount);
+    if (onUnreadFeedbackCountChange) {
+      onUnreadFeedbackCountChange(unreadCount);
+    }
   };
 
   const submitFeedback = async () => {
@@ -1446,13 +1455,30 @@ export default function StudentPortal({ mode = 'lease' }: { mode?: 'lease' | 'ma
             if (opening) {
               loadMyFeedbacks();
               localStorage.setItem('ez_feedback_last_seen', Date.now().toString());
-              setFeedbackHasNewReply(false);
+              setFeedbackUnreadCount(0);
+              if (onUnreadFeedbackCountChange) onUnreadFeedbackCountChange(0);
             }
           }}
             style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
             <span>{t('feedbackMy')} ({myFeedbacks.length})</span>
-            {feedbackHasNewReply && (
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+            {feedbackUnreadCount > 0 && (
+              <span style={{ 
+                background: 'var(--danger)', 
+                color: 'white', 
+                fontSize: '0.6rem', 
+                fontWeight: 700, 
+                padding: '1px 5px', 
+                borderRadius: 'var(--radius-full)', 
+                lineHeight: '1', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                minWidth: 14, 
+                height: 14, 
+                marginLeft: 4 
+              }}>
+                {feedbackUnreadCount}
+              </span>
             )}
             {showMyFeedbacks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>

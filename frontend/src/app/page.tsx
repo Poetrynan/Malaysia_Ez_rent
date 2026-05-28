@@ -177,9 +177,16 @@ export default function Home() {
                   <span>{t('myProfile')}</span>
                   <span className="role-badge student">{t('roleTenantBadge')}</span>
                 </li>
-                <li onClick={() => setActiveTab('maintenance')} className={`nav-item ${activeTab === 'maintenance' ? 'active' : ''}`}>
+                <li onClick={() => { setActiveTab('maintenance'); setPendingCounts(prev => ({ ...prev, feedback: 0 })); }} className={`nav-item ${activeTab === 'maintenance' ? 'active' : ''}`}>
                   <Wrench size={16} />
-                  <span>{t('feedback')}</span>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {t('feedback')}
+                    {role === 'student' && pendingCounts.feedback > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                        {pendingCounts.feedback}
+                      </span>
+                    )}
+                  </span>
                   <span className="role-badge student">{t('roleTenantBadge')}</span>
                 </li>
               </>
@@ -374,13 +381,13 @@ export default function Home() {
             <AIChat />
           </div>
            <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
-            <StudentPortal mode="lease" />
+            <StudentPortal mode="lease" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'profile' ? 'block' : 'none' }}>
-            <StudentPortal mode="profile" />
+            <StudentPortal mode="profile" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
-            <StudentPortal mode="maintenance" />
+            <StudentPortal mode="maintenance" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
           </div>
           <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') ? 'block' : 'none' }}>
             <AdminPanel 
