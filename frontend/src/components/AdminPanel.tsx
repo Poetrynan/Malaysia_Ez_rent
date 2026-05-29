@@ -492,20 +492,87 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           (allUsers || []).forEach((u: any) => userMap.set(u.id, u));
         }
 
+        // Batch-load leases + units + communities for unit_info enrichment
+        const leaseByIdMap = new Map<string, any>();
+        const activeLeaseByTenantMap = new Map<string, any>();
+        const unitMap = new Map<string, any>();
+        const commMap = new Map<string, any>();
+
+        if (data.length > 0) {
+          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
+          let allLeases: any[] = [];
+
+          if (leaseIds.length > 0) {
+            const { data: explicitLeases, error: leaseErr } = await supabase
+              .from('leases')
+              .select('id, tenant_id, unit_id, status')
+              .in('id', leaseIds);
+            if (leaseErr) console.error('Fetch explicit leases error:', leaseErr);
+            if (explicitLeases) allLeases.push(...explicitLeases);
+          }
+
+          const existingLeaseIds = new Set(allLeases.map(l => l.id));
+          const { data: activeLeases, error: activeLeaseErr } = await supabase
+            .from('leases')
+            .select('id, tenant_id, unit_id, status')
+            .eq('status', 'active')
+            .in('tenant_id', userIds);
+          if (activeLeaseErr) console.error('Fetch active leases error:', activeLeaseErr);
+          if (activeLeases) {
+            activeLeases.forEach((al: any) => {
+              if (!existingLeaseIds.has(al.id)) allLeases.push(al);
+            });
+          }
+
+          allLeases.forEach((l: any) => {
+            leaseByIdMap.set(l.id, l);
+            if (l.status === 'active') activeLeaseByTenantMap.set(l.tenant_id, l);
+          });
+
+          const unitIds = [...new Set(allLeases.map((l: any) => l.unit_id).filter(Boolean))];
+          if (unitIds.length > 0) {
+            const { data: allUnits, error: unitErr } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
+            if (unitErr) console.error('Fetch units error:', unitErr);
+            (allUnits || []).forEach((u: any) => unitMap.set(u.id, u));
+
+            const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
+            if (commIds.length > 0) {
+              const { data: allComms, error: commErr } = await supabase.from('communities').select('id, name').in('id', commIds);
+              if (commErr) console.error('Fetch communities error:', commErr);
+              (allComms || []).forEach((c: any) => commMap.set(c.id, c));
+            }
+          }
+        }
+
         const enriched = data.map((f: any) => {
           const u = userMap.get(f.user_id);
-          // Fallback: if replies column doesn't exist yet (migration 024 not applied), convert admin_reply
           let replies = f.replies;
           if (!replies && f.admin_reply) {
             replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
           }
+
+          // Resolve unit_info from lease chain
+          const lease = leaseByIdMap.get(f.lease_id) || activeLeaseByTenantMap.get(f.user_id);
+          let unitInfo = '';
+          if (lease) {
+            const unit = unitMap.get(lease.unit_id);
+            if (unit) {
+              const comm = commMap.get(unit.community_id);
+              const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
+              if (parts.length) unitInfo = parts.join(' · ');
+            }
+          }
+          if (!unitInfo && u?.unit_number) {
+            unitInfo = u.unit_number;
+          }
+
           return {
             ...f,
             replies: replies || [],
             user_name: u?.full_name || `未找到用户 (${f.user_id?.slice(0, 8)})`,
             user_phone: u?.phone || '',
             unit_number: u?.unit_number || '',
-            unit_info: u?.unit_number || undefined,
+            unit_info: unitInfo || undefined,
           };
         });
 
