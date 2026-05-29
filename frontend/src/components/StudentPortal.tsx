@@ -647,7 +647,7 @@ export default function StudentPortal({
           const unit = unitsData.find((un: any) => un.id === lease.unit_id);
           if (unit) {
             const comm = communitiesData.find((c: any) => c.id === unit.community_id);
-            const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
+            const parts = [comm?.name, unit.room_type, u?.unit_number || unit.unit_number].filter(Boolean);
             if (parts.length) unitInfo = parts.join(' · ');
           }
         }
@@ -718,7 +718,7 @@ export default function StudentPortal({
               const unit = unitMap.get(lease.unit_id);
               if (unit) {
                 const comm = commMap.get(unit.community_id);
-                const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
+                const parts = [comm?.name, unit.room_type, u?.unit_number || unit.unit_number].filter(Boolean);
                 if (parts.length) unitInfo = parts.join(' · ');
               }
             }

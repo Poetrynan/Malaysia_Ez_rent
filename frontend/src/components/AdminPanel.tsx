@@ -480,7 +480,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           const unit = units.find((un: any) => un.id === lease.unit_id);
           if (unit) {
             const comm = communities.find((c: any) => c.id === unit.community_id);
-            const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
+            const parts = [comm?.name, unit.room_type, u?.unit_number || unit.unit_number].filter(Boolean);
             if (parts.length) unitInfo = parts.join(' · ');
           }
         }
@@ -590,7 +590,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             const unit = unitMap.get(lease.unit_id);
             if (unit) {
               const comm = commMap.get(unit.community_id);
-              const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
+              const parts = [comm?.name, unit.room_type, u?.unit_number || unit.unit_number].filter(Boolean);
               if (parts.length) unitInfo = parts.join(' · ');
             }
           }
