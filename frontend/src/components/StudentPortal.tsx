@@ -804,14 +804,29 @@ export default function StudentPortal({
           photo_url: photoUrl,
           status: 'pending'
         });
-        if (error) { console.error('Submit feedback error:', error); setFeedbackSubmitting(false); return; }
-      } catch (e) { console.error('Submit feedback error:', e); setFeedbackSubmitting(false); return; }
+        if (error) { 
+          console.error('Submit feedback error:', error); 
+          setFeedbackSubmitting(false); 
+          setToastMsg(lang === 'zh' ? '提交工单失败' : 'Failed to submit feedback');
+          setToastType('error');
+          setTimeout(() => setToastMsg(null), 2500);
+          return; 
+        }
+      } catch (e) { 
+        console.error('Submit feedback error:', e); 
+        setFeedbackSubmitting(false); 
+        setToastMsg(lang === 'zh' ? '提交工单失败' : 'Failed to submit feedback');
+        setToastType('error');
+        setTimeout(() => setToastMsg(null), 2500);
+        return; 
+      }
     }
     setFeedbackText('');
     setPhotoBase64(null);
     setFeedbackSubmitting(false);
-    setFeedbackSuccess(true);
-    setTimeout(() => setFeedbackSuccess(false), 3000);
+    setToastMsg(t('feedbackSuccess'));
+    setToastType('success');
+    setTimeout(() => setToastMsg(null), 2500);
     loadMyFeedbacks();
   };
 
@@ -1593,9 +1608,6 @@ export default function StudentPortal({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            {feedbackSuccess && (
-              <span style={{ fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>{t('feedbackSuccess')}</span>
-            )}
             <div style={{ flex: 1 }} />
             <button onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackText.trim() || !profileComplete}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: (feedbackText.trim() && profileComplete) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: (feedbackText.trim() && profileComplete) ? 'pointer' : 'not-allowed' }}>
