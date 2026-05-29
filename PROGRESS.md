@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-28 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知**
+> 最后更新：2026-05-29 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知** · **房源门牌号彻底移除与工单仅展示个人资料房号（026）**
 
 
 ---
@@ -353,6 +353,7 @@ Storage Bucket：
 | `023_user_profile_extended.sql` | **个人信息扩展**：`users` 表新增 `passport_number`、`school`、`company`、`local_id_number`、`document_url` 字段，支持外国人护照/本地人 IC 双轨填写 |
 | `024_maintenance_conversation.sql` | **工单对话线程**：`admin_reply` TEXT 改为 `replies` JSONB（支持最多 3 轮 Agent↔Student 对话），移除 `rating` 列 |
 | `025_fix_missing_public_users.sql` | **修复缺失用户行**：重建 `handle_new_auth_user` 触发器 + 补建所有缺失的 `public.users` 行（解决工单列表显示 UUID 问题） |
+| `026_remove_unit_number_column.sql` | **删除房源列表房号**：从 units 表中彻底 DROP 掉 unit_number 字段以防止中介恶意竞争，并重构前端工单/报修系统仅展示用户个人信息的房间号 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -396,6 +397,7 @@ supabase/migrations/
 └── 023_user_profile_extended.sql # 个人信息扩展（护照/IC/学校/公司/证件上传）
 └── 024_maintenance_conversation.sql # 工单对话线程（admin_reply TEXT → replies JSONB，移除 rating）
     └── 025_fix_missing_public_users.sql # 修复缺失用户行（重建触发器 + 补建 public.users）
+    └── 026_remove_unit_number_column.sql # 删除房源列表房号（彻底 DROP 掉 units.unit_number）
 ```
 
 迁移原则：

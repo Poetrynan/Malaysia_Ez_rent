@@ -264,7 +264,7 @@ export default function AIChat() {
 
       const lease = mockLeases.find((l: any) => l.tenant_id === userId && l.status === 'active') || mockLeases[0] || { id: 'l1-uuid', start_date: '2026-02-01', end_date: '2027-01-31', monthly_rent: 2500, unit_id: 'u1-uuid' };
       const payments = mockPayments.filter((p: any) => p.lease_id === lease.id);
-      const unit = mockUnits.find((u: any) => u.id === lease.unit_id) || { unit_number: 'Block B-12-08', community_id: 'c1-uuid' };
+      const unit = mockUnits.find((u: any) => u.id === lease.unit_id) || { community_id: 'c1-uuid' };
       const community = communities.find((c: any) => c.id === unit.community_id) || { name: 'Sunway Geo Residences' };
 
       setToolResult(0, { has_active_lease: true, lease, payments });

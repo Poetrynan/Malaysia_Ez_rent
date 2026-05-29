@@ -22,7 +22,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
+interface Unit { id: string; community_id: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
 interface Lease { id: string; unit_id: string; lease_group_id?: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; admin_notes?: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -122,7 +122,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [communitySearch, setCommunitySearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
-  const [unitForm, setUnitForm] = useState({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+  const [unitForm, setUnitForm] = useState({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [isCopyDraft, setIsCopyDraft] = useState(false);
   const [copySourceId, setCopySourceId] = useState('');
@@ -463,25 +463,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     if (!useLive) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
-      const leasesData = JSON.parse(localStorage.getItem('ez_leases') || '[]');
-      const unitsData = JSON.parse(localStorage.getItem('ez_units') || '[]');
-      const communitiesData = JSON.parse(localStorage.getItem('ez_communities') || '[]');
       const enriched = all.map((f: FeedbackItem) => {
         const u = users.find((u: any) => u.id === f.user_id);
-        const lease = leasesData.find((l: any) => l.id === f.lease_id) || leasesData.find((l: any) => l.tenant_id === f.user_id && l.status === 'active');
-        let unitInfo = '';
-        if (lease) {
-          const unit = unitsData.find((un: any) => un.id === lease.unit_id);
-          if (unit) {
-            const comm = communitiesData.find((c: any) => c.id === unit.community_id);
-            const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
-            unitInfo = parts.join(' · ');
-          }
-        }
-        if (!unitInfo && u?.unit_number) {
-          unitInfo = u.unit_number;
-        }
-        return { ...f, user_name: u?.full_name || u?.email || f.user_id.slice(0, 8), user_phone: u?.phone || '', unit_number: u?.unit_number || '', unit_info: unitInfo || undefined };
+        const unitInfo = u?.unit_number || '';
+        return {
+          ...f,
+          user_name: u?.full_name || u?.email || f.user_id.slice(0, 8),
+          user_phone: u?.phone || '',
+          unit_number: u?.unit_number || '',
+          unit_info: unitInfo || undefined
+        };
       });
       setFeedbacks(enriched);
     } else {
@@ -498,87 +489,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (userIds.length > 0) {
           const { data: allUsers, error: usersErr } = await supabase.from('users').select('id, full_name, phone, unit_number').in('id', userIds);
           if (usersErr) console.error('Fetch users error:', usersErr);
-          if (!allUsers || allUsers.length === 0) {
-            console.warn(`No users found for ${userIds.length} user_id(s). Check if handle_new_auth_user trigger exists in database.`);
-          } else {
-            const foundIds = new Set(allUsers.map((u: any) => u.id));
-            const missing = userIds.filter(id => !foundIds.has(id));
-            if (missing.length > 0) console.warn('Missing users (no public.users row):', missing);
-          }
           (allUsers || []).forEach((u: any) => userMap.set(u.id, u));
-        }
-
-        // Batch-load leases + units + communities (supporting historical leases via explicit lease_id)
-        const leaseByIdMap = new Map<string, any>();
-        const activeLeaseByTenantMap = new Map<string, any>();
-        const unitMap = new Map<string, any>();
-        const commMap = new Map<string, any>();
-        
-        if (data.length > 0) {
-          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
-          let allLeases: any[] = [];
-
-          if (leaseIds.length > 0) {
-            const { data: explicitLeases, error: leaseErr } = await supabase
-              .from('leases')
-              .select('id, tenant_id, unit_id, status')
-              .in('id', leaseIds);
-            if (leaseErr) console.error('Fetch explicit leases error:', leaseErr);
-            if (explicitLeases) allLeases.push(...explicitLeases);
-          }
-
-          const existingLeaseIds = new Set(allLeases.map(l => l.id));
-          const { data: activeLeases, error: activeLeaseErr } = await supabase
-            .from('leases')
-            .select('id, tenant_id, unit_id, status')
-            .eq('status', 'active')
-            .in('tenant_id', userIds);
-          if (activeLeaseErr) console.error('Fetch active leases error:', activeLeaseErr);
-          if (activeLeases) {
-            activeLeases.forEach((al: any) => {
-              if (!existingLeaseIds.has(al.id)) {
-                allLeases.push(al);
-              }
-            });
-          }
-
-          allLeases.forEach((l: any) => {
-            leaseByIdMap.set(l.id, l);
-            if (l.status === 'active') {
-              activeLeaseByTenantMap.set(l.tenant_id, l);
-            }
-          });
-
-          const unitIds = [...new Set(allLeases.map((l: any) => l.unit_id).filter(Boolean))];
-          if (unitIds.length > 0) {
-            const { data: allUnits, error: unitErr } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
-            if (unitErr) console.error('Fetch units error:', unitErr);
-            (allUnits || []).forEach((u: any) => unitMap.set(u.id, u));
-
-            const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
-            if (commIds.length > 0) {
-              const { data: allComms, error: commErr } = await supabase.from('communities').select('id, name').in('id', commIds);
-              if (commErr) console.error('Fetch communities error:', commErr);
-              (allComms || []).forEach((c: any) => commMap.set(c.id, c));
-            }
-          }
         }
 
         const enriched = data.map((f: any) => {
           const u = userMap.get(f.user_id);
-          const lease = leaseByIdMap.get(f.lease_id) || activeLeaseByTenantMap.get(f.user_id);
-          let unitInfo = '';
-          if (lease) {
-            const unit = unitMap.get(lease.unit_id);
-            if (unit) {
-              const comm = commMap.get(unit.community_id);
-              const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
-              if (parts.length) unitInfo = parts.join(' · ');
-            }
-          }
-          if (!unitInfo && u?.unit_number) {
-            unitInfo = u.unit_number;
-          }
           // Fallback: if replies column doesn't exist yet (migration 024 not applied), convert admin_reply
           let replies = f.replies;
           if (!replies && f.admin_reply) {
@@ -590,7 +505,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             user_name: u?.full_name || `未找到用户 (${f.user_id?.slice(0, 8)})`,
             user_phone: u?.phone || '',
             unit_number: u?.unit_number || '',
-            unit_info: unitInfo || undefined,
+            unit_info: u?.unit_number || undefined,
           };
         });
 
@@ -1019,7 +934,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           *,
           units (
             id,
-            unit_number,
             room_type,
             community_id,
             rent,
@@ -1055,7 +969,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         const unitData: Unit | undefined = nestedUnit ? {
           id: nestedUnit.id,
           community_id: nestedUnit.community_id,
-          unit_number: nestedUnit.unit_number,
           room_type: nestedUnit.room_type,
           rent: nestedUnit.rent,
           status: nestedUnit.status,
@@ -1285,7 +1198,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
     const unitPayload: any = { 
       community_id: unitForm.community_id, 
-      unit_number: unitForm.unit_number, 
       room_type: unitForm.room_type, 
       rent: nonNegativeNumber(unitForm.rent), 
       description: unitForm.description, 
@@ -1428,7 +1340,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       }
     }
 
-    setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+    setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
     setMediaImages([]); setMediaVideo(null); setEditingUnitId(null);
     setIsCopyDraft(false);
     setCopySourceId('');
@@ -1452,7 +1364,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setCopySourceId('');
     setUnitForm({
       community_id: u.community_id,
-      unit_number: u.unit_number || '',
       room_type: u.room_type,
       rent: String(u.rent),
       description: u.description || '',
@@ -1477,7 +1388,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setEditingUnitId(u.id);
     setUnitForm({
       community_id: u.community_id,
-      unit_number: u.unit_number || '',
       room_type: u.room_type,
       rent: String(u.rent),
       description: u.description || '',
@@ -2655,7 +2565,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   setEditingUnitId(null);
                   setIsCopyDraft(false);
                   setCopySourceId('');
-                  setUnitForm({ community_id: '', unit_number: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+                  setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
                   setMediaImages([]); setMediaVideo(null);
                 }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', color: 'var(--text-body)' }}>
                   {lang === 'zh' ? '取消编辑' : 'Cancel'}

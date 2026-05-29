@@ -18,7 +18,7 @@ interface Payment {
   id: string; lease_id: string; billing_month: string;
   paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string;
 }
-interface Unit { id: string; community_id: string; unit_number?: string | null; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
+interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
 interface Community { id: string; name: string; }
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
@@ -541,7 +541,7 @@ export default function StudentPortal({
               .select('*')
               .eq('lease_id', leaseData.id)
               .order('billing_month', { ascending: true }),
-            supabase.from('units').select('id, community_id, unit_number, room_type, agent_id, landlord_qr_code, landlord_bank_info').eq('id', leaseData.unit_id).single(),
+            supabase.from('units').select('id, community_id, room_type, agent_id, landlord_qr_code, landlord_bank_info').eq('id', leaseData.unit_id).single(),
           ]);
           setPayments(payRes.data || []);
           if (unitRes.data) {
@@ -641,19 +641,7 @@ export default function StudentPortal({
       const u = usersData.find((x: any) => x.id === tenantId);
 
       const enriched = myRaw.map((f: any) => {
-        const lease = leasesData.find((l: any) => l.id === f.lease_id) || leasesData.find((l: any) => l.tenant_id === f.user_id && l.status === 'active');
-        let unitInfo = '';
-        if (lease) {
-          const unit = unitsData.find((un: any) => un.id === lease.unit_id);
-          if (unit) {
-            const comm = communitiesData.find((c: any) => c.id === unit.community_id);
-            const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
-            unitInfo = parts.join(' · ');
-          }
-        }
-        if (!unitInfo && u?.unit_number) {
-          unitInfo = u.unit_number;
-        }
+        const unitInfo = u?.unit_number || '';
         return { ...f, replies: f.replies || [], unit_info: unitInfo || undefined };
       });
       setMyFeedbacks(enriched);
@@ -669,65 +657,13 @@ export default function StudentPortal({
           // Load user details
           const { data: u } = await supabase.from('users').select('unit_number').eq('id', user.id).maybeSingle();
 
-          // Fetch all unique lease IDs and also fetch active leases for user (fallback)
-          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
-          let allLeases: any[] = [];
-          if (leaseIds.length > 0) {
-            const { data: explicitLeases } = await supabase.from('leases').select('id, unit_id, status').in('id', leaseIds);
-            if (explicitLeases) allLeases.push(...explicitLeases);
-          }
-          const existingLeaseIds = new Set(allLeases.map(l => l.id));
-          const { data: activeLeases } = await supabase.from('leases').select('id, unit_id, status').eq('tenant_id', user.id).eq('status', 'active');
-          if (activeLeases) {
-            activeLeases.forEach(al => {
-              if (!existingLeaseIds.has(al.id)) allLeases.push(al);
-            });
-          }
-
-          const leaseByIdMap = new Map<string, any>();
-          let activeLease: any = null;
-          allLeases.forEach(l => {
-            leaseByIdMap.set(l.id, l);
-            if (l.status === 'active') activeLease = l;
-          });
-
-          // Fetch units & communities
-          const unitMap = new Map<string, any>();
-          const commMap = new Map<string, any>();
-          const unitIds = [...new Set(allLeases.map(l => l.unit_id).filter(Boolean))];
-          if (unitIds.length > 0) {
-            const { data: allUnits } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
-            if (allUnits) {
-              allUnits.forEach(un => unitMap.set(un.id, un));
-              const commIds = [...new Set(allUnits.map(un => un.community_id).filter(Boolean))];
-              if (commIds.length > 0) {
-                const { data: allComms } = await supabase.from('communities').select('id, name').in('id', commIds);
-                if (allComms) allComms.forEach(c => commMap.set(c.id, c));
-              }
-            }
-          }
-
           const normalized = data.map((f: any) => {
             let replies = f.replies;
             if (!replies && f.admin_reply) {
               replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
             }
 
-            const lease = leaseByIdMap.get(f.lease_id) || activeLease;
-            let unitInfo = '';
-            if (lease) {
-              const unit = unitMap.get(lease.unit_id);
-              if (unit) {
-                const comm = commMap.get(unit.community_id);
-                const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
-                if (parts.length) unitInfo = parts.join(' · ');
-              }
-            }
-            if (!unitInfo && u?.unit_number) {
-              unitInfo = u.unit_number;
-            }
-
-            return { ...f, replies: replies || [], unit_info: unitInfo || undefined };
+            return { ...f, replies: replies || [], unit_info: u?.unit_number || undefined };
           });
           setMyFeedbacks(normalized);
           listToCount = normalized;

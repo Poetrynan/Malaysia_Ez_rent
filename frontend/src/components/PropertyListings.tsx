@@ -27,7 +27,7 @@ import { useApp } from '@/lib/ThemeProvider';
 import { nonNegativeInputValue } from '@/lib/numberInput';
 
 interface Unit {
-  id: string; community_id: string; unit_number?: string | null;
+  id: string; community_id: string;
   room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[];
   video_url?: string | null;
   bedrooms?: number; bathrooms?: number;
