@@ -512,21 +512,26 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           }
 
           const existingLeaseIds = new Set(allLeases.map(l => l.id));
-          const { data: activeLeases, error: activeLeaseErr } = await supabase
+          // Fetch ALL leases for these tenants (not just active) to ensure fallback works
+          const { data: tenantLeases, error: tenantLeaseErr } = await supabase
             .from('leases')
             .select('id, tenant_id, unit_id, status')
-            .eq('status', 'active')
             .in('tenant_id', userIds);
-          if (activeLeaseErr) console.error('Fetch active leases error:', activeLeaseErr);
-          if (activeLeases) {
-            activeLeases.forEach((al: any) => {
+          if (tenantLeaseErr) console.error('Fetch tenant leases error:', tenantLeaseErr);
+          if (tenantLeases) {
+            tenantLeases.forEach((al: any) => {
               if (!existingLeaseIds.has(al.id)) allLeases.push(al);
             });
           }
 
           allLeases.forEach((l: any) => {
             leaseByIdMap.set(l.id, l);
-            if (l.status === 'active') activeLeaseByTenantMap.set(l.tenant_id, l);
+            // Prefer active lease, but keep any lease as fallback
+            if (l.status === 'active') {
+              activeLeaseByTenantMap.set(l.tenant_id, l);
+            } else if (!activeLeaseByTenantMap.has(l.tenant_id)) {
+              activeLeaseByTenantMap.set(l.tenant_id, l);
+            }
           });
 
           const unitIds = [...new Set(allLeases.map((l: any) => l.unit_id).filter(Boolean))];
@@ -544,6 +549,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           }
         }
 
+        console.log('[Maintenance Enrichment] leaseByIdMap:', [...leaseByIdMap.entries()]);
+        console.log('[Maintenance Enrichment] activeLeaseByTenantMap:', [...activeLeaseByTenantMap.entries()]);
+        console.log('[Maintenance Enrichment] unitMap:', [...unitMap.entries()]);
+        console.log('[Maintenance Enrichment] commMap:', [...commMap.entries()]);
+
         const enriched = data.map((f: any) => {
           const u = userMap.get(f.user_id);
           let replies = f.replies;
@@ -558,13 +568,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             const unit = unitMap.get(lease.unit_id);
             if (unit) {
               const comm = commMap.get(unit.community_id);
-              const parts = [comm?.name, unit.unit_number, unit.room_type].filter(Boolean);
+              const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
               if (parts.length) unitInfo = parts.join(' · ');
             }
           }
           if (!unitInfo && u?.unit_number) {
             unitInfo = u.unit_number;
           }
+
+          console.log(`[Maintenance Enrichment] feedback=${f.id?.slice(0,8)}, user=${f.user_id?.slice(0,8)}, lease_id=${f.lease_id}, foundLease=${!!lease}, unitInfo="${unitInfo}"`);
 
           return {
             ...f,
