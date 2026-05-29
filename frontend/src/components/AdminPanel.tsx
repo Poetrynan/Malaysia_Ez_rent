@@ -463,9 +463,31 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     if (!useLive) {
       const all = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
+      const communities = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+
       const enriched = all.map((f: FeedbackItem) => {
-        const u = users.find((u: any) => u.id === f.user_id);
-        const unitInfo = u?.unit_number || '';
+        const u = users.find((x: any) => x.id === f.user_id);
+        
+        // Find lease by lease_id first, then fallback to active lease by user_id, then fallback to any lease by user_id
+        const lease = leases.find((l: any) => l.id === f.lease_id) || 
+                      leases.find((l: any) => l.tenant_id === f.user_id && l.status === 'active') ||
+                      leases.find((l: any) => l.tenant_id === f.user_id);
+                      
+        let unitInfo = '';
+        if (lease) {
+          const unit = units.find((un: any) => un.id === lease.unit_id);
+          if (unit) {
+            const comm = communities.find((c: any) => c.id === unit.community_id);
+            const parts = [comm?.name, unit.room_type, unit.unit_number].filter(Boolean);
+            if (parts.length) unitInfo = parts.join(' · ');
+          }
+        }
+        if (!unitInfo && u?.unit_number) {
+          unitInfo = u.unit_number;
+        }
+
         return {
           ...f,
           user_name: u?.full_name || u?.email || f.user_id.slice(0, 8),
