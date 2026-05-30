@@ -96,6 +96,7 @@ export default function RegisterAgentPage() {
     if (draft) {
       try {
         const d = JSON.parse(draft);
+        if (d.email) setUserEmail(d.email);
         if (d.fullName) setFullName(d.fullName);
         if (d.phone) setPhone(d.phone);
         if (d.whatsapp) setWhatsapp(d.whatsapp);
@@ -189,6 +190,7 @@ export default function RegisterAgentPage() {
   const handleSubmit = async () => {
     setError('');
 
+    if (!userEmail.trim() || !userEmail.includes('@')) { setError(lang === 'zh' ? '请填写有效的邮箱地址' : 'Please enter a valid email address'); return; }
     if (!fullName.trim()) { setError(lang === 'zh' ? '请填写姓名' : 'Please enter your name'); return; }
     if (!phone.trim()) { setError(lang === 'zh' ? '请填写手机号' : 'Please enter your phone number'); return; }
     if (!agencyName.trim()) { setError(lang === 'zh' ? '请填写公司名称' : 'Please enter your agency name'); return; }
@@ -207,6 +209,7 @@ export default function RegisterAgentPage() {
     // If not logged in, save form data and redirect to login
     if (!userId) {
       localStorage.setItem('ez_agent_draft', JSON.stringify({
+        email: userEmail.trim(),
         fullName: fullName.trim(),
         phone: normalizedPhone,
         whatsapp: normalizedWhatsapp,
@@ -442,19 +445,19 @@ export default function RegisterAgentPage() {
               </div>
             )}
 
-            {/* Email (read-only from auth) */}
-            {userEmail && (
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                  {lang === 'zh' ? '登录邮箱' : 'Login Email'}
-                </label>
-                <input type="email" className="form-input" value={userEmail} readOnly
-                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'not-allowed' }} />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                  {lang === 'zh' ? '此邮箱为登录账号，审核通过后将用于登录中介管理后台' : 'This is your login email. After approval, use it to access the agent portal.'}
-                </span>
-              </div>
-            )}
+            {/* Email */}
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                {lang === 'zh' ? '谷歌邮箱' : 'Google Email'} <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <input type="email" className="form-input" value={userEmail}
+                onChange={e => setUserEmail(e.target.value)}
+                placeholder={lang === 'zh' ? 'yourname@gmail.com' : 'yourname@gmail.com'}
+                style={{ width: '100%', boxSizing: 'border-box' }} />
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                {lang === 'zh' ? '审核通过后，此邮箱将用于登录中介管理后台' : 'After approval, this email will be used to access the agent portal.'}
+              </span>
+            </div>
 
             {/* Full Name */}
             <div>

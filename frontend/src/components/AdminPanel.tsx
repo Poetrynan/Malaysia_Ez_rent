@@ -235,14 +235,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const fetchAgentRegistrations = async () => {
     if (!isLive) {
       const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      console.log('[Agent Regs] Mock mode:', regs.length, 'registrations');
       setAgentRegistrations(regs);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { data } = await supabase.from('agent_registrations').select('*').order('created_at', { ascending: false });
-        if (data) setAgentRegistrations(data);
-      } catch (e) { console.error('Fetch agent registrations error:', e); }
+        const { data, error } = await supabase.from('agent_registrations').select('*').order('created_at', { ascending: false });
+        if (error) {
+          console.error('[Agent Regs] Supabase error:', error.message, error.code, error.details);
+          setAgentRegistrations([]);
+        } else {
+          console.log('[Agent Regs] Live mode:', data?.length || 0, 'registrations', data);
+          setAgentRegistrations(data || []);
+        }
+      } catch (e) { console.error('[Agent Regs] Fetch error:', e); }
     }
   };
 
