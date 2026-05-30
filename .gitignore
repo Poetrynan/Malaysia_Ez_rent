@@ -21,3 +21,7 @@ frontend/.env.local
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Third-party skills (not our code)
+.ui-ux-pro-max/
+.claude/skills/

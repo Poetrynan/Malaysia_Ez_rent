@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3 } from 'lucide-react';
+import Dashboard from './Dashboard';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -74,9 +75,9 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
   const { t, lang } = useApp();
-  const [tab, setTab] = useState<'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('properties');
+  const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger' | 'settle'>('interests');
 
@@ -409,6 +410,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const visibleUnits = adminRole === 'super_admin'
     ? units
     : units.filter(u => u.agent_id === currentUserId || !u.agent_id);
+  const visibleUnitIds = useMemo(() => visibleUnits.map(u => u.id), [visibleUnits]);
 
   /** Only own listings for editors; super admin may copy from any visible listing. */
   const copyableUnits = useMemo(() => {
@@ -433,6 +435,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       return aVal - bVal;
     });
   }, [leases, adminRole, currentUserId]);
+  const visibleLeaseIds = useMemo(() => visibleLeases.map(l => l.id), [visibleLeases]);
 
   const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
 
@@ -2167,6 +2170,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       {!hideTabBar && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', width: '100%' }}>
           <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
+            <button style={tabStyle(tab === 'dashboard')} onClick={() => setTab('dashboard')}>
+              <BarChart3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '看板' : 'Dashboard'}
+            </button>
             <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
               <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
             </button>
@@ -2242,6 +2248,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             )}
           </div>
         </div>
+      )}
+
+      {/* ── DASHBOARD TAB ── */}
+      {tab === 'dashboard' && (
+        <Dashboard
+          units={units}
+          leases={leases}
+          interests={interests}
+          feedbacks={feedbacks}
+          communities={communities}
+          visibleUnitIds={visibleUnitIds}
+          visibleLeaseIds={visibleLeaseIds}
+        />
       )}
 
       {/* ── PROPERTIES TAB ── */}
