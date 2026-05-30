@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3 } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -22,7 +22,7 @@ export default function Home() {
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
     localStorage.setItem('ez_user_role', newRole);
-    setActiveTab(newRole === 'admin' ? 'admin-properties' : 'listings');
+    setActiveTab(newRole === 'admin' ? 'admin-dashboard' : 'listings');
   };
 
   // Auth guard: redirect to /login if not logged in
@@ -193,6 +193,10 @@ export default function Home() {
             )}
             {role === 'admin' && (
               <>
+                <li onClick={() => setActiveTab('admin-dashboard')} className={`nav-item ${activeTab === 'admin-dashboard' ? 'active' : ''}`}>
+                  <BarChart3 size={16} />
+                  <span>{lang === 'zh' ? '数据看板' : 'Dashboard'}</span>
+                </li>
                 <li onClick={() => setActiveTab('admin-properties')} className={`nav-item ${activeTab === 'admin-properties' ? 'active' : ''}`}>
                   <Building2 size={16} />
                   <span>{lang === 'zh' ? '房源管理' : 'Properties'}</span>
@@ -393,6 +397,7 @@ export default function Home() {
             <AdminPanel 
               adminRole={adminRole} 
               defaultTab={
+                activeTab === 'admin-dashboard' ? 'dashboard' :
                 activeTab === 'admin-properties' ? 'properties' :
                 activeTab === 'admin-leases' ? 'leases' :
                 activeTab === 'admin-payment' ? 'payment' :
@@ -400,7 +405,7 @@ export default function Home() {
                 activeTab === 'admin-feedback' ? 'feedback' :
                 activeTab === 'admin-agent-reviews' ? 'agent-reviews' :
                 activeTab === 'admin-profile' ? 'profile' :
-                'properties'
+                'dashboard'
               }
               hideTabBar={true}
               onPendingCountsChange={(leasesCount, feedbackCount) => setPendingCounts({ leases: leasesCount, feedback: feedbackCount })}
