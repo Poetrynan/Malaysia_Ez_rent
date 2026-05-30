@@ -1467,5 +1467,87 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 ### 依赖
 
-- `recharts` 3.8.1（React 图表库）
+- ~~`recharts` 3.8.1~~（已移除，改用纯 CSS 图表）
+
+---
+
+## 四十、登录页角色选择器重设计（2026-05-30）
+
+**目标：** 使用 ui-ux-pro-max skill 重写登录页，让中介注册入口更醒目。
+
+### 改动
+
+- 新增角色选择器（我是学生 / 我是中介）作为第一步
+- 学生和中介各有独立登录页面
+- 中介页面底部有醒目的"申请成为中介"按钮（虚线边框 + 填充色）
+- 所有 emoji 替换为 Lucide SVG 图标
+- 输入框添加 `<label>` 标签（skill 规则：禁止 placeholder-only）
+- 所有按钮添加 hover 过渡效果（0.2s ease）
+- focus 状态添加蓝色光晕（box-shadow: 0 0 0 3px）
+- Mock modal 角色选择也改用 Lucide 图标
+
+### 设计系统来源
+
+```
+python .claude/skills/ui-ux-pro-max/scripts/search.py \
+  "login page authentication SaaS professional trust" \
+  --design-system -p "Malaysia Ez Rent Login"
+```
+
+---
+
+## 四十一、中介注册流程全面修复（2026-05-30）
+
+**目标：** 修复中介注册→审核→登录全流程的问题。
+
+### 问题与修复
+
+| 问题 | 修复 |
+|------|------|
+| 注册表单没有邮箱字段 | 表单顶部显示当前登录邮箱（只读），提示"审核通过后用此邮箱登录中介管理后台" |
+| 超级管理员看不到注册记录 | 检查 RLS 策略 + 确保 mock 模式按用户过滤 |
+| 审批后注册记录和图片残留 | 审批后自动：1) 创建 admin_users 记录 2) 删除 Storage REN 图片 3) 删除 agent_registrations 记录 |
+| REN 执照图片未压缩 | 新增 `REN_TAG_PRESET`（1200×800, quality 0.88），替换 `EVIDENCE_IMAGE_PRESET` |
+| 管理员列表只显示邮箱电话 | 新增显示公司名称 + REN 编号 |
+| "管理后台"用词不准确 | 全部改为"中介管理后台" |
+| "学生界面"用词不准确 | 全部改为"租客界面" |
+| REN 编号读写逻辑 | 通过审核的 → 只读；超级管理员手动添加的 → 可编辑 |
+| 所有人登录都显示申请状态 banner | Mock 模式按 `auth_user_id` 过滤；Live 模式已有 `.eq('auth_user_id', user.id)` |
+
+### 数据库迁移
+
+`027_agent_registration_cleanup.sql`：
+- `admin_users` 新增 `ren_number` + `ren_tag_url` 字段
+- 新增 DELETE 策略：admins 可删除 `agent_registrations` 记录
+- 新增 Storage DELETE 策略：admins 可删除 `ren-tags/` 图片
+
+### 审批后流程
+
+```
+中介提交注册 → REN 图片压缩后上传到 Storage ren-tags/
+    ↓
+超级管理员审核 → 点击"批准"
+    ↓
+自动执行：
+  1. 创建 admin_users 记录（含 ren_number + ren_tag_url）
+  2. 删除 Storage 中的 REN 图片
+  3. 删除 agent_registrations 记录
+    ↓
+中介重新登录 → 自动进入中介管理后台 → REN 编号已填入（只读）
+```
+
+---
+
+## 四十二、Dashboard 改用纯 CSS 图表（2026-05-30）
+
+**目标：** 移除 recharts 依赖，用纯 CSS 实现图表，解决 React error #185。
+
+### 改动
+
+- 移除 `recharts` 依赖（-727 行）
+- 柱状图：CSS flex + height% + 渐变色
+- 饼图/环形图：CSS `conic-gradient`
+- 进度条：CSS width% + transition
+- 图例：纯 HTML
+- Dashboard 组件从 542 行精简到 230 行
 

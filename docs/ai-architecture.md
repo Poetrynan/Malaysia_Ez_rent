@@ -131,8 +131,9 @@ Malaysia_Ez_rent/
 - Key metrics: occupancy rate, active leases, collection rate, overdue count, monthly revenue trend, room type distribution, community distribution, interest funnel, maintenance stats.
 - Time range filter: 1M / 6M / 1Y / custom date range — all charts and KPIs update reactively.
 - Role-based data filtering via `visibleUnitIds` / `visibleLeaseIds` (editors see only own data).
-- Charts powered by **recharts** (BarChart, PieChart) with custom tooltips and gradient progress bars.
+- Charts implemented in **pure CSS** (no chart library): bar charts via flex+height%, donut via conic-gradient, progress bars via width%+transition.
 - Design system generated via `ui-ux-pro-max` skill: Data-Dense Dashboard style, Lucide icons (no emojis), semantic color tokens, tabular-nums for data, cubic-bezier animations.
+- Zero external chart dependencies — recharts was removed due to React error #185 (Cell component deprecated in recharts 3.x).
 
 ## 4) Backend AI Architecture
 
@@ -503,4 +504,41 @@ User: "从公司到um要多久"
   → LLM: natural language response + MapAndCard UI component
   → Frontend: auto-renders route map
 ```
+
+## 15) Login & Agent Registration Flow
+
+### Login Page (`login/page.tsx`)
+
+- Role-based entry: user chooses "I'm a Student" or "I'm an Agent" first.
+- Both paths lead to the same auth flow (Google OAuth / Magic Link).
+- Agent page has prominent "Apply as Agent" button at bottom.
+- In-app browser detection (WeChat/QQ/Feishu) shows warning to open in external browser.
+- Design: ui-ux-pro-max skill — Trust & Authority style, Plus Jakarta Sans typography, Lucide icons, no emojis.
+
+### Agent Registration (`register-agent/page.tsx`)
+
+- Form fields: email (read-only from auth), name, phone, WhatsApp, agency name, REN number, REN tag image.
+- REN tag image compressed with `REN_TAG_PRESET` (1200×800, JPEG 88%) before upload to Storage `ren-tags/`.
+- Draft saving: if not logged in, form data saved to localStorage; restored on return.
+- Duplicate check: queries `agent_registrations` on mount; shows existing status if already submitted.
+
+### Approval Flow (`AdminPanel.tsx`)
+
+- Super admin reviews in "Agent Registrations" tab.
+- On approve: 1) Insert into `admin_users` (with `ren_number`, `ren_tag_url`), 2) Delete REN image from Storage, 3) Delete registration record.
+- On reject: update status + rejection reason (record kept for audit).
+- After approval: agent re-logs in → auto-enters agent portal → REN number pre-filled (read-only).
+
+### Role Determination (`page.tsx`)
+
+- On mount: query `admin_users` by `auth.uid()`. If found → admin; else → tenant.
+- If tenant: additionally query `agent_registrations` for this user → show status banner (pending/approved/rejected) only if a record exists.
+- Banner shows in main content area (not just sidebar) with prominent styling.
+- Mock mode: filters `agent_registrations` by `auth_user_id` to prevent cross-user data leakage.
+
+### Database (`027_agent_registration_cleanup.sql`)
+
+- `admin_users` gains `ren_number VARCHAR(20)` and `ren_tag_url TEXT` columns.
+- DELETE policy on `agent_registrations` for admins.
+- Storage DELETE policy on `ren-tags/` for authenticated users (admins).
 
