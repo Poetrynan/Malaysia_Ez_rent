@@ -7,7 +7,7 @@ import { supabase, isMockDatabase } from '@/lib/supabase';
 import { compressImageFile, REN_TAG_PRESET } from '@/utils/compressImage';
 
 export default function RegisterAgentPage() {
-  const { t, lang, setLang, theme, toggleTheme } = useApp();
+  const { lang, setLang, theme, toggleTheme } = useApp();
 
   const [authChecked, setAuthChecked] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function RegisterAgentPage() {
               setRealtimeBanner({
                 type: 'approved',
                 message: lang === 'zh'
-                  ? '恭喜！您的中介申请已通过审核，请重新登录以访问管理后台。'
+                  ? '恭喜！您的中介申请已通过审核，请重新登录以访问中介管理后台。'
                   : 'Congratulations! Your agent application has been approved. Please log in again to access the admin panel.',
               });
               // Save notification to localStorage for sidebar dot
@@ -388,7 +388,7 @@ export default function RegisterAgentPage() {
                   {lang === 'zh' ? '已通过审核' : 'Approved'}
                 </h3>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {lang === 'zh' ? '恭喜！请重新登录以访问管理后台。' : 'Congratulations! Please log in again to access the admin panel.'}
+                  {lang === 'zh' ? '恭喜！请重新登录以访问中介管理后台。' : 'Congratulations! Please log in again to access the agent portal.'}
                 </p>
               </>
             )}

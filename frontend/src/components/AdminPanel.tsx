@@ -3840,9 +3840,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   />
                 </div>
 
-                {myProfile.ren_number && (
+                {myProfile.ren_number ? (
                   <div className="form-group">
-                    <label>{lang === 'zh' ? 'REN 编号（注册时填写）' : 'REN Number (from registration)'}</label>
+                    <label>{lang === 'zh' ? 'REN 编号' : 'REN Number'}</label>
                     <input
                       type="text"
                       className="form-input"
@@ -3851,10 +3851,25 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       style={{ background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'not-allowed' }}
                     />
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                      {lang === 'zh' ? '此编号由中介注册时填写，审核通过后自动填入，不可修改' : 'This REN number was set during registration and cannot be changed.'}
+                      {lang === 'zh' ? '此编号由中介注册审核通过后自动填入，不可修改' : 'Set during registration approval. Cannot be changed.'}
                     </span>
                   </div>
-                )}
+                ) : adminRole === 'super_admin' ? (
+                  <div className="form-group">
+                    <label>{lang === 'zh' ? 'REN 编号' : 'REN Number'}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={myProfile.ren_number}
+                      onChange={e => setMyProfile(prev => ({ ...prev, ren_number: e.target.value.toUpperCase() }))}
+                      placeholder="REN12345"
+                      style={{ textTransform: 'uppercase' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      {lang === 'zh' ? '由超级管理员手动添加的中介，可在此填写 REN 编号' : 'Manually added agents can set REN number here.'}
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               <div className="form-group" style={{ marginTop: 12 }}>

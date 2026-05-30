@@ -42,6 +42,12 @@ export default function Home() {
       setRole(finalRole);
       setActiveTab(finalRole === 'admin' ? 'admin-properties' : 'listings');
       setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
+      // Check agent registration status for THIS user only
+      if (finalRole === 'student') {
+        const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+        const myReg = regs.find((r: any) => r.auth_user_id === tenantId);
+        if (myReg) setAgentRegStatus(myReg.verification_status);
+      }
     } else {
       const checkSession = async () => {
         const { createClient } = await import('@/utils/supabase/client');
@@ -393,7 +399,7 @@ export default function Home() {
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                   {lang === 'zh'
-                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入中介管理后台。当前为学生界面。'
+                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入中介管理后台。当前为租客界面。'
                     : 'Your agent registration is being reviewed. After approval, please log in again to access the admin panel. You are currently viewing the student interface.'}
                 </div>
               </div>
