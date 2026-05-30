@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie } from 'recharts';
 import { Home, FileText, DollarSign, AlertTriangle, Wrench, TrendingUp, TrendingDown, Clock, Users, Building2, BarChart3 } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 
@@ -125,7 +125,7 @@ export default function Dashboard({
   const roomTypeData = useMemo(() => {
     const map: Record<string, number> = {};
     visibleUnits.forEach(u => { map[u.room_type] = (map[u.room_type] || 0) + 1; });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([name, value], i) => ({ name, value, fill: PIE_COLORS[i % PIE_COLORS.length] }));
   }, [visibleUnits]);
 
   // ---- Community Distribution ----
@@ -380,7 +380,7 @@ export default function Dashboard({
                     fontSize: '0.78rem',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                   }}
-                  cursor={{ fill: 'var(--primary-light)', radius: 4 }}
+                  cursor={{ fill: 'var(--primary-light)' }}
                   formatter={(value: any) => [`RM ${Number(value).toLocaleString()}`, '']}
                 />
                 <Bar dataKey="collected" name={lang === 'zh' ? '已收' : 'Collected'} fill={CHART_COLORS.success} radius={[4, 4, 0, 0]} />
@@ -404,11 +404,9 @@ export default function Dashboard({
           {roomTypeData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={roomTypeData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value"
-                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                <Pie data={roomTypeData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" nameKey="name"
                   labelLine={{ stroke: 'var(--text-muted)', strokeWidth: 1 }}
                   style={{ fontSize: '0.7rem', fill: 'var(--text-body)' }}>
-                  {roomTypeData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
                 <Tooltip
                   contentStyle={{
@@ -418,6 +416,7 @@ export default function Dashboard({
                     fontSize: '0.78rem',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                   }}
+                  formatter={(value: any, name: any) => [`${value}`, `${name}`]}
                 />
               </PieChart>
             </ResponsiveContainer>
