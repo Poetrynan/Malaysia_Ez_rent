@@ -153,48 +153,57 @@ export default function AIChat() {
     setMessages(p => [...p, { id: aid, role: 'assistant', content: '', thoughts: [], toolCalls: [] }]);
     const activeUserId = userId || localStorage.getItem('ez_tenant_id') || 'tenant-123';
 
-    if (backendStatus === 'online') {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
+      // Get auth token from Supabase session
+      let authToken = '';
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
-        // Get auth token from Supabase session
-        let authToken = '';
-        try {
-          const { supabase, isMockDatabase } = await import('@/lib/supabase');
-          if (!isMockDatabase) {
-            const { data: { session } } = await supabase.auth.getSession();
-            authToken = session?.access_token || '';
-          }
-        } catch {}
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-        const res = await fetch(`${apiUrl}/api/chat`, {
-          method: 'POST', headers,
-          body: JSON.stringify({ query: userText, user_id: activeUserId })
-        });
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        if (!res.body) throw new Error('no body');
-        const reader = res.body.getReader();
-        const dec = new TextDecoder();
-        let buf = '';
-        let done = false;
-        while (!done) {
-          const { value, done: d } = await reader.read();
-          done = d;
-          if (value) {
-            buf += dec.decode(value, { stream: !done });
-            const lines = buf.split('\n');
-            buf = lines.pop() || '';
-            for (const l of lines) {
-              if (l.startsWith('data: ')) {
-                try { updateMsg(aid, JSON.parse(l.slice(6))); } catch {}
-              }
+        const { supabase, isMockDatabase } = await import('@/lib/supabase');
+        if (!isMockDatabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          authToken = session?.access_token || '';
+        }
+      } catch {}
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      
+      const res = await fetch(`${apiUrl}/api/chat`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query: userText, user_id: activeUserId })
+      });
+      
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.body) throw new Error('no body');
+      
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      let done = false;
+      while (!done) {
+        const { value, done: d } = await reader.read();
+        done = d;
+        if (value) {
+          buf += dec.decode(value, { stream: !done });
+          const lines = buf.split('\n');
+          buf = lines.pop() || '';
+          for (const l of lines) {
+            if (l.startsWith('data: ')) {
+              try { updateMsg(aid, JSON.parse(l.slice(6))); } catch {}
             }
           }
         }
-        setIsGenerating(false);
-      } catch { simulateOffline(userText, aid); }
-    } else {
-      simulateOffline(userText, aid);
+      }
+    } catch (err: any) {
+      console.error('AIChat send message failed:', err);
+      setMessages(p => p.map(m => m.id === aid ? { 
+        ...m, 
+        content: lang === 'zh' 
+          ? '⚠️ 无法连接到 AI 助手服务，请检查网络或稍后再试。' 
+          : '⚠️ Unable to connect to the AI assistant service. Please check your network or try again later.' 
+      } : m));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -214,84 +223,7 @@ export default function AIChat() {
     }));
   };
 
-  const typewriter = async (id: string, text: string) => {
-    let cur = '';
-    for (const ch of text) {
-      cur += ch;
-      setMessages(p => p.map(m => m.id === id ? { ...m, content: cur } : m));
-      await new Promise(r => setTimeout(r, 14));
-    }
-  };
 
-  const simulateOffline = async (userText: string, msgId: string) => {
-    const lc = userText.toLowerCase();
-    const addThought = (s: string) => setMessages(p => p.map(m => m.id === msgId ? { ...m, thoughts: [...(m.thoughts||[]), s] } : m));
-    const addTool = (name: string, args: any) => setMessages(p => p.map(m => m.id === msgId ? { ...m, toolCalls: [...(m.toolCalls||[]), { name, args }] } : m));
-    const setToolResult = (idx: number, result: any) => setMessages(p => p.map(m => {
-      if (m.id !== msgId) return m;
-      const tc = [...(m.toolCalls||[])];
-      tc[idx] = { ...tc[idx], result };
-      return { ...m, toolCalls: tc };
-    }));
-
-    addThought('分析用户查询意图…（离线模拟器）');
-    await new Promise(r => setTimeout(r, 900));
-
-    const isLedger = 
-      lc.includes('rent') || 
-      lc.includes('payment') || 
-      lc.includes('lease') || 
-      lc.includes('账单') || 
-      lc.includes('台账') || 
-      lc.includes('交租') || 
-      lc.includes('租金') || 
-      lc.includes('缴费') || 
-      lc.includes('缴纳') || 
-      lc.includes('记录') || 
-      lc.includes('交钱') || 
-      lc.includes('房租') || 
-      lc.includes('付款') || 
-      lc.includes('支付') || 
-      lc.includes('历史');
-
-    if (isLedger) {
-      addThought('查询租约数据库（绕过 RLS）…');
-      addTool('check_rental_status', { user_id: userId });
-      await new Promise(r => setTimeout(r, 800));
-      const mockPayments = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_payments') || '[]') : [];
-      const mockLeases = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_leases') || '[]') : [];
-      const mockUnits = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_units') || '[]') : [];
-      const communities = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_communities') || '[]') : [];
-
-      const lease = mockLeases.find((l: any) => l.tenant_id === userId && l.status === 'active') || mockLeases[0] || { id: 'l1-uuid', start_date: '2026-02-01', end_date: '2027-01-31', monthly_rent: 2500, unit_id: 'u1-uuid' };
-      const payments = mockPayments.filter((p: any) => p.lease_id === lease.id);
-      const unit = mockUnits.find((u: any) => u.id === lease.unit_id) || { community_id: 'c1-uuid' };
-      const community = communities.find((c: any) => c.id === unit.community_id) || { name: 'Sunway Geo Residences' };
-
-      setToolResult(0, { has_active_lease: true, lease, payments });
-      await new Promise(r => setTimeout(r, 600));
-      await typewriter(msgId, `已查到您在 **${community.name} (${unit.room_type || 'Studio'})** 的租约台账，请查看下方月度账单。`);
-      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'LeaseLedgerCard', props: { community_name: community.name, room_type: unit.room_type || 'Studio', start_date: lease.start_date, end_date: lease.end_date, monthly_rent: lease.monthly_rent, payments } } } : m));
-    } else {
-      addThought('使用 pgvector 余弦相似度在数据库语义检索…');
-      addTool('search_internal_db', { semantic_query: userText });
-      await new Promise(r => setTimeout(r, 900));
-      const units = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_units') || '[]') : [];
-      const communities = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ez_communities') || '[]') : [];
-      const unit = units[0] || { id: 'u1-uuid', community_id: 'c1-uuid', room_type: 'Studio', rent: 2500, description: 'Sunway Geo 公寓 Studio，步行可达 Monash 大学。' };
-      const community = communities.find((c: any) => c.id === unit.community_id) || { name: 'Sunway Geo Residences', lat: 3.06341, lng: 101.60977 };
-      setToolResult(0, [unit]);
-      await new Promise(r => setTimeout(r, 700));
-      addThought('计算通勤路线…');
-      addTool('calculate_commute', { origin: community.name, university: 'Monash University' });
-      await new Promise(r => setTimeout(r, 700));
-      setToolResult(1, { distance: '1.2 km', walking: '10 mins', driving: '4 mins' });
-      await new Promise(r => setTimeout(r, 500));
-      await typewriter(msgId, `为您推荐 **${community.name}** 的 **${unit.room_type}**\n\n- **月租**：RM ${unit.rent}\n- **步行到校**：约 10 分钟\n- **开车到校**：约 4 分钟\n- **简介**：${unit.description}`);
-      setMessages(p => p.map(m => m.id === msgId ? { ...m, uiComponent: { component: 'MapAndCard', props: { origin_name: community.name, origin_lat: community.lat, origin_lng: community.lng, destination_name: 'Monash University', destination_lat: 3.0645, destination_lng: 101.6000, rent: unit.rent, room_type: unit.room_type, unit_id: unit.id } } } : m));
-    }
-    setIsGenerating(false);
-  };
 
   const prompts = [t('prompt1'), t('prompt2'), t('prompt3')];
 
@@ -340,7 +272,7 @@ export default function AIChat() {
                     <div>
                       {m.uiComponent.component === 'MapAndCard' && <MapAndCard {...m.uiComponent.props} />}
                       {m.uiComponent.component === 'LeaseLedgerCard' && (
-                        <LeaseLedgerCard {...m.uiComponent.props} onPaymentUpdated={() => simulateOffline('查看账单', m.id)} />
+                        <LeaseLedgerCard {...m.uiComponent.props} onPaymentUpdated={() => {}} />
                       )}
                     </div>
                   )}
