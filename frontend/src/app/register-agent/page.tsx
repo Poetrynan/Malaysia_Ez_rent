@@ -442,6 +442,20 @@ export default function RegisterAgentPage() {
               </div>
             )}
 
+            {/* Email (read-only from auth) */}
+            {userEmail && (
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                  {lang === 'zh' ? '登录邮箱' : 'Login Email'}
+                </label>
+                <input type="email" className="form-input" value={userEmail} readOnly
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'not-allowed' }} />
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                  {lang === 'zh' ? '此邮箱为登录账号，审核通过后将用于登录管理后台' : 'This is your login email. After approval, use it to access the admin panel.'}
+                </span>
+              </div>
+            )}
+
             {/* Full Name */}
             <div>
               <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>

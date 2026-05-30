@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3 } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -377,6 +377,78 @@ export default function Home() {
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="main-content">
+          {/* Agent Registration Status Banner — prominent in main content */}
+          {role === 'student' && agentRegStatus === 'pending' && (
+            <div style={{
+              margin: '12px 16px 0', padding: '14px 16px', borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))',
+              border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Building2 size={20} style={{ color: '#D97706' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 2 }}>
+                  {lang === 'zh' ? '中介申请审核中' : 'Agent Application Under Review'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {lang === 'zh'
+                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入管理后台。当前为学生界面。'
+                    : 'Your agent registration is being reviewed. After approval, please log in again to access the admin panel. You are currently viewing the student interface.'}
+                </div>
+              </div>
+              <a href="/register-agent" style={{
+                padding: '8px 16px', borderRadius: 8, background: 'rgba(245,158,11,0.15)',
+                border: '1px solid rgba(245,158,11,0.3)', color: '#D97706', fontSize: '0.78rem',
+                fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                {lang === 'zh' ? '查看详情' : 'View Details'}
+              </a>
+            </div>
+          )}
+          {role === 'student' && agentRegStatus === 'approved' && (
+            <div style={{
+              margin: '12px 16px 0', padding: '14px 16px', borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03))',
+              border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={20} style={{ color: '#059669' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 2 }}>
+                  {lang === 'zh' ? '中介申请已通过！' : 'Agent Application Approved!'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {lang === 'zh'
+                    ? '恭喜！您的中介申请已审核通过。请重新登录以进入管理后台。'
+                    : 'Congratulations! Your agent application has been approved. Please log in again to access the admin panel.'}
+                </div>
+              </div>
+            </div>
+          )}
+          {role === 'student' && agentRegStatus === 'rejected' && (
+            <div style={{
+              margin: '12px 16px 0', padding: '14px 16px', borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03))',
+              border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={20} style={{ color: '#DC2626' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 2 }}>
+                  {lang === 'zh' ? '中介申请未通过' : 'Agent Application Rejected'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {lang === 'zh'
+                    ? '很抱歉，您的中介申请未通过审核。如有疑问请联系管理员。'
+                    : 'Sorry, your agent application was not approved. Please contact admin for details.'}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Views — always mounted for stable DOM */}
           <div style={{ display: role === 'student' && activeTab === 'listings' ? 'block' : 'none' }}>
             <PropertyListings />
