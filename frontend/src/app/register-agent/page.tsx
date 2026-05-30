@@ -430,14 +430,6 @@ export default function RegisterAgentPage() {
         {/* Form */}
         {!alreadySubmitted && !success && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {!userId && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--info-light)', border: '1px solid var(--info)' }}>
-                <AlertCircle size={15} style={{ color: 'var(--info)', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>
-                  {lang === 'zh' ? '您可以先填写表单，提交时会要求您登录。' : 'You can fill in the form first. You will be asked to log in when submitting.'}
-                </span>
-              </div>
-            )}
             {error && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                 <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
