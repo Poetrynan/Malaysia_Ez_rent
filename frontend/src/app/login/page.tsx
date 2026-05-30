@@ -238,12 +238,11 @@ export default function LoginPage() {
             {/* Agent Card */}
             <button onClick={() => setRoleView('agent')} style={{
               ...secondaryBtnStyle, marginBottom: 16, padding: '16px', justifyContent: 'flex-start', gap: 14,
-              border: '1.5px solid var(--primary)', background: 'var(--primary-light)',
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; e.currentTarget.querySelector('div')!.style.background = 'rgba(255,255,255,0.2)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.color = 'var(--text-h)'; e.currentTarget.querySelector('div')!.style.background = 'var(--primary-light)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Building2 size={20} style={{ color: 'var(--primary)' }} />
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
@@ -254,7 +253,7 @@ export default function LoginPage() {
                   {lang === 'zh' ? '管理房源、租约、收租' : 'Manage listings, leases, payments'}
                 </div>
               </div>
-              <ArrowRight size={16} style={{ color: 'var(--primary)' }} />
+              <ArrowRight size={16} style={{ color: 'var(--text-muted)' }} />
             </button>
 
             {/* Quick links */}
