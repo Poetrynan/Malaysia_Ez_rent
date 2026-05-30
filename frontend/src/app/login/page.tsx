@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
-import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 
 export default function LoginPage() {
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [mockModal, setMockModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+  const [roleView, setRoleView] = useState<'choose' | 'student' | 'agent'>('choose');
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -24,7 +25,7 @@ export default function LoginPage() {
       const isFeishu = ua.includes('lark') || ua.includes('feishu');
       const isDingTalk = ua.includes('dingtalk');
       const isWebview = ua.includes('webview') || ua.includes('fbav') || ua.includes('instagram') || (ua.includes('android') && ua.includes('wv'));
-      
+
       if (isWeChat || isQQ || isWeibo || isFeishu || isDingTalk || isWebview) {
         setIsInAppBrowser(true);
       }
@@ -92,298 +93,342 @@ export default function LoginPage() {
     if (error) setErrorMsg(error.message);
   };
 
+  // ---- Styles (design system tokens) ----
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
+    borderRadius: 16, padding: '36px 32px', width: '100%', maxWidth: 420,
+    boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+    transition: 'all 0.3s ease',
+  };
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-body)',
+    marginBottom: 6, letterSpacing: '0.01em',
+  };
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px 11px 40px', borderRadius: 10,
+    border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+    color: 'var(--text-h)', fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease', boxSizing: 'border-box' as const,
+  };
+  const primaryBtnStyle: React.CSSProperties = {
+    width: '100%', padding: '12px 16px', borderRadius: 10, border: 'none',
+    background: 'var(--primary)', color: 'white', fontFamily: 'inherit',
+    fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    transition: 'all 0.2s ease',
+  };
+  const secondaryBtnStyle: React.CSSProperties = {
+    width: '100%', padding: '12px 16px', borderRadius: 10,
+    border: '1px solid var(--glass-border)', background: 'var(--bg-surface-solid)',
+    color: 'var(--text-h)', fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 500,
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    transition: 'all 0.2s ease',
+  };
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--bg-base)', padding: 20, position: 'relative',
       transition: 'background 0.3s ease, color 0.3s ease',
     }}>
-      {/* ── TOP BAR (right-aligned theme + lang toggles) ── */}
+      {/* ── TOP BAR ── */}
       <div className="topbar" style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'transparent', borderBottom: 'none', padding: '16px 24px' }}>
         <div style={{ marginRight: 'auto' }} />
-        {/* Theme toggle */}
-        <button className={`topbar-btn ${theme === 'light' ? 'active' : ''}`} onClick={toggleTheme}>
+        <button className={`topbar-btn ${theme === 'light' ? 'active' : ''}`} onClick={toggleTheme} style={{ cursor: 'pointer' }}>
           {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-          {theme === 'dark' ? (lang === 'zh' ? '浅色模式' : 'Light Mode') : (lang === 'zh' ? '深色模式' : 'Dark Mode')}
+          {theme === 'dark' ? (lang === 'zh' ? '浅色模式' : 'Light') : (lang === 'zh' ? '深色模式' : 'Dark')}
         </button>
-
-        {/* Language toggle */}
-        <button className="topbar-btn" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>
+        <button className="topbar-btn" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} style={{ cursor: 'pointer' }}>
           <Globe size={13} />
           {lang === 'zh' ? 'English' : '中文'}
         </button>
       </div>
 
-      <div style={{
-        background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
-        borderRadius: 16, padding: '40px 36px', width: '100%', maxWidth: 400,
-        boxShadow: 'var(--glass-shadow)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        transition: 'all 0.3s ease',
-      }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img
-            src="/logo.png"
-            alt="Malaysia Ez Rent"
-            style={{ width: 88, height: 88, objectFit: 'contain', display: 'inline-block', marginBottom: 14 }}
-          />
-          <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-h)', lineHeight: 1.2 }}>
+      <div style={cardStyle}>
+        {/* ── LOGO ── */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <img src="/logo.png" alt="Malaysia Ez Rent"
+            style={{ width: 72, height: 72, objectFit: 'contain', display: 'inline-block', marginBottom: 12 }} />
+          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-h)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
             Malaysia Ez Rent
           </div>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
             {lang === 'zh' ? 'AI 智能留学生租房助手' : 'AI Smart Housing Assistant'}
           </div>
         </div>
 
         {magicLinkSent ? (
+          /* ── SUCCESS STATE ── */
           <div style={{ textAlign: 'center', animation: 'scaleIn 0.3s ease' }}>
-            <CheckCircle2 size={40} style={{ color: 'var(--success)', marginBottom: 12 }} />
-            <h3 style={{ fontSize: '1.05rem', color: 'var(--text-h)', marginBottom: 8, fontWeight: 600 }}>
-              {isMockDatabase ? (lang === 'zh' ? '登录中…' : 'Logging in…') : (lang === 'zh' ? '请检查您的邮箱' : 'Check your email')}
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle2 size={28} style={{ color: 'var(--success)' }} />
+            </div>
+            <h3 style={{ fontSize: '1.05rem', color: 'var(--text-h)', marginBottom: 8, fontWeight: 700 }}>
+              {isMockDatabase ? (lang === 'zh' ? '登录中...' : 'Logging in...') : (lang === 'zh' ? '请检查您的邮箱' : 'Check your email')}
             </h3>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 20 }}>
               {isMockDatabase ? (
-                lang === 'zh' ? (
-                  <>已模拟向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送登录链接，正在跳转...</>
-                ) : (
-                  <>Simulated Magic Link sent to <strong style={{ color: 'var(--primary)' }}>{email}</strong>, redirecting…</>
-                )
+                lang === 'zh' ? <>已模拟向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送登录链接</> : <>Simulated link sent to <strong style={{ color: 'var(--primary)' }}>{email}</strong></>
               ) : (
-                lang === 'zh' ? (
-                  <>我们已向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送了登录链接。<br />请点击邮件内的链接登录。</>
-                ) : (
-                  <>We sent a login link to <strong style={{ color: 'var(--primary)' }}>{email}</strong>. Click the link to sign in.</>
-                )
+                lang === 'zh' ? <>我们已向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送了登录链接<br />请点击邮件内的链接登录</> : <>We sent a login link to <strong style={{ color: 'var(--primary)' }}>{email}</strong></>
               )}
             </div>
-
-            {/* Email Warning Alert (SMTP Info Box) */}
             {!isMockDatabase && (
               <div style={{
-                marginTop: 12, marginBottom: 20, padding: '10px 12px', borderRadius: 8,
+                marginBottom: 16, padding: '10px 12px', borderRadius: 8,
                 background: 'var(--warning-light)', border: '1px solid var(--warning)',
-                color: 'var(--warning)', fontSize: '0.75rem', display: 'flex', gap: 6,
-                alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.4
+                color: 'var(--warning)', fontSize: '0.75rem', display: 'flex', gap: 8,
+                alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.4,
               }}>
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  {lang === 'zh' ? (
-                    <>
-                      <strong>收不到邮件？</strong>
-                      由于免费发信服务器通道限制，QQ等国内邮箱可能会拦截此邮件或有较长延迟。请务必检查您的<strong>垃圾邮件箱</strong>。若长时间未收到，建议使用更稳定的 Google 账号直接登录。
-                    </>
-                  ) : (
-                    <>
-                      <strong>Not receiving email?</strong>
-                      Due to default SMTP server limits, QQ and domestic mailboxes might block or delay this email. Please check your <strong>Junk/Spam</strong> folder, or use Google login for instant access.
-                    </>
-                  )}
+                  {lang === 'zh' ? <><strong>收不到邮件？</strong>请检查垃圾邮件箱，或使用 Google 登录</> : <><strong>Not receiving?</strong>Check spam folder, or use Google login</>}
                 </div>
               </div>
             )}
-
             {!isMockDatabase && (
-              <button onClick={() => setMagicLinkSent(false)} style={{
-                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-                borderRadius: 10, padding: '10px 18px', color: 'var(--text-body)', fontFamily: 'inherit',
-                fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', width: '100%',
-                marginBottom: 20, transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg)'; }}
-              >
-                {lang === 'zh' ? '返回' : 'Back'}
+              <button onClick={() => setMagicLinkSent(false)} style={{ ...secondaryBtnStyle, marginBottom: 0 }}>
+                <ArrowLeft size={15} /> {lang === 'zh' ? '返回' : 'Back'}
               </button>
             )}
           </div>
-        ) : (
+        ) : roleView === 'choose' ? (
+          /* ── ROLE SELECTION ── */
           <div>
-            {/* In-App Browser Alert */}
             {isInAppBrowser && (
               <div style={{
                 marginBottom: 16, padding: '12px 14px', borderRadius: 10,
                 background: 'var(--danger-light)', border: '1px solid var(--danger)',
                 color: 'var(--danger)', fontSize: '0.75rem', display: 'flex', gap: 8,
                 alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.4,
-                boxShadow: '0 4px 12px rgba(239,68,68,0.08)'
               }}>
-                <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: 'var(--danger)' }} />
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <strong style={{ display: 'block', marginBottom: 4, fontWeight: 700 }}>
-                    {lang === 'zh' ? '⚠️ 微信/App 内置浏览器受限' : '⚠️ Embedded Webview Restricted'}
-                  </strong>
-                  <span style={{ color: 'var(--text-body)' }}>
-                    {lang === 'zh' 
-                      ? '由于 Google 官方安全策略，第三方 App（如微信、飞书、QQ等）内置浏览器无法直接使用 Google 登录。请点击右上角菜单，选择「在浏览器中打开」后即可正常登录。' 
-                      : 'Google blocks sign-ins from in-app browsers (WeChat, Feishu, etc.) for security. Please tap the top-right menu and choose "Open in Safari/Chrome" to continue.'
-                    }
-                  </span>
+                  <strong style={{ display: 'block', marginBottom: 2 }}>{lang === 'zh' ? '内置浏览器受限' : 'Embedded Browser Restricted'}</strong>
+                  {lang === 'zh' ? '请点击右上角菜单，选择「在浏览器中打开」' : 'Tap menu → Open in Safari/Chrome'}
                 </div>
               </div>
             )}
 
-            {/* Google Login */}
-            <button onClick={handleGoogleLogin} style={{
-              width: '100%', padding: '11px 16px', borderRadius: 10,
-              border: '1px solid var(--glass-border)', background: 'var(--bg-surface-solid)',
-              color: 'var(--text-h)', fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 500,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              marginBottom: 20, transition: 'all 0.15s',
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 16 }}>
+              {lang === 'zh' ? '请选择您的身份' : 'Choose your role'}
+            </div>
+
+            {/* Student Card */}
+            <button onClick={() => setRoleView('student')} style={{
+              ...secondaryBtnStyle, marginBottom: 10, padding: '16px', justifyContent: 'flex-start', gap: 14,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-surface-solid)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <User size={20} style={{ color: 'var(--primary)' }} />
+              </div>
+              <div style={{ textAlign: 'left', flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
+                  {lang === 'zh' ? '我是学生' : 'I\'m a Student'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {lang === 'zh' ? '找房、缴租、报修' : 'Find rooms, pay rent, maintenance'}
+                </div>
+              </div>
+              <ArrowRight size={16} style={{ color: 'var(--text-muted)' }} />
+            </button>
+
+            {/* Agent Card */}
+            <button onClick={() => setRoleView('agent')} style={{
+              ...secondaryBtnStyle, marginBottom: 16, padding: '16px', justifyContent: 'flex-start', gap: 14,
+              border: '1.5px solid var(--primary)', background: 'var(--primary-light)',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; e.currentTarget.querySelector('div')!.style.background = 'rgba(255,255,255,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.color = 'var(--text-h)'; e.currentTarget.querySelector('div')!.style.background = 'var(--primary-light)'; }}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
+                <Building2 size={20} style={{ color: 'var(--primary)' }} />
+              </div>
+              <div style={{ textAlign: 'left', flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
+                  {lang === 'zh' ? '我是中介' : 'I\'m an Agent'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {lang === 'zh' ? '管理房源、租约、收租' : 'Manage listings, leases, payments'}
+                </div>
+              </div>
+              <ArrowRight size={16} style={{ color: 'var(--primary)' }} />
+            </button>
+
+            {/* Quick links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--glass-border)', paddingTop: 14 }}>
+              <a href="/calculator" style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', transition: 'opacity 0.2s', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.7'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                <CreditCard size={13} /> {lang === 'zh' ? '租金押金计算器（无需登录）' : 'Rent Calculator (No login)'}
+              </a>
+            </div>
+          </div>
+        ) : roleView === 'student' ? (
+          /* ── STUDENT LOGIN ── */
+          <div>
+            <button onClick={() => { setRoleView('choose'); setErrorMsg(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16, fontFamily: 'inherit', padding: 0, transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-h)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+              <ArrowLeft size={14} /> {lang === 'zh' ? '返回选择身份' : 'Back to role selection'}
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <User size={22} style={{ color: 'var(--primary)' }} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
+                {lang === 'zh' ? '学生登录' : 'Student Login'}
+              </div>
+            </div>
+
+            {/* Google Login */}
+            <button onClick={handleGoogleLogin} style={secondaryBtnStyle}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}>
               <GoogleIcon /> {lang === 'zh' ? '使用 Google 账号登录' : 'Continue with Google'}
             </button>
 
             {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
               <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                {lang === 'zh' ? '或' : 'OR'}
-              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500 }}>{lang === 'zh' ? '或' : 'OR'}</span>
               <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
             </div>
 
             {/* Email form */}
             <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input type="email" required placeholder="name@university.edu.my" value={email}
-                    onChange={e => setEmail(e.target.value)} style={{
-                      width: '100%', padding: '11px 14px 11px 40px', borderRadius: 10,
-                      border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                      color: 'var(--text-h)', fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none',
-                      transition: 'border-color 0.15s',
-                    }}
-                    onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--glass-border)'}
-                  />
-                </div>
+              <label htmlFor="student-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input id="student-email" type="email" required placeholder="name@university.edu.my" value={email}
+                  onChange={e => setEmail(e.target.value)} style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
+                />
               </div>
 
               {errorMsg && (
-                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 14, textAlign: 'center' }}>
+                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                   {errorMsg}
                 </div>
               )}
 
-              <button type="submit" disabled={loading} style={{
-                width: '100%', padding: '11px 16px', borderRadius: 10, border: 'none',
-                background: loading ? 'var(--primary-glow)' : 'var(--primary)',
-                color: 'white', fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'background 0.15s', marginBottom: 24,
-              }}>
+              <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)'; }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--primary)'; }}>
                 {loading ? <Spinner /> : <><span>{lang === 'zh' ? '获取邮箱登录链接' : 'Get Magic Link'}</span><ArrowRight size={15} /></>}
               </button>
             </form>
           </div>
-        )}
-
-        {/* Feature tags */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginTop: 24 }}>
-          {[(lang === 'zh' ? '🏠 AI智能找房' : '🏠 AI Search'), (lang === 'zh' ? '🗺️ 通勤计算' : '🗺️ Commute'), (lang === 'zh' ? '📋 电子租约' : '📋 Lease'), (lang === 'zh' ? '💳 扫码支付' : '💳 Bank · WeChat · Alipay')].map(tag => (
-            <span key={tag} style={{
-              fontSize: '0.68rem', padding: '3px 8px', borderRadius: 6,
-              background: 'var(--glass-bg)', color: 'var(--text-body)', border: '1px solid var(--glass-border)',
-            }}>{tag}</span>
-          ))}
-        </div>
-
-        {/* Calculator link */}
-        <div style={{ textAlign: 'center', marginTop: 14 }}>
-          <a href="/calculator" style={{
-            fontSize: '0.72rem', color: 'var(--primary)', textDecoration: 'none',
-            fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
-          >
-            {lang === 'zh' ? '🧮 租金押金计算器（无需登录）' : '🧮 Rent & Deposit Calculator (No login required)'}
-          </a>
-        </div>
-
-        {/* Agent registration link */}
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <a href="/register-agent" style={{
-            fontSize: '0.72rem', color: 'var(--primary)', textDecoration: 'none',
-            fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
-          >
-            {lang === 'zh' ? '🏠 申请成为中介（需审核）' : '🏠 Apply as Agent (Requires Approval)'}
-          </a>
-        </div>
-
-        {/* Sandbox role switcher */}
-        {isMockDatabase && !magicLinkSent && (
-          <div style={{ textAlign: 'center', marginTop: 14 }}>
-            <button onClick={() => { if (!email.trim()) { setErrorMsg(lang === 'zh' ? '请先输入您的邮箱' : 'Please enter your email first'); return; } setMockModal(true); }} style={{
-              background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem',
-              cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit',
-            }}>
-              {lang === 'zh' ? '🧪 Sandbox：手动选择角色登录' : 'Sandbox: choose role manually'}
+        ) : (
+          /* ── AGENT LOGIN ── */
+          <div>
+            <button onClick={() => { setRoleView('choose'); setErrorMsg(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16, fontFamily: 'inherit', padding: 0, transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-h)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+              <ArrowLeft size={14} /> {lang === 'zh' ? '返回选择身份' : 'Back to role selection'}
             </button>
+
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <Building2 size={22} style={{ color: 'var(--primary)' }} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
+                {lang === 'zh' ? '中介登录' : 'Agent Login'}
+              </div>
+            </div>
+
+            {/* Google Login */}
+            <button onClick={handleGoogleLogin} style={secondaryBtnStyle}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}>
+              <GoogleIcon /> {lang === 'zh' ? '使用 Google 账号登录' : 'Continue with Google'}
+            </button>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500 }}>{lang === 'zh' ? '或' : 'OR'}</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+            </div>
+
+            {/* Email form */}
+            <form onSubmit={handleLogin}>
+              <label htmlFor="agent-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input id="agent-email" type="email" required placeholder="name@agency.com" value={email}
+                  onChange={e => setEmail(e.target.value)} style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {errorMsg && (
+                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
+                  {errorMsg}
+                </div>
+              )}
+
+              <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)'; }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--primary)'; }}>
+                {loading ? <Spinner /> : <><span>{lang === 'zh' ? '获取邮箱登录链接' : 'Get Magic Link'}</span><ArrowRight size={15} /></>}
+              </button>
+            </form>
+
+            {/* Register link - PROMINENT */}
+            <div style={{ marginTop: 16, padding: '14px', borderRadius: 10, background: 'var(--primary-light)', border: '1px dashed var(--primary)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', marginBottom: 6 }}>
+                {lang === 'zh' ? '还没有中介账号？' : 'Don\'t have an agent account?'}
+              </div>
+              <a href="/register-agent" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px',
+                borderRadius: 8, background: 'var(--primary)', color: '#fff', textDecoration: 'none',
+                fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}>
+                <Shield size={14} /> {lang === 'zh' ? '申请成为中介' : 'Apply as Agent'}
+              </a>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+                {lang === 'zh' ? '需提交 REN 牌照，经审核后开通' : 'Requires REN license, reviewed by admin'}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Footer */}
+        {/* ── FOOTER ── */}
         <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
           {lang === 'zh' ? '登录即代表您同意我们的 服务条款 与 隐私政策' : 'By logging in you agree to our Terms & Privacy Policy'}
         </p>
       </div>
 
-      {/* Mock Role Modal */}
+      {/* ── MOCK ROLE MODAL ── */}
       {mockModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 300, padding: 20,
-        }} onClick={() => setMockModal(false)}>
-          <div style={{
-            background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
-            borderRadius: 16, padding: '32px 28px', maxWidth: 360, width: '100%',
-            boxShadow: 'var(--glass-shadow)',
-          }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 20 }}
+          onClick={() => setMockModal(false)}>
+          <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)', borderRadius: 16, padding: '32px 28px', maxWidth: 360, width: '100%', boxShadow: 'var(--glass-shadow)' }}
+            onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: '1.6rem', marginBottom: 6 }}>🧪</div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)', marginBottom: 4 }}>
                 {lang === 'zh' ? '选择登录角色' : 'Choose Role'}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {lang === 'zh' ? '选择房客或管理员身份以快速登录并进行测试体验。' : 'Sign in as a student or admin to explore.'}
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '快速体验不同角色' : 'Quick role preview'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => handleMockLogin('student')} style={{
-                flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)',
-                background: 'var(--glass-bg)', color: 'var(--text-h)',
-                fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                cursor: 'pointer', lineHeight: 1.4, transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
-              >
-                <div style={{ fontSize: '1.3rem', marginBottom: 4 }}>👨‍🎓</div>
-                {lang === 'zh' ? '学生角色' : 'Student'}
+              <button onClick={() => handleMockLogin('student')} style={{ flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}>
+                <User size={20} style={{ color: 'var(--primary)' }} />
+                {lang === 'zh' ? '学生' : 'Student'}
               </button>
-              <button onClick={() => handleMockLogin('admin')} style={{
-                flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)',
-                background: 'var(--glass-bg)', color: 'var(--text-h)',
-                fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                cursor: 'pointer', lineHeight: 1.4, transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
-              >
-                <div style={{ fontSize: '1.3rem', marginBottom: 4 }}>🔑</div>
-                {lang === 'zh' ? '管理员角色' : 'Admin'}
+              <button onClick={() => handleMockLogin('admin')} style={{ flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}>
+                <Shield size={20} style={{ color: 'var(--primary)' }} />
+                {lang === 'zh' ? '管理员' : 'Admin'}
               </button>
             </div>
           </div>
