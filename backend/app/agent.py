@@ -75,6 +75,21 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         for char in details:
             yield sse_event({"type": "text", "delta": char})
             await asyncio.sleep(0.005)
+
+        # Show map routing visually
+        yield sse_event({
+            "type": "ui_component",
+            "component": "MapAndCard",
+            "props": {
+                "origin_name": commute_info.get("origin_name") or origin_address,
+                "origin_lat": float(commute_info.get("origin_lat") or 3.06341),
+                "origin_lng": float(commute_info.get("origin_lng") or 101.60977),
+                "destination_name": commute_info.get("university") or target_uni,
+                "destination_lat": float(commute_info.get("destination_lat") or 3.0645),
+                "destination_lng": float(commute_info.get("destination_lng") or 101.6000)
+            }
+        })
+        await asyncio.sleep(0.5)
             
     elif any(kw in query_lower for kw in ["currency", "换算", "汇率", "rmb", "人民币", "myr", "令吉", "钱"]):
         yield sse_event({"type": "thinking", "step": "💱 Querying Frankfurter API for live currency exchange rate..."})
@@ -351,6 +366,22 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                         "rent": float(best_match.get("rent") or 2500),
                         "room_type": best_match.get("room_type") or "Studio",
                         "unit_id": best_match.get("id")
+                    }
+                })
+                await asyncio.sleep(0.5)
+
+            # If calculate_commute is run, yield a MapAndCard event showing the commute route!
+            elif tool_name == "calculate_commute" and isinstance(result_data, dict):
+                yield sse_event({
+                    "type": "ui_component",
+                    "component": "MapAndCard",
+                    "props": {
+                        "origin_name": result_data.get("origin_name") or "Sunway Geo Residences",
+                        "origin_lat": float(result_data.get("origin_lat") or 3.06341),
+                        "origin_lng": float(result_data.get("origin_lng") or 101.60977),
+                        "destination_name": result_data.get("university") or "Monash University Malaysia",
+                        "destination_lat": float(result_data.get("destination_lat") or 3.0645),
+                        "destination_lng": float(result_data.get("destination_lng") or 101.6000)
                     }
                 })
                 await asyncio.sleep(0.5)

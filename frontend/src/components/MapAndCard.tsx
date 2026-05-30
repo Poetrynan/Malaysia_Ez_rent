@@ -8,9 +8,9 @@ interface MapAndCardProps {
   origin_name: string;
   origin_lat: number;
   origin_lng: number;
-  rent: number;
-  room_type: string;
-  unit_id: string;
+  rent?: number;
+  room_type?: string;
+  unit_id?: string;
 }
 
 const MOCK_PLACES = [
@@ -126,7 +126,10 @@ export default function MapAndCard({
         <div style={{ flexGrow: 1 }}>
           <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-h)' }}>{origin_name}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {room_type} · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>RM {rent}{t('perMonth')}</span>
+            {room_type || (lang === 'zh' ? '地点位置' : 'Location')}
+            {rent !== undefined && (
+              <> · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>RM {rent}{t('perMonth')}</span></>
+            )}
           </div>
         </div>
       </div>

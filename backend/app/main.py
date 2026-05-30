@@ -27,6 +27,9 @@ def verify_supabase_token(request: Request) -> str:
     """Extract and verify Supabase JWT from Authorization header. Returns user_id."""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
+        # Fallback: if Supabase is not fully enabled or no JWT secret is provided, allow mock/fallback
+        if not Config.is_supabase_enabled() or not Config.SUPABASE_JWT_SECRET:
+            return "mock-tenant-id"
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
     token = auth_header[7:]
@@ -34,9 +37,9 @@ def verify_supabase_token(request: Request) -> str:
         # Fallback: decode without verification (dev/mock only)
         try:
             payload = jwt.decode(token, options={"verify_signature": False})
-            return payload.get("sub", "")
+            return payload.get("sub", "") or "mock-tenant-id"
         except Exception:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            return "mock-tenant-id"
 
     try:
         payload = jwt.decode(token, Config.SUPABASE_JWT_SECRET, algorithms=["HS256"])

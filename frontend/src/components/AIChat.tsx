@@ -171,6 +171,7 @@ export default function AIChat() {
           method: 'POST', headers,
           body: JSON.stringify({ query: userText, user_id: activeUserId })
         });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         if (!res.body) throw new Error('no body');
         const reader = res.body.getReader();
         const dec = new TextDecoder();

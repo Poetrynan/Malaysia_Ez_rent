@@ -232,7 +232,7 @@ def calculate_commute(
     # Try finding university coordinates
     dest_lat, dest_lng = None, None
     for uni in UNIVERSITIES:
-        if university_name.lower() in uni["name"].lower():
+        if university_name.lower() in uni["name"].lower() or uni["name"].lower() in university_name.lower():
             dest_lat = uni["lat"]
             dest_lng = uni["lng"]
             university_name = uni["name"]
@@ -241,6 +241,18 @@ def calculate_commute(
     if dest_lat is None:
         dest_lat, dest_lng = 3.0645, 101.6000
         university_name = "Monash University Malaysia (Default)"
+
+    # Try finding community coordinates for the origin
+    origin_lat, origin_lng = None, None
+    for comm in COMMUNITIES:
+        if origin_address.lower() in comm["name"].lower() or comm["name"].lower() in origin_address.lower():
+            origin_lat = comm["lat"]
+            origin_lng = comm["lng"]
+            origin_address = comm["name"]
+            break
+            
+    if origin_lat is None:
+        origin_lat, origin_lng = 3.06341, 101.60977 # Default to Sunway Geo
 
     if Config.is_google_maps_enabled():
         url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -271,7 +283,12 @@ def calculate_commute(
                     "driving_distance": distance_text,
                     "driving_duration": duration_text,
                     "transit_duration": transit_text,
-                    "walk_duration": f"{int(float(distance_text.replace(' km','').replace(' m','')) * 12)} mins (estimated)"
+                    "walk_duration": f"{int(float(distance_text.replace(' km','').replace(' m','')) * 12)} mins (estimated)",
+                    "origin_name": origin_address,
+                    "origin_lat": origin_lat,
+                    "origin_lng": origin_lng,
+                    "destination_lat": dest_lat,
+                    "destination_lng": dest_lng
                 }
         except Exception as e:
             print(f"Error calling Google Maps API: {e}")
@@ -300,7 +317,12 @@ def calculate_commute(
         "driving_distance": f"{road_distance} km",
         "driving_duration": f"{driving_mins} mins",
         "transit_duration": f"{transit_mins} mins",
-        "walk_duration": f"{walk_mins} mins"
+        "walk_duration": f"{walk_mins} mins",
+        "origin_name": origin_address,
+        "origin_lat": origin_lat,
+        "origin_lng": origin_lng,
+        "destination_lat": dest_lat,
+        "destination_lng": dest_lng
     }
 
 
