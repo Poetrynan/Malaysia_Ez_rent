@@ -25,6 +25,7 @@ export default function RegisterAgentPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [existingStatus, setExistingStatus] = useState('');
   const [realtimeBanner, setRealtimeBanner] = useState<{ type: 'approved' | 'rejected'; message: string } | null>(null);
   const channelRef = useRef<any>(null);
@@ -287,6 +288,8 @@ export default function RegisterAgentPage() {
       }
 
       setSuccess(true);
+      setToast({ msg: lang === 'zh' ? '✅ 申请提交成功！' : '✅ Application submitted!', type: 'success' });
+      setTimeout(() => setToast(null), 4000);
     } catch (err: any) {
       setError(err.message || 'Submission failed');
     } finally {
@@ -580,6 +583,20 @@ export default function RegisterAgentPage() {
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
+          padding: '12px 24px', borderRadius: 10, zIndex: 999,
+          background: toast.type === 'success' ? 'var(--success)' : 'var(--danger)',
+          color: '#fff', fontSize: '0.88rem', fontWeight: 600,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          animation: 'scaleIn 0.3s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
 
       <style>{`
         .animate-spin { animation: spin 1s linear infinite; }
