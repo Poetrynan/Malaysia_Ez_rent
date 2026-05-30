@@ -414,16 +414,30 @@ export default function RegisterAgentPage() {
           <div style={{ textAlign: 'center', padding: '20px 0', animation: 'scaleIn 0.3s ease' }}>
             <CheckCircle2 size={40} style={{ color: 'var(--success)', marginBottom: 12 }} />
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
-              {lang === 'zh' ? '申请已提交' : 'Application Submitted'}
+              {lang === 'zh' ? '申请已提交！' : 'Application Submitted!'}
             </h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
               {lang === 'zh'
-                ? '您的申请已提交，请等待审核。我们会在 1-3 个工作日内通过邮件通知您结果。'
-                : 'Your application has been submitted. We will notify you via email within 1-3 business days.'}
+                ? '您的中介注册申请已成功提交，审核通过后将自动移入中介管理端。'
+                : 'Your agent registration has been submitted. After approval, you will be moved to the agent portal.'}
             </p>
-            <a href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 10, background: 'var(--primary)', color: 'white', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', marginTop: 16 }}>
-              <ArrowLeft size={14} /> {lang === 'zh' ? '返回登录' : 'Back to Login'}
-            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <a href="/" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px 20px', borderRadius: 10, background: 'var(--primary)',
+                color: 'white', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
+              }}>
+                {lang === 'zh' ? '查看租客端' : 'View Tenant Portal'}
+              </a>
+              <a href="/login" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px 20px', borderRadius: 10,
+                border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                color: 'var(--text-body)', fontSize: '0.88rem', fontWeight: 500, textDecoration: 'none',
+              }}>
+                {lang === 'zh' ? '稍后登录' : 'Login Later'}
+              </a>
+            </div>
           </div>
         )}
 

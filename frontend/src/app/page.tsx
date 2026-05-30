@@ -42,10 +42,11 @@ export default function Home() {
       setRole(finalRole);
       setActiveTab(finalRole === 'admin' ? 'admin-properties' : 'listings');
       setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
-      // Check agent registration status for THIS user only
+      // Check agent registration status for THIS user only (match by email)
       if (finalRole === 'student') {
+        const email = localStorage.getItem('ez_user_email') || '';
         const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-        const myReg = regs.find((r: any) => r.auth_user_id === tenantId);
+        const myReg = regs.find((r: any) => r.email === email);
         if (myReg) setAgentRegStatus(myReg.verification_status);
       }
     } else {
@@ -71,12 +72,12 @@ export default function Home() {
         setActiveTab(activeRole === 'admin' ? 'admin-properties' : 'listings');
         setUserEmail(user.email || '');
         localStorage.setItem('ez_tenant_id', user.id);
-        // Check agent registration status if student
-        if (!adminRecord) {
+        // Check agent registration status if student (match by email)
+        if (!adminRecord && user.email) {
           const { data: agentReg } = await supabase
             .from('agent_registrations')
             .select('verification_status')
-            .eq('auth_user_id', user.id)
+            .eq('email', user.email)
             .maybeSingle();
           if (agentReg) setAgentRegStatus(agentReg.verification_status);
         }
@@ -383,33 +384,30 @@ export default function Home() {
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="main-content">
-          {/* Agent Registration Status Banner — prominent in main content */}
+          {/* Agent Registration Status — Scrolling Marquee for pending */}
           {role === 'student' && agentRegStatus === 'pending' && (
             <div style={{
-              margin: '12px 16px 0', padding: '14px 16px', borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))',
-              border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', gap: 12,
+              margin: '12px 16px 0', borderRadius: 10, overflow: 'hidden',
+              background: 'linear-gradient(90deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04), rgba(245,158,11,0.12))',
+              border: '1px solid rgba(245,158,11,0.25)', position: 'relative', height: 40,
             }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Building2 size={20} style={{ color: '#D97706' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 2 }}>
-                  {lang === 'zh' ? '中介申请审核中' : 'Agent Application Under Review'}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  {lang === 'zh'
-                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入中介管理后台。当前为租客界面。'
-                    : 'Your agent registration is being reviewed. After approval, please log in again to access the admin panel. You are currently viewing the student interface.'}
-                </div>
-              </div>
-              <a href="/register-agent" style={{
-                padding: '8px 16px', borderRadius: 8, background: 'rgba(245,158,11,0.15)',
-                border: '1px solid rgba(245,158,11,0.3)', color: '#D97706', fontSize: '0.78rem',
-                fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+              <div style={{
+                display: 'flex', alignItems: 'center', height: '100%', whiteSpace: 'nowrap',
+                animation: 'marquee 20s linear infinite', paddingLeft: '100%',
               }}>
-                {lang === 'zh' ? '查看详情' : 'View Details'}
-              </a>
+                <Building2 size={14} style={{ color: '#D97706', marginRight: 8, flexShrink: 0 }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#D97706' }}>
+                  {lang === 'zh'
+                    ? '⚠️ 您的中介注册申请正在审核中，审核通过后将自动移入中介管理端。当前为租客界面。'
+                    : '⚠️ Your agent registration is under review. After approval, you will be moved to the agent portal. Currently viewing tenant interface.'}
+                </span>
+                <span style={{ margin: '0 40px', color: 'rgba(245,158,11,0.3)' }}>●</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#D97706' }}>
+                  {lang === 'zh'
+                    ? '⚠️ 您的中介注册申请正在审核中，审核通过后将自动移入中介管理端。当前为租客界面。'
+                    : '⚠️ Your agent registration is under review. After approval, you will be moved to the agent portal. Currently viewing tenant interface.'}
+                </span>
+              </div>
             </div>
           )}
           {role === 'student' && agentRegStatus === 'approved' && (

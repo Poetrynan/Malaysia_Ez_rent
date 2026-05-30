@@ -725,9 +725,15 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
     left: var(--start-left);
     opacity: 0.6;
   }
-  70%, 100% { 
+  70%, 100% {
     left: var(--end-left);
     opacity: 1;
   }
+}
+
+/* Scrolling marquee for agent registration pending banner */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
