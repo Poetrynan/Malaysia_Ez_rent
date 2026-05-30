@@ -321,6 +321,8 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 ## 📄 文档
 
 - [AI 架构详解](docs/ai-architecture.md) — Agent 设计、工具链、开发规范
+- [SaaS 发展路线图](docs/saas-roadmap.md) — 多租户改造、计费系统、白标方案
+- [商业策略](docs/business-strategy.md) — 卖点分析、变现模式、销售策略
 - [常见问题](docs/FAQ.md) — Supabase、手机上传、部署问题
 - [前后端解释](docs/前后端解释.md) — SDK、RLS、HTTP 请求流程
 - [部署指南](docs/deployment-guide.md) — Vercel + Render 部署步骤
