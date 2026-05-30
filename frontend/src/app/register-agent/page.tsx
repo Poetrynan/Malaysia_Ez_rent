@@ -190,6 +190,7 @@ export default function RegisterAgentPage() {
 
   const handleSubmit = async () => {
     setError('');
+    console.log('[Agent Reg] Submit started', { userId, userEmail, renTagFile: !!renTagFile, renTagImage: !!renTagImage });
 
     if (!userEmail.trim() || !userEmail.includes('@')) { setError(lang === 'zh' ? '请填写有效的邮箱地址' : 'Please enter a valid email address'); return; }
     if (!fullName.trim()) { setError(lang === 'zh' ? '请填写姓名' : 'Please enter your name'); return; }
@@ -207,18 +208,9 @@ export default function RegisterAgentPage() {
     const normalizedREN = normalizeREN(renNumber);
     if (!normalizedREN) { setError(lang === 'zh' ? 'REN 编号格式不正确（如 REN12345）' : 'Invalid REN number format (e.g. REN12345)'); return; }
 
-    // If not logged in, save form data and redirect to login
+    // Must be logged in
     if (!userId) {
-      localStorage.setItem('ez_agent_draft', JSON.stringify({
-        email: userEmail.trim(),
-        fullName: fullName.trim(),
-        phone: normalizedPhone,
-        whatsapp: normalizedWhatsapp,
-        agencyName: agencyName.trim(),
-        renNumber: normalizedREN,
-        renTagImage: renTagImage,
-      }));
-      window.location.href = '/login';
+      setError(lang === 'zh' ? '请先登录后再提交' : 'Please log in before submitting');
       return;
     }
 
@@ -245,34 +237,43 @@ export default function RegisterAgentPage() {
           created_at: new Date().toISOString(),
         });
         localStorage.setItem('ez_agent_registrations', JSON.stringify(regs));
+        console.log('[Agent Reg] Mock: saved to localStorage', regs.length, 'records');
       } else {
         // Upload REN tag image
         const { createClient } = await import('@/utils/supabase/client');
         const supabaseClient = createClient();
 
-        // renTagFile may be null if restored from draft — convert data URL to blob
         let uploadBlob: Blob;
         if (renTagFile) {
+          console.log('[Agent Reg] Compressing REN tag image...');
           uploadBlob = await compressImageFile(renTagFile, REN_TAG_PRESET);
         } else if (renTagImage) {
+          console.log('[Agent Reg] Converting data URL to blob...');
           const res = await fetch(renTagImage);
           uploadBlob = await res.blob();
         } else {
           throw new Error('No REN tag image');
         }
+
         const fileName = `ren-tag-${Date.now()}.jpg`;
         const path = `ren-tags/${fileName}`;
+        console.log('[Agent Reg] Uploading to Storage:', path);
 
         const { error: uploadErr } = await supabaseClient.storage
           .from('unit-media')
           .upload(path, uploadBlob, { upsert: true, contentType: 'image/jpeg' });
 
-        if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
+        if (uploadErr) {
+          console.error('[Agent Reg] Upload error:', uploadErr);
+          throw new Error(`Upload failed: ${uploadErr.message}`);
+        }
 
         const { data: urlData } = supabaseClient.storage.from('unit-media').getPublicUrl(path);
         renTagUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+        console.log('[Agent Reg] Upload success, URL:', renTagUrl);
 
         // Insert registration
+        console.log('[Agent Reg] Inserting into agent_registrations...');
         const { error: insertErr } = await supabaseClient.from('agent_registrations').insert({
           auth_user_id: userId,
           email: userEmail,
@@ -284,14 +285,21 @@ export default function RegisterAgentPage() {
           ren_tag_image_url: renTagUrl,
         });
 
-        if (insertErr) throw new Error(insertErr.message);
+        if (insertErr) {
+          console.error('[Agent Reg] Insert error:', insertErr);
+          throw new Error(`Database error: ${insertErr.message}`);
+        }
+        console.log('[Agent Reg] Insert success!');
       }
 
       setSuccess(true);
       setToast({ msg: lang === 'zh' ? '✅ 申请提交成功！' : '✅ Application submitted!', type: 'success' });
       setTimeout(() => setToast(null), 4000);
     } catch (err: any) {
+      console.error('[Agent Reg] Submission failed:', err);
       setError(err.message || 'Submission failed');
+      setToast({ msg: `❌ ${err.message || '提交失败'}`, type: 'error' });
+      setTimeout(() => setToast(null), 5000);
     } finally {
       setSubmitting(false);
     }
