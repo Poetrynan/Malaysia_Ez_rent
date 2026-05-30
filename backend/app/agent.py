@@ -47,12 +47,34 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             await asyncio.sleep(0.005)
         return
 
-    elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "校区", "怎么去", "交通", "多久", "时间"]):
+    elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "马来亚", "亚太", "monash", "sunway", "taylor", "apu", "malaya", "校区", "怎么去", "交通", "多久", "时间", "通勤"]):
         yield sse_event({"type": "thinking", "step": "🚇 Calculating commute travel time to Malaysia universities using Google Maps database..."})
         await asyncio.sleep(0.8)
         
-        origin_address = "Sunway Geo Residences"
-        target_uni = "Monash University Malaysia"
+        # Extract origin and university from user query
+        from app.mock_data import UNIVERSITIES, COMMUNITIES
+        origin_address = "Sunway Geo Residences"  # default
+        target_uni = "Monash University Malaysia"  # default
+        
+        # Try to match a university from the query
+        uni_keywords = {
+            "马来亚": "Universiti Malaya (UM)", "um": "Universiti Malaya (UM)", "malaya": "Universiti Malaya (UM)",
+            "莫纳什": "Monash University Malaysia", "monash": "Monash University Malaysia",
+            "双威": "Sunway University", "sunway uni": "Sunway University",
+            "泰莱": "Taylor's University", "taylor": "Taylor's University",
+            "apu": "Asia Pacific University (APU)", "亚太": "Asia Pacific University (APU)",
+        }
+        for kw, uni_name in uni_keywords.items():
+            if kw in query_lower:
+                target_uni = uni_name
+                break
+        
+        # Try to match a community/origin from the query
+        for comm in COMMUNITIES:
+            if comm["name"].lower() in query_lower or any(w in query_lower for w in comm["name"].lower().split()):
+                origin_address = comm["name"]
+                break
+        
         yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_address": origin_address, "university_name": target_uni}})
         await asyncio.sleep(0.8)
         
