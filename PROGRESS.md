@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-05-30 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知** · **房源门牌号彻底移除与工单仅展示个人资料房号（026）**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知** · **房源门牌号彻底移除与工单仅展示个人资料房号（026）** · **AI Agent 智能化改造（移除硬编码，LLM 意图解析）** · **管理端数据看板 Dashboard（recharts 图表）** · **MapAndCard 通勤地图直接渲染**
 
 
 ---
@@ -1408,4 +1408,64 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 
 - 后端：推送到 GitHub，Render 自动重新部署
 - 前端：确认 `NEXT_PUBLIC_AGENT_API_URL` 环境变量已设置，重新部署
+
+---
+
+## 三十九、管理端数据看板 Dashboard（2026-05-30）
+
+**目标：** 为中介/管理员提供可视化数据看板，实时掌握出租率、收租率、月收入趋势等关键业务指标。
+
+### 功能模块
+
+| 模块 | 数据来源 | 展示方式 |
+|------|---------|---------|
+| 出租率 | `units` 表 status | KPI 卡片 + 渐变进度条 |
+| 有效租约 | `leases` 表 status='active' | KPI 卡片 + 即将到期提示 |
+| 收租率 | `payment_records` 表 paid 状态 | KPI 卡片 + 进度条 + 金额汇总 |
+| 逾期账单 | `payment_records` 未付且过期 | KPI 卡片 + 红色警示 |
+| 月收入趋势 | `payment_records` 按月聚合 | recharts 柱状图（已收 vs 应收） |
+| 房源分布 | `units` 按 room_type 分组 | recharts 饼图（环形） |
+| 小区分布 | `units` → `communities` 关联 | 横向条形图（Top 6） |
+| 意向转化 | `tenant_interests` 状态分组 | 漏斗进度条（意向中→已确认） |
+| 报修概览 | `maintenance_requests` 状态统计 | 三列网格（待处理/已解决/平均天数） |
+| 待办事项 | 汇总逾期/未回复/即将到期 | 红色左边框警示卡片 |
+
+### 时间筛选
+
+- 快捷选项：1个月 / 6个月 / 1年
+- 自定义区间：起止日期选择器
+- 所有图表和 KPI 根据时间范围动态过滤
+
+### 权限控制
+
+- 复用 AdminPanel 的 `visibleUnitIds` / `visibleLeaseIds`
+- Super Admin：看到所有数据
+- Editor（Agent）：只看到自己名下的房源和租约
+
+### UI 设计（ui-ux-pro-max skill）
+
+- 使用 ui-ux-pro-max skill 生成设计系统
+- 风格：Data-Dense Dashboard（数据密集型看板）
+- 图标：Lucide SVG（禁止 emoji 作为结构图标）
+- 动画：进度条 `cubic-bezier(0.4, 0, 0.2, 1)` 缓动，0.6s
+- 颜色：语义化 token（--primary, --success, --danger, --warning）
+- 数字：`fontVariantNumeric: tabular-nums` 等宽数字
+
+### 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `frontend/src/components/Dashboard.tsx` | 看板组件（425 行），recharts 图表 |
+
+### 修改文件
+
+| 文件 | 改动 |
+|------|------|
+| `frontend/src/components/AdminPanel.tsx` | 新增 'dashboard' Tab + 导入 Dashboard 组件 |
+| `frontend/src/app/page.tsx` | 侧边栏新增 Dashboard 入口 + defaultTab 映射 |
+| `frontend/package.json` | 新增 recharts 依赖 |
+
+### 依赖
+
+- `recharts` 3.8.1（React 图表库）
 

@@ -34,6 +34,7 @@ Malaysia_Ez_rent/
 │   │   ├── AIChat.tsx
 │   │   ├── StudentPortal.tsx
 │   │   ├── LeaseLedgerCard.tsx
+│   │   ├── Dashboard.tsx
 │   │   └── AdminPanel.tsx
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
 │   ├── src/lib/numberInput.ts          # nonNegativeInputValue / nonNegativeNumber for type=number fields
@@ -122,6 +123,16 @@ Malaysia_Ez_rent/
 - **Visibility**: SELECT policy `Anyone can view interests` — other seekers on the same unit see name, email, note, status.
 - **Identity in UI**: `authUserId` from `onAuthStateChange` drives "my interest" + cancel buttons (top bar + row marked "Me").
 - Fallback: direct table insert/update if RPC missing (requires migration **014** UPDATE policy).
+
+### Admin Dashboard (`Dashboard.tsx`)
+
+- First tab visible to all admin users (super_admin + editor).
+- Computes all metrics client-side from data already loaded by `AdminPanel.loadFromSupabase()` — no extra API calls.
+- Key metrics: occupancy rate, active leases, collection rate, overdue count, monthly revenue trend, room type distribution, community distribution, interest funnel, maintenance stats.
+- Time range filter: 1M / 6M / 1Y / custom date range — all charts and KPIs update reactively.
+- Role-based data filtering via `visibleUnitIds` / `visibleLeaseIds` (editors see only own data).
+- Charts powered by **recharts** (BarChart, PieChart) with custom tooltips and gradient progress bars.
+- Design system generated via `ui-ux-pro-max` skill: Data-Dense Dashboard style, Lucide icons (no emojis), semantic color tokens, tabular-nums for data, cubic-bezier animations.
 
 ## 4) Backend AI Architecture
 

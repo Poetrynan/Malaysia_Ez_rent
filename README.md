@@ -1,6 +1,6 @@
 # 🏠 Malaysia Ez Rent
 
-> 🇲🇾 马来西亚留学生智能租房平台 — AI Agent + 全栈 SaaS
+> 🇲🇾 马来西亚留学生智能租房平台 — AI Agent + 全栈 Web 应用
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi)](https://fastapi.tiangolo.com)
@@ -24,6 +24,7 @@
 | 💳 **全流程缴租** | 12 个月台账、手机扫码上传凭证、首月→中介 / 后续→房东 分离收款 |
 | 🏠 **合租系统** | Whole Unit 合租意向提交/取消、室友名单、联保退租警示、租约原子替换 |
 | 🔧 **报修中心** | Agent↔Student 多轮对话工单、分类管理、图片上传 |
+| 📊 **数据看板** | 中介端 Dashboard：出租率、收租率、月收入趋势、房源分布、意向转化、报修概览 |
 | 👨‍💼 **多中介管理** | 独立挂牌、复制挂牌、Agent 级收款码与数据隔离 |
 | 📱 **手机匿名上传** | 扫码即传支付凭证，无需登录，图片自动压缩 |
 | 🌐 **中英双语** | 完整 i18n 支持，深色/浅色主题切换 |
@@ -37,7 +38,7 @@
 ┌─────────────────────────────────────────────────────┐
 │                    FRONTEND                         │
 │  Next.js 16 (App Router) · React 19 · TypeScript   │
-│  Tailwind CSS · Lucide Icons · Google Maps JS API  │
+│  Tailwind CSS · Lucide Icons · Recharts · Maps API  │
 ├─────────────────────────────────────────────────────┤
 │                    BACKEND                          │
 │  Python FastAPI · OpenAI-Compatible API (SSE)       │
@@ -74,6 +75,7 @@ Malaysia_Ez_rent/
 │   │   │   ├── MapAndCard.tsx        # 🗺️ 通勤路线地图
 │   │   │   ├── StudentPortal.tsx     # 👤 学生门户（租约 + 报修 + 个人资料）
 │   │   │   ├── LeaseLedgerCard.tsx   # 💳 缴租台账 + 支付弹窗
+│   │   │   ├── Dashboard.tsx         # 📊 数据看板 (recharts)
 │   │   │   └── AdminPanel.tsx        # ⚙️ 管理后台
 │   │   ├── lib/
 │   │   │   ├── supabase.ts           # 双模式客户端 (Live / Mock)
