@@ -72,7 +72,7 @@ Malaysia_Ez_rent/
 
 - `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **`loadListings()` / `loadAdmins()`** with error UI, retry, and reload on `SIGNED_IN` / `INITIAL_SESSION`. Listing cards show **`getListingAgentLabel()`** (e.g. `中介：name`) so duplicate rows are distinguishable. Student unit detail shows **「所属中介：」** + agent card (no redundant “contact admin” CTA). **Agent profile modal**: strict `getUnitsForAgent(agentId, units)` (`agent_id` match only, typed `UnitWithCommunity[]`); WhatsApp/WeChat icons with **「暂无」** when empty; rent filter inputs use `agentPriceInputStyle`. Enquiry form shows `currentEnquiryUnit.community?.name` (requires joined community on agent units). **Active lease integration**: queries `leases` table for the authenticated user (`myLeasedUnitIds`), hiding the "我要租" button for their active leased rooms, displaying "您已承租此房源" (You are currently renting this room), and strictly blocking new interest expressions or合租加入 if they already have an active lease contract. **Toast notification system**: replaces persistent drawer-level cancellation status banners with temporary, auto-clearing Toast alerts styled with a premium glassmorphic frosted glass design (`var(--glass-bg)`, `backdrop-filter: blur(16px)`, border-glow and custom colored shadows per type) across both student and admin views. **Cancel interest flow**: both co-renting (Whole Unit) and single renting rooms/studios expose exactly one cancel interest button (next to the main action for room/studio; inside the roommate list card for Whole Unit) and native alert/confirm popups are replaced with a state-driven glassmorphism Modal dialog. **WeChat Icon**: updated to standard 24x24 dual speech bubble SVG path to fix the half-missing visual bug. **Progress Bar**: unified `ProgressFlow` component with loop-extending line animation and pulsing glow dot, utilizing a mathematically uniform `flex: 1` layout (nodes at `12.5%`, `37.5%`, `62.5%`, `87.5%` center coordinates) and `marginLeft: -3px` half-width dot offset to guarantee perfect center alignment regardless of length or locale. **Lease Termination**: integrated state sync between units, leases, and tenant interests to ensure UI resets correctly after termination. clipping.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
-- `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.**
+- `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.** Removed all `simulateOffline` mock simulated fallbacks; always connects directly to the real API and displays translation-friendly connection error cards inside the chat bubble upon failure. Send local memory conversation history to the backend for state context memory.
 - `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator. Supports secure lease termination via the `tenant_terminate_lease` RPC (migration 018). Added `onUnreadFeedbackCountChange` callback to notify parent layout about unread work orders. The toggle button displays unread replies count wrapped in a red badge circle, resolving the stale React state calculation bug by evaluating newly-fetched arrays directly.**
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Payment copy: **bank transfer, WeChat, or Alipay** (no specific bank brand).
 
@@ -128,20 +128,21 @@ Malaysia_Ez_rent/
 ### Entry
 
 - `backend/app/main.py`
-  - `/api/chat` GET/POST returns `text/event-stream`.
+  - `/api/chat` GET/POST returns `text/event-stream`. Receives optional `history` array (list of `role` and `content` inputs) in POST request payload for conversation context.
   - Health/config endpoints expose provider availability.
 
 ### Agent orchestration
 
 - `backend/app/agent.py`
   - ReAct-like loop with tool calls.
-  - Supports mock stream fallback and live tool-calling stream.
-  - Emits SSE events (`thinking`, `tool_call`, `tool_result`, `text`, optional UI hints).
+  - Accepts an optional `history` conversation list in `live_agent_stream` and `agent_stream_router` to restore dialogue context for OpenAI/Gemini, enabling context-aware follow-up reasoning.
+  - Emits SSE events (`thinking`, `tool_call`, `tool_result`, `text`, `ui_component`). Emits `ui_component` event (`MapAndCard`) upon successful commute tool execution.
+  - **Stateless Operation**: Removed all database insert logic logging conversation traces to database tables (`agent_conversations` is deprecated/removed). Context is passed strictly in-memory over HTTP request lifetimes.
 
 ### Tooling (Live Agent: 4 tools)
 
 - `backend/app/tools.py`
-  - `calculate_commute`: Google Maps Distance Matrix with geometric fallback.
+  - `calculate_commute`: Google Maps Distance Matrix with geometric fallback. Returns resolved latitude/longitude parameters for dynamic maps rendering.
   - `get_web_realtime_info`: Tavily for policy/transit/general facts — **NOT for property listings**. Query excludes iProperty, PropertyGuru, SpeedHome, Mudah, iBilik, etc.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
 
