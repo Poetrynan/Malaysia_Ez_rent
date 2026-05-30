@@ -152,9 +152,9 @@ export default function AIChat() {
     setMessages(p => [...p, { id: uid, role: 'user', content: userText }]);
     setMessages(p => [...p, { id: aid, role: 'assistant', content: '', thoughts: [], toolCalls: [] }]);
     const activeUserId = userId || localStorage.getItem('ez_tenant_id') || 'tenant-123';
+    const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
       // Get auth token from Supabase session
       let authToken = '';
       try {
@@ -200,11 +200,26 @@ export default function AIChat() {
       }
     } catch (err: any) {
       console.error('AIChat send message failed:', err);
-      setMessages(p => p.map(m => m.id === aid ? { 
-        ...m, 
-        content: lang === 'zh' 
-          ? '⚠️ 无法连接到 AI 助手服务，请检查网络或稍后再试。' 
-          : '⚠️ Unable to connect to the AI assistant service. Please check your network or try again later.' 
+      const detail = err?.message || String(err);
+      const isNetwork = detail.includes('Failed to fetch') || detail.includes('NetworkError') || detail.includes('ERR_NETWORK');
+      const is401 = detail.includes('401');
+      let errorMsg: string;
+      if (is401) {
+        errorMsg = lang === 'zh'
+          ? '⚠️ 认证失败，请重新登录后再试。'
+          : '⚠️ Authentication failed. Please log in and try again.';
+      } else if (isNetwork) {
+        errorMsg = lang === 'zh'
+          ? `⚠️ 无法连接到 AI 后端服务 (${apiUrl})，请检查网络或稍后再试。`
+          : `⚠️ Cannot reach AI backend (${apiUrl}). Please check your network or try again later.`;
+      } else {
+        errorMsg = lang === 'zh'
+          ? `⚠️ AI 助手请求出错: ${detail}`
+          : `⚠️ AI assistant error: ${detail}`;
+      }
+      setMessages(p => p.map(m => m.id === aid ? {
+        ...m,
+        content: errorMsg
       } : m));
     } finally {
       setIsGenerating(false);

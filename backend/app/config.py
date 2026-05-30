@@ -46,6 +46,18 @@ class Config:
     # Auth
     SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://malaysia-ez-rent.vercel.app")
+    EXTRA_ORIGINS = os.getenv("EXTRA_ORIGINS", "")  # comma-separated additional allowed origins
+
+    @classmethod
+    def get_allowed_origins(cls) -> list:
+        """Return list of allowed CORS origins, including the main FRONTEND_URL and any extras."""
+        origins = [cls.FRONTEND_URL]
+        if cls.EXTRA_ORIGINS:
+            for o in cls.EXTRA_ORIGINS.split(","):
+                o = o.strip()
+                if o:
+                    origins.append(o)
+        return origins
     
     # Mode selectors
     @classmethod

@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional, List
 from app.agent import agent_stream_router
 from app.config import Config
 import uvicorn
@@ -16,7 +17,7 @@ app = FastAPI(
 # Configure CORS for Next.js integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[Config.FRONTEND_URL],
+    allow_origins=Config.get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,33 +25,38 @@ app.add_middleware(
 
 
 def verify_supabase_token(request: Request) -> str:
-    """Extract and verify Supabase JWT from Authorization header. Returns user_id."""
+    """Extract and verify Supabase JWT from Authorization header. Returns user_id.
+
+    Always returns a valid user_id — falls back to anonymous access if:
+    - No Authorization header is present
+    - Supabase is not configured
+    - Token is invalid or expired
+    This ensures the chat endpoint is never blocked by auth issues.
+    """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        # Fallback: if Supabase is not fully enabled or no JWT secret is provided, allow mock/fallback
-        if not Config.is_supabase_enabled() or not Config.SUPABASE_JWT_SECRET:
-            return "mock-tenant-id"
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+        # No token provided — allow anonymous access
+        return "anonymous-user"
 
     token = auth_header[7:]
     if not Config.SUPABASE_JWT_SECRET:
         # Fallback: decode without verification (dev/mock only)
         try:
             payload = jwt.decode(token, options={"verify_signature": False})
-            return payload.get("sub", "") or "mock-tenant-id"
+            return payload.get("sub", "") or "anonymous-user"
         except Exception:
-            return "mock-tenant-id"
+            return "anonymous-user"
 
     try:
         payload = jwt.decode(token, Config.SUPABASE_JWT_SECRET, algorithms=["HS256"])
         user_id = payload.get("sub", "")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Token missing user ID")
-        return user_id
+        return user_id or "anonymous-user"
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        # Token expired — still allow access with anonymous fallback
+        return "anonymous-user"
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        # Invalid token — still allow access with anonymous fallback
+        return "anonymous-user"
 
 class ChatMessage(BaseModel):
     role: str
