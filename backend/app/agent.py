@@ -8,8 +8,7 @@ from app.tools import (
     convert_currency_frankfurter,
     get_malaysia_holidays,
     search_internal_db,
-    openai_client,
-    supabase_service_client
+    openai_client
 )
 
 # Helper to format agent events as SSE strings
@@ -394,22 +393,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "content": json.dumps(result_data, ensure_ascii=False)
             })
 
-            # Save trace to db asynchronously if logged in
-            if supabase_service_client:
-                try:
-                    supabase_service_client.table("agent_conversations").insert({
-                        "user_id": user_id,
-                        "session_id": "session-realtime",
-                        "role": "assistant",
-                        "content": f"Invoked tool: {tool_name}",
-                        "intermediate_steps": {
-                            "tool_name": tool_name,
-                            "args": tool_args,
-                            "result": result_data
-                        }
-                    }).execute()
-                except Exception as e:
-                    print(f"Failed to log conversation step to agent_conversations: {e}")
+
 
 
 async def agent_stream_router(query: str, user_id: str) -> AsyncGenerator[str, None]:
