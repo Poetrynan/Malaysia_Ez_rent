@@ -522,52 +522,23 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
         if (data.length > 0) {
           const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
-          let allLeases: any[] = [];
+          const { getLeaseEnrichmentData } = await import('@/app/actions/leaseEnrichment');
+          const res = await getLeaseEnrichmentData(leaseIds, userIds);
 
-          if (leaseIds.length > 0) {
-            const { data: explicitLeases, error: leaseErr } = await supabase
-              .from('leases')
-              .select('id, tenant_id, unit_id, status')
-              .in('id', leaseIds);
-            if (leaseErr) console.error('Fetch explicit leases error:', leaseErr);
-            if (explicitLeases) allLeases.push(...explicitLeases);
-          }
-
-          const existingLeaseIds = new Set(allLeases.map(l => l.id));
-          // Fetch ALL leases for these tenants (not just active) to ensure fallback works
-          const { data: tenantLeases, error: tenantLeaseErr } = await supabase
-            .from('leases')
-            .select('id, tenant_id, unit_id, status')
-            .in('tenant_id', userIds);
-          if (tenantLeaseErr) console.error('Fetch tenant leases error:', tenantLeaseErr);
-          if (tenantLeases) {
-            tenantLeases.forEach((al: any) => {
-              if (!existingLeaseIds.has(al.id)) allLeases.push(al);
+          if (res.success) {
+            const allLeases = res.leases || [];
+            allLeases.forEach((l: any) => {
+              leaseByIdMap.set(l.id, l);
+              if (l.status === 'active') {
+                activeLeaseByTenantMap.set(l.tenant_id, l);
+              } else if (!activeLeaseByTenantMap.has(l.tenant_id)) {
+                activeLeaseByTenantMap.set(l.tenant_id, l);
+              }
             });
-          }
-
-          allLeases.forEach((l: any) => {
-            leaseByIdMap.set(l.id, l);
-            // Prefer active lease, but keep any lease as fallback
-            if (l.status === 'active') {
-              activeLeaseByTenantMap.set(l.tenant_id, l);
-            } else if (!activeLeaseByTenantMap.has(l.tenant_id)) {
-              activeLeaseByTenantMap.set(l.tenant_id, l);
-            }
-          });
-
-          const unitIds = [...new Set(allLeases.map((l: any) => l.unit_id).filter(Boolean))];
-          if (unitIds.length > 0) {
-            const { data: allUnits, error: unitErr } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
-            if (unitErr) console.error('Fetch units error:', unitErr);
-            (allUnits || []).forEach((u: any) => unitMap.set(u.id, u));
-
-            const commIds = [...new Set((allUnits || []).map((u: any) => u.community_id).filter(Boolean))];
-            if (commIds.length > 0) {
-              const { data: allComms, error: commErr } = await supabase.from('communities').select('id, name').in('id', commIds);
-              if (commErr) console.error('Fetch communities error:', commErr);
-              (allComms || []).forEach((c: any) => commMap.set(c.id, c));
-            }
+            (res.units || []).forEach((u: any) => unitMap.set(u.id, u));
+            (res.communities || []).forEach((c: any) => commMap.set(c.id, c));
+          } else {
+            console.error('Lease enrichment server action failed:', res.error);
           }
         }
 

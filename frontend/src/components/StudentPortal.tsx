@@ -671,38 +671,24 @@ export default function StudentPortal({
 
           // Load lease chain for unit_info (community + room type)
           const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
-          let allLeases: any[] = [];
-          if (leaseIds.length > 0) {
-            const { data: explicitLeases } = await supabase.from('leases').select('id, unit_id, status').in('id', leaseIds);
-            if (explicitLeases) allLeases.push(...explicitLeases);
-          }
-          const existingLeaseIds = new Set(allLeases.map(l => l.id));
-          const { data: activeLeases } = await supabase.from('leases').select('id, unit_id, status').eq('tenant_id', user.id).eq('status', 'active');
-          if (activeLeases) {
-            activeLeases.forEach(al => { if (!existingLeaseIds.has(al.id)) allLeases.push(al); });
-          }
+          const { getLeaseEnrichmentData } = await import('@/app/actions/leaseEnrichment');
+          const res = await getLeaseEnrichmentData(leaseIds, [user.id]);
 
           const leaseByIdMap = new Map<string, any>();
           let activeLease: any = null;
-          allLeases.forEach(l => {
-            leaseByIdMap.set(l.id, l);
-            if (l.status === 'active') activeLease = l;
-          });
-
-          // Load units & communities
           const unitMap = new Map<string, any>();
           const commMap = new Map<string, any>();
-          const unitIds = [...new Set(allLeases.map(l => l.unit_id).filter(Boolean))];
-          if (unitIds.length > 0) {
-            const { data: allUnits } = await supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds);
-            if (allUnits) {
-              allUnits.forEach(un => unitMap.set(un.id, un));
-              const commIds = [...new Set(allUnits.map(un => un.community_id).filter(Boolean))];
-              if (commIds.length > 0) {
-                const { data: allComms } = await supabase.from('communities').select('id, name').in('id', commIds);
-                if (allComms) allComms.forEach(c => commMap.set(c.id, c));
-              }
-            }
+
+          if (res.success) {
+            const allLeases = res.leases || [];
+            allLeases.forEach((l: any) => {
+              leaseByIdMap.set(l.id, l);
+              if (l.status === 'active') activeLease = l;
+            });
+            (res.units || []).forEach((un: any) => unitMap.set(un.id, un));
+            (res.communities || []).forEach((c: any) => commMap.set(c.id, c));
+          } else {
+            console.error('Lease enrichment server action failed:', res.error);
           }
 
           const normalized = data.map((f: any) => {
