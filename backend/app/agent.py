@@ -175,7 +175,11 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             await asyncio.sleep(0.005)
 
 
-async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, None]:
+async def live_agent_stream(
+    query: str,
+    user_id: str,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> AsyncGenerator[str, None]:
     """
     Executes a real ReAct loop using OpenAI Tool Calling.
     """
@@ -270,7 +274,7 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "     *示例 Prompt*: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
                 "   - 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
                 "     *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
-                "   - 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
+                "   - 💱 **实时汇率换算**：快速查询 and 换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
                 "     *示例 Prompt*: `3000令吉等于多少人民币？`\n"
                 "   - 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
                 "     *示例 Prompt*: `查一下2026年马来西亚有哪些国定假日？`\n"
@@ -284,9 +288,19 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "8. You CAN search internal available listings using search_internal_db when the user asks to find, search, or recommend rooms. However, third-party external platforms (iProperty, PropertyGuru, SpeedHome, Mudah, etc.) are **strictly forbidden**. Never call Tavily or any web tool to search for room listings.\n"
                 "9. When using get_web_realtime_info, Tavily excludes competitor rental sites. Never scrape, link, or recommend third-party listing pages."
             )
-        },
-        {"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"}
+        }
     ]
+
+    # Append historical messages if present (exclude welcome message starting with 👋)
+    if history:
+        for msg in history:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role in ["user", "assistant"] and content and not content.startswith("👋"):
+                messages.append({"role": role, "content": content})
+
+    # Append current query
+    messages.append({"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"})
 
     # ReAct Loop
     for loop_idx in range(5):
@@ -418,10 +432,14 @@ async def live_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
 
 
 
-async def agent_stream_router(query: str, user_id: str) -> AsyncGenerator[str, None]:
+async def agent_stream_router(
+    query: str,
+    user_id: str,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> AsyncGenerator[str, None]:
     """Router selecting mock or live OpenAI stream based on configuration."""
     if Config.is_openai_enabled():
-        async for item in live_agent_stream(query, user_id):
+        async for item in live_agent_stream(query, user_id, history):
             yield item
     else:
         async for item in mock_agent_stream(query, user_id):

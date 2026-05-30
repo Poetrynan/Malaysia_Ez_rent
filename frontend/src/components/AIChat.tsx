@@ -170,7 +170,11 @@ export default function AIChat() {
       const res = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ query: userText, user_id: activeUserId })
+        body: JSON.stringify({
+          query: userText,
+          user_id: activeUserId,
+          history: messages.map(m => ({ role: m.role, content: m.content }))
+        })
       });
       
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);

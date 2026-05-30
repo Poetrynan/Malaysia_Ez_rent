@@ -52,8 +52,13 @@ def verify_supabase_token(request: Request) -> str:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
     query: str
+    history: Optional[List[ChatMessage]] = None
 
 @app.on_event("startup")
 def startup_event():
@@ -101,8 +106,12 @@ async def chat_post(body: ChatRequest, user_id: str = Depends(verify_supabase_to
     if not body.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 
+    history_list = None
+    if body.history:
+        history_list = [{"role": h.role, "content": h.content} for h in body.history]
+
     return StreamingResponse(
-        agent_stream_router(body.query, user_id),
+        agent_stream_router(body.query, user_id, history_list),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
