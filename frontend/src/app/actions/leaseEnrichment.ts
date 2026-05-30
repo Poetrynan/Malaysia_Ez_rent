@@ -59,7 +59,7 @@ export async function getLeaseEnrichmentData(leaseIds: string[], tenantIds: stri
     if (unitIds.length > 0) {
       const { data: units } = await adminClient
         .from('units')
-        .select('id, room_type, unit_number, community_id')
+        .select('id, room_type, community_id')
         .in('id', unitIds);
       if (units) {
         allUnits = units;
