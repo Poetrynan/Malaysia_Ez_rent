@@ -210,8 +210,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const handleDeleteAdmin = (id: string) => {
     setGenericConfirm({
-      title: lang === 'zh' ? '确认删除管理员' : 'Delete Admin',
-      message: lang === 'zh' ? '确定删除该管理员？此操作无法撤销。' : 'Are you sure you want to delete this admin? This action cannot be undone.',
+      title: lang === 'zh' ? '确认删除中介' : 'Delete Agent',
+      message: lang === 'zh' ? '确定删除该中介？此操作无法撤销。' : 'Are you sure you want to delete this agent? This action cannot be undone.',
       isDanger: true,
       onConfirm: async () => {
         try {
@@ -3277,18 +3277,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           <div className="glass-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Users size={16} style={{ color: 'var(--primary)' }} />管理员管理
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>（最多 5 人）</span>
+                <Users size={16} style={{ color: 'var(--primary)' }} />中介与管理员管理
               </h3>
-              {adminList.length < 5 && (
-                <button onClick={() => setShowAddAdmin(!showAddAdmin)} style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                  borderRadius: 8, border: 'none', background: 'var(--primary)',
-                  color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
-                }}>
-                  <UserPlus size={14} /> 添加管理员
-                </button>
-              )}
+              <button onClick={() => setShowAddAdmin(!showAddAdmin)} style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                borderRadius: 8, border: 'none', background: 'var(--primary)',
+                color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+              }}>
+                <UserPlus size={14} /> 添加中介
+              </button>
             </div>
 
             {/* Add admin form */}

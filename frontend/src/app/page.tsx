@@ -218,7 +218,7 @@ export default function Home() {
                 {adminRole === 'super_admin' && (
                   <li onClick={() => setActiveTab('admin-admins')} className={`nav-item ${activeTab === 'admin-admins' ? 'active' : ''}`}>
                     <Users size={16} />
-                    <span>{lang === 'zh' ? '管理员' : 'Admins'}</span>
+                    <span>{lang === 'zh' ? '中介与管理员' : 'Agents & Admins'}</span>
                     <span className="role-badge admin">{t('roleManagerBadge')}</span>
                   </li>
                 )}
