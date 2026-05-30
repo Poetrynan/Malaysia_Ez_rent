@@ -219,110 +219,139 @@ def search_internal_db(
 
 
 # Tool 2: calculate_commute
+
+
+def _google_geocode(address: str) -> Optional[Dict[str, Any]]:
+    """Use Google Maps Geocoding API to resolve a text address to lat/lng + formatted name."""
+    if not Config.is_google_maps_enabled():
+        return None
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {"address": address, "key": Config.GOOGLE_MAPS_API_KEY, "region": "my"}
+    try:
+        r = httpx.get(url, params=params, timeout=8.0)
+        data = r.json()
+        if data.get("status") == "OK" and data.get("results"):
+            result = data["results"][0]
+            loc = result["geometry"]["location"]
+            return {
+                "lat": loc["lat"],
+                "lng": loc["lng"],
+                "formatted_address": result.get("formatted_address", address),
+            }
+    except Exception as e:
+        print(f"[Geocode] Error geocoding '{address}': {e}")
+    return None
+
+
 def calculate_commute(
     origin_address: str,
-    university_name: str
+    destination_address: str
 ) -> Dict[str, Any]:
     """
-    Calculate transit time and distance from a starting address string to a target university
-    using Google Maps API or geometric calculation fallback.
+    Calculate transit time and distance between two free-text addresses.
+    Uses Google Maps Geocoding + Distance Matrix APIs — no hardcoded location lists.
+    Works for ANY address the LLM passes (university, company, landmark, condo, etc.).
     """
-    print(f"[Tool: calculate_commute] Origin Address: '{origin_address}', University: '{university_name}'")
-    
-    # Try finding university coordinates
-    dest_lat, dest_lng = None, None
-    for uni in UNIVERSITIES:
-        if university_name.lower() in uni["name"].lower() or uni["name"].lower() in university_name.lower():
-            dest_lat = uni["lat"]
-            dest_lng = uni["lng"]
-            university_name = uni["name"]
-            break
-            
-    if dest_lat is None:
-        dest_lat, dest_lng = 3.0645, 101.6000
-        university_name = "Monash University Malaysia (Default)"
+    print(f"[Tool: calculate_commute] Origin: '{origin_address}', Destination: '{destination_address}'")
 
-    # Try finding community coordinates for the origin
-    origin_lat, origin_lng = None, None
-    for comm in COMMUNITIES:
-        if origin_address.lower() in comm["name"].lower() or comm["name"].lower() in origin_address.lower():
-            origin_lat = comm["lat"]
-            origin_lng = comm["lng"]
-            origin_address = comm["name"]
-            break
-            
-    if origin_lat is None:
-        origin_lat, origin_lng = 3.06341, 101.60977 # Default to Sunway Geo
+    # --- Geocode both addresses via Google Maps API ---
+    origin_geo = _google_geocode(origin_address)
+    dest_geo = _google_geocode(destination_address)
 
+    # Resolve coordinates from geocoding results
+    if origin_geo:
+        origin_lat, origin_lng = origin_geo["lat"], origin_geo["lng"]
+        origin_resolved = origin_geo["formatted_address"]
+    else:
+        return {
+            "error": True,
+            "message": f"无法识别出发地「{origin_address}」的地理位置。请让用户输入更具体的地址，例如小区名、街道名或地标。",
+            "failed_address": origin_address,
+        }
+
+    if dest_geo:
+        dest_lat, dest_lng = dest_geo["lat"], dest_geo["lng"]
+        dest_resolved = dest_geo["formatted_address"]
+    else:
+        return {
+            "error": True,
+            "message": f"无法识别目的地「{destination_address}」的地理位置。请让用户确认具体的地点名称。",
+            "failed_address": destination_address,
+        }
+
+    # --- Call Google Maps Distance Matrix with resolved coordinates ---
     if Config.is_google_maps_enabled():
         url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-        params = {
-            "origins": origin_address,
-            "destinations": f"{dest_lat},{dest_lng}",
-            "mode": "driving",
-            "key": Config.GOOGLE_MAPS_API_KEY
-        }
+        dest_str = f"{dest_lat},{dest_lng}"
         try:
-            r = httpx.get(url, params=params)
+            # Driving
+            params = {
+                "origins": f"{origin_lat},{origin_lng}",
+                "destinations": dest_str,
+                "mode": "driving",
+                "key": Config.GOOGLE_MAPS_API_KEY,
+            }
+            r = httpx.get(url, params=params, timeout=8.0)
             data = r.json()
+
             if data.get("status") == "OK" and data["rows"][0]["elements"][0]["status"] == "OK":
-                element = data["rows"][0]["elements"][0]
-                distance_text = element["distance"]["text"]
-                duration_text = element["duration"]["text"]
-                
-                # Fetch public transit too
+                elem = data["rows"][0]["elements"][0]
+                distance_text = elem["distance"]["text"]
+                duration_text = elem["duration"]["text"]
+
+                # Transit
                 params["mode"] = "transit"
-                r_transit = httpx.get(url, params=params)
-                data_transit = r_transit.json()
+                r_t = httpx.get(url, params=params, timeout=8.0)
+                d_t = r_t.json()
                 transit_text = "N/A"
-                if data_transit.get("status") == "OK" and data_transit["rows"][0]["elements"][0]["status"] == "OK":
-                    transit_text = data_transit["rows"][0]["elements"][0]["duration"]["text"]
-                    
+                if d_t.get("status") == "OK" and d_t["rows"][0]["elements"][0]["status"] == "OK":
+                    transit_text = d_t["rows"][0]["elements"][0]["duration"]["text"]
+
+                # Walking
+                params["mode"] = "walking"
+                r_w = httpx.get(url, params=params, timeout=8.0)
+                d_w = r_w.json()
+                walk_text = "N/A"
+                if d_w.get("status") == "OK" and d_w["rows"][0]["elements"][0]["status"] == "OK":
+                    walk_text = d_w["rows"][0]["elements"][0]["duration"]["text"]
+
                 return {
-                    "university": university_name,
+                    "origin_name": origin_resolved,
+                    "origin_lat": origin_lat,
+                    "origin_lng": origin_lng,
+                    "destination_name": dest_resolved,
+                    "destination_lat": dest_lat,
+                    "destination_lng": dest_lng,
                     "driving_distance": distance_text,
                     "driving_duration": duration_text,
                     "transit_duration": transit_text,
-                    "walk_duration": f"{int(float(distance_text.replace(' km','').replace(' m','')) * 12)} mins (estimated)",
-                    "origin_name": origin_address,
-                    "origin_lat": origin_lat,
-                    "origin_lng": origin_lng,
-                    "destination_lat": dest_lat,
-                    "destination_lng": dest_lng
+                    "walk_duration": walk_text,
                 }
+            else:
+                print(f"[DistanceMatrix] Status: {data.get('status')}, element: {data['rows'][0]['elements'][0].get('status')}")
         except Exception as e:
-            print(f"Error calling Google Maps API: {e}")
+            print(f"[DistanceMatrix] Error: {e}")
 
-    # Fallback / Mock calculation based on address name
-    addr_lower = origin_address.lower()
-    if "geo" in addr_lower:
-        road_distance = 0.8
-    elif "nadayu" in addr_lower:
-        road_distance = 1.2
-    elif "latour" in addr_lower:
-        road_distance = 2.4
-    else:
-        # Generate stable distance based on address string hash
-        import random
-        random.seed(hash(origin_address))
-        road_distance = round(random.uniform(1.2, 4.5), 1)
-
-    # Calculate durations based on distance
-    driving_mins = max(1, int(road_distance * 2.5))
-    transit_mins = max(3, int(road_distance * 4.5))
-    walk_mins = int(road_distance * 12)
+    # --- Offline fallback: rough estimate based on haversine distance ---
+    import math
+    R = 6371  # Earth radius km
+    dlat = math.radians(dest_lat - origin_lat)
+    dlng = math.radians(dest_lng - origin_lng)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(origin_lat)) * math.cos(math.radians(dest_lat)) * math.sin(dlng/2)**2
+    straight_km = R * 2 * math.asin(math.sqrt(a))
+    road_km = round(straight_km * 1.3, 1)  # rough road factor
 
     return {
-        "university": university_name,
-        "driving_distance": f"{road_distance} km",
-        "driving_duration": f"{driving_mins} mins",
-        "transit_duration": f"{transit_mins} mins",
-        "walk_duration": f"{walk_mins} mins",
-        "origin_name": origin_address,
+        "origin_name": origin_resolved,
         "origin_lat": origin_lat,
         "origin_lng": origin_lng,
+        "destination_name": dest_resolved,
         "destination_lat": dest_lat,
-        "destination_lng": dest_lng
+        "destination_lng": dest_lng,
+        "driving_distance": f"~{road_km} km (estimated, offline)",
+        "driving_duration": f"~{max(1, int(road_km * 2.5))} mins (estimated)",
+        "transit_duration": f"~{max(3, int(road_km * 4.5))} mins (estimated)",
+        "walk_duration": f"~{int(road_km * 12)} mins (estimated)",
     }
 
 

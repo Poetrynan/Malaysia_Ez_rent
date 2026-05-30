@@ -1,6 +1,6 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-05-29 (UTC+8)
+> 最后更新：2026-05-30 (UTC+8)
 > 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸与呼吸光点落点校准修复 · **中介注册系统与审核工作流（022）** · **个人信息扩展字段与证件上传（023）** · **账户注销 Server Action 彻底清理数据** · **Profile 跨实例同步与 Toast 通知** · **房源门牌号彻底移除与工单仅展示个人资料房号（026）**
 
 
@@ -1309,4 +1309,103 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 - **自动触发地图通勤测算**：
   - 后端 `calculate_commute` 工具调用成功后，会向前端推送 `ui_component` 事件。
   - 前端收到后会自动渲染并绘制该路线上起终点的小区-学校通勤路线折线地图 (`MapAndCard`)，无需手动点击。
+
+---
+
+## 三十八、AI Agent 智能化改造 — 移除硬编码，LLM 做意图解析（2026-05-30）
+
+**目标：** 彻底移除工具层的所有写死数据（大学别名表、COMMUNITIES 匹配、Monash 默认回退），让 LLM 承担全部意图解析职责，工具只做纯 Google API 调用。
+
+### 问题根因
+
+此前 `calculate_commute` 工具内部维护了一张 `_UNIVERSITY_ALIASES` 别名表（覆盖 UM、Monash、Taylor's 等缩写/中英文名），并在匹配失败时回退到 Monash 默认坐标。这导致：
+
+1. LLM 传入 `"University of Malaya"`，工具在别名表中找不到精确匹配 → 回退 Monash
+2. LLM 看到返回结果说 `"Monash University Malaysia (Default)"`，误以为工具失败 → 道歉
+3. 用户说 "从公司出发"，工具回退到 Sunway Geo 坐标 → 路线完全错误
+
+### 改动内容
+
+#### 1. tools.py — 工具纯 API 化
+
+- **删除** `_UNIVERSITY_ALIASES` 别名表（原 20+ 条硬编码映射）
+- **删除** `_UNIVERSITY_SHORT_NAMES` 缩写映射
+- **删除** 出发地对 `COMMUNITIES` 列表的循环匹配
+- **删除** 目的地对 `UNIVERSITIES` 列表的循环匹配
+- **删除** Monash / Sunway Geo 默认回退坐标
+- **新增** `_google_geocode(address)` 函数：调用 Google Maps Geocoding API，将任意文本地址解析为 `lat`/`lng` + `formatted_address`
+- **重写** `calculate_commute`：
+  - 参数从 `university_name` 改为 `destination_address`（语义更通用）
+  - 流程：`_google_geocode(origin)` → `_google_geocode(destination)` → Google Distance Matrix（驾车/公交/步行三种模式）
+  - Geocoding 失败时返回 `{"error": True, "message": "...", "failed_address": "..."}`，不再回退默认坐标
+  - 离线 fallback：仅在 Google API 不可用时，使用 haversine 公式估算直线距离 ×1.3 作为路程
+
+#### 2. agent.py — LLM 意图解析
+
+- **系统提示重写**（`live_agent_stream` 的 system message）：
+  - 新增 `## TOOL USAGE RULES (CRITICAL)` 段落
+  - 要求 LLM 在调用工具前解析缩写（`UM` → `Universiti Malaya`，`KLCC` → `Petronas Twin Towers`）
+  - 要求传入完整地址字符串，不传缩写
+  - 模糊地址（"公司"、"那边"）必须追问用户，不得猜测
+  - 工具返回 error 时，引导用户补充信息
+- **工具定义更新**（`tools_definitions`）：
+  - `calculate_commute` 描述改为："Calculate travel times between ANY two locations. Resolve abbreviations to full names before calling."
+  - 参数从 `university_name` 改为 `destination_address`
+- **mock_agent_stream 同步**：通勤段落改用 `destination_address` 字段
+
+#### 3. CORS 与认证修复（main.py）
+
+- **CORS 改进**：`allow_origins` 从硬编码单域名改为 `Config.get_allowed_origins()`，支持 `FRONTEND_URL` + `EXTRA_ORIGINS`（逗号分隔多域名）
+- **认证容错**：`verify_supabase_token` 不再对缺失/过期/无效 token 抛 401，统一回退到 `"anonymous-user"`，确保未登录用户也能使用 AI 助手
+
+#### 4. config.py — CORS 配置
+
+- 新增 `EXTRA_ORIGINS` 环境变量（逗号分隔的额外允许域名）
+- 新增 `get_allowed_origins()` 类方法，返回主域名 + 额外域名列表
+
+#### 5. 前端 MapAndCard 地图优化（MapAndCard.tsx）
+
+- **新增 Props**：`destination_name`、`destination_lat`、`destination_lng`
+- **通勤模式**：当 destination props 存在时，直接显示路线地图（iframe auto-load），不再显示输入框和"点击查看路线"按钮
+- **房源列表模式**：保留"点击查看路线地图"按钮，点击前不加载 iframe（节省 Google Maps API 配额）
+- **交通模式切换**：驾车/公交/步行按钮在通勤模式和房源+出发地模式下均可见，切换即更新地图
+
+#### 6. 前端错误信息优化（AIChat.tsx）
+
+- 区分网络错误（`Failed to fetch`）、401 认证错误、其他错误
+- 网络错误显示实际 API 地址（`apiUrl`），方便排查
+- `apiUrl` 变量提升到 try 块外，确保 catch 块可访问
+
+### 设计原则
+
+```
+之前（工具做智能）:
+  用户: "从um到KLCC要多久"
+  → 工具硬编码匹配 "um" → "Universiti Malaya" → 匹配失败 → 回退 Monash
+
+之后（LLM 做智能，工具只做 API 调用）:
+  用户: "从公司到um要多久"
+  → LLM: "um" = "Universiti Malaya"，但"公司"不明确
+  → LLM 追问: "请问您公司在哪个地址？"
+  → 用户: "KLCC Twin Towers"
+  → LLM 调用: calculate_commute("Petronas Twin Towers KLCC", "Universiti Malaya")
+  → 工具: Geocoding → 坐标 → Distance Matrix → 真实数据
+  → LLM: 组织自然语言回复 + 地图
+```
+
+### 影响范围
+
+| 文件 | 改动 |
+|------|------|
+| `backend/app/tools.py` | 删除别名表 + 重写 calculate_commute + 新增 _google_geocode |
+| `backend/app/agent.py` | 重写系统提示 + 更新工具定义 + 同步字段名 |
+| `backend/app/main.py` | CORS 多域名 + 认证容错 |
+| `backend/app/config.py` | EXTRA_ORIGINS + get_allowed_origins() |
+| `frontend/src/components/MapAndCard.tsx` | 通勤模式直接显示地图 + 资源懒加载 |
+| `frontend/src/components/AIChat.tsx` | 错误分类 + apiUrl 可访问 |
+
+### 部署说明
+
+- 后端：推送到 GitHub，Render 自动重新部署
+- 前端：确认 `NEXT_PUBLIC_AGENT_API_URL` 环境变量已设置，重新部署
 

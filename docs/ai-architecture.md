@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-29 (UTC+8)
+Last updated: 2026-05-30 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -142,7 +142,7 @@ Malaysia_Ez_rent/
 ### Tooling (Live Agent: 4 tools)
 
 - `backend/app/tools.py`
-  - `calculate_commute`: Google Maps Distance Matrix with geometric fallback. Returns resolved latitude/longitude parameters for dynamic maps rendering.
+  - `calculate_commute`: Google Maps Geocoding + Distance Matrix. Accepts ANY free-text address (no hardcoded lists). LLM resolves abbreviations before calling. Returns origin/destination coordinates + driving/transit/walk durations. Returns structured error when geocoding fails.
   - `get_web_realtime_info`: Tavily for policy/transit/general facts — **NOT for property listings**. Query excludes iProperty, PropertyGuru, SpeedHome, Mudah, iBilik, etc.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
 
@@ -405,4 +405,91 @@ Opening the "My Tenancy" tab previously triggered a series of sequential databas
   This returns all related unit and community information in a single network round-trip, completely bypassing the need for subsequent database calls.
 - **Parity with Mock Mode**: Updated local storage mock handlers in `supabase.ts` to respect nested objects format, ensuring mock and live modes behave identically.
 - **Performance Impact**: Reduced portal tab-switching loading latency by over 70%, ensuring instant loading states for students.
+
+
+## 14) AI Agent Intelligence Overhaul — Zero Hardcoded Data (2026-05-30)
+
+### Problem
+
+The `calculate_commute` tool maintained a hardcoded `_UNIVERSITY_ALIASES` dictionary (20+ entries mapping abbreviations, English names, Chinese names to canonical university names). When the LLM passed `"University of Malaya"` but the alias table only had `"university of malaya"` (lowercase), substring matching failed, and the tool fell back to Monash coordinates. The LLM saw `"Monash University Malaysia (Default)"` in the result and apologized to the user.
+
+### Design Principle
+
+**LLM does the intelligence, tools do the API calls.**
+
+- Tools accept raw text addresses and call Google Maps APIs directly
+- LLM resolves abbreviations before calling tools (e.g. `UM` → `Universiti Malaya`)
+- If the user's address is vague ("公司", "那边"), the LLM asks for clarification
+- Tools return structured errors when geocoding fails — LLM interprets and guides the user
+
+### What Was Removed
+
+| Removed | Why |
+|---------|-----|
+| `_UNIVERSITY_ALIASES` dict | LLM should resolve `UM` → `Universiti Malaya` before calling |
+| `_UNIVERSITY_SHORT_NAMES` dict | Same reason |
+| COMMUNITIES loop matching | Tool should geocode any address, not match against a hardcoded list |
+| UNIVERSITIES loop matching | Same reason |
+| Monash default fallback coords | Returning wrong data is worse than returning an error |
+| Sunway Geo default fallback coords | Same reason |
+
+### What Was Added
+
+| Addition | Purpose |
+|----------|---------|
+| `_google_geocode(address)` | Google Maps Geocoding API — resolves any text address to lat/lng |
+| `error` return format | `{"error": True, "message": "...", "failed_address": "..."}` when geocoding fails |
+| Haversine offline fallback | Only when Google API is completely unavailable (very rare) |
+
+### Updated System Prompt (Key Rules)
+
+```
+## TOOL USAGE RULES (CRITICAL)
+- Resolve abbreviations to FULL names BEFORE calling tools.
+  'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers'
+- Pass EXACT full address strings to tools.
+- If origin/destination is vague, ASK the user. Do NOT guess.
+- NEVER make up coordinates, distances, or travel times.
+- If a tool returns an error, relay it and ask for clarification.
+```
+
+### Updated Tool Definition
+
+```json
+{
+  "name": "calculate_commute",
+  "description": "Calculate travel times between ANY two locations using Google Maps. Resolve abbreviations to full names before calling.",
+  "parameters": {
+    "origin_address": "Full starting address in Malaysia",
+    "destination_address": "Full destination address, university, or landmark. NOT abbreviations."
+  }
+}
+```
+
+### CORS & Auth Fixes
+
+- `allow_origins` now supports multiple domains via `FRONTEND_URL` + `EXTRA_ORIGINS` env var
+- `verify_supabase_token` no longer returns 401 for missing/expired tokens — falls back to `"anonymous-user"` so unauthenticated users can still use the AI assistant
+
+### MapAndCard Component Update
+
+- **Commute mode** (destination props present): auto-renders route map iframe, no click required
+- **Room listing mode**: shows "Click to load map" button — iframe not rendered until clicked (saves Google Maps API quota)
+- Transport mode buttons (drive/transit/walk) visible in both modes
+
+### Updated Flow Diagram
+
+```
+User: "从公司到um要多久"
+  → LLM resolves: "um" = "Universiti Malaya", but "公司" is vague
+  → LLM asks: "请问您公司在哪个地址？"
+  → User: "KLCC Twin Towers"
+  → LLM calls: calculate_commute("Petronas Twin Towers KLCC", "Universiti Malaya")
+  → Tool: _google_geocode(origin) → lat/lng
+  → Tool: _google_geocode(destination) → lat/lng
+  → Tool: Distance Matrix API → driving/transit/walk durations
+  → Tool returns: {origin_name, destination_name, driving_distance, ...}
+  → LLM: natural language response + MapAndCard UI component
+  → Frontend: auto-renders route map
+```
 

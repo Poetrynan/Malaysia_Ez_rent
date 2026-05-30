@@ -47,7 +47,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             await asyncio.sleep(0.005)
         return
 
-    elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "马来亚", "亚太", "monash", "sunway", "taylor", "apu", "malaya", "校区", "怎么去", "交通", "多久", "时间", "通勤"]):
+    elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "马来亚", "亚太", "monash", "sunway", "taylor", "apu", "malaya", "um", "校区", "怎么去", "交通", "多久", "时间", "通勤"]):
         yield sse_event({"type": "thinking", "step": "🚇 Calculating commute travel time to Malaysia universities using Google Maps database..."})
         await asyncio.sleep(0.8)
         
@@ -59,8 +59,9 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         # Try to match a university from the query
         uni_keywords = {
             "马来亚": "Universiti Malaya (UM)", "um": "Universiti Malaya (UM)", "malaya": "Universiti Malaya (UM)",
+            "university of malaya": "Universiti Malaya (UM)", "universiti malaya": "Universiti Malaya (UM)",
             "莫纳什": "Monash University Malaysia", "monash": "Monash University Malaysia",
-            "双威": "Sunway University", "sunway uni": "Sunway University",
+            "双威": "Sunway University", "sunway": "Sunway University",
             "泰莱": "Taylor's University", "taylor": "Taylor's University",
             "apu": "Asia Pacific University (APU)", "亚太": "Asia Pacific University (APU)",
         }
@@ -75,14 +76,15 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 origin_address = comm["name"]
                 break
         
-        yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_address": origin_address, "university_name": target_uni}})
+        yield sse_event({"type": "tool_call", "tool_name": "calculate_commute", "args": {"origin_address": origin_address, "destination_address": target_uni}})
         await asyncio.sleep(0.8)
-        
+
         commute_info = calculate_commute(origin_address, target_uni)
         yield sse_event({"type": "tool_result", "tool_name": "calculate_commute", "result": commute_info})
         await asyncio.sleep(0.5)
         
-        intro = f"根据地图测算，从 **{origin_address}** 到 **{commute_info['university']}** 的交通路线如下：\n\n"
+        dest_display = commute_info.get('destination_name') or target_uni
+        intro = f"根据地图测算，从 **{origin_address}** 到 **{dest_display}** 的交通路线如下：\n\n"
         for char in intro:
             yield sse_event({"type": "text", "delta": char})
             await asyncio.sleep(0.005)
@@ -105,7 +107,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 "origin_name": commute_info.get("origin_name") or origin_address,
                 "origin_lat": float(commute_info.get("origin_lat") or 3.06341),
                 "origin_lng": float(commute_info.get("origin_lng") or 101.60977),
-                "destination_name": commute_info.get("university") or target_uni,
+                "destination_name": commute_info.get("destination_name") or target_uni,
                 "destination_lat": float(commute_info.get("destination_lat") or 3.0645),
                 "destination_lng": float(commute_info.get("destination_lng") or 101.6000)
             }
@@ -188,14 +190,14 @@ async def live_agent_stream(
             "type": "function",
             "function": {
                 "name": "calculate_commute",
-                "description": "Calculate travel times and distances from a starting address or condo name to a university.",
+                "description": "Calculate travel times and distances between any two locations using Google Maps. Accepts ANY address, landmark, building name, or university — resolve abbreviations to full names before calling (e.g. 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers').",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "origin_address": {"type": "string", "description": "Starting address, condo name, or landmark (e.g. Nadayu 28, Sunway Geo Residences)."},
-                        "university_name": {"type": "string", "description": "Target university name (e.g. Monash University Malaysia)."}
+                        "origin_address": {"type": "string", "description": "Full starting address, building name, or landmark in Malaysia (e.g. 'Sunway Geo Residences, Bandar Sunway', 'KLCC, Kuala Lumpur')."},
+                        "destination_address": {"type": "string", "description": "Full destination address, university name, or landmark (e.g. 'Universiti Malaya', 'Monash University Malaysia'). NOT abbreviations — use full names."}
                     },
-                    "required": ["origin_address", "university_name"]
+                    "required": ["origin_address", "destination_address"]
                 }
             }
         },
@@ -266,27 +268,34 @@ async def live_agent_stream(
             "role": "system",
             "content": (
                 "You are an expert AI Assistant for international students in Malaysia. "
-                "Your role is to assist students with room recommendations, commute calculations, exchange rates, holiday schedules, and general student life information. "
-                "CRITICAL INSTRUCTIONS:\n"
-                "1. If a user asks about checking a lease/bill or paying rent, tell them clearly to use the website's built-in '我的租约' / 'StudentPortal' tab.\n"
-                "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', you MUST list out your active features and provide the EXACT corresponding example prompts as shown below:\n"
-                "   - 🔍 **智能选房推荐**：根据您的偏好（如离莫纳什近、价格、房型等），帮您从系统房源库检索最匹配的房间并直接展示路线地图。\n"
-                "     *示例 Prompt*: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
-                "   - 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
-                "     *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
-                "   - 💱 **实时汇率换算**：快速查询 and 换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
-                "     *示例 Prompt*: `3000令吉等于多少人民币？`\n"
-                "   - 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
-                "     *示例 Prompt*: `查一下2026年马来西亚有哪些国定假日？`\n"
-                "   - 🌐 **留学生活指南**：解答关于大马电话卡、公交卡办理、生活费水平等各种生活常识。\n"
-                "     *示例 Prompt*: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
-                "3. ALWAYS explain your thoughts briefly in Chinese (thinking state) before invoking any tool.\n"
+                "Your role is to assist students with room recommendations, commute calculations, exchange rates, holiday schedules, and general student life information.\n\n"
+                "## TOOL USAGE RULES (CRITICAL)\n"
+                "- You MUST resolve user abbreviations and casual language into FULL, PROPER names BEFORE calling any tool.\n"
+                "  Examples: 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers KLCC', 'sunway geo' → 'Sunway Geo Residences'.\n"
+                "- Pass EXACT full address strings to tools. The tools call Google Maps API directly — they do NOT match against any internal list.\n"
+                "- If the user's origin or destination is vague or ambiguous (e.g. '公司', '学校', '我住的地方'), ASK the user to provide a specific address or landmark. Do NOT guess.\n"
+                "- NEVER make up coordinates, distances, or travel times. Always rely on tool results.\n"
+                "- If a tool returns an error about an unrecognized address, relay the error to the user and ask them to clarify.\n\n"
+                "## FEATURES\n"
+                "1. If a user asks about checking a lease/bill or paying rent, tell them to use the '我的租约' / 'StudentPortal' tab.\n"
+                "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', list your features with example prompts:\n"
+                "   - 🔍 **智能选房推荐**：根据偏好从房源库检索最匹配的房间。\n"
+                "     示例: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
+                "   - 🚇 **交通通勤测算**：测算任意出发地到目的地的通勤路程与时间。\n"
+                "     示例: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
+                "   - 💱 **实时汇率换算**：查询和换算令吉（MYR）至人民币（CNY）或美元（USD）。\n"
+                "     示例: `3000令吉等于多少人民币？`\n"
+                "   - 📅 **大马节假日查询**：查询马来西亚公众假期。\n"
+                "     示例: `查一下2026年马来西亚有哪些国定假日？`\n"
+                "   - 🌐 **留学生活指南**：解答电话卡、公交卡、生活费等生活常识。\n"
+                "     示例: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
+                "3. ALWAYS explain your thoughts briefly in Chinese before invoking any tool.\n"
                 "4. Answer clearly in Chinese, with structured formatting.\n"
-                "5. If the user mentions money or rent values and wants them converted to another currency (like CNY/RMB, USD, SGD), use the convert_currency_frankfurter tool.\n"
-                "6. If the user wants to check local holidays or if a bank/office will be open on a specific date, use get_malaysia_holidays.\n"
-                "7. NEVER print, repeat or mention raw User ID strings in your conversational responses.\n"
-                "8. You CAN search internal available listings using search_internal_db when the user asks to find, search, or recommend rooms. However, third-party external platforms (iProperty, PropertyGuru, SpeedHome, Mudah, etc.) are **strictly forbidden**. Never call Tavily or any web tool to search for room listings.\n"
-                "9. When using get_web_realtime_info, Tavily excludes competitor rental sites. Never scrape, link, or recommend third-party listing pages."
+                "5. For currency conversion, use convert_currency_frankfurter.\n"
+                "6. For holidays, use get_malaysia_holidays.\n"
+                "7. NEVER print raw User ID strings in responses.\n"
+                "8. For room search, use search_internal_db. Third-party platforms (iProperty, PropertyGuru, SpeedHome, Mudah) are **forbidden**.\n"
+                "9. For web info, use get_web_realtime_info. Exclude competitor rental sites."
             )
         }
     ]
@@ -361,7 +370,7 @@ async def live_agent_stream(
             if tool_name == "calculate_commute":
                 result_data = calculate_commute(
                     origin_address=tool_args.get("origin_address", ""),
-                    university_name=tool_args.get("university_name", "")
+                    destination_address=tool_args.get("destination_address", tool_args.get("university_name", ""))
                 )
             elif tool_name == "get_web_realtime_info":
                 result_data = get_web_realtime_info(query=tool_args.get("query", ""))
@@ -414,7 +423,7 @@ async def live_agent_stream(
                         "origin_name": result_data.get("origin_name") or "Sunway Geo Residences",
                         "origin_lat": float(result_data.get("origin_lat") or 3.06341),
                         "origin_lng": float(result_data.get("origin_lng") or 101.60977),
-                        "destination_name": result_data.get("university") or "Monash University Malaysia",
+                        "destination_name": result_data.get("destination_name") or result_data.get("university") or "Destination",
                         "destination_lat": float(result_data.get("destination_lat") or 3.0645),
                         "destination_lng": float(result_data.get("destination_lng") or 101.6000)
                     }

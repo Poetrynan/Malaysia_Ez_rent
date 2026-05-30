@@ -14,7 +14,9 @@
       "Bash(mkdir -p \"c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/mobile-upload/[id]\")",
       "Bash(git log *)",
       "Bash(git ls-files *)",
-      "Bash(git show *)"
+      "Bash(git show *)",
+      "Bash(python3 -c \"print\\('hello'\\)\")",
+      "Bash(py -c \"print\\('hello'\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Administrator\\Desktop\\Malaysia_Ez_rent\\frontend\\src\\app\\mobile-upload"
