@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Upload, CheckCircle2, AlertCircle, Loader2, Sun, Moon, Globe, ArrowLeft, Camera, X, Bell } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, Loader2, Sun, Moon, Globe, ArrowLeft, Camera, X, Bell } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { supabase, isMockDatabase } from '@/lib/supabase';
-import { compressImageFile, EVIDENCE_IMAGE_PRESET } from '@/utils/compressImage';
+import { compressImageFile, REN_TAG_PRESET } from '@/utils/compressImage';
 
 export default function RegisterAgentPage() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
@@ -249,7 +249,7 @@ export default function RegisterAgentPage() {
         // renTagFile may be null if restored from draft — convert data URL to blob
         let uploadBlob: Blob;
         if (renTagFile) {
-          uploadBlob = await compressImageFile(renTagFile, EVIDENCE_IMAGE_PRESET);
+          uploadBlob = await compressImageFile(renTagFile, REN_TAG_PRESET);
         } else if (renTagImage) {
           const res = await fetch(renTagImage);
           uploadBlob = await res.blob();
@@ -451,7 +451,7 @@ export default function RegisterAgentPage() {
                 <input type="email" className="form-input" value={userEmail} readOnly
                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'not-allowed' }} />
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                  {lang === 'zh' ? '此邮箱为登录账号，审核通过后将用于登录管理后台' : 'This is your login email. After approval, use it to access the admin panel.'}
+                  {lang === 'zh' ? '此邮箱为登录账号，审核通过后将用于登录中介管理后台' : 'This is your login email. After approval, use it to access the agent portal.'}
                 </span>
               </div>
             )}

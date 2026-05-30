@@ -42,6 +42,15 @@ export const QR_IMAGE_PRESET: CompressImageOptions = {
   skipBelowBytes: 120 * 1024,
 };
 
+/** REN tag license image — card-shaped, need readable text */
+export const REN_TAG_PRESET: CompressImageOptions = {
+  maxWidth: 1200,
+  maxHeight: 800,
+  quality: 0.88,
+  mimeType: 'image/jpeg',
+  skipBelowBytes: 150 * 1024,
+};
+
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);

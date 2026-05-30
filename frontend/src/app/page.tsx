@@ -393,7 +393,7 @@ export default function Home() {
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                   {lang === 'zh'
-                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入管理后台。当前为学生界面。'
+                    ? '您的中介注册申请正在审核中，审核通过后请重新登录即可进入中介管理后台。当前为学生界面。'
                     : 'Your agent registration is being reviewed. After approval, please log in again to access the admin panel. You are currently viewing the student interface.'}
                 </div>
               </div>
@@ -421,7 +421,7 @@ export default function Home() {
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                   {lang === 'zh'
-                    ? '恭喜！您的中介申请已审核通过。请重新登录以进入管理后台。'
+                    ? '恭喜！您的中介申请已审核通过。请重新登录以进入中介管理后台。'
                     : 'Congratulations! Your agent application has been approved. Please log in again to access the admin panel.'}
                 </div>
               </div>

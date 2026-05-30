@@ -250,17 +250,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     if (!isLive) {
       const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
       const idx = regs.findIndex((r: any) => r.id === reg.id);
-      if (idx !== -1) { regs[idx].verification_status = 'approved'; localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
-      // Add to admin_users mock
+      if (idx !== -1) { regs.splice(idx, 1); localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
+      // Add to admin_users mock with REN info
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      admins.push({ id: reg.auth_user_id || reg.id, email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator' });
+      admins.push({ id: reg.auth_user_id || reg.id, email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator', ren_number: reg.ren_number, ren_tag_url: reg.ren_tag_url });
       localStorage.setItem('ez_admins', JSON.stringify(admins));
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        await supabase.from('agent_registrations').update({ verification_status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', reg.id);
-        // Create admin_users record
+        // Create admin_users record with REN info
         await supabase.from('admin_users').insert({
           id: reg.auth_user_id || crypto.randomUUID(),
           email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`,
@@ -270,11 +269,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           role: 'editor',
           agency_name: reg.agency_name,
           job_title: 'Real Estate Negotiator',
+          ren_number: reg.ren_number,
+          ren_tag_url: reg.ren_tag_url,
         });
+        // Delete REN tag image from Storage
+        if (reg.ren_tag_url) {
+          const pathMatch = reg.ren_tag_url.match(/ren-tags\/([^?]+)/);
+          if (pathMatch) {
+            await supabase.storage.from('unit-media').remove([`ren-tags/${pathMatch[1]}`]);
+          }
+        }
+        // Delete registration record
+        await supabase.from('agent_registrations').delete().eq('id', reg.id);
       } catch (e) { console.error('Approve agent error:', e); }
     }
     fetchAgentRegistrations();
-    showToast(lang === 'zh' ? '已通过审核' : 'Agent approved', 'success');
+    showToast(lang === 'zh' ? '已通过审核，注册记录已清理' : 'Agent approved, registration cleaned up', 'success');
   };
 
   const rejectAgentRegistration = async (id: string) => {
@@ -762,10 +772,13 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     experience_months: number;
     area_expertise: string;
     property_types: string;
+    ren_number: string;
+    ren_tag_url: string;
   }>({
     display_name: '', phone: '', whatsapp: '', wechat_id: '', email: '',
     avatar_url: '', job_title: '', agency_name: '', agency_license: '', agency_address: '',
-    bio: '', experience_years: 0, experience_months: 0, area_expertise: '', property_types: ''
+    bio: '', experience_years: 0, experience_months: 0, area_expertise: '', property_types: '',
+    ren_number: '', ren_tag_url: '',
   });
 
   const [isLive, setIsLive] = useState(false);
@@ -790,7 +803,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       experience_years: 5,
       experience_months: 6,
       area_expertise: 'Bandar Sunway, Subang Jaya, Petaling Jaya',
-      property_types: 'Condo, Serviced Residence, Apartment, Room'
+      property_types: 'Condo, Serviced Residence, Apartment, Room',
+      ren_number: '',
+      ren_tag_url: '',
     };
 
     try {
@@ -860,6 +875,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             experience_months: adminData.experience_months ?? 0,
             area_expertise: Array.isArray(adminData.area_expertise) ? adminData.area_expertise.join(', ') : (adminData.area_expertise || ''),
             property_types: Array.isArray(adminData.property_types) ? adminData.property_types.join(', ') : (adminData.property_types || ''),
+            ren_number: adminData.ren_number || '',
+            ren_tag_url: adminData.ren_tag_url || '',
           });
           setAdminRole(adminData.role || 'editor'); // Sync state role!
           localStorage.setItem('ez_admin_profile', JSON.stringify(adminData));
@@ -3348,7 +3365,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   padding: '14px 16px', borderRadius: 12,
                   background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
                 }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: '#F0F6FF', fontSize: '0.9rem' }}>
                       {admin.display_name || admin.email}
                       {admin.role === 'super_admin' && (
@@ -3361,6 +3378,12 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       {admin.whatsapp && ` · WA: ${admin.whatsapp}`}
                       {admin.wechat_id && ` · 微信: ${admin.wechat_id}`}
                     </div>
+                    {(admin.agency_name || admin.ren_number) && (
+                      <div style={{ fontSize: '0.72rem', color: '#8896AB', marginTop: 3 }}>
+                        {admin.agency_name && <span>{admin.agency_name}</span>}
+                        {admin.ren_number && <span> · REN: {admin.ren_number}</span>}
+                      </div>
+                    )}
                   </div>
                   {admin.role !== 'super_admin' && (
                     <button onClick={() => handleDeleteAdmin(admin.id)} style={{
@@ -3816,6 +3839,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                     placeholder="E (1) 1670"
                   />
                 </div>
+
+                {myProfile.ren_number && (
+                  <div className="form-group">
+                    <label>{lang === 'zh' ? 'REN 编号（注册时填写）' : 'REN Number (from registration)'}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={myProfile.ren_number}
+                      readOnly
+                      style={{ background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'not-allowed' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      {lang === 'zh' ? '此编号由中介注册时填写，审核通过后自动填入，不可修改' : 'This REN number was set during registration and cannot be changed.'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ marginTop: 12 }}>
