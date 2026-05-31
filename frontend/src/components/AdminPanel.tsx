@@ -79,6 +79,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
+  const [editorSubTab, setEditorSubTab] = useState<'unit' | 'community'>('unit');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'payment' | 'review' | 'ledger' | 'settle'>('interests');
 
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
@@ -1470,6 +1471,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const scrollToUnitForm = () => {
     setPropertiesView('editor');
+    setEditorSubTab('unit');
     setTimeout(() => {
       document.getElementById('add-unit-form-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 50);
@@ -2308,8 +2310,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
       {/* ── PROPERTIES TAB ── */}
       {tab === 'properties' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6 }}>
             <button
               style={tabStyle(propertiesView === 'editor')}
               onClick={() => setPropertiesView('editor')}
@@ -2329,149 +2331,187 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               {t('propertySubtabInventory')}
             </button>
           </div>
-          {/* Add community */}
-          <div className="glass-card" style={{ display: propertiesView === 'inventory' ? 'none' : 'block', gridColumn: propertiesView === 'communities' ? '1 / -1' : 'auto' }}>
-            {propertiesView === 'editor' ? (
+
+          {/* Sub-selector / Segment Control inside Editor View */}
+          {propertiesView === 'editor' && (
+            <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content', margin: '0 auto 10px' }}>
+              <button
+                style={{
+                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
+                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                  background: editorSubTab === 'unit' ? 'var(--primary)' : 'transparent',
+                  color: editorSubTab === 'unit' ? 'white' : 'var(--text-muted)',
+                  transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+                onClick={() => setEditorSubTab('unit')}
+              >
+                <Home size={14} />{lang === 'zh' ? '新增房间' : 'Add Room Unit'}
+              </button>
+              <button
+                style={{
+                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
+                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                  background: editorSubTab === 'community' ? 'var(--primary)' : 'transparent',
+                  color: editorSubTab === 'community' ? 'white' : 'var(--text-muted)',
+                  transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+                onClick={() => setEditorSubTab('community')}
+              >
+                <Building2 size={14} />{lang === 'zh' ? '新增小区' : 'Add Community'}
+              </button>
+            </div>
+          )}
+          {/* Add community form */}
+          {propertiesView === 'editor' && editorSubTab === 'community' && (
+            <div className="glass-card" style={{ maxWidth: 650, width: '100%', margin: '0 auto' }}>
               <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <PlusCircle size={16} style={{ color: 'var(--primary)' }} />{t('addCommunityTitle')}
               </h3>
-            ) : (
-              <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('communityListTitle')}</h3>
-            )}
-            {propertiesView === 'editor' && (
-              <>
-            <div className="form-group">
-              <label>{t('communityNameLabel')}</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className="form-input"
-                  value={communitySearch}
-                  onChange={e => { handleCommunitySearch(e.target.value); clearError('name'); }}
-                  placeholder={t('communityNamePlaceholder')}
-                  style={fieldErrors.name ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined}
-                />
-                {suggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-sm)', zIndex: 50, boxShadow: 'var(--glass-shadow)', maxHeight: '200px', overflowY: 'auto' }}>
-                    {suggestions.map((s, i) => (
-                      <div key={i} className="suggestion-item" onClick={() => selectSuggestion(s)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '0.85rem' }}>{s.main_text}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.secondary_text || s.description}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="form-group"><label>{t('addressLabel')}</label><input className="form-input" value={communityForm.address} onChange={e => { setCommunityForm(f => ({ ...f, address: e.target.value })); clearError('address'); }} placeholder={t('addressPlaceholder')} style={fieldErrors.address ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
-            {communityForm.lat && communityForm.lng && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--success)', marginTop: 8, marginBottom: 12 }}>
-                <CheckCircle2 size={14} />
-                <span>位置定位成功 (Lat: {parseFloat(communityForm.lat).toFixed(4)}, Lng: {parseFloat(communityForm.lng).toFixed(4)})</span>
-              </div>
-            )}
-            {/* Amenities */}
-            <div className="form-group">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label style={{ margin: 0 }}>{t('amenitiesLabel')}</label>
-                <button type="button" onClick={() => {
-                  const allKeys = AMENITIES.map(a => a.key);
-                  const allSelected = allKeys.every(k => communityForm.amenities.includes(k));
-                  setCommunityForm(f => ({ ...f, amenities: allSelected ? [] : allKeys }));
-                }} style={{
-                  background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer',
-                  fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit', padding: '2px 0',
-                }}>
-                  {communityForm.amenities.length === AMENITIES.length ? (lang === 'zh' ? '取消全选' : 'Deselect All') : (lang === 'zh' ? '全选' : 'Select All')}
-                </button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                {AMENITIES.map(a => {
-                  const checked = communityForm.amenities.includes(a.key);
-                  return (
-                    <label key={a.key}
-                      onClick={() => {
-                        setCommunityForm(f => ({
-                          ...f,
-                          amenities: checked ? f.amenities.filter(k => k !== a.key) : [...f.amenities, a.key],
-                        }));
-                      }}
-                      onMouseEnter={e => {
-                        if (!checked) {
-                          e.currentTarget.style.background = 'var(--bg-hover)';
-                          e.currentTarget.style.borderColor = 'var(--primary)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!checked) {
-                          e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.borderColor = 'var(--glass-border)';
-                        }
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                        borderRadius: 8, cursor: 'pointer', fontSize: '0.78rem',
-                        background: checked ? 'rgba(37,99,235,0.08)' : 'transparent',
-                        border: checked ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--glass-border)',
-                        color: checked ? 'var(--primary)' : 'var(--text-body)',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span style={{
-                        width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: checked ? 'var(--primary)' : 'transparent',
-                        border: checked ? 'none' : '1.5px solid var(--glass-border)',
-                        color: 'white', fontSize: '0.65rem', fontWeight: 700,
-                      }}>{checked ? '✓' : ''}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {a.icon}
-                        {lang === 'zh' ? a.labelZh : a.label}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <button className="btn btn-primary" onClick={saveCommunity} style={{ width: '100%', marginTop: 12 }}>{t('saveBtn')}</button>
-              </>
-            )}
-
-            {propertiesView === 'communities' && communities.length > 0 && (
-              <div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>{t('communityListTitle')}</div>
-                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{t('communityListHint')}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
-                  {communities.map(c => {
-                    const unitCount = units.filter(u => u.community_id === c.id).length;
-                    return (
-                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-h)' }}>{c.name}</div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {c.address || '—'} · {unitCount}{lang === 'zh' ? ' 个房源' : ' units'}
-                          </div>
+              <div className="form-group">
+                <label>{t('communityNameLabel')}</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-input"
+                    value={communitySearch}
+                    onChange={e => { handleCommunitySearch(e.target.value); clearError('name'); }}
+                    placeholder={t('communityNamePlaceholder')}
+                    style={fieldErrors.name ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined}
+                  />
+                  {suggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-sm)', zIndex: 50, boxShadow: 'var(--glass-shadow)', maxHeight: '200px', overflowY: 'auto' }}>
+                      {suggestions.map((s, i) => (
+                        <div key={i} className="suggestion-item" onClick={() => selectSuggestion(s)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '0.85rem' }}>{s.main_text}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.secondary_text || s.description}</div>
                         </div>
-                        <button
-                          onClick={() => deleteCommunity(c.id)}
-                          disabled={unitCount > 0}
-                          style={{
-                            background: 'none', border: 'none', cursor: unitCount > 0 ? 'not-allowed' : 'pointer',
-                            color: unitCount > 0 ? 'var(--text-muted)' : 'var(--danger)', padding: 6, borderRadius: 6,
-                            opacity: unitCount > 0 ? 0.4 : 1,
-                          }}
-                          title={unitCount > 0 ? t('communityHasUnits') : t('deleteCommunity')}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="form-group">
+                <label>{t('addressLabel')}</label>
+                <input className="form-input" value={communityForm.address} onChange={e => { setCommunityForm(f => ({ ...f, address: e.target.value })); clearError('address'); }} placeholder={t('addressPlaceholder')} style={fieldErrors.address ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} />
+              </div>
+              {communityForm.lat && communityForm.lng && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--success)', marginTop: 8, marginBottom: 12 }}>
+                  <CheckCircle2 size={14} />
+                  <span>位置定位成功 (Lat: {parseFloat(communityForm.lat).toFixed(4)}, Lng: {parseFloat(communityForm.lng).toFixed(4)})</span>
+                </div>
+              )}
+              {/* Amenities */}
+              <div className="form-group">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label style={{ margin: 0 }}>{t('amenitiesLabel')}</label>
+                  <button type="button" onClick={() => {
+                    const allKeys = AMENITIES.map(a => a.key);
+                    const allSelected = allKeys.every(k => communityForm.amenities.includes(k));
+                    setCommunityForm(f => ({ ...f, amenities: allSelected ? [] : allKeys }));
+                  }} style={{
+                    background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer',
+                    fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit', padding: '2px 0',
+                  }}>
+                    {communityForm.amenities.length === AMENITIES.length ? (lang === 'zh' ? '取消全选' : 'Deselect All') : (lang === 'zh' ? '全选' : 'Select All')}
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {AMENITIES.map(a => {
+                    const checked = communityForm.amenities.includes(a.key);
+                    return (
+                      <label key={a.key}
+                        onClick={() => {
+                          setCommunityForm(f => ({
+                            ...f,
+                            amenities: checked ? f.amenities.filter(k => k !== a.key) : [...f.amenities, a.key],
+                          }));
+                        }}
+                        onMouseEnter={e => {
+                          if (!checked) {
+                            e.currentTarget.style.background = 'var(--bg-hover)';
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!checked) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
+                          }
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                          borderRadius: 8, cursor: 'pointer', fontSize: '0.78rem',
+                          background: checked ? 'rgba(37,99,235,0.08)' : 'transparent',
+                          border: checked ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--glass-border)',
+                          color: checked ? 'var(--primary)' : 'var(--text-body)',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <span style={{
+                          width: 16, height: 16, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: checked ? 'var(--primary)' : 'transparent',
+                          border: checked ? 'none' : '1.5px solid var(--glass-border)',
+                          color: 'white', fontSize: '0.65rem', fontWeight: 700,
+                        }}>{checked ? '✓' : ''}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {a.icon}
+                          {lang === 'zh' ? a.labelZh : a.label}
+                        </span>
+                      </label>
                     );
                   })}
                 </div>
               </div>
-            )}
-          </div>
+              <button className="btn btn-primary" onClick={saveCommunity} style={{ width: '100%', marginTop: 12 }}>{t('saveBtn')}</button>
+            </div>
+          )}
+
+          {/* Communities List Subtab */}
+          {propertiesView === 'communities' && (
+            <div className="glass-card" style={{ maxWidth: 750, width: '100%', margin: '0 auto' }}>
+              <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('communityListTitle')}</h3>
+              {communities.length > 0 ? (
+                <div>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{t('communityListHint')}</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+                    {communities.map(c => {
+                      const unitCount = units.filter(u => u.community_id === c.id).length;
+                      return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-h)' }}>{c.name}</div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {c.address || '—'} · {unitCount}{lang === 'zh' ? ' 个房源' : ' units'}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteCommunity(c.id)}
+                            disabled={unitCount > 0}
+                            style={{
+                              background: 'none', border: 'none', cursor: unitCount > 0 ? 'not-allowed' : 'pointer',
+                              color: unitCount > 0 ? 'var(--text-muted)' : 'var(--danger)', padding: 6, borderRadius: 6,
+                              opacity: unitCount > 0 ? 0.4 : 1,
+                            }}
+                            title={unitCount > 0 ? t('communityHasUnits') : t('deleteCommunity')}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
+                  {lang === 'zh' ? '暂无小区，请在“编辑/发布”子页面新增小区' : 'No communities yet. Add one in the Editor subtab.'}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add unit */}
-          <div id="add-unit-form-section" className="glass-card" style={{ display: propertiesView === 'editor' ? 'block' : 'none' }}>
+          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>

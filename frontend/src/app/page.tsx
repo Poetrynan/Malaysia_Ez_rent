@@ -203,6 +203,12 @@ export default function Home() {
                 <li onClick={() => setActiveTab('admin-dashboard')} className={`nav-item ${activeTab === 'admin-dashboard' ? 'active' : ''}`}>
                   <BarChart3 size={16} />
                   <span>{lang === 'zh' ? '数据看板' : 'Dashboard'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-listings')} className={`nav-item ${activeTab === 'admin-listings' ? 'active' : ''}`}>
+                  <Eye size={16} />
+                  <span>{lang === 'zh' ? '房源浏览' : 'Browse Listings'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
                 <li onClick={() => setActiveTab('admin-properties')} className={`nav-item ${activeTab === 'admin-properties' ? 'active' : ''}`}>
                   <Building2 size={16} />
@@ -220,10 +226,6 @@ export default function Home() {
                     )}
                   </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
-                </li>
-                <li onClick={() => setActiveTab('admin-listings')} className={`nav-item ${activeTab === 'admin-listings' ? 'active' : ''}`}>
-                  <Eye size={16} />
-                  <span>{lang === 'zh' ? '房源浏览' : 'Browse Listings'}</span>
                 </li>
                 {adminRole === 'super_admin' && (
                   <li onClick={() => setActiveTab('admin-admins')} className={`nav-item ${activeTab === 'admin-admins' ? 'active' : ''}`}>
