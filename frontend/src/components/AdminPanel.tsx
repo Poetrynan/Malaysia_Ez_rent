@@ -2532,7 +2532,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </div>
 
             <div className="form-group">
-              <label>{t('selectCommunity')}</label>
+              <label>{t('selectCommunity')} <span style={{ color: 'var(--danger)' }}>*</span></label>
               <select
                 className="form-select"
                 value={unitForm.community_id}
@@ -2558,7 +2558,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </div>
 
             <div className="form-row">
-              <div className="form-group"><label>{t('rentMYR')}</label><input type="number" min={0} className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: nonNegativeInputValue(e.target.value) })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
+              <div className="form-group"><label>{t('rentMYR')} <span style={{ color: 'var(--danger)' }}>*</span></label><input type="number" min={0} className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: nonNegativeInputValue(e.target.value) })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
               <div className="form-group"><label>{t('maxOccupants')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.max_occupants} onChange={e => setUnitForm(f => ({ ...f, max_occupants: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
             <div className="form-row">
@@ -2642,13 +2642,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <div
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); handleImgFiles(e.dataTransfer.files); }}
-                style={{ border: '2px dashed var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: mediaImages.length > 0 || mediaVideo ? 12 : 0, cursor: 'pointer', transition: 'border-color 0.2s' }}
-                onDragEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                onDragLeave={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
+                style={{
+                  border: '2px dashed var(--glass-border)', borderRadius: 'var(--radius-md)',
+                  padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem',
+                  marginBottom: mediaImages.length > 0 || mediaVideo ? 12 : 0,
+                  cursor: 'pointer', transition: 'all 0.2s ease',
+                  background: 'rgba(255,255,255,0.02)',
+                }}
+                onDragEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
                 onClick={() => imgInputRef.current?.click()}
               >
-                <ImagePlus size={24} style={{ margin: '0 auto 6px', color: 'var(--primary)', opacity: 0.5 }} />
-                {t('uploadHint')}
+                <Camera size={28} style={{ margin: '0 auto 8px', color: 'var(--primary)', opacity: 0.6 }} />
+                <div style={{ fontWeight: 600, color: 'var(--text-body)', marginBottom: 4 }}>{lang === 'zh' ? '拖拽图片到这里，或点击选择' : 'Drag images here, or click to select'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>JPG / PNG / WEBP · {lang === 'zh' ? '最多 9 张' : 'Max 9 images'}</div>
               </div>
 
               {/* Image preview grid */}
@@ -4371,7 +4380,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           zIndex: 9999, pointerEvents: 'none',
           animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}>
-          <div style={{
+          <div role="alert" aria-live="assertive" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
             padding: '12px 24px', borderRadius: 12,
             fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
