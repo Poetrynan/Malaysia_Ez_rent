@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
@@ -18,6 +18,20 @@ export default function Home() {
   const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0 });
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [agentRegStatus, setAgentRegStatus] = useState<string | null>(null);
+
+  const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCount: number) => {
+    setPendingCounts(prev => {
+      if (prev.leases === leasesCount && prev.feedback === feedbackCount) return prev;
+      return { leases: leasesCount, feedback: feedbackCount };
+    });
+  }, []);
+
+  const handleStudentFeedbackCountChange = useCallback((count: number) => {
+    setPendingCounts(prev => {
+      if (prev.feedback === count) return prev;
+      return { ...prev, feedback: count };
+    });
+  }, []);
 
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
@@ -461,14 +475,14 @@ export default function Home() {
           <div style={{ display: role === 'student' && activeTab === 'chat' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <AIChat />
           </div>
-           <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
-            <StudentPortal mode="lease" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
+          <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
+            <StudentPortal mode="lease" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'profile' ? 'block' : 'none' }}>
-            <StudentPortal mode="profile" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
+            <StudentPortal mode="profile" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
-            <StudentPortal mode="maintenance" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
+            <StudentPortal mode="maintenance" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'admin' && activeTab === 'admin-listings' ? 'block' : 'none' }}>
             <PropertyListings readOnly />
@@ -487,7 +501,7 @@ export default function Home() {
                 'dashboard'
               }
               hideTabBar={true}
-              onPendingCountsChange={(leasesCount, feedbackCount) => setPendingCounts({ leases: leasesCount, feedback: feedbackCount })}
+              onPendingCountsChange={handlePendingCountsChange}
             />
           </div>
         </div>
