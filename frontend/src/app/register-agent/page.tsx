@@ -109,52 +109,49 @@ export default function RegisterAgentPage() {
     }
 
     if (isMockDatabase) {
-      const loggedIn = localStorage.getItem('ez_logged_in');
-      if (loggedIn) {
-        const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
-        const email = localStorage.getItem('ez_user_email') || '';
-        setUserId(tenantId);
-        setUserEmail(email);
-        // Check existing registration by ID or Email
-        const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-        const existing = regs.find((r: any) => r.auth_user_id === tenantId || (r.email === email && email !== ''));
-        if (existing) {
-          setAlreadySubmitted(true);
-          setExistingStatus(existing.verification_status);
-          // Link if not linked
-          if (!existing.auth_user_id) {
-            existing.auth_user_id = tenantId;
-            localStorage.setItem('ez_agent_registrations', JSON.stringify(regs));
-          }
-        }
+      // 尝试获取已登录信息（不强制要求登录）
+      const tenantId = localStorage.getItem('ez_tenant_id') || '';
+      const email = localStorage.getItem('ez_user_email') || '';
+      if (tenantId) setUserId(tenantId);
+      if (email) setUserEmail(email);
+      // 按邮箱检查是否已提交过
+      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      const existing = email ? regs.find((r: any) => r.email === email) : null;
+      if (existing) {
+        setAlreadySubmitted(true);
+        setExistingStatus(existing.verification_status);
       }
       setAuthChecked(true);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabaseClient = createClient();
+        // 尝试获取已登录信息（不强制要求登录）
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
           setUserId(user.id);
           setUserEmail(user.email || '');
-          // Check existing registration
+        }
+        // 按邮箱检查是否已提交过（无论是否登录）
+        const matchEmail = user?.email || userEmail;
+        if (matchEmail) {
           const { data: existing } = await supabaseClient
             .from('agent_registrations')
             .select('verification_status, auth_user_id')
-            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+            .eq('email', matchEmail)
             .maybeSingle();
           if (existing) {
             setAlreadySubmitted(true);
             setExistingStatus(existing.verification_status);
-            // Auto link if null
-            if (!existing.auth_user_id) {
+            // 如果已登录但 auth_user_id 还是 NULL，自动关联
+            if (user && !existing.auth_user_id) {
               try {
                 await supabaseClient
                   .from('agent_registrations')
                   .update({ auth_user_id: user.id })
-                  .eq('email', user.email);
+                  .eq('email', matchEmail);
               } catch (updErr) {
-                console.warn('[Agent Reg] Auto-link auth_user_id warning:', updErr);
+                console.warn('[Agent Reg] Auto-link warning:', updErr);
               }
             }
           }
@@ -221,11 +218,6 @@ export default function RegisterAgentPage() {
 
     const normalizedREN = normalizeREN(renNumber);
     if (!normalizedREN) { setError(lang === 'zh' ? 'REN 编号格式不正确（如 REN12345）' : 'Invalid REN number format (e.g. REN12345)'); return; }
-
-    if (!userId) {
-      setError(lang === 'zh' ? '请先登录后再提交' : 'Please log in before submitting');
-      return;
-    }
 
     setSubmitting(true);
 
