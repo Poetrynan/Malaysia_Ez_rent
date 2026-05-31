@@ -536,9 +536,31 @@ User: "从公司到um要多久"
 - Banner shows in main content area (not just sidebar) with prominent styling.
 - Mock mode: filters `agent_registrations` by `auth_user_id` to prevent cross-user data leakage.
 
-### Database (`027_agent_registration_cleanup.sql`)
+### Database (`029_agent_registration_cleanup.sql`)
 
 - `admin_users` gains `ren_number VARCHAR(20)` and `ren_tag_url TEXT` columns.
 - DELETE policy on `agent_registrations` for admins.
 - Storage DELETE policy on `ren-tags/` for authenticated users (admins).
+
+## 16) Admin Panel Tab Structure
+
+### Top-level Tabs (after refactor)
+
+```
+Dashboard | Properties | Leases | Admins | Feedback | Agent Reviews | Profile
+                      └─ Interests | Overview | Payment Settings | Review | Ledger | Settle
+```
+
+- **Payment Settings** moved from top-level tab into Leases sub-tab (between Overview and Review).
+- **Agent Reviews** tab: registration cards redesigned with section layout (header/info-grid/image/actions), delete button for all statuses (pending/approved/rejected).
+- **Property Editor**: Sectioned with icons (🏠 Basic Info / 💰 Pricing / 📱 Payment / 📷 Media). Required fields marked with red asterisk. Image upload enforced (block save if no images).
+- **Property Browsing**: Admin/agent sidebar has "Browse Listings" entry showing `PropertyListings` in read-only mode (no interest/enquiry buttons). Shows agent name on each card for competition visibility.
+
+## 17) PropertyListings Component
+
+- Accepts `readOnly` prop (default `false`).
+- When `readOnly=true`: hides "Express Interest" button, enquiry form, and cancel-interest button.
+- Agent label displayed on every card via `getListingAgentLabel(unit, admins, lang)` — reads from `admin_users` table (RLS allows public SELECT).
+- Admin/agent browse view uses `<PropertyListings readOnly />`.
+- Tenant view uses `<PropertyListings />` (full functionality, zero impact).
 

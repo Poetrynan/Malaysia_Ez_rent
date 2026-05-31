@@ -1551,3 +1551,59 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py \
 - 图例：纯 HTML
 - Dashboard 组件从 542 行精简到 230 行
 
+---
+
+## 四十三、收款设置移入租约 Tab + 房源编辑器美化（2026-05-30）
+
+**目标：** 优化管理后台 Tab 结构和房源编辑器 UI。
+
+### 改动
+
+| 改动 | 说明 |
+|------|------|
+| 收款设置从顶级 Tab 移入租约子 Tab | Leases 子Tab：意向 \| 新建租约 \| 💳 收款设置 \| 审核凭证 \| 台账 \| 退租 |
+| 房源编辑器分区标题 | 🏠基本信息 / 💰租金与配置 / 📱房东收款 / 📷图片与视频 |
+| 必填字段红色星号 | 小区选择、月租加了 `*` 标记 |
+| 图片上传区加 "必须上传" 提示 | 无图片时标题显示红色"* 必须上传" |
+| Toast 加无障碍属性 | `role="alert"` + `aria-live="assertive"` |
+| 图片拖拽区 hover 效果 | 鼠标悬停变色 + 背景色变化 |
+| 移除顶级"收款设置" Tab | page.tsx 侧边栏删除，AdminPanel 移除 'payment' 类型 |
+
+---
+
+## 四十四、中介审核卡片重排版 + 删除功能 + 房源浏览（2026-05-30）
+
+**目标：** 优化中介审核 UI，支持删除记录，管理端可浏览房源。
+
+### 中介审核卡片重排版
+
+- Header 区：头像 + 姓名 + 公司 + 邮箱 + 状态徽章 + 删除按钮
+- Info grid：手机号/WhatsApp/REN编号/提交时间，2列布局 + 图标
+- REN 执照图片：hover 放大效果（scale 1.02）
+- 拒绝原因：`role="alert"` 无障碍提示
+- 所有状态（pending/approved/rejected）都有删除按钮
+- 删除前有 `confirm()` 确认弹窗
+
+### 删除功能
+
+- 新增 `deleteAgentRegistration` 函数
+- 删除时同时清理 Storage 中的 REN 图片
+- 删除注册记录（admin_users 中的不受影响）
+- 支持 mock 模式和 live 模式
+
+### 管理端房源浏览
+
+- 侧边栏新增 "👁️ 房源浏览" 入口（admin-listings）
+- 复用 `PropertyListings` 组件，传入 `readOnly` prop
+- 只读模式下隐藏 "我要租" 按钮和咨询表单
+- 显示中介名称（getListingAgentLabel），方便看到竞争
+- 租客端 PropertyListings 不受影响（readOnly 默认 false）
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `AdminPanel.tsx` | 审核卡片重写 + deleteAgentRegistration + 移除顶级 payment tab |
+| `page.tsx` | 侧边栏加"房源浏览"入口 + 移除"收款设置"入口 + admin-listings 视图 |
+| `PropertyListings.tsx` | 新增 readOnly prop，隐藏操作按钮 |
+
