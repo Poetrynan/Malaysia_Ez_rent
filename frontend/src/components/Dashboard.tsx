@@ -444,7 +444,7 @@ export default function Dashboard({
           {revenueData.length > 0 ? (
             <div style={{ width: '100%', height: 180, minWidth: 0 }}>
               <ResponsiveContainer width="99%" height={180}>
-                <BarChart data={revenueData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                <BarChart data={revenueData} margin={{ top: 10, right: 5, left: 10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--success)" stopOpacity={0.95}/>
@@ -580,7 +580,7 @@ export default function Dashboard({
                         onMouseLeave={() => setHoveredSlice(null)}
                       >
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
-                        <span style={{ fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>{d.name}</span>
+                        <span style={{ fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{d.name}</span>
                         <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.value}</span>
                       </div>
                     );
@@ -617,10 +617,10 @@ export default function Dashboard({
                 <BarChart
                   data={communityChartData}
                   layout="vertical"
-                  margin={{ top: 5, right: 10, left: -25, bottom: 5 }}
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={80} />
+                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={110} tickFormatter={(v) => v.length > 19 ? `${v.substring(0, 17)}...` : v} />
                   <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} content={<CustomHorizontalTooltip />} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={12} style={{ cursor: 'pointer' }}>
                     {communityChartData.map((entry, index) => (
@@ -656,10 +656,10 @@ export default function Dashboard({
                 <BarChart
                   data={interestChartData}
                   layout="vertical"
-                  margin={{ top: 5, right: 10, left: -25, bottom: 5 }}
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={80} />
+                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={100} />
                   <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} content={<CustomHorizontalTooltip />} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={12} style={{ cursor: 'pointer' }}>
                     {interestChartData.map((entry, index) => (

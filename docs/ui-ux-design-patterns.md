@@ -19,6 +19,7 @@
 11. [手机收银台与信息验证优化 (Mobile Payment Portal & Profile Verification)](#11-手机收银台与信息验证优化-mobile-payment-portal--profile-verification)
 12. [终端风格控制台与实时连接状态指示 (Mac Console Pattern & Alive Breathe Indicator)](#12-终端风格控制台与实时连接状态指示-mac-console-pattern--alive-breathe-indicator)
 13. [气泡聊天工单对话系统 (Bubble Chat Order System)](#13-气泡聊天工单对话系统-bubble-chat-order-system)
+14. [页面性能与 React 渲染闭环优化 (Page Performance & React Render Loop Optimization)](#14-页面性能与-react-渲染闭环优化-page-performance--react-render-loop-optimization)
 
 ---
 
@@ -372,6 +373,28 @@ useEffect(() => {
 
 ---
 
+## 14. 页面性能与 React 渲染闭环优化 (Page Performance & React Render Loop Optimization)
+
+在复杂的前端单页应用 (SPA) 中，非受控的或过于频繁的父子组件事件流会诱发严重的 React 渲染闭环及卡死 Bug（例如 Minified React error #185：Maximum update depth exceeded）。
+
+### 设计与工程原则
+* **稳定的回调引用 (Stable Callbacks)**：当向任何可能在 `useEffect` 中执行初始化或状态轮询的子组件传递回调函数时，必须使用 `useCallback` 对其进行包裹，保证依赖引用地址保持绝对稳定。
+* **防御性状态对比 (Defensive State Updates)**：在状态变更触发函数内部，应在修改状态前执行相等性校验（例如 `prev.val === newVal` 则直接返回原对象指针），彻底防止回调在执行时因返回新对象指针引起的级联重新渲染。
+* **依赖分流与最小订阅**：只在 `useEffect` 的依赖数组中声明必须包含的依赖项，避免无意义的顶层引用。
+
+### 典型实现 (page.tsx)
+```typescript
+// 结合防抖/浅对比阻断多组件实例并行回调带来的重复刷新
+const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCount: number) => {
+  setPendingCounts(prev => {
+    if (prev.leases === leasesCount && prev.feedback === feedbackCount) return prev;
+    return { leases: leasesCount, feedback: feedbackCount };
+  });
+}, []);
+```
+
+---
+
 ## 总结（更新于 2026-05-31）
 
 高级的 UI 往往不是靠堆砌花哨的特效，而是体现在对**对比度**、**点击热区**、**动效细节**、**进度可视化**、**网络响应性**与**操作心智成本**的极致打磨上。后续开发时请牢记：
@@ -391,4 +414,5 @@ useEffect(() => {
 14. **安全锁与隐私背书 Banner**：在敏感证件上传或个人隐私表单上方，提供显眼的、带有安全锁图标 (🔒) 的通告横幅，说明数据遵循 Supabase RLS 加密存储策略。
 15. **资料完善度百分比滑条**：在表单头部增加进度指示器，根据输入框填写的数量动态计算百分比（0%-100%），通过 6px 高度的彩色渐变滑条实时同步并辅以动效。
 16. **拍照框组件**：替代传统的原生上传按钮，将其设计为带虚线边框、相机图标及明确多语言提示的框体。当悬浮时提供虚线颜色变化。
+17. **React 状态流与渲染闭环优化**：当在父组件中向可能在 `useEffect` 中被引用的子组件传递更新回调时，必须使用 `useCallback` 记忆化，并在父组件的 `setState` 更新器中执行相同值检测阻断，杜绝产生死循环渲染 (Infinite Render Loop)。
 

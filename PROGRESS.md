@@ -92,7 +92,7 @@ Malaysia_Ez_rent/
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航（**已集成 AdminPanel 冒泡上报的红点提示，显示未处理租约/意向及反馈数量**） + **图标 Logo + 产品名/副标题**，角色判断，**新增侧边栏报修一级菜单 Tab 独立导航与 Wrench 图标统一**，flex 布局修复 |
+| `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航（**已集成 AdminPanel 冒泡上报的红点提示，显示未处理租约/意向及反馈数量**） + **图标 Logo + 产品名/副标题**，角色判断，**新增侧边栏报修一级菜单 Tab 独立导航与 Wrench 图标统一**，flex 布局修复，**使用 useCallback 和防御性状态比对修复了行内匿名回调引起的 React 185 无限循环渲染 (Render Loop) Bug** |
 | `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；卡片/行显示 **中介：display_name**；`loadListings` 失败可重试、登录后自动刷新；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y、公开意向名单；学生详情 **所属中介** + 中介主页（WhatsApp/微信 **暂无** 兜底）；`getUnitsForAgent` 严格 `agent_id` + `UnitWithCommunity` 类型；**修复微信图标显示不全与 WhatsApp 链接格式兼容性问题**；**学生已租房源隐藏“我要租”按钮并显示“您已承租此房源”；意向状态反馈重构为临时 Toast 提醒以移除详情页内的持久化取消意向横幅，且所有 Toast 升级为高级磨砂玻璃微光设计；新增 ProgressFlow 通用组件实现循环延伸进度动画；修复合约终止后房源状态与意向同步重置 Bug** |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题，**添加 useEffect 监听中英文语言切换，实时动态翻译更新首句 AI 欢迎语**。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |

@@ -585,3 +585,11 @@ Dashboard | Properties | Leases | Admins | Feedback | Agent Reviews | Profile
 - Lock banner: Safe padlock indicating data encryption under strict PostgreSQL RLS policies.
 - Progress bar: Computes completeness percent dynamically based on filled inputs, presenting a 6px linear-gradient slider.
 - Upload frame: Enhanced document camera drop slot layout mimicking mobile camera portals.
+
+## 19) React Performance & Render Loop Prevention (page.tsx)
+
+In large SPA implementations with nested tabs and active sub-panels (e.g., `AdminPanel` and `StudentPortal` mounted alongside each other), inline callback functions trigger recursive re-renders when child state updates bubble back to the top-level parent.
+
+### Avoid Infinite Rendering Loops
+- **Stable Callbacks**: Avoid inline arrow functions when passing state updating handlers down to child components that depend on them inside `useEffect` arrays. Wrap them in `useCallback` with empty dependency vectors.
+- **Value Guard Checks**: Within the parent state updater, perform a primitive value check. If the incoming state matches current values, return the previous state pointer (`prev`) unchanged. This cancels React's rendering queue.
