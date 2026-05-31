@@ -35,6 +35,7 @@ interface Unit {
 }
 interface Community {
   id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
+  image_url?: string | null;
 }
 interface UnitWithCommunity extends Unit { community: Community | null; }
 

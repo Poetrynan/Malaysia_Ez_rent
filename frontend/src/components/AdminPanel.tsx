@@ -79,7 +79,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
-  const [editorSubTab, setEditorSubTab] = useState<'unit' | 'community'>('unit');
+  const [editorSubTab, setEditorSubTab] = useState<'community' | 'unit'>('community');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'payment' | 'review' | 'ledger' | 'settle'>('interests');
 
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
@@ -2339,19 +2339,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 style={{
                   padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
                   fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-                  background: editorSubTab === 'unit' ? 'var(--primary)' : 'transparent',
-                  color: editorSubTab === 'unit' ? 'white' : 'var(--text-muted)',
-                  transition: 'all 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 6
-                }}
-                onClick={() => setEditorSubTab('unit')}
-              >
-                <Home size={14} />{lang === 'zh' ? '新增房间' : 'Add Room Unit'}
-              </button>
-              <button
-                style={{
-                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
-                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
                   background: editorSubTab === 'community' ? 'var(--primary)' : 'transparent',
                   color: editorSubTab === 'community' ? 'white' : 'var(--text-muted)',
                   transition: 'all 0.2s',
@@ -2360,6 +2347,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 onClick={() => setEditorSubTab('community')}
               >
                 <Building2 size={14} />{lang === 'zh' ? '新增小区' : 'Add Community'}
+              </button>
+              <button
+                style={{
+                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
+                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                  background: editorSubTab === 'unit' ? 'var(--primary)' : 'transparent',
+                  color: editorSubTab === 'unit' ? 'white' : 'var(--text-muted)',
+                  transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+                onClick={() => setEditorSubTab('unit')}
+              >
+                <Home size={14} />{lang === 'zh' ? '新增房间' : 'Add Room Unit'}
               </button>
             </div>
           )}

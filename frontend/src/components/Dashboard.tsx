@@ -1,8 +1,20 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Home, FileText, DollarSign, AlertTriangle, Wrench, TrendingUp, Clock, Users, Building2, BarChart3, HelpCircle } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Unit = any;
@@ -25,7 +37,15 @@ interface DashboardProps {
   visibleLeaseIds: string[];
 }
 
-const COLORS = ['#0D9488', '#2563EB', '#D97706', '#7C3AED', '#DB2777', '#DC2626'];
+// Color palette using design system CSS variables for perfect light/dark mode adaptability
+const COLORS = [
+  'var(--primary)',      // Teal
+  'var(--info)',         // Blue
+  'var(--accent)',       // Gold/Orange
+  'var(--success)',      // Green
+  '#7C3AED',             // Purple
+  '#DB2777'              // Pink
+];
 
 export default function Dashboard({
   units, leases, interests, feedbacks, communities,
@@ -36,6 +56,11 @@ export default function Dashboard({
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; percent: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const dateRange = useMemo(() => {
     const now = new Date();
@@ -109,7 +134,6 @@ export default function Dashboard({
       map[key].receivable += (p.amount || 0);
       if (p.paid) map[key].collected += (p.amount || 0);
     });
-    // Map across monthsList so we have empty slots for months with no data
     return monthsList.map(month => map[month] || { month, collected: 0, receivable: 0 });
   }, [filteredPayments, monthsList]);
 
@@ -119,22 +143,27 @@ export default function Dashboard({
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [visibleUnits]);
 
-  const communityData = useMemo(() => {
+  const communityChartData = useMemo(() => {
     const map: Record<string, number> = {};
     visibleUnits.forEach(u => {
       const comm = communities.find(c => c.id === u.community_id);
       map[comm?.name || 'Unknown'] = (map[comm?.name || 'Unknown'] || 0) + 1;
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
   }, [visibleUnits, communities]);
 
-  const interestFunnel = useMemo(() => {
+  const interestChartData = useMemo(() => {
     const active = interests.filter((i: any) => i.status !== 'left');
-    return {
-      interested: active.filter((i: any) => i.status === 'interested').length,
-      confirmed: active.filter((i: any) => i.status === 'confirmed').length,
-    };
-  }, [interests]);
+    const interested = active.filter((i: any) => i.status === 'interested').length;
+    const confirmed = active.filter((i: any) => i.status === 'confirmed').length;
+    return [
+      { name: lang === 'zh' ? '意向中' : 'Interested', value: interested, color: 'var(--info)' },
+      { name: lang === 'zh' ? '已确认' : 'Confirmed', value: confirmed, color: 'var(--success)' }
+    ];
+  }, [interests, lang]);
 
   const maintenanceStats = useMemo(() => {
     const open = feedbacks.filter(f => f.status === 'pending' || f.status === 'in_progress').length;
@@ -155,15 +184,92 @@ export default function Dashboard({
     return items;
   }, [kpis, maintenanceStats, lang]);
 
-  const maxRevenue = useMemo(() => Math.max(...revenueData.map(d => d.receivable), 1), [revenueData]);
+  // Recharts custom tooltips
+  const CustomRevenueTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const collected = payload.find((p: any) => p.dataKey === 'collected')?.value || 0;
+      const receivable = payload.find((p: any) => p.dataKey === 'receivable')?.value || 0;
+      const unpaid = Math.max(0, receivable - collected);
+      const rate = receivable > 0 ? Math.round((collected / receivable) * 100) : 0;
+      return (
+        <div style={{
+          background: 'var(--bg-surface-solid)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          boxShadow: 'var(--glass-shadow)',
+          fontFamily: 'inherit',
+          color: 'var(--text-body)'
+        }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-h)', marginBottom: 6, borderBottom: '1px solid var(--glass-border)', paddingBottom: 4, fontSize: '0.78rem' }}>
+            {label}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, fontSize: '0.72rem', padding: '2px 0' }}>
+            <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '已收租金:' : 'Collected:'}</span>
+            <span style={{ fontWeight: 600, color: 'var(--success)' }}>RM {collected.toLocaleString()}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, fontSize: '0.72rem', padding: '2px 0' }}>
+            <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '应收租金:' : 'Receivable:'}</span>
+            <span style={{ fontWeight: 600, color: 'var(--primary)' }}>RM {receivable.toLocaleString()}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, fontSize: '0.72rem', padding: '2px 0' }}>
+            <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '未收/逾期:' : 'Unpaid/Overdue:'}</span>
+            <span style={{ fontWeight: 600, color: 'var(--danger)' }}>RM {unpaid.toLocaleString()}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, fontSize: '0.72rem', marginTop: 4, borderTop: '1px dashed var(--glass-border)', paddingTop: 4 }}>
+            <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '收租比例:' : 'Collection:'}</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-h)' }}>{rate}%</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomHorizontalTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{
+          background: 'var(--bg-surface-solid)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '6px',
+          padding: '6px 10px',
+          fontSize: '0.72rem',
+          color: 'var(--text-h)',
+          boxShadow: 'var(--glass-shadow)'
+        }}>
+          <span style={{ fontWeight: 600 }}>{payload[0].name}: </span>
+          <span>{payload[0].value} {lang === 'zh' ? '套' : 'units'}</span>
+        </div>
+      );
+    }
+    return null;
+  };
 
   // ---- Styles ----
-  const card: React.CSSProperties = { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '18px 20px', transition: 'all 0.2s ease' };
+  const card: React.CSSProperties = { background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '18px 20px', transition: 'all 0.2s ease', position: 'relative' };
   const kpiCard: React.CSSProperties = { ...card, display: 'flex', flexDirection: 'column', gap: 8 };
   const label: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.03em' };
   const value: React.CSSProperties = { fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-h)', lineHeight: 1, letterSpacing: '-0.02em' };
   const sub: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' };
   const title: React.CSSProperties = { fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 };
+
+  // If not mounted (SSR), render a gorgeous loader card layout to ensure no flash of unstyled content
+  if (!mounted) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0', minHeight: 400 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <BarChart3 size={20} style={{ color: 'var(--primary)' }} />
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-h)', margin: 0 }}>{lang === 'zh' ? '数据看板' : 'Dashboard'}</h2>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[1, 2, 3, 4].map(i => <div key={i} style={{ ...kpiCard, height: 110, opacity: 0.5 }} />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0' }}>
@@ -176,15 +282,15 @@ export default function Dashboard({
         .tooltip-text {
           visibility: hidden;
           position: absolute;
-          background-color: var(--bg-surface-solid, #1e293b);
-          color: var(--text-body, #f8fafc);
+          background-color: var(--bg-surface-solid);
+          color: var(--text-body);
           text-align: left;
           padding: 10px 14px;
           border-radius: 8px;
           font-size: 0.72rem;
           font-weight: 500;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-          border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+          box-shadow: var(--glass-shadow);
+          border: 1px solid var(--glass-border);
           opacity: 0;
           transition: opacity 0.2s ease, transform 0.2s ease;
           z-index: 999;
@@ -197,24 +303,6 @@ export default function Dashboard({
           visibility: visible;
           opacity: 1;
           transform: translateY(-4px) !important;
-        }
-        
-        .bar-group {
-          transition: transform 0.2s ease, filter 0.2s ease;
-          cursor: pointer;
-        }
-        .bar-group:hover {
-          transform: scaleY(1.02);
-          filter: brightness(1.1);
-        }
-        
-        .donut-segment {
-          transition: stroke-width 0.25s ease, filter 0.2s ease;
-          cursor: pointer;
-        }
-        .donut-segment:hover {
-          stroke-width: 4.5;
-          filter: brightness(1.1);
         }
       `}</style>
 
@@ -262,7 +350,7 @@ export default function Dashboard({
           </div>
           <div style={value}>{kpis.rentedUnits}<span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-muted)' }}>/{kpis.totalUnits}</span></div>
           <div style={{ height: 6, borderRadius: 3, background: 'var(--glass-border)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${kpis.occupancyRate}%`, background: 'linear-gradient(90deg, #0D9488, #059669)', borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+            <div style={{ height: '100%', width: `${kpis.occupancyRate}%`, background: 'var(--gradient-primary)', borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
           </div>
           <span style={sub}>{kpis.occupancyRate}% {lang === 'zh' ? '已出租' : 'rented'}</span>
         </div>
@@ -270,7 +358,7 @@ export default function Dashboard({
         {/* Active Leases */}
         <div style={kpiCard}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(37,99,235,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileText size={16} style={{ color: '#2563EB' }} /></div>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--info-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileText size={16} style={{ color: 'var(--info)' }} /></div>
             <div className="tooltip-container" style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'help' }}>
               <span style={label}>{lang === 'zh' ? '有效租约' : 'Leases'}</span>
               <HelpCircle size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
@@ -294,14 +382,14 @@ export default function Dashboard({
               <HelpCircle size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
               <div className="tooltip-text" style={{ bottom: '125%', left: '50%', transform: 'translateX(-50%)', width: 220 }}>
                 {lang === 'zh'
-                  ? '所选时间段内，已缴付的账单笔数占应缴总账单数比例。公式：(已缴账单 / 应收总账单) × 100%'
+                   ? '所选时间段内，已缴付的账单笔数占应缴总账单数比例。公式：(已缴账单 / 应收总账单) × 100%'
                   : 'Percentage of paid bills within the selected time range. Formula: (Paid Bills / Total Due Bills) * 100%'}
               </div>
             </div>
           </div>
           <div style={{ ...value, color: kpis.collectionRate >= 80 ? 'var(--success)' : kpis.collectionRate >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{kpis.collectionRate}%</div>
           <div style={{ height: 6, borderRadius: 3, background: 'var(--glass-border)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${kpis.collectionRate}%`, background: kpis.collectionRate >= 80 ? '#059669' : '#D97706', borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+            <div style={{ height: '100%', width: `${kpis.collectionRate}%`, background: kpis.collectionRate >= 80 ? 'var(--success)' : 'var(--warning)', borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
           </div>
           <span style={sub}>RM {kpis.totalCollected.toLocaleString()}</span>
         </div>
@@ -327,7 +415,7 @@ export default function Dashboard({
 
       {/* Charts Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12 }}>
-        {/* Revenue Bar Chart (Pure CSS + SVG Interactivity) */}
+        {/* Recharts Monthly Revenue Chart */}
         <div style={card}>
           <div style={title}>
             <TrendingUp size={16} style={{ color: 'var(--primary)' }} />
@@ -336,71 +424,46 @@ export default function Dashboard({
               <HelpCircle size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
               <div className="tooltip-text" style={{ bottom: '115%', left: 0, transform: 'none', width: 250 }}>
                 {lang === 'zh'
-                  ? '展示所选周期内，各月份实际已收妥租金（绿色）与应收租金总额（蓝色背景）的对比趋势。'
-                  : 'Receivable rent (blue backdrop) vs. actual collected rent (green bar) for each month in the selected range.'}
+                  ? '展示所选周期内，各月份实际已收妥租金与应收租金总额的对比趋势。'
+                  : 'Receivable rent vs. actual collected rent for each month in the selected range.'}
               </div>
             </div>
           </div>
           
           {revenueData.length > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 180, padding: '0 4px' }}>
-              {revenueData.map((d, i) => {
-                const showCollectedK = (d.collected / 1000).toFixed(1).replace('.0', '');
-                return (
-                  <div key={i} className="tooltip-container bar-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-                    {/* Top Label */}
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                      {d.receivable > 0 ? `RM${showCollectedK}k` : 'RM0'}
-                    </div>
-                    
-                    {/* Columns */}
-                    <div style={{ width: '100%', display: 'flex', gap: 2, alignItems: 'flex-end', height: '100%' }}>
-                      <div style={{ flex: 1, height: `${(d.collected / maxRevenue) * 100}%`, background: '#059669', borderRadius: '3px 3px 0 0', transition: 'height 0.5s cubic-bezier(0.4,0,0.2,1)', minHeight: d.collected > 0 ? 2 : 0 }} />
-                      <div style={{ flex: 1, height: `${(d.receivable / maxRevenue) * 100}%`, background: '#2563EB', borderRadius: '3px 3px 0 0', opacity: 0.25, transition: 'height 0.5s cubic-bezier(0.4,0,0.2,1)', minHeight: d.receivable > 0 ? 2 : 0 }} />
-                    </div>
-                    
-                    {/* X Axis Label */}
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{d.month.slice(5)}</div>
-
-                    {/* Tooltip Content */}
-                    <div className="tooltip-text" style={{ bottom: '105%', left: '50%', transform: 'translateX(-50%)', width: 170 }}>
-                      <div style={{ fontWeight: 700, marginBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4 }}>
-                        {d.month}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '2px 0' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '已收租金:' : 'Collected:'}</span>
-                        <span style={{ fontWeight: 600, color: '#34D399' }}>RM {d.collected.toLocaleString()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '2px 0' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '应收租金:' : 'Receivable:'}</span>
-                        <span style={{ fontWeight: 600, color: '#60A5FA' }}>RM {d.receivable.toLocaleString()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '2px 0' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '未收/逾期:' : 'Unpaid/Overdue:'}</span>
-                        <span style={{ fontWeight: 600, color: '#F87171' }}>RM {(d.receivable - d.collected).toLocaleString()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginTop: 4, borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: 4 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '收租比例:' : 'Collection Rate:'}</span>
-                        <span style={{ fontWeight: 700 }}>
-                          {d.receivable > 0 ? Math.round((d.collected / d.receivable) * 100) : 0}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--success)" stopOpacity={0.95}/>
+                      <stop offset="95%" stopColor="var(--success)" stopOpacity={0.4}/>
+                    </linearGradient>
+                    <linearGradient id="colorReceivable" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.95}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.4}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+                  <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={m => m.slice(5)} />
+                  <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomRevenueTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
+                  <Bar dataKey="collected" name="collected" fill="url(#colorCollected)" radius={[3, 3, 0, 0]} maxBarSize={15} style={{ cursor: 'pointer' }} />
+                  <Bar dataKey="receivable" name="receivable" fill="url(#colorReceivable)" radius={[3, 3, 0, 0]} maxBarSize={15} style={{ cursor: 'pointer' }} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           ) : (
             <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lang === 'zh' ? '暂无数据' : 'No data'}</div>
           )}
           
           <div style={{ display: 'flex', gap: 12, marginTop: 8, justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#059669', display: 'inline-block' }} />{lang === 'zh' ? '已收' : 'Collected'}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#2563EB', opacity: 0.25, display: 'inline-block' }} />{lang === 'zh' ? '应收' : 'Receivable'}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--success)', display: 'inline-block' }} />{lang === 'zh' ? '已收' : 'Collected'}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--primary)', display: 'inline-block' }} />{lang === 'zh' ? '应收' : 'Receivable'}</span>
           </div>
         </div>
 
-        {/* Room Type Donut (SVG + State-based Interactivity) */}
+        {/* Room Type Donut using Recharts */}
         <div style={card}>
           <div style={title}>
             <Building2 size={16} style={{ color: 'var(--primary)' }} />
@@ -418,90 +481,78 @@ export default function Dashboard({
           {roomTypeData.length > 0 ? (() => {
             const total = roomTypeData.reduce((s, d) => s + d.value, 0);
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
-                {/* Interactive SVG Donut */}
-                {(() => {
-                  if (total === 0) return null;
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', height: 180 }}>
+                <div style={{ position: 'relative', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={roomTypeData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={36}
+                        outerRadius={52}
+                        paddingAngle={3}
+                        dataKey="value"
+                        onMouseEnter={(_, index) => {
+                          const item = roomTypeData[index];
+                          setHoveredSlice({
+                            name: item.name,
+                            value: item.value,
+                            percent: total > 0 ? Math.round((item.value / total) * 100) : 0
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredSlice(null)}
+                      >
+                        {roomTypeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none', cursor: 'pointer' }} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                   
-                  let accumulatedPercent = 0;
-                  return (
-                    <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="120" height="120" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
-                        <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--glass-border)" strokeWidth="3" />
-                        {roomTypeData.map((d, i) => {
-                          const percent = (d.value / total) * 100;
-                          const offset = 100 - accumulatedPercent;
-                          accumulatedPercent += percent;
-                          const strokeColor = COLORS[i % COLORS.length];
-                          
-                          return (
-                            <circle
-                              key={i}
-                              className="donut-segment"
-                              cx="21"
-                              cy="21"
-                              r="15.91549430918954"
-                              fill="transparent"
-                              stroke={strokeColor}
-                              strokeWidth="3.5"
-                              strokeDasharray={`${percent} ${100 - percent}`}
-                              strokeDashoffset={offset}
-                              onMouseEnter={() => setHoveredSlice({ name: d.name, value: d.value, percent: Math.round(percent) })}
-                              onMouseLeave={() => setHoveredSlice(null)}
-                              style={{
-                                transition: 'stroke-width 0.25s ease, filter 0.2s ease',
-                                cursor: 'pointer',
-                              }}
-                            />
-                          );
-                        })}
-                      </svg>
-                      
-                      {/* Donut Center Display */}
-                      <div style={{
-                        position: 'absolute',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        pointerEvents: 'none',
-                        width: 70,
-                        height: 70,
-                        borderRadius: '50%',
-                      }}>
-                        {hoveredSlice ? (
-                          <>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                              {hoveredSlice.name}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', marginTop: 2 }}>
-                              {hoveredSlice.value}{lang === 'zh' ? '间' : ' units'}
-                            </span>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                              {hoveredSlice.percent}%
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                              {lang === 'zh' ? '总房源' : 'Total'}
-                            </span>
-                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-h)' }}>
-                              {total}
-                            </span>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                              {lang === 'zh' ? '间' : 'units'}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
+                  {/* Donut Center Display */}
+                  <div style={{
+                    position: 'absolute',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    pointerEvents: 'none',
+                    width: 66,
+                    height: 66,
+                    borderRadius: '50%',
+                  }}>
+                    {hoveredSlice ? (
+                      <>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', padding: '0 2px' }}>
+                          {hoveredSlice.name}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--primary)', marginTop: 1 }}>
+                          {hoveredSlice.value}{lang === 'zh' ? '间' : ' units'}
+                        </span>
+                        <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+                          {hoveredSlice.percent}%
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                          {lang === 'zh' ? '总房源' : 'Total'}
+                        </span>
+                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-h)' }}>
+                          {total}
+                        </span>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                          {lang === 'zh' ? '间' : 'units'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Legend with Interactive Hover Links */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Legend */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 160, overflowY: 'auto', paddingRight: 4 }}>
                   {roomTypeData.map((d, i) => {
                     const percent = total > 0 ? Math.round((d.value / total) * 100) : 0;
                     const isHovered = hoveredSlice && hoveredSlice.name === d.name;
@@ -512,18 +563,18 @@ export default function Dashboard({
                           display: 'flex',
                           alignItems: 'center',
                           gap: 6,
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
                           cursor: 'pointer',
                           opacity: hoveredSlice ? (isHovered ? 1 : 0.4) : 1,
                           transform: isHovered ? 'scale(1.05) translateX(2px)' : 'none',
-                          transition: 'all 0.2s ease',
+                          transition: 'all 0.15s ease',
                         }}
                         onMouseEnter={() => setHoveredSlice({ name: d.name, value: d.value, percent })}
                         onMouseLeave={() => setHoveredSlice(null)}
                       >
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
-                        <span style={{ color: 'var(--text-body)', fontWeight: isHovered ? 700 : 500 }}>{d.name}</span>
-                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{d.value}</span>
+                        <span style={{ color: 'var(--text-body)', fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>{d.name}</span>
+                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.value}</span>
                       </div>
                     );
                   })}
@@ -531,14 +582,14 @@ export default function Dashboard({
               </div>
             );
           })() : (
-            <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lang === 'zh' ? '暂无房源' : 'No listings'}</div>
+            <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lang === 'zh' ? '暂无房源' : 'No listings'}</div>
           )}
         </div>
       </div>
 
       {/* Charts Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {/* Community Distribution */}
+        {/* Community Distribution with Recharts */}
         <div style={card}>
           <div style={title}>
             <Building2 size={16} style={{ color: 'var(--primary)' }} />
@@ -547,33 +598,37 @@ export default function Dashboard({
               <HelpCircle size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
               <div className="tooltip-text" style={{ bottom: '115%', left: 0, transform: 'none', width: 220 }}>
                 {lang === 'zh'
-                  ? '已登记房源在不同住宅公寓小区的分布套数与排行。'
+                  ? '已登记房源在不同住宅公寓小区的分布套数排行。'
                   : 'Property counts and ranking based on apartment community registration.'}
               </div>
             </div>
           </div>
           
-          {communityData.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {communityData.sort((a, b) => b.value - a.value).slice(0, 6).map((c, i) => {
-                const max = Math.max(...communityData.map(x => x.value));
-                return (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--text-body)', fontWeight: 500 }}>{c.name}</span>
-                      <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{c.value}</span>
-                    </div>
-                    <div style={{ height: 8, borderRadius: 4, background: 'var(--glass-border)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${(c.value / max) * 100}%`, background: COLORS[i % COLORS.length], borderRadius: 4, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
-                    </div>
-                  </div>
-                );
-              })}
+          {communityChartData.length > 0 ? (
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={communityChartData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 10, left: -25, bottom: 5 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={80} />
+                  <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} content={<CustomHorizontalTooltip />} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={12} style={{ cursor: 'pointer' }}>
+                    {communityChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          ) : <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lang === 'zh' ? '暂无数据' : 'No data'}</div>}
+          ) : (
+            <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>{lang === 'zh' ? '暂无数据' : 'No data'}</div>
+          )}
         </div>
 
-        {/* Interest + Maintenance */}
+        {/* Interest Funnel using Recharts + Maintenance Summary */}
         <div style={card}>
           <div style={title}>
             <Users size={16} style={{ color: 'var(--primary)' }} />
@@ -582,30 +637,31 @@ export default function Dashboard({
               <HelpCircle size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
               <div className="tooltip-text" style={{ bottom: '115%', left: 0, transform: 'none', width: 220 }}>
                 {lang === 'zh'
-                  ? '租客看房意向分类，以及报修工单的历史处理效率指标概览。'
+                  ? '租客看房意向分类，以及报修工单的历史处理效率概览。'
                   : 'Overview of tenant rental interests and maintenance request resolution efficiency.'}
               </div>
             </div>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { label: lang === 'zh' ? '意向中' : 'Interested', value: interestFunnel.interested, color: '#2563EB' },
-              { label: lang === 'zh' ? '已确认' : 'Confirmed', value: interestFunnel.confirmed, color: '#059669' },
-            ].map((item, i) => {
-              const max = Math.max(interestFunnel.interested, interestFunnel.confirmed, 1);
-              return (
-                <div key={i}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 4 }}>
-                    <span style={{ color: 'var(--text-body)', fontWeight: 500 }}>{item.label}</span>
-                    <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{item.value}</span>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 4, background: 'var(--glass-border)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(item.value / max) * 100}%`, background: item.color, borderRadius: 4, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 180, justifyContent: 'space-between' }}>
+            <div style={{ width: '100%', height: 75 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={interestChartData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 10, left: -25, bottom: 5 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} width={80} />
+                  <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} content={<CustomHorizontalTooltip />} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={12} style={{ cursor: 'pointer' }}>
+                    {interestChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
             
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
