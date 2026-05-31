@@ -400,9 +400,9 @@ supabase/migrations/
     └── 025_fix_missing_public_users.sql # 修复缺失用户行（重建触发器 + 补建 public.users）
     └── 026_remove_unit_number_column.sql # 删除房源列表房号（彻底 DROP 掉 units.unit_number）
     └── 027_leases_rls_policies.sql # leases + payment_records 表 RLS 策略补建
-    └── 028_update_admin_limits.sql # 超级管理员≤5限制 + 邮箱自动关联触发器 + auth用户注册触发器
     └── 028_user_inbox_notifications.sql # 全用户收件箱系统（公告/通知/审批知会）
-    └── 029_agent_registration_cleanup.sql # 中介注册 DELETE 策略 + REN 字段 + Storage 删除策略
+    └── 029_update_admin_limits.sql # 超级管理员≤5限制 + 邮箱自动关联触发器 + auth用户注册触发器
+    └── 030_agent_registration_cleanup.sql # 中介注册 DELETE 策略 + REN 字段 + Storage 删除策略
 ```
 
 迁移原则：

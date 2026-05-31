@@ -208,6 +208,7 @@ class MockQueryBuilder {
     else if (this.tableName === 'users') data = [...users];
     else if (this.tableName === 'admin_users') data = [...admins];
     else if (this.tableName === 'tenant_interests') data = [...interests];
+    else data = getLocalData(getStorageKey(this.tableName), []);
 
     // Apply filters
     for (const f of this.filters) {

@@ -264,6 +264,23 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
       admins.push({ id: reg.auth_user_id || reg.id, email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator', ren_number: reg.ren_number, ren_tag_url: reg.ren_tag_url });
       localStorage.setItem('ez_admins', JSON.stringify(admins));
+
+      // Add a user notification for the approval
+      if (reg.auth_user_id) {
+        const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+        notifs.push({
+          id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+          user_id: reg.auth_user_id,
+          title: lang === 'zh' ? '恭喜！您的中介注册申请已通过审核' : 'Congratulations! Your Agent Registration is Approved',
+          content: lang === 'zh' 
+            ? `尊敬的申请人 ${reg.full_name}，您的中介注册申请已成功通过超级管理员审核。\n\n在下次重新登录后，您的账户将自动切换为中介身份，并直接进入中介管理后台开始录入和管理挂牌房源。感谢您选择 Malaysia Ez Rent！`
+            : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`,
+          type: 'agent_status',
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+      }
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -281,6 +298,20 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           ren_number: reg.ren_number,
           ren_tag_url: reg.ren_tag_url,
         });
+
+        // Add a user notification for the approval
+        if (reg.auth_user_id) {
+          await supabase.from('user_notifications').insert({
+            user_id: reg.auth_user_id,
+            title: lang === 'zh' ? '恭喜！您的中介注册申请已通过审核' : 'Congratulations! Your Agent Registration is Approved',
+            content: lang === 'zh' 
+              ? `尊敬的申请人 ${reg.full_name}，您的中介注册申请已成功通过超级管理员审核。\n\n在下次重新登录后，您的账户将自动切换为中介身份，并直接进入中介管理后台开始录入和管理挂牌房源。感谢您选择 Malaysia Ez Rent！`
+              : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`,
+            type: 'agent_status',
+            is_read: false
+          });
+        }
+
         // Delete REN tag image from Storage
         if (reg.ren_tag_url) {
           const pathMatch = reg.ren_tag_url.match(/ren-tags\/([^?]+)/);
@@ -300,12 +331,48 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     if (!isLive) {
       const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
       const idx = regs.findIndex((r: any) => r.id === id);
-      if (idx !== -1) { regs[idx].verification_status = 'rejected'; regs[idx].rejection_reason = agentReviewRejectReason; localStorage.setItem('ez_agent_registrations', JSON.stringify(regs)); }
+      if (idx !== -1) {
+        regs[idx].verification_status = 'rejected';
+        regs[idx].rejection_reason = agentReviewRejectReason;
+        localStorage.setItem('ez_agent_registrations', JSON.stringify(regs));
+
+        // Add a notification for rejection
+        const reg = regs[idx];
+        if (reg.auth_user_id) {
+          const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+          notifs.push({
+            id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+            user_id: reg.auth_user_id,
+            title: lang === 'zh' ? '关于您的中介注册申请审核结果通知' : 'Notification Regarding Your Agent Registration Status',
+            content: lang === 'zh'
+              ? `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：${agentReviewRejectReason}\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`
+              : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: ${agentReviewRejectReason}\n\nPlease re-upload valid REN credentials or contact admin support directly.`,
+            type: 'agent_status',
+            is_read: false,
+            created_at: new Date().toISOString()
+          });
+          localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+        }
+      }
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         await supabase.from('agent_registrations').update({ verification_status: 'rejected', rejection_reason: agentReviewRejectReason, reviewed_at: new Date().toISOString() }).eq('id', id);
+
+        // Find the registration to get auth_user_id
+        const { data: reg } = await supabase.from('agent_registrations').select('auth_user_id, full_name').eq('id', id).maybeSingle();
+        if (reg && reg.auth_user_id) {
+          await supabase.from('user_notifications').insert({
+            user_id: reg.auth_user_id,
+            title: lang === 'zh' ? '关于您的中介注册申请审核结果通知' : 'Notification Regarding Your Agent Registration Status',
+            content: lang === 'zh'
+              ? `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：${agentReviewRejectReason}\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`
+              : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: ${agentReviewRejectReason}\n\nPlease re-upload valid REN credentials or contact admin support directly.`,
+            type: 'agent_status',
+            is_read: false
+          });
+        }
       } catch (e) { console.error('Reject agent error:', e); }
     }
     setAgentReviewRejectId(null);

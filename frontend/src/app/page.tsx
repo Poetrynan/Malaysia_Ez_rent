@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
 import PropertyListings from '@/components/PropertyListings';
+import Inbox from '@/components/Inbox';
 import { isMockDatabase } from '@/lib/supabase';
 import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-listings' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'inbox' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-listings' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile' | 'admin-inbox'>('listings');
+  const [unreadInboxCount, setUnreadInboxCount] = useState(0);
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -265,6 +267,18 @@ export default function Home() {
                   </span>
                   <span className="role-badge student">{t('roleTenantBadge')}</span>
                 </li>
+                <li onClick={() => setActiveTab('inbox')} className={`nav-item ${activeTab === 'inbox' ? 'active' : ''}`}>
+                  <Mail size={16} />
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {lang === 'zh' ? '消息与公告' : 'Inbox & Alerts'}
+                    {unreadInboxCount > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                        {unreadInboxCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className="role-badge student">{t('roleTenantBadge')}</span>
+                </li>
               </>
             )}
             {role === 'admin' && (
@@ -332,6 +346,18 @@ export default function Home() {
                 <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
                   <User size={16} />
                   <span>{lang === 'zh' ? '个人设置' : 'Profile Settings'}</span>
+                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-inbox')} className={`nav-item ${activeTab === 'admin-inbox' ? 'active' : ''}`}>
+                  <Mail size={16} />
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {lang === 'zh' ? '消息与公告' : 'Inbox & Announcements'}
+                    {unreadInboxCount > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                        {unreadInboxCount}
+                      </span>
+                    )}
+                  </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
               </>
@@ -549,7 +575,7 @@ export default function Home() {
           <div style={{ display: role === 'admin' && activeTab === 'admin-listings' ? 'block' : 'none' }}>
             <PropertyListings readOnly />
           </div>
-          <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') && activeTab !== 'admin-listings' ? 'block' : 'none' }}>
+          <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') && activeTab !== 'admin-listings' && activeTab !== 'admin-inbox' ? 'block' : 'none' }}>
             <AdminPanel 
               adminRole={adminRole} 
               defaultTab={
@@ -565,6 +591,9 @@ export default function Home() {
               hideTabBar={true}
               onPendingCountsChange={handlePendingCountsChange}
             />
+          </div>
+          <div style={{ display: (role === 'student' && activeTab === 'inbox') || (role === 'admin' && activeTab === 'admin-inbox') ? 'block' : 'none' }}>
+            <Inbox adminRole={adminRole} onUnreadCountChange={setUnreadInboxCount} />
           </div>
         </div>
       </main>

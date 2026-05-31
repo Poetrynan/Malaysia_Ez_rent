@@ -612,3 +612,41 @@ In large SPA implementations with nested tabs and active sub-panels (e.g., `Admi
 ### Git Ignore & Cleanup
 - Added `/scratch/` to the `frontend/.gitignore` file to ignore temporary script files.
 - Executed `git rm -r --cached frontend/scratch` to untrack and remove previously committed JS scripts from the remote GitHub repository while keeping them on local disk.
+
+## 21) Announcements, Notifications & Inbox System (2026-06-01)
+
+To keep tenants and agents informed of system events and admin reviews without locking them to static banners, we designed a unified notification system.
+
+### Table Schema (`user_notifications`)
+- `id`: UUID (default `gen_random_uuid()`)
+- `user_id`: UUID (references `auth.users(id)` on delete cascade)
+- `title`: TEXT
+- `content`: TEXT
+- `type`: VARCHAR(30) ('system' | 'announcement' | 'update' | 'bonus' | 'agent_status')
+- `is_read`: BOOLEAN (default `false`)
+- `created_at`: TIMESTAMPTZ (default `now()`)
+
+### RLS Policies
+- **SELECT / UPDATE / DELETE**: Users can view, toggle read states, and delete notifications where `auth.uid() = user_id`.
+- **INSERT**: Restricted to administrators, allowed if the current user exists in `admin_users`.
+
+### Super Admin Broadcast Console
+- Located inside `components/Inbox.tsx` (rendered as tab `admin-inbox` / `inbox` in `page.tsx`).
+- Offers 4 dispatch scopes: "All Students", "All Agents/Admins", "All Users (Broadcast)", "Specific User".
+- In "Specific User" mode, displays a searchable directory list of students and agents to select the recipient.
+- Features 4 templates for fast-entry:
+  1. *Agent Approved*: Notifies the user their application passed and role will switch upon next login.
+  2. *Agent Rejected*: Includes a placeholder for the rejection reason.
+  3. *System Maintenance*: Broadcast template for downtime announcements.
+  4. *Bonus Promotional Offer*: Version update or marketing notification.
+
+### Agent Workflow Integration
+- In `AdminPanel.tsx` (during agent registration approval/rejection):
+  - On **Approve**: System automatically writes an `agent_status` approval notification to the applicant's UUID.
+  - On **Reject**: System automatically writes an `agent_status` rejection notification (with the rejection reason) to the applicant's UUID.
+- Both Mock mode (saving to `ez_user_notifications` in `localStorage`) and Live mode (inserting to `user_notifications` via Supabase client) support this automated feedback loop.
+
+### Live Unread Counter Badge
+- `Inbox` triggers an `onUnreadCountChange(count)` callback.
+- The root layout `page.tsx` subscribes to this state and displays a floating red counter badge in both Student and Admin sidebars next to the "Inbox & Alerts" icon (`Mail`).
+
