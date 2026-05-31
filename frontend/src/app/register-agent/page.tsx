@@ -459,32 +459,41 @@ export default function RegisterAgentPage() {
               {lang === 'zh' ? '申请已提交！' : 'Application Submitted!'}
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
-              {userId ? (
-                lang === 'zh'
-                  ? '您的中介注册申请已成功提交，审核通过后将自动移入中介管理端。当前您可以先查看租客端。'
-                  : 'Your agent registration has been submitted. After approval, you will be moved to the agent portal. You can view the tenant portal first.'
-              ) : (
-                lang === 'zh'
-                  ? '您的中介注册申请已成功提交！审核通过后即可直接进入中介后台。建议您立即登录绑定。'
-                  : 'Your agent registration has been submitted successfully! Once approved, you will directly enter the agent portal. We recommend logging in now to bind.'
-              )}
+              {userId
+                ? (lang === 'zh'
+                    ? '您的中介注册申请已成功提交。审核通过后将自动移入中介管理端，当前可先浏览租客端。'
+                    : 'Your agent registration has been submitted. After approval, you will be moved to the agent portal. You can browse the tenant portal first.')
+                : (lang === 'zh'
+                    ? '您的中介注册申请已成功提交！请登录后系统将自动关联您的申请，届时页面顶部会显示审核进度提醒。'
+                    : 'Your agent registration has been submitted! Please log in — the system will auto-link your application and show a status banner.')
+              }
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <a href="/" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '12px 20px', borderRadius: 10, background: 'var(--primary)',
-                color: 'white', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
-              }}>
-                {lang === 'zh' ? '查看租客端' : 'View Tenant Portal'}
-              </a>
-              {!userId && (
-                <a href="/login" style={{
+              {!userId ? (
+                <>
+                  <a href="/login" style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '12px 20px', borderRadius: 10, background: 'var(--primary)',
+                    color: 'white', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
+                  }}>
+                    {lang === 'zh' ? '立即登录' : 'Log in Now'}
+                  </a>
+                  <a href="/" style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '12px 20px', borderRadius: 10,
+                    border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                    color: 'var(--text-body)', fontSize: '0.88rem', fontWeight: 500, textDecoration: 'none',
+                  }}>
+                    {lang === 'zh' ? '稍后再说' : 'Later'}
+                  </a>
+                </>
+              ) : (
+                <a href="/" style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '12px 20px', borderRadius: 10,
-                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                  color: 'var(--text-body)', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
+                  padding: '12px 20px', borderRadius: 10, background: 'var(--primary)',
+                  color: 'white', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
                 }}>
-                  {lang === 'zh' ? '立即登录绑定' : 'Log in now to bind'}
+                  {lang === 'zh' ? '查看租客端' : 'View Tenant Portal'}
                 </a>
               )}
             </div>
