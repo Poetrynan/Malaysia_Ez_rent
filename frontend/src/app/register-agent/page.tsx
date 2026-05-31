@@ -222,6 +222,11 @@ export default function RegisterAgentPage() {
     const normalizedREN = normalizeREN(renNumber);
     if (!normalizedREN) { setError(lang === 'zh' ? 'REN 编号格式不正确（如 REN12345）' : 'Invalid REN number format (e.g. REN12345)'); return; }
 
+    if (!userId) {
+      setError(lang === 'zh' ? '请先登录后再提交' : 'Please log in before submitting');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
