@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3 } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign } from 'lucide-react';
 import Dashboard from './Dashboard';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
@@ -2525,6 +2525,12 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </div>
             )}
 
+            {/* ── Section: Basic Info ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
+              <Home size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '基本信息' : 'Basic Info'}</span>
+            </div>
+
             <div className="form-group">
               <label>{t('selectCommunity')}</label>
               <select
@@ -2544,6 +2550,13 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 </select>
               </div>
             </div>
+
+            {/* ── Section: Pricing & Capacity ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
+              <DollarSign size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '租金与配置' : 'Pricing & Capacity'}</span>
+            </div>
+
             <div className="form-row">
               <div className="form-group"><label>{t('rentMYR')}</label><input type="number" min={0} className="form-input" value={unitForm.rent} onChange={e => { setUnitForm(f => ({ ...f, rent: nonNegativeInputValue(e.target.value) })); clearError('rent'); }} style={fieldErrors.rent ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined} /></div>
               <div className="form-group"><label>{t('maxOccupants')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.max_occupants} onChange={e => setUnitForm(f => ({ ...f, max_occupants: nonNegativeInputValue(e.target.value) }))} /></div>
@@ -2552,13 +2565,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: nonNegativeInputValue(e.target.value) }))} /></div>
               <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
-            
+
+            {/* ── Section: Payment Info ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
+              <QrCode size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '房东收款信息' : 'Landlord Payment Info'}</span>
+            </div>
+
             <div className="form-group"><label>{t('landlordBankInfoLabel') || 'Landlord Bank Info'}</label><textarea className="form-textarea" rows={2} value={unitForm.landlord_bank_info} onChange={e => setUnitForm(f => ({ ...f, landlord_bank_info: e.target.value }))} placeholder={lang === 'zh' ? '如：银行账号、微信 ID、支付宝账号' : 'e.g. bank account, WeChat ID, Alipay account'} style={{ resize: 'vertical' }} /></div>
 
             {/* Landlord QR Code Upload */}
             <div className="form-group">
               <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <QrCode size={14} style={{ color: 'var(--primary)' }} /> {lang === 'zh' ? '房东收款二维码（银行/微信/支付宝，可选）' : 'Landlord QR code (bank / WeChat / Alipay, optional)'}
+                <QrCode size={14} style={{ color: 'var(--primary)' }} /> {lang === 'zh' ? '房东收款二维码（可选）' : 'Landlord QR code (optional)'}
               </label>
               {unitForm.landlord_qr_code ? (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
@@ -2578,9 +2597,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               )}
             </div>
 
+            {/* ── Section: Description ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
+              <FileText size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '房源描述' : 'Description'}</span>
+            </div>
+
             <div className="form-group"><label>{t('descLabel')}</label><textarea className="form-textarea" rows={2} value={unitForm.description} onChange={e => setUnitForm(f => ({ ...f, description: e.target.value }))} placeholder={t('descPlaceholder')} style={{ resize: 'vertical' }} /></div>
 
-            {/* ── Media Upload ── */}
+            {/* ── Section: Media Upload ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
+              <Camera size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '图片与视频' : 'Photos & Video'}</span>
+              <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: mediaImages.length === 0 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: mediaImages.length === 0 ? 600 : 400 }}>
+                {mediaImages.length === 0 ? (lang === 'zh' ? '* 必须上传' : '* Required') : `${mediaImages.length}/9`}
+              </span>
+            </div>
             <div className="form-group">
               <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ImagePlus size={14} style={{ color: 'var(--primary)' }} /> {t('uploadMedia')}
