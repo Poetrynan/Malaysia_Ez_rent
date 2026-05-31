@@ -129,12 +129,26 @@ export default function Home() {
         }
         // Check agent registration status if student (match by user.id or email)
         if (!adminRecord && user.email) {
-          const { data: agentReg } = await supabase
+          console.log('[Agent Banner] Checking for user:', user.id, user.email);
+          // First try by email (most reliable since registration uses email)
+          const { data: byEmail, error: emailErr } = await supabase
             .from('agent_registrations')
-            .select('verification_status')
-            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+            .select('verification_status, email, auth_user_id')
+            .eq('email', user.email)
             .maybeSingle();
-          if (agentReg) setAgentRegStatus(agentReg.verification_status);
+          console.log('[Agent Banner] By email:', byEmail, emailErr?.message);
+          if (byEmail) {
+            setAgentRegStatus(byEmail.verification_status);
+          } else {
+            // Fallback: try by auth_user_id
+            const { data: byId } = await supabase
+              .from('agent_registrations')
+              .select('verification_status')
+              .eq('auth_user_id', user.id)
+              .maybeSingle();
+            console.log('[Agent Banner] By auth_user_id:', byId);
+            if (byId) setAgentRegStatus(byId.verification_status);
+          }
         }
       };
       checkSession();
