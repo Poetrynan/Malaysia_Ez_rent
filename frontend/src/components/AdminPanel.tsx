@@ -1286,14 +1286,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     }
     setFieldErrors({});
 
+    // 强制要求至少上传一张图片
+    if (mediaImages.length === 0 && !mediaVideo) {
+      showToast(lang === 'zh' ? '请至少上传一张房源图片' : 'Please upload at least one property image', 'error');
+      return;
+    }
+
     const isEdit = !!editingUnitId;
     const targetId = editingUnitId || (isLive ? crypto.randomUUID() : `u-${Date.now()}`);
 
-    if (mediaImages.length === 0 && !mediaVideo) {
-      showToast(t('validationNoMedia'), 'warning');
-    } else {
-      showToast(t('validationSaved'), 'success');
-    }
+    showToast(t('validationSaved'), 'success');
 
     const unitPayload: any = { 
       community_id: unitForm.community_id, 
