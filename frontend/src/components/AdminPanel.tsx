@@ -3851,158 +3851,138 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       )}
 
       {/* ── AGENT REVIEWS TAB ── */}
-      {tab === 'agent-reviews' && (
+      {tab === 'agent-reviews' && (() => {
+        const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
+        return (
         <div>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Image Preview Modal */}
+          {reviewImgModal && (
+            <div onClick={() => setReviewImgModal(null)} style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              cursor: 'pointer', animation: 'scaleIn 0.2s ease',
+            }}>
+              <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}>
+                <button onClick={() => setReviewImgModal(null)} style={{
+                  position: 'absolute', top: -12, right: -12, width: 32, height: 32,
+                  borderRadius: '50%', background: 'var(--danger)', color: '#fff',
+                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                }}><X size={16} /></button>
+                <img src={reviewImgModal} style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 8, objectFit: 'contain' }} />
+              </div>
+            </div>
+          )}
+
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Building2 size={18} style={{ color: 'var(--primary)' }} />
-            {lang === 'zh' ? '中介申请审核' : 'Agent Registration Reviews'}
+            {lang === 'zh' ? '中介申请审核' : 'Agent Reviews'}
             {agentRegistrations.filter(r => r.verification_status === 'pending').length > 0 && (
-              <span style={{ background: 'var(--warning)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>
+              <span style={{ background: 'var(--danger)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>
                 {agentRegistrations.filter(r => r.verification_status === 'pending').length}
               </span>
             )}
           </h3>
 
           {agentRegistrations.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>
+            <div className="glass-card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
               {lang === 'zh' ? '暂无申请记录' : 'No registration applications yet'}
-            </p>
+            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {agentRegistrations.map(reg => {
-                const statusColor = reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)';
-                const statusBg = reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)';
-                const statusLabel = reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending');
+            <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="data-table-container" style={{ maxHeight: 500, overflow: 'auto' }}>
+                <table className="data-table">
+                  <thead><tr>
+                    <th style={{ width: 40 }}></th>
+                    <th>{lang === 'zh' ? '姓名' : 'Name'}</th>
+                    <th>{lang === 'zh' ? '公司' : 'Agency'}</th>
+                    <th>{lang === 'zh' ? '邮箱' : 'Email'}</th>
+                    <th>{lang === 'zh' ? '手机' : 'Phone'}</th>
+                    <th>REN</th>
+                    <th style={{ textAlign: 'center' }}>{lang === 'zh' ? '执照' : 'Tag'}</th>
+                    <th>{lang === 'zh' ? '状态' : 'Status'}</th>
+                    <th style={{ textAlign: 'center' }}>{lang === 'zh' ? '操作' : 'Actions'}</th>
+                  </tr></thead>
+                  <tbody>
+                    {agentRegistrations.map(reg => {
+                      const statusColor = reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)';
+                      const statusBg = reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)';
+                      const statusLabel = reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending');
+                      return (
+                        <tr key={reg.id} style={{ opacity: reg.verification_status === 'rejected' ? 0.55 : 1 }}>
+                          <td>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: statusBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <User size={15} style={{ color: statusColor }} />
+                            </div>
+                          </td>
+                          <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap' }}>{reg.full_name}</td>
+                          <td style={{ color: 'var(--text-body)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.agency_name}</td>
+                          <td style={{ color: 'var(--text-body)', fontSize: '0.78rem' }}>{reg.email}</td>
+                          <td style={{ color: 'var(--text-body)', whiteSpace: 'nowrap' }}>{reg.phone}</td>
+                          <td style={{ fontWeight: 600, color: 'var(--text-body)', whiteSpace: 'nowrap' }}>{reg.ren_number}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            {reg.ren_tag_image_url ? (
+                              <img src={reg.ren_tag_image_url} alt="REN"
+                                onClick={() => setReviewImgModal(reg.ren_tag_image_url)}
+                                style={{ width: 44, height: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--glass-border)', transition: 'transform 0.15s' }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} />
+                            ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>}
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: statusBg, color: statusColor, whiteSpace: 'nowrap' }}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {reg.verification_status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <button onClick={() => approveAgentRegistration(reg)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--success)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                                  <CheckCircle2 size={12} />
+                                </button>
+                                <button onClick={() => setAgentReviewRejectId(reg.id)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button onClick={() => {
+                                if (confirm(lang === 'zh' ? `确定删除 ${reg.full_name} 的记录？` : `Delete ${reg.full_name}?`))
+                                  deleteAgentRegistration(reg.id, reg.ren_tag_image_url);
+                              }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer' }}
+                                onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                return (
-                <div key={reg.id} style={{
-                  background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
-                  borderRadius: 14, padding: 0, overflow: 'hidden',
-                  opacity: reg.verification_status === 'rejected' ? 0.65 : 1,
-                  transition: 'all 0.2s ease',
-                }}>
-                  {/* Header: Name + Agency + Status + Delete */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: statusBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <User size={18} style={{ color: statusColor }} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', lineHeight: 1.2 }}>{reg.full_name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.agency_name} · {reg.email}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: statusBg, color: statusColor }}>
-                        {statusLabel}
-                      </span>
-                      <button onClick={() => {
-                        if (confirm(lang === 'zh' ? `确定要删除 ${reg.full_name} 的注册记录吗？` : `Delete ${reg.full_name}'s registration?`)) {
-                          deleteAgentRegistration(reg.id, reg.ren_tag_image_url);
-                        }
-                      }} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 6,
-                        color: 'var(--text-muted)', transition: 'color 0.2s',
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-                        title={lang === 'zh' ? '删除记录' : 'Delete record'}>
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Info grid */}
-                  <div style={{ padding: '12px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px', fontSize: '0.8rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Phone size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                      <span style={{ color: 'var(--text-body)' }}>{reg.phone}</span>
-                    </div>
-                    {reg.whatsapp && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <MessageSquare size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                        <span style={{ color: 'var(--text-body)' }}>{reg.whatsapp}</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <ShieldCheck size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                      <span style={{ color: 'var(--text-body)', fontWeight: 600 }}>{reg.ren_number}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Clock size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                      <span style={{ color: 'var(--text-body)' }}>{new Date(reg.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  {/* REN Tag Image */}
-                  {reg.ren_tag_image_url && (
-                    <div style={{ padding: '0 18px 12px' }}>
-                      <a href={reg.ren_tag_image_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
-                        <img src={reg.ren_tag_image_url} alt="REN Tag" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s' }}
-                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} />
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Rejection reason */}
-                  {reg.rejection_reason && (
-                    <div role="alert" style={{ padding: '8px 18px', background: 'var(--danger-light)', fontSize: '0.78rem', color: 'var(--danger)' }}>
-                      {lang === 'zh' ? '拒绝原因：' : 'Reason: '}{reg.rejection_reason}
-                    </div>
-                  )}
-
-                  {/* Action buttons — only for pending */}
-                  {reg.verification_status === 'pending' && (
-                    <div style={{ padding: '12px 18px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <button onClick={() => approveAgentRegistration(reg)} style={{
-                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
-                        border: 'none', background: 'var(--success)', color: 'white', fontSize: '0.82rem',
-                        fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'var(--success)'}>
-                        <CheckCircle2 size={14} /> {lang === 'zh' ? '通过' : 'Approve'}
-                      </button>
-                      {agentReviewRejectId === reg.id ? (
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
-                          <input type="text" className="form-input" value={agentReviewRejectReason}
-                            onChange={e => setAgentReviewRejectReason(e.target.value)}
-                            placeholder={lang === 'zh' ? '拒绝原因（选填）' : 'Reason (optional)'}
-                            style={{ flex: 1, fontSize: '0.82rem' }} />
-                          <button onClick={() => rejectAgentRegistration(reg.id)} style={{
-                            padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)',
-                            color: 'white', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                          }}>
-                            {lang === 'zh' ? '确认' : 'Confirm'}
-                          </button>
-                          <button onClick={() => { setAgentReviewRejectId(null); setAgentReviewRejectReason(''); }} style={{
-                            padding: '8px 14px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                            color: 'var(--text-body)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                          }}>
-                            {lang === 'zh' ? '取消' : 'Cancel'}
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setAgentReviewRejectId(reg.id)} style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
-                          border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)',
-                          fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                        }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-light)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                          <X size={14} /> {lang === 'zh' ? '拒绝' : 'Reject'}
-                        </button>
-                      )}
-                    </div>
-                  )}
+              {/* Rejection reason input (shows when reject is clicked) */}
+              {agentReviewRejectId && (
+                <div style={{ padding: '12px 16px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(239,68,68,0.03)' }}>
+                  <AlertTriangle size={14} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+                  <input type="text" className="form-input" value={agentReviewRejectReason}
+                    onChange={e => setAgentReviewRejectReason(e.target.value)}
+                    placeholder={lang === 'zh' ? '拒绝原因（选填）' : 'Reason (optional)'}
+                    style={{ flex: 1, fontSize: '0.82rem' }} />
+                  <button onClick={() => rejectAgentRegistration(agentReviewRejectId)} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                    {lang === 'zh' ? '确认拒绝' : 'Confirm'}
+                  </button>
+                  <button onClick={() => { setAgentReviewRejectId(null); setAgentReviewRejectReason(''); }} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-body)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                    {lang === 'zh' ? '取消' : 'Cancel'}
+                  </button>
                 </div>
-                );
-              })}
+              )}
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ── PROFILE TAB ── */}
       {tab === 'profile' && (

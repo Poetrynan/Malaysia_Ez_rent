@@ -15,14 +15,14 @@ export default function Home() {
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
-  const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0 });
+  const [pendingCounts, setPendingCounts] = useState({ leases: 0, feedback: 0, agentReviews: 0 });
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [agentRegStatus, setAgentRegStatus] = useState<string | null>(null);
 
   const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCount: number) => {
     setPendingCounts(prev => {
       if (prev.leases === leasesCount && prev.feedback === feedbackCount) return prev;
-      return { leases: leasesCount, feedback: feedbackCount };
+      return { ...prev, leases: leasesCount, feedback: feedbackCount };
     });
   }, []);
 
@@ -122,6 +122,11 @@ export default function Home() {
         setActiveTab(activeRole === 'admin' ? 'admin-properties' : 'listings');
         setUserEmail(user.email || '');
         localStorage.setItem('ez_tenant_id', user.id);
+        // Fetch pending agent registrations count for admin badge
+        if (activeRole === 'admin') {
+          const { count } = await supabase.from('agent_registrations').select('*', { count: 'exact', head: true }).eq('verification_status', 'pending');
+          if (count && count > 0) setPendingCounts(prev => ({ ...prev, agentReviews: count }));
+        }
         // Check agent registration status if student (match by user.id or email)
         if (!adminRecord && user.email) {
           const { data: agentReg } = await supabase
@@ -299,7 +304,14 @@ export default function Home() {
                 {adminRole === 'super_admin' && (
                   <li onClick={() => setActiveTab('admin-agent-reviews')} className={`nav-item ${activeTab === 'admin-agent-reviews' ? 'active' : ''}`}>
                     <Building2 size={16} />
-                    <span>{lang === 'zh' ? '中介审核' : 'Agent Reviews'}</span>
+                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                      {lang === 'zh' ? '中介审核' : 'Agent Reviews'}
+                      {pendingCounts.agentReviews > 0 && (
+                        <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 10, lineHeight: '1.2' }}>
+                          {pendingCounts.agentReviews}
+                        </span>
+                      )}
+                    </span>
                     <span className="role-badge admin">{t('roleManagerBadge')}</span>
                   </li>
                 )}
