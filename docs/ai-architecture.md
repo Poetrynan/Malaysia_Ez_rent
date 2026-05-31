@@ -593,3 +593,22 @@ In large SPA implementations with nested tabs and active sub-panels (e.g., `Admi
 ### Avoid Infinite Rendering Loops
 - **Stable Callbacks**: Avoid inline arrow functions when passing state updating handlers down to child components that depend on them inside `useEffect` arrays. Wrap them in `useCallback` with empty dependency vectors.
 - **Value Guard Checks**: Within the parent state updater, perform a primitive value check. If the incoming state matches current values, return the previous state pointer (`prev`) unchanged. This cancels React's rendering queue.
+
+## 20) Production Security, Email Masking, Stale Interest Cleanup & Git Configuration (2026-06-01)
+
+### Developer Login Bypass Removal
+- To ensure production-grade security on online hosting environments (Vercel, Render, Supabase), all developer backdoor buttons (e.g. `🛠️ Developer Quick Login`) and corresponding authentication flow function `handleDevLogin` have been completely removed from `src/app/login/page.tsx`. This avoids client-side compilation leakage of secret credentials in production builds.
+
+### Student Email Privacy Masking
+- In the public co-renting interest list within `PropertyListings.tsx`, emails of other users are masked (e.g., `cf***6@student.monash.edu` or fallback nickname `cf***6`) to protect privacy.
+- The full email address is only shown if `isMe` is true (i.e. the record belongs to the currently logged-in student).
+
+### Stale Interest Auto-Reset/Cleanup
+- Under `PropertyListings.tsx`, the `refreshInterests` loader detects stale tenant interests. If a property's status becomes `rented` or `occupied` and the current user is not the designated lessee, their interest record is deemed stale.
+- To prevent locking the user's interface from expressing interest on other available properties, `myInterest` is set to `null` to bypass validation.
+- In the background, the stale interest's DB state is set to `status = 'left'` asynchronously (via RPC/table UPDATE) to heal the data.
+- The `useEffect` on mount unifies both Supabase and LocalStorage Mock databases to run this self-healing routine consistently.
+
+### Git Ignore & Cleanup
+- Added `/scratch/` to the `frontend/.gitignore` file to ignore temporary script files.
+- Executed `git rm -r --cached frontend/scratch` to untrack and remove previously committed JS scripts from the remote GitHub repository while keeping them on local disk.
