@@ -60,6 +60,25 @@ export default function MobileUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [paymentModeTab, setPaymentModeTab] = useState<'qr' | 'bank'>('qr');
+  const [copiedBankInfo, setCopiedBankInfo] = useState(false);
+
+  const handleCopyBankInfo = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedBankInfo(true);
+      setTimeout(() => setCopiedBankInfo(false), 2000);
+    });
+  };
+
+  useEffect(() => {
+    if (mobileInfo) {
+      const isFirstMonth = mobileInfo.is_first_month;
+      const qrToShow = isFirstMonth ? mobileInfo.admin_qr_code : (mobileInfo.landlord_qr_code || null);
+      if (!qrToShow && mobileInfo.landlord_bank_info) {
+        setPaymentModeTab('bank');
+      }
+    }
+  }, [mobileInfo]);
 
   useEffect(() => {
     if (!paymentId) return;
@@ -271,53 +290,138 @@ export default function MobileUploadPage() {
 
         {/* Payment QR / Bank info section */}
         {mobileInfo && !done && (
-          <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 24, boxShadow: 'var(--glass-shadow)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, marginBottom: 24, boxShadow: 'var(--glass-shadow)', textAlign: 'center', transition: 'all 0.3s' }}>
             {mobileInfo.is_first_month ? (
-              <span style={{ display: 'inline-block', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, marginBottom: 12 }}>
+              <span style={{ display: 'inline-block', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '5px 12px', borderRadius: 8, fontSize: '0.72rem', fontWeight: 700, marginBottom: 14 }}>
                 {lang === 'zh' ? '中介收款 (首月定金/押金)' : 'Agent Payment (Deposit & 1st Month Rent)'}
               </span>
             ) : (
-              <span style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '4px 10px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, marginBottom: 12 }}>
+              <span style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '5px 12px', borderRadius: 8, fontSize: '0.72rem', fontWeight: 700, marginBottom: 14 }}>
                 {lang === 'zh' ? '房东收款 (第2个月及以后租金)' : 'Landlord Payment (Rent from 2nd Month)'}
               </span>
             )}
 
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-body)', marginBottom: 12, lineHeight: 1.4 }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-body)', marginBottom: 16, lineHeight: 1.45 }}>
               {mobileInfo.is_first_month 
-                ? (lang === 'zh' ? '请扫码支付款项给中介：' : 'Please scan and pay to Agent:')
-                : (lang === 'zh' ? '请扫码或转账支付月租给房东：' : 'Please scan or transfer monthly rent to Landlord:')
+                ? (lang === 'zh' ? '请扫码或汇款支付款项给中介：' : 'Please scan or transfer payment to Agent:')
+                : (lang === 'zh' ? '请选择下方方式支付月租给房东：' : 'Please choose a method to pay monthly rent to Landlord:')
               }
             </div>
+
+            {/* Payment Segment Tab Switcher if both options are available */}
+            {!mobileInfo.is_first_month && mobileInfo.landlord_qr_code && mobileInfo.landlord_bank_info && (
+              <div style={{
+                display: 'flex',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: 10,
+                padding: 3,
+                marginBottom: 16,
+                border: '1px solid var(--glass-border)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setPaymentModeTab('qr')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: 'none',
+                    background: paymentModeTab === 'qr' ? 'var(--primary)' : 'transparent',
+                    color: paymentModeTab === 'qr' ? 'white' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {lang === 'zh' ? '🔍 扫码支付' : 'Scan QR'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentModeTab('bank')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: 'none',
+                    background: paymentModeTab === 'bank' ? 'var(--primary)' : 'transparent',
+                    color: paymentModeTab === 'bank' ? 'white' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {lang === 'zh' ? '🏦 银行转账' : 'Bank Transfer'}
+                </button>
+              </div>
+            )}
 
             {/* QR Code display */}
             {(() => {
               const isFirstMonth = mobileInfo.is_first_month;
               const qrToShow = isFirstMonth ? mobileInfo.admin_qr_code : (mobileInfo.landlord_qr_code || null);
+              const showQr = qrToShow && (isFirstMonth || paymentModeTab === 'qr' || !mobileInfo.landlord_bank_info);
               const noLandlordInfo = (!isFirstMonth && !mobileInfo.landlord_qr_code && !mobileInfo.landlord_bank_info);
 
               return (
                 <>
-                  {qrToShow ? (
-                    <div style={{ background: 'white', padding: 10, borderRadius: 12, display: 'inline-block', margin: '0 auto 12px', border: '1px solid var(--border)' }}>
-                      <img src={qrToShow} alt="Payment QR" style={{ width: 140, height: 140, objectFit: 'contain', display: 'block' }} />
-                      <p style={{ fontSize: '0.62rem', color: '#9CA3AF', margin: '6px 0 0 0' }}>{lang === 'zh' ? '长按可保存二维码' : 'Long-press to save QR'}</p>
+                  {showQr ? (
+                    <div style={{ background: 'white', padding: 12, borderRadius: 14, display: 'inline-block', margin: '0 auto 12px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                      <img src={qrToShow || ''} alt="Payment QR" style={{ width: 150, height: 150, objectFit: 'contain', display: 'block' }} />
+                      <p style={{ fontSize: '0.62rem', color: '#9CA3AF', margin: '8px 0 0 0', fontWeight: 500 }}>{lang === 'zh' ? '💡 长按可保存二维码' : '💡 Long-press to save QR'}</p>
                     </div>
                   ) : isFirstMonth ? (
-                    <div style={{ padding: '20px 10px', borderRadius: 10, border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 12 }}>
-                      {lang === 'zh' ? '中介收款二维码未上传' : 'Agent QR code not uploaded'}
+                    <div style={{ padding: '24px 10px', borderRadius: 12, border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: 12 }}>
+                      {lang === 'zh' ? '⚠️ 中介收款二维码尚未上传，请联系中介。' : '⚠️ Agent QR code not uploaded. Please contact agent.'}
                     </div>
                   ) : null}
 
                   {noLandlordInfo && (
-                    <div style={{ padding: '20px 10px', borderRadius: 10, border: '1px dashed rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)', color: '#F59E0B', fontSize: '0.75rem', marginBottom: 12 }}>
+                    <div style={{ padding: '24px 12px', borderRadius: 12, border: '1px dashed rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)', color: '#F59E0B', fontSize: '0.78rem', marginBottom: 12, lineHeight: 1.45 }}>
                       {lang === 'zh' ? '房东暂未上传收款码或银行账户信息，请联系管理员。' : 'Landlord payment QR code or bank info is not set up yet. Please contact admin.'}
                     </div>
                   )}
 
-                  {!isFirstMonth && mobileInfo.landlord_bank_info && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                       <strong style={{ color: 'var(--text-h)' }}>{lang === 'zh' ? '房东银行账户转账信息：' : 'Landlord Bank Info:'}</strong><br/>
-                       {mobileInfo.landlord_bank_info}
+                  {!isFirstMonth && mobileInfo.landlord_bank_info && (paymentModeTab === 'bank' || !mobileInfo.landlord_qr_code) && (
+                    <div style={{
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding: 14,
+                      textAlign: 'left',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-body)',
+                      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>
+                        <strong style={{ color: 'var(--text-h)' }}>
+                          {lang === 'zh' ? '房东银行转账账户：' : 'Landlord Bank Account:'}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyBankInfo(mobileInfo.landlord_bank_info || '')}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            background: copiedBankInfo ? 'rgba(16, 185, 129, 0.15)' : 'var(--primary-light)',
+                            color: copiedBankInfo ? '#10B981' : 'var(--primary)',
+                            border: '1px solid ' + (copiedBankInfo ? 'rgba(16, 185, 129, 0.3)' : 'var(--primary-glow)'),
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          {copiedBankInfo ? (lang === 'zh' ? '✓ 已复制' : '✓ Copied') : (lang === 'zh' ? '📋 复制' : 'Copy')}
+                        </button>
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '0.82rem', lineHeight: 1.55 }}>
+                        {mobileInfo.landlord_bank_info}
+                      </div>
                     </div>
                   )}
                 </>
@@ -328,12 +432,61 @@ export default function MobileUploadPage() {
 
         {/* Upload area or success */}
         {done ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 20px',
+            background: 'var(--bg-surface-solid)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            boxShadow: 'var(--glass-shadow)',
+            animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+            <div style={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              background: 'var(--success-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              boxShadow: '0 0 16px var(--success-glow)',
+              animation: 'bounceScale 0.6s ease infinite alternate'
+            }}>
               <CheckCircle2 size={36} style={{ color: 'var(--success)' }} />
             </div>
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>上传成功！</p>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>请返回电脑查看，房东将在 24 小时内审核。</p>
+            <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
+              {lang === 'zh' ? '🎉 上传凭证成功！' : '🎉 Upload Successful!'}
+            </p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 24 }}>
+              {lang === 'zh' ? '您的转账凭证已提交给系统。请返回电脑浏览器查看，我们将在 24 小时内完成审核并更新账单状态。' : 'Your payment evidence has been submitted. Please check back on your PC; we will review it within 24 hours.'}
+            </p>
+
+            {/* Nice contact WhatsApp shortcut card */}
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: 10,
+              background: 'rgba(22, 163, 74, 0.06)',
+              border: '1px solid rgba(22, 163, 74, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              color: '#16A34A',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(22, 163, 74, 0.05)'
+            }}
+              onClick={() => {
+                window.open(`https://wa.me/60123456789?text=Hello,%20I%20have%20uploaded%20my%20payment%20evidence%20for%20bill%20${paymentId}.`, '_blank');
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(22, 163, 74, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(22, 163, 74, 0.06)'; }}
+            >
+              💬 {lang === 'zh' ? 'WhatsApp 催办快速审核' : 'Nudge Agent via WhatsApp'}
+            </div>
           </div>
         ) : (
           <div>
@@ -341,21 +494,25 @@ export default function MobileUploadPage() {
               htmlFor="file-input"
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: 12, padding: '40px 20px', borderRadius: 14, cursor: 'pointer',
+                gap: 12, padding: '40px 20px', borderRadius: 16, cursor: 'pointer',
                 border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
                 transition: 'all 0.2s',
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.05)',
+                position: 'relative'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'rgba(var(--primary-rgb), 0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
             >
               {uploading ? (
                 <>
                   <div style={{ width: 36, height: 36, border: '3px solid var(--primary-light)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                  <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>上传中…</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', fontWeight: 600 }}>{lang === 'zh' ? '凭证上传中…' : 'Uploading…'}</span>
                 </>
               ) : (
                 <>
-                  <Camera size={36} style={{ color: 'var(--primary)' }} />
-                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-h)' }}>选择转账截图</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>支持 JPG / PNG，从相册或拍照</span>
+                  <Camera size={36} style={{ color: 'var(--primary)', filter: 'drop-shadow(0 2px 8px var(--primary-glow))' }} />
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '选择或拍照转账截图' : 'Choose or Take Photo'}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '支持 JPG / PNG / JPEG 格式凭证' : 'Supports JPG / PNG / JPEG'}</span>
                 </>
               )}
             </label>
@@ -370,7 +527,7 @@ export default function MobileUploadPage() {
             {error && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                 <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{error}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 600 }}>{error}</span>
               </div>
             )}
           </div>
@@ -382,7 +539,17 @@ export default function MobileUploadPage() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes popIn {
+          0% { transform: scale(0.9); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes bounceScale {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }

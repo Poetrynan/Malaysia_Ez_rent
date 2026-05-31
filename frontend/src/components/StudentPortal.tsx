@@ -1078,119 +1078,191 @@ export default function StudentPortal({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Profile — standalone page mode */}
-      {mode === 'profile' && (
-        <div className="glass-card">
-          <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
-            <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
-          </h4>
+      {mode === 'profile' && (() => {
+        const calculateProfileProgress = () => {
+          let filled = 0;
+          let total = 8;
+          if (profileName.trim()) filled++;
+          if (profilePhone.trim()) filled++;
+          if (profileUnit.trim()) filled++;
+          if (profileSchool.trim()) filled++;
+          if (profileCompany.trim()) filled++;
+          if (profilePassport.trim()) filled++;
+          if (profileLocalId.trim()) filled++;
+          if (profileDocUrl || profileDocBase64) filled++;
+          return Math.round((filled / total) * 100);
+        };
+        const progressPercentage = calculateProfileProgress();
+        return (
+          <div className="glass-card">
+            <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
+              <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
+            </h4>
 
-          {/* Section 1: Basic info — 2-column grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
-              </label>
-              <input type="text" className="form-input" value={profileName} onChange={e => setProfileName(e.target.value)}
-                placeholder={t('profileNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
-              <input type="tel" className="form-input" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
-                placeholder={t('profilePhonePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                {t('profileUnit')} <span style={{ color: 'var(--danger)' }}>*</span>
-              </label>
-              <input type="text" className="form-input" value={profileUnit} onChange={e => setProfileUnit(e.target.value)}
-                placeholder={t('profileUnitPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
-              <input type="text" className="form-input" value={profileSchool} onChange={e => setProfileSchool(e.target.value)}
-                placeholder={t('profileSchoolPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
-              <input type="text" className="form-input" value={profileCompany} onChange={e => setProfileCompany(e.target.value)}
-                placeholder={t('profileCompanyPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-            </div>
-          </div>
-
-          {/* Section 2: ID section */}
-          <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-            <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AlertCircle size={14} />
-              {t('profileIdHint')}
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
-                <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
-                  placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            {/* Profile Completion Progress Bar */}
+            <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  {lang === 'zh' ? '个人资料完善度' : 'Profile Completion'}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 700 }}>
+                  {progressPercentage}%
+                </span>
               </div>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
-                <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
-                  placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              <div style={{ height: 6, background: 'var(--glass-border)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${progressPercentage}%`,
+                  background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)',
+                  borderRadius: 3,
+                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} />
               </div>
             </div>
-          </div>
 
-          {/* Section 3: Document upload */}
-          <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-            <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>{t('profileDocumentDesc')}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <label style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '10px 18px', borderRadius: 8,
-                border: '1px dashed var(--primary)', background: 'var(--primary-light)',
-                cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
-                color: 'var(--primary)', transition: 'all 0.2s'
+            {/* Privacy Safety Banner */}
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(59, 130, 246, 0.05)',
+              border: '1px solid rgba(59, 130, 246, 0.15)',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10
+            }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
-                <Camera size={15} />
-                <span>{t('profileDocumentUpload')}</span>
-                <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
-              </label>
-              {(profileDocBase64 || profileDocUrl) && (
-                <div style={{ position: 'relative' }}>
-                  <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
-                    <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
-                      style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 8px var(--primary-glow)' }} />
-                  </a>
-                  <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
-                    style={{
-                      position: 'absolute', top: -8, right: -8,
-                      background: 'var(--danger)', color: 'white', border: 'none',
-                      borderRadius: '50%', width: 20, height: 20, fontSize: '12px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                    }}>×</button>
+                <span style={{ fontSize: '16px' }}>🔒</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.4 }}>
+                {lang === 'zh' 
+                  ? '安全加密保护：您的身份证件及个人敏感信息已根据 Supabase RLS 安全策略进行多重加密存储，仅供分配的中介及房东进行租约审核，系统绝不泄露给任何第三方。'
+                  : 'Encrypted Security: Your ID documents and personal info are heavily encrypted using RLS policies, accessible only by authorized agents/landlords for verification.'
+                }
+              </p>
+            </div>
+
+            {/* Section 1: Basic info — 2-column grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                  {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <input type="text" className="form-input" value={profileName} onChange={e => setProfileName(e.target.value)}
+                  placeholder={t('profileNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
+                <input type="tel" className="form-input" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
+                  placeholder={t('profilePhonePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                  {t('profileUnit')} <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <input type="text" className="form-input" value={profileUnit} onChange={e => setProfileUnit(e.target.value)}
+                  placeholder={t('profileUnitPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
+                <input type="text" className="form-input" value={profileSchool} onChange={e => setProfileSchool(e.target.value)}
+                  placeholder={t('profileSchoolPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
+                <input type="text" className="form-input" value={profileCompany} onChange={e => setProfileCompany(e.target.value)}
+                  placeholder={t('profileCompanyPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+
+            {/* Section 2: ID section */}
+            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+              <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertCircle size={14} />
+                {t('profileIdHint')}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
+                  <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
+                    placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
                 </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
+                  <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
+                    placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Document upload */}
+            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                  border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                  color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                >
+                  <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
+                  <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
+                </label>
+                {(profileDocBase64 || profileDocUrl) && (
+                  <div style={{ position: 'relative' }}>
+                    <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
+                      <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
+                        style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                    </a>
+                    <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
+                      style={{
+                        position: 'absolute', top: -8, right: -8,
+                        background: 'var(--danger)', color: 'white', border: 'none',
+                        borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                      }}>×</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Save button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
+                  background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)',
+                  color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+                  cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed',
+                  boxShadow: (profileName.trim() && profileUnit.trim()) ? '0 2px 8px var(--primary-glow)' : 'none'
+                }}>
+                <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
+              </button>
+              {profileSaved && (
+                <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
               )}
             </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0 0' }}>{t('profileHint')}</p>
           </div>
-
-          {/* Save button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
-                background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)',
-                color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed',
-                boxShadow: (profileName.trim() && profileUnit.trim()) ? '0 2px 8px var(--primary-glow)' : 'none'
-              }}>
-              <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
-            </button>
-            {profileSaved && (
-              <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
-            )}
-          </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0 0' }}>{t('profileHint')}</p>
-        </div>
-      )}
+        );
+      })()}
 
       {mode === 'lease' && (
         <>
@@ -1660,24 +1732,50 @@ export default function StudentPortal({
 
                     {/* Conversation thread */}
                     {f.replies && f.replies.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                        {f.replies.map((r, i) => (
-                          <div key={i} style={{
-                            padding: '8px 10px', borderRadius: 6,
-                            background: r.role === 'agent' ? 'var(--primary-light)' : 'rgba(255,255,255,0.04)',
-                            border: `1px solid ${r.role === 'agent' ? 'var(--primary-glow)' : 'var(--glass-border)'}`,
-                            marginLeft: r.role === 'student' ? 0 : 16,
-                            marginRight: r.role === 'agent' ? 0 : 16,
-                          }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: r.role === 'agent' ? 'var(--primary)' : 'var(--success)' }}>
-                              {r.role === 'agent' ? (lang === 'zh' ? '中介回复' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
-                              <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
-                                {new Date(r.at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </span>
-                            <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.content}</p>
-                          </div>
-                        ))}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, background: 'rgba(0,0,0,0.1)', padding: 12, borderRadius: 10 }}>
+                        {f.replies.map((r, i) => {
+                          const isAgent = r.role === 'agent';
+                          return (
+                            <div key={i} style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignSelf: isAgent ? 'flex-start' : 'flex-end',
+                              maxWidth: '85%',
+                              gap: 3
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                alignSelf: isAgent ? 'flex-start' : 'flex-end',
+                                fontSize: '0.68rem',
+                                color: 'var(--text-muted)',
+                                padding: '0 4px'
+                              }}>
+                                <span style={{ fontWeight: 700, color: isAgent ? 'var(--primary)' : 'var(--success)' }}>
+                                  {isAgent ? (lang === 'zh' ? '中介' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
+                                </span>
+                                <span>
+                                  {new Date(r.at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <div style={{
+                                padding: '10px 14px',
+                                borderRadius: isAgent ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
+                                background: isAgent ? 'var(--bg-surface-solid)' : 'var(--primary)',
+                                color: isAgent ? 'var(--text-body)' : 'white',
+                                border: isAgent ? '1px solid var(--border)' : 'none',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                                fontSize: '0.8rem',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                lineHeight: 1.45
+                              }}>
+                                {r.content}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 

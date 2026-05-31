@@ -262,24 +262,94 @@ export default function AIChat() {
                 </div>
                 <div className={`chat-bubble ${m.role}`}>
                   {m.role === 'assistant' && hasThoughts && (
-                    <div className="thought-log-container">
-                      <div onClick={() => toggleThoughts(m.id)} className="thought-header">
-                        <Terminal size={13} />
-                        <span>{t('chatThoughtTrace')}</span>
-                        {open ? <ChevronUp size={13} style={{ marginLeft: 'auto' }} /> : <ChevronDown size={13} style={{ marginLeft: 'auto' }} />}
+                    <div style={{
+                      background: '#1E1E2E',
+                      borderRadius: 10,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      overflow: 'hidden',
+                      marginBottom: 12,
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                    }}>
+                      {/* MacOS Title Bar */}
+                      <div onClick={() => toggleThoughts(m.id)} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '10px 14px',
+                        background: '#181825',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F87171' }} />
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FBBF24' }} />
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: '#A6ADC8', fontFamily: 'monospace', fontWeight: 600, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Terminal size={12} /> {t('chatThoughtTrace')}
+                        </span>
+                        {open ? <ChevronUp size={13} style={{ marginLeft: 'auto', color: '#CDD6F4' }} /> : <ChevronDown size={13} style={{ marginLeft: 'auto', color: '#CDD6F4' }} />}
                       </div>
                       {open && (
-                        <div className="thought-list">
-                          {m.thoughts?.map((th, i) => <div key={i} className="thought-item">› {th}</div>)}
-                          {m.toolCalls?.map((tc, i) => (
-                            <div key={i} className="tool-run">
-                              <div>
-                                <span className={`tool-badge ${tc.name.includes('db') || tc.name.includes('search') ? 'db' : tc.name.includes('commute') ? 'commute' : tc.name.includes('web') ? 'web' : 'ledger'}`}>{tc.name}</span>
-                                <span style={{ marginLeft: 6, color: 'var(--text-muted)' }}>({Object.keys(tc.args).map(k => `${k}: ${tc.args[k]}`).join(', ')})</span>
-                              </div>
-                              {tc.result && <div style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--glass-border)', paddingTop: 4, marginTop: 4, maxHeight: 80, overflowY: 'auto', fontSize: '0.75rem' }}>→ {JSON.stringify(tc.result).slice(0, 200)}…</div>}
+                        <div style={{
+                          padding: '12px 14px',
+                          fontFamily: 'Consolas, Monaco, monospace',
+                          fontSize: '0.78rem',
+                          color: '#CDD6F4',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                          maxHeight: 240,
+                          overflowY: 'auto'
+                        }}>
+                          {m.thoughts?.map((th, i) => (
+                            <div key={i} style={{ color: '#BAC2DE', lineHeight: 1.4 }}>
+                              <span style={{ color: '#F5E0DC', marginRight: 6 }}>›</span> {th}
                             </div>
                           ))}
+                          {m.toolCalls?.map((tc, i) => {
+                            const isSearch = tc.name.includes('db') || tc.name.includes('search');
+                            const isCommute = tc.name.includes('commute');
+                            const isWeb = tc.name.includes('web');
+                            const badgeColor = isSearch ? '#89B4FA' : isCommute ? '#A6E3A1' : isWeb ? '#F9E2AF' : '#F5C2E7';
+                            return (
+                              <div key={i} style={{
+                                padding: '8px 10px',
+                                borderRadius: 6,
+                                background: '#11111B',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                  <span style={{
+                                    fontSize: '0.68rem',
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    background: badgeColor + '1F',
+                                    color: badgeColor,
+                                    fontWeight: 700,
+                                    fontFamily: 'monospace'
+                                  }}>{tc.name}</span>
+                                  <span style={{ color: '#A6ADC8', fontSize: '0.72rem' }}>({Object.keys(tc.args).map(k => `${k}: ${tc.args[k]}`).join(', ')})</span>
+                                </div>
+                                {tc.result && (
+                                  <div style={{
+                                    color: '#89DCEB',
+                                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                                    paddingTop: 6,
+                                    marginTop: 6,
+                                    maxHeight: 100,
+                                    overflowY: 'auto',
+                                    fontSize: '0.72rem',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-all'
+                                  }}>
+                                    <span style={{ color: '#F38BA8' }}>→</span> {JSON.stringify(tc.result).slice(0, 400)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -322,11 +392,14 @@ export default function AIChat() {
             <Sparkles size={15} style={{ color: 'var(--primary)' }} /> {t('agentStatus')}
           </h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: 14 }}>{t('agentDesc')}</p>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Status</span>
-            <span style={{ color: backendStatus === 'online' ? 'var(--success)' : 'var(--warning)', fontWeight: 700 }}>
-              {backendStatus === 'online' ? t('agentConnected') : t('agentOffline')}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className={`led-dot ${backendStatus}`} />
+              <span style={{ color: backendStatus === 'online' ? 'var(--success)' : 'var(--warning)', fontWeight: 700 }}>
+                {backendStatus === 'online' ? t('agentConnected') : t('agentOffline')}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -341,6 +414,46 @@ export default function AIChat() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .led-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .led-dot.online {
+          background-color: #10B981;
+          box-shadow: 0 0 8px #10B981, 0 0 16px #10B981;
+          animation: led-breath 2s ease-in-out infinite alternate;
+        }
+        .led-dot.offline {
+          background-color: #F59E0B;
+          box-shadow: 0 0 8px #F59E0B;
+          animation: led-blink 1s ease-in-out infinite;
+        }
+        @keyframes led-breath {
+          0% { opacity: 0.4; }
+          100% { opacity: 1; }
+        }
+        @keyframes led-blink {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
+        }
+        .prompt-pill {
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .prompt-pill:hover {
+          transform: translateY(-2px) scale(1.02);
+          border-color: var(--primary) !important;
+          background: var(--primary-light) !important;
+          box-shadow: 0 4px 12px var(--primary-glow);
+        }
+        .chat-bubble.assistant {
+          box-shadow: var(--glass-shadow), 0 2px 8px rgba(0,0,0,0.05);
+        }
+      `}</style>
     </div>
   );
 }

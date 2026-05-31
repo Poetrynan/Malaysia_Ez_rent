@@ -3754,24 +3754,50 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
                       {/* Conversation thread */}
                       {f.replies && f.replies.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                          {f.replies.map((r, i) => (
-                            <div key={i} style={{
-                              padding: '8px 10px', borderRadius: 8,
-                              background: r.role === 'agent' ? 'var(--primary-light)' : 'rgba(255,255,255,0.04)',
-                              border: `1px solid ${r.role === 'agent' ? 'var(--primary-glow)' : 'var(--glass-border)'}`,
-                              marginLeft: r.role === 'student' ? 0 : 20,
-                              marginRight: r.role === 'agent' ? 0 : 20,
-                            }}>
-                              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: r.role === 'agent' ? 'var(--primary)' : 'var(--success)' }}>
-                                {r.role === 'agent' ? (lang === 'zh' ? '中介回复' : 'Agent') : (lang === 'zh' ? '租客' : 'Tenant')}
-                                <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
-                                  {new Date(r.at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </span>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--text-body)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.content}</p>
-                            </div>
-                          ))}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, marginBottom: 12, background: 'rgba(0,0,0,0.15)', padding: 12, borderRadius: 10 }}>
+                          {f.replies.map((r, i) => {
+                            const isAgent = r.role === 'agent';
+                            return (
+                              <div key={i} style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignSelf: isAgent ? 'flex-end' : 'flex-start',
+                                maxWidth: '85%',
+                                gap: 3
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  alignSelf: isAgent ? 'flex-end' : 'flex-start',
+                                  fontSize: '0.68rem',
+                                  color: 'var(--text-muted)',
+                                  padding: '0 4px'
+                                }}>
+                                  <span style={{ fontWeight: 700, color: isAgent ? 'var(--primary)' : 'var(--success)' }}>
+                                    {isAgent ? (lang === 'zh' ? '我 (中介)' : 'Me (Agent)') : (lang === 'zh' ? '租客' : 'Tenant')}
+                                  </span>
+                                  <span>
+                                    {new Date(r.at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <div style={{
+                                  padding: '10px 14px',
+                                  borderRadius: isAgent ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
+                                  background: isAgent ? 'var(--primary)' : 'var(--bg-surface-solid)',
+                                  color: isAgent ? 'white' : 'var(--text-body)',
+                                  border: isAgent ? 'none' : '1px solid var(--border)',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                                  fontSize: '0.8rem',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  lineHeight: 1.45
+                                }}>
+                                  {r.content}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
 

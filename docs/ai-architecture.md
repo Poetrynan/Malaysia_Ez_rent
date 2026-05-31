@@ -564,4 +564,24 @@ Dashboard | Properties | Leases | Admins | Feedback | Agent Reviews | Profile
 - Agent label displayed on every card via `getListingAgentLabel(unit, admins, lang)` — reads from `admin_users` table (RLS allows public SELECT).
 - Admin/agent browse view uses `<PropertyListings readOnly />`.
 - Tenant view uses `<PropertyListings />` (full functionality, zero impact).
+ 
+ 
+## 18) UI & Visual Optimizations (visual_ux_pro_max)
 
+### Mobile Payment Upload (`mobile-upload/[id]/page.tsx`)
+- Integrated a segmented switch allowing tenants to toggle between "DuitNow QR" and "Bank Account" payment options.
+- Manual payment info now includes a custom clipboard copy action with animated tick marks upon success.
+- Sleek upload complete cards utilizing scale-bounce animations, Whatsapp links to the agent, and clear transaction steps.
+
+### AI Chat traces console (`AIChat.tsx`)
+- The reasoning log trace is packaged into a simulated MacOS Terminal window with color-coded controls (red/yellow/green), fixed-width Consolas lettering, and clear layout.
+- Added a status LED indicator with breathing keyframes glow representing real-time server connectivity status.
+
+### Chat bubbles for feedback replies (`StudentPortal.tsx` & `AdminPanel.tsx`)
+- Traditional tabular rows replaced with WhatsApp/iMessage styled speech bubble chat logs.
+- Left/Right alignment depending on the role (`agent` vs `student`), with custom border, padding, and subtle shadows.
+
+### Student Profile completion indicator & privacy lockout banner (`StudentPortal.tsx`)
+- Lock banner: Safe padlock indicating data encryption under strict PostgreSQL RLS policies.
+- Progress bar: Computes completeness percent dynamically based on filled inputs, presenting a 6px linear-gradient slider.
+- Upload frame: Enhanced document camera drop slot layout mimicking mobile camera portals.
