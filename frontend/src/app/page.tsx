@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-payment' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -219,11 +219,6 @@ export default function Home() {
                       </span>
                     )}
                   </span>
-                  <span className="role-badge admin">{t('roleManagerBadge')}</span>
-                </li>
-                <li onClick={() => setActiveTab('admin-payment')} className={`nav-item ${activeTab === 'admin-payment' ? 'active' : ''}`}>
-                  <QrCode size={16} />
-                  <span>{lang === 'zh' ? '收款设置' : 'Payment Settings'}</span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
                 </li>
                 {adminRole === 'super_admin' && (
@@ -476,7 +471,6 @@ export default function Home() {
                 activeTab === 'admin-dashboard' ? 'dashboard' :
                 activeTab === 'admin-properties' ? 'properties' :
                 activeTab === 'admin-leases' ? 'leases' :
-                activeTab === 'admin-payment' ? 'payment' :
                 activeTab === 'admin-admins' ? 'admins' :
                 activeTab === 'admin-feedback' ? 'feedback' :
                 activeTab === 'admin-agent-reviews' ? 'agent-reviews' :

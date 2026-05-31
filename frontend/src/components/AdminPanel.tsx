@@ -75,11 +75,11 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
   const { t, lang } = useApp();
-  const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'payment' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
-  const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'review' | 'ledger' | 'settle'>('interests');
+  const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'payment' | 'review' | 'ledger' | 'settle'>('interests');
 
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
 
@@ -2210,9 +2210,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 </span>
               )}
             </button>
-            <button style={tabStyle(tab === 'payment')} onClick={() => setTab('payment')}>
-              <QrCode size={14} style={{ display: 'inline', marginRight: 6 }} />{t('paymentSettings')}
-            </button>
             {adminRole === 'super_admin' && (
               <button style={tabStyle(tab === 'admins')} onClick={() => { setTab('admins'); fetchAdmins(); }}>
                 <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
@@ -2788,6 +2785,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             <button style={tabStyle(leasesView === 'overview')} onClick={() => setLeasesView('overview')}>
               {t('leaseSubtabOverview')}
             </button>
+            <button style={tabStyle(leasesView === 'payment')} onClick={() => setLeasesView('payment')}>
+              <QrCode size={13} style={{ display: 'inline', marginRight: 4 }} />{t('paymentSettings')}
+            </button>
             <button style={tabStyle(leasesView === 'review')} onClick={() => setLeasesView('review')}>
               {t('leaseSubtabReview')}
               {pendingCount > 0 && (
@@ -3248,8 +3248,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         </div>
       )}
 
-      {/* ── PAYMENT SETTINGS TAB ── */}
-      {tab === 'payment' && (
+      {/* ── PAYMENT SETTINGS (inside Leases) ── */}
+      {tab === 'leases' && leasesView === 'payment' && (
         <div className="glass-card" style={{ maxWidth: 600, margin: '20px auto' }}>
           <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <QrCode size={16} style={{ color: 'var(--primary)' }} />{t('paymentSettings')}
