@@ -3421,90 +3421,248 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       {tab === 'admins' && adminRole === 'super_admin' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Users size={16} style={{ color: 'var(--primary)' }} />中介与管理员管理
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                <Users size={16} style={{ color: 'var(--primary)' }} />
+                <span style={{ color: 'var(--text-h)', fontWeight: 700 }}>
+                  {lang === 'zh' ? '中介与管理员管理' : 'Agents & Admins'}
+                </span>
               </h3>
               <button onClick={() => setShowAddAdmin(!showAddAdmin)} style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
                 borderRadius: 8, border: 'none', background: 'var(--primary)',
                 color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+                transition: 'all 0.2s ease',
               }}>
-                <UserPlus size={14} /> 添加中介
+                <UserPlus size={14} /> {lang === 'zh' ? '添加中介' : 'Add Agent'}
               </button>
             </div>
 
             {/* Add admin form */}
             {showAddAdmin && (
-              <div style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
+              <div style={{
+                padding: 20,
+                borderRadius: 12,
+                background: 'var(--primary-light)',
+                border: '1px solid var(--glass-border)',
+                marginBottom: 20,
+                boxShadow: 'var(--glass-shadow)',
+              }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>邮箱 *</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      {lang === 'zh' ? '邮箱 *' : 'Email *'}
+                    </label>
                     <input className="form-input" value={newAdmin.email} onChange={e => setNewAdmin(f => ({ ...f, email: e.target.value }))} placeholder="admin@gmail.com" />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>显示名称</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      {lang === 'zh' ? '显示名称' : 'Display Name'}
+                    </label>
                     <input className="form-input" value={newAdmin.display_name} onChange={e => setNewAdmin(f => ({ ...f, display_name: e.target.value }))} placeholder="张房东" />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>电话</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      {lang === 'zh' ? '电话' : 'Phone'}
+                    </label>
                     <input className="form-input" value={newAdmin.phone} onChange={e => setNewAdmin(f => ({ ...f, phone: e.target.value }))} placeholder="+6012-345 6789" />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>WhatsApp</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      WhatsApp
+                    </label>
                     <input className="form-input" value={newAdmin.whatsapp} onChange={e => setNewAdmin(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+6012-345 6789" />
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>微信号</label>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      {lang === 'zh' ? '微信号' : 'WeChat ID'}
+                    </label>
                     <input className="form-input" value={newAdmin.wechat_id} onChange={e => setNewAdmin(f => ({ ...f, wechat_id: e.target.value }))} placeholder="wechat_id" />
                   </div>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 12 }}>电话、WhatsApp、微信号至少填一项</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                  {lang === 'zh' ? '电话、WhatsApp、微信号至少填一项' : 'Please provide at least one contact: Phone, WhatsApp, or WeChat ID'}
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={handleAddAdmin} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>确认添加</button>
-                  <button onClick={() => setShowAddAdmin(false)} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>取消</button>
+                  <button onClick={handleAddAdmin} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
+                    {lang === 'zh' ? '确认添加' : 'Confirm'}
+                  </button>
+                  <button onClick={() => setShowAddAdmin(false)} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
+                    {lang === 'zh' ? '取消' : 'Cancel'}
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Admin list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {adminList.map(admin => (
-                <div key={admin.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 16px', borderRadius: 12,
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: '#F0F6FF', fontSize: '0.9rem' }}>
-                      {admin.display_name || admin.email}
-                      {admin.role === 'super_admin' && (
-                        <span style={{ fontSize: '0.65rem', marginLeft: 8, padding: '2px 8px', borderRadius: 6, background: 'rgba(245,158,11,0.15)', color: '#FCD34D' }}>超级管理员</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7A99', marginTop: 4 }}>
-                      {admin.email}
-                      {admin.phone && ` · ${admin.phone}`}
-                      {admin.whatsapp && ` · WA: ${admin.whatsapp}`}
-                      {admin.wechat_id && ` · 微信: ${admin.wechat_id}`}
-                    </div>
-                    {(admin.agency_name || admin.ren_number) && (
-                      <div style={{ fontSize: '0.72rem', color: '#8896AB', marginTop: 3 }}>
-                        {admin.agency_name && <span>{admin.agency_name}</span>}
-                        {admin.ren_number && <span> · REN: {admin.ren_number}</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {adminList.map(admin => {
+                const initials = (admin.display_name || admin.email || 'A')
+                  .trim()
+                  .split(/\s+/)
+                  .map((w: string) => w[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase();
+
+                const isSuper = admin.role === 'super_admin';
+
+                return (
+                  <div key={admin.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 20px',
+                    borderRadius: 12,
+                    background: 'var(--bg-surface-solid)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: 'var(--glass-shadow)',
+                    transition: 'all 0.2s ease',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                      {/* Circle Avatar badge */}
+                      <div style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: isSuper
+                          ? 'linear-gradient(135deg, var(--accent), var(--warning))'
+                          : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isSuper ? 'var(--text-inverse)' : 'white',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        boxShadow: isSuper ? '0 4px 12px var(--accent-light)' : '0 4px 12px var(--primary-glow)',
+                        flexShrink: 0,
+                        marginRight: 16,
+                      }}>
+                        {initials}
                       </div>
+
+                      {/* Info Panel */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.95rem' }}>
+                            {admin.display_name || admin.email}
+                          </span>
+                          {isSuper ? (
+                            <span style={{
+                              fontSize: '0.68rem',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: 'var(--warning-light)',
+                              color: 'var(--warning)',
+                              fontWeight: 700,
+                            }}>
+                              {lang === 'zh' ? '超级管理员' : 'Super Admin'}
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: '0.68rem',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: 'var(--primary-light)',
+                              color: 'var(--primary)',
+                              fontWeight: 700,
+                            }}>
+                              {lang === 'zh' ? '中介 / 协管员' : 'Agent / Editor'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Contact details row */}
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '6px 16px',
+                          marginTop: 6,
+                          fontSize: '0.78rem',
+                          color: 'var(--text-body)',
+                        }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--text-muted)' }}>Email:</span>
+                            <span style={{ fontWeight: 500 }}>{admin.email}</span>
+                          </span>
+                          {admin.phone && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Tel:</span>
+                              <span style={{ fontWeight: 500 }}>{admin.phone}</span>
+                            </span>
+                          )}
+                          {admin.whatsapp && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>WA:</span>
+                              <span style={{ fontWeight: 500 }}>{admin.whatsapp}</span>
+                            </span>
+                          )}
+                          {admin.wechat_id && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '微信:' : 'WeChat:'}</span>
+                              <span style={{ fontWeight: 500 }}>{admin.wechat_id}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Agency details row */}
+                        {(admin.agency_name || admin.ren_number) && (
+                          <div style={{
+                            display: 'flex',
+                            gap: 12,
+                            fontSize: '0.72rem',
+                            color: 'var(--text-muted)',
+                            marginTop: 6,
+                            background: 'var(--bg-hover)',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            width: 'fit-content',
+                          }}>
+                            {admin.agency_name && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>🏢</span>
+                                <span>{admin.agency_name}</span>
+                              </span>
+                            )}
+                            {admin.ren_number && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>🔑</span>
+                                <span>REN: {admin.ren_number}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delete action */}
+                    {!isSuper && (
+                      <button onClick={() => handleDeleteAdmin(admin.id)} style={{
+                        background: 'var(--danger-light)',
+                        border: '1px solid transparent',
+                        color: 'var(--danger)',
+                        cursor: 'pointer',
+                        padding: 8,
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'all 0.2s',
+                        marginLeft: 12,
+                      }} title={lang === 'zh' ? '删除管理员' : 'Delete admin'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--danger)';
+                        e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'var(--danger-light)';
+                        e.currentTarget.style.color = 'var(--danger)';
+                      }}>
+                        <Trash2 size={16} />
+                      </button>
                     )}
                   </div>
-                  {admin.role !== 'super_admin' && (
-                    <button onClick={() => handleDeleteAdmin(admin.id)} style={{
-                      background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer',
-                      padding: 8, borderRadius: 8, display: 'flex', alignItems: 'center',
-                    }} title="删除管理员">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

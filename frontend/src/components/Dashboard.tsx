@@ -247,7 +247,7 @@ export default function Dashboard({
   };
 
   // ---- Styles ----
-  const card: React.CSSProperties = { background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '18px 20px', transition: 'all 0.2s ease', position: 'relative' };
+  const card: React.CSSProperties = { background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '18px 20px', transition: 'all 0.2s ease', position: 'relative', minWidth: 0 };
   const kpiCard: React.CSSProperties = { ...card, display: 'flex', flexDirection: 'column', gap: 8 };
   const label: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.03em' };
   const value: React.CSSProperties = { fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-h)', lineHeight: 1, letterSpacing: '-0.02em' };
@@ -303,6 +303,17 @@ export default function Dashboard({
           visibility: visible;
           opacity: 1;
           transform: translateY(-4px) !important;
+        }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.72rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .legend-item:hover {
+          transform: translateX(2px);
         }
       `}</style>
 
@@ -414,7 +425,7 @@ export default function Dashboard({
       </div>
 
       {/* Charts Row 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 12 }}>
         {/* Recharts Monthly Revenue Chart */}
         <div style={card}>
           <div style={title}>
@@ -431,8 +442,8 @@ export default function Dashboard({
           </div>
           
           {revenueData.length > 0 ? (
-            <div style={{ width: '100%', height: 180 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 180, minWidth: 0 }}>
+              <ResponsiveContainer width="99%" height={180}>
                 <BarChart data={revenueData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
@@ -463,7 +474,7 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Room Type Donut using Recharts */}
+        {/* Room Type Donut using Recharts (Stabilized width/height to avoid infinite loops) */}
         <div style={card}>
           <div style={title}>
             <Building2 size={16} style={{ color: 'var(--primary)' }} />
@@ -482,33 +493,33 @@ export default function Dashboard({
             const total = roomTypeData.reduce((s, d) => s + d.value, 0);
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', height: 180 }}>
-                <div style={{ position: 'relative', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={roomTypeData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={36}
-                        outerRadius={52}
-                        paddingAngle={3}
-                        dataKey="value"
-                        onMouseEnter={(_, index) => {
-                          const item = roomTypeData[index];
+                <div style={{ position: 'relative', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minWidth: 0 }}>
+                  <PieChart width={110} height={110}>
+                    <Pie
+                      data={roomTypeData}
+                      cx={55}
+                      cy={55}
+                      innerRadius={36}
+                      outerRadius={52}
+                      paddingAngle={3}
+                      dataKey="value"
+                      onMouseEnter={(_, index) => {
+                        const item = roomTypeData[index];
+                        if (item) {
                           setHoveredSlice({
                             name: item.name,
                             value: item.value,
                             percent: total > 0 ? Math.round((item.value / total) * 100) : 0
                           });
-                        }}
-                        onMouseLeave={() => setHoveredSlice(null)}
-                      >
-                        {roomTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none', cursor: 'pointer' }} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredSlice(null)}
+                    >
+                      {roomTypeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none', cursor: 'pointer' }} />
+                      ))}
+                    </Pie>
+                  </PieChart>
                   
                   {/* Donut Center Display */}
                   <div style={{
@@ -551,7 +562,7 @@ export default function Dashboard({
                   </div>
                 </div>
                 
-                {/* Legend */}
+                {/* Legend (CSS-only hover effects to avoid infinite render loops) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 160, overflowY: 'auto', paddingRight: 4 }}>
                   {roomTypeData.map((d, i) => {
                     const percent = total > 0 ? Math.round((d.value / total) * 100) : 0;
@@ -559,21 +570,17 @@ export default function Dashboard({
                     return (
                       <div
                         key={i}
+                        className="legend-item"
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontSize: '0.72rem',
-                          cursor: 'pointer',
-                          opacity: hoveredSlice ? (isHovered ? 1 : 0.4) : 1,
-                          transform: isHovered ? 'scale(1.05) translateX(2px)' : 'none',
+                          opacity: hoveredSlice ? (isHovered ? 1 : 0.4) : 0.8,
+                          color: isHovered ? 'var(--primary)' : 'var(--text-body)',
                           transition: 'all 0.15s ease',
                         }}
                         onMouseEnter={() => setHoveredSlice({ name: d.name, value: d.value, percent })}
                         onMouseLeave={() => setHoveredSlice(null)}
                       >
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
-                        <span style={{ color: 'var(--text-body)', fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>{d.name}</span>
+                        <span style={{ fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>{d.name}</span>
                         <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.value}</span>
                       </div>
                     );
@@ -588,7 +595,7 @@ export default function Dashboard({
       </div>
 
       {/* Charts Row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
         {/* Community Distribution with Recharts */}
         <div style={card}>
           <div style={title}>
@@ -605,8 +612,8 @@ export default function Dashboard({
           </div>
           
           {communityChartData.length > 0 ? (
-            <div style={{ width: '100%', height: 180 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 180, minWidth: 0 }}>
+              <ResponsiveContainer width="99%" height={180}>
                 <BarChart
                   data={communityChartData}
                   layout="vertical"
@@ -644,8 +651,8 @@ export default function Dashboard({
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 180, justifyContent: 'space-between' }}>
-            <div style={{ width: '100%', height: 75 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 75, minWidth: 0 }}>
+              <ResponsiveContainer width="99%" height={75}>
                 <BarChart
                   data={interestChartData}
                   layout="vertical"

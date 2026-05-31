@@ -131,9 +131,10 @@ Malaysia_Ez_rent/
 - Key metrics: occupancy rate, active leases, collection rate, overdue count, monthly revenue trend, room type distribution, community distribution, interest funnel, maintenance stats.
 - Time range filter: 1M / 6M / 1Y / custom date range — all charts and KPIs update reactively.
 - Role-based data filtering via `visibleUnitIds` / `visibleLeaseIds` (editors see only own data).
-- Charts implemented in **pure CSS** (no chart library): bar charts via flex+height%, donut via conic-gradient, progress bars via width%+transition.
-- Design system generated via `ui-ux-pro-max` skill: Data-Dense Dashboard style, Lucide icons (no emojis), semantic color tokens, tabular-nums for data, cubic-bezier animations.
-- Zero external chart dependencies — recharts was removed due to React error #185 (Cell component deprecated in recharts 3.x).
+- Charts implemented using **Recharts** for high-fidelity interactive visualization. Avoids rendering/resizing crash loops by stabilizing grid boundaries with `minmax(0, 1fr)` and container widths with `99%`.
+- Fixed-size Donut chart renders a static `<PieChart width={110} height={110}>` canvas directly without `<ResponsiveContainer>` wrappers, eliminating initial grid dimension querying loops entirely.
+- Dynamic Legend items support smooth CSS-only translation hover effects without triggering React re-renders or layout-shifting font updates.
+- Supports customizable tooltips on charts showing exact collection/revenue rates and counts. Includes interactive `HelpCircle` triggers with glassmorphic tooltip text describing formulas for occupancy rate, active leases, collection rate, and overdue metrics.
 
 ## 4) Backend AI Architecture
 

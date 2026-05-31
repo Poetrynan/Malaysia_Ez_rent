@@ -331,6 +331,24 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 
 ---
 
+## 📈 最近更新 (2026-05-31)
+
+### 📊 Recharts 数据看板重构与系统稳定性修复
+- **图表系统全面升级**：将原有的纯 CSS 简易图表全部替换为基于 Recharts 库的高保真交互式图表（BarChart、PieChart、Tooltip 等）。
+- **解决重渲染崩溃死循环（React Error #185）**：
+  * **饼图（Donut）稳定化**：由于饼图尺寸固定，移除了其外层的 `<ResponsiveContainer>`，直接渲染固定宽高的 `<PieChart width={110} height={110}>`，彻底避免了容器初始化尺寸为 `-1` 时引起的循环测算崩溃。
+  * **Grid 布局容器降噪**：在 CSS Grid 容器上设置 `minmax(0, 1fr)` 并在其他 ResponsiveContainer 上使用宽度 `width="99%"`，打破了 Flex/Grid 弹性尺寸与图表自适应计算的死循环。
+  * **Legend 列表 Hover 位移去 State 化**：利用纯 CSS 动画和过渡效果响应 Legend Item 悬停（Hover），避免了因 State 改变引起 Font Weight 或 Transform 的变化导致布局尺寸偏移、进而触发 MouseLeave/MouseEnter 重复死循环的 Bug。
+- **时间跨度筛选完美呈现**：完美支持 1M/6M/1Y 时间跨度实时过滤。折线与柱状图自适应变细，无交易账单月份自动留空占位。
+- **新增计算规则解释**：所有指标标题旁增加 `HelpCircle` 悬停提示，通过磨砂玻璃材质的 Tooltip 弹出层精确说明出租率、收租率、有效租约和逾期的计算公式。
+
+### 👨‍💼 中介与管理员管理 UI 美化
+- **浅色模式文字可见性修复**：彻底清除了管理员与中介列表卡片在浅色模式下由于 `#F0F6FF` 浅蓝/白字硬编码导致的“名字不可见”问题，统一绑定为系统级主题变量 `var(--text-h)` / `var(--text-body)`。
+- **引入高颜值渐变头像**：为每一位管理员/中介生成姓名首字母缩写徽章头像，普通中介展示蓝绿活力渐变，超级管理员（super_admin）展示金橙色尊贵渐变，并配有卡片玻璃态浮雕阴影与圆角。
+- **表单布局卡片化**：新增中介表单包裹在 `var(--primary-light)` 玻璃质感背景容器中，重点突出，排版整洁大方。
+
+---
+
 ## 📈 最近更新 (2026-05-30)
 
 ### 🧠 AI Agent 智能化改造
