@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
     whatsapp VARCHAR(30),
     wechat_id VARCHAR(100),
     role VARCHAR(20) CHECK (role IN ('super_admin', 'editor')) DEFAULT 'editor',
+    ren_number VARCHAR(20),
+    ren_tag_url TEXT,
     avatar_url TEXT,
     job_title VARCHAR(100) DEFAULT 'Real Estate Negotiator',
     agency_name VARCHAR(200) DEFAULT 'Malaysia Ez Rent',
@@ -139,7 +141,7 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
 -- 3. Database Triggers & Stored Procedures
 -- ==========================================
 
--- Trigger: auto-create user profile when a new auth user signs up
+-- Trigger: auto-create user profile + link admin_users when new auth user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -150,6 +152,12 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '')
   )
   ON CONFLICT (id) DO NOTHING;
+
+  -- If this email exists in admin_users, link the auth ID
+  IF NEW.email IS NOT NULL THEN
+    UPDATE public.admin_users SET id = NEW.id WHERE email = NEW.email;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -159,21 +167,40 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
--- Trigger: limit admin_users to max 3 records
-CREATE OR REPLACE FUNCTION check_admin_count()
+-- Trigger: limit super_admin to max 5, allow unlimited editor agents
+CREATE OR REPLACE FUNCTION check_super_admin_count()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF (SELECT COUNT(*) FROM admin_users) >= 5 THEN
-    RAISE EXCEPTION '管理员数量已达上限（最多 5 人）';
+  IF NEW.role = 'super_admin' AND (SELECT COUNT(*) FROM admin_users WHERE role = 'super_admin' AND id <> NEW.id) >= 5 THEN
+    RAISE EXCEPTION '超级管理员（Super Admin）数量已达上限（最多 5 人）';
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS limit_admin_count ON admin_users;
-CREATE TRIGGER limit_admin_count
-  BEFORE INSERT ON admin_users
-  FOR EACH ROW EXECUTE FUNCTION check_admin_count();
+DROP TRIGGER IF EXISTS limit_super_admin_count ON admin_users;
+CREATE TRIGGER limit_super_admin_count
+  BEFORE INSERT OR UPDATE ON admin_users
+  FOR EACH ROW EXECUTE FUNCTION check_super_admin_count();
+
+-- Trigger: auto-sync admin_users ID with auth.users by email
+CREATE OR REPLACE FUNCTION public.sync_admin_user_id()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_auth_id UUID;
+BEGIN
+  SELECT id INTO v_auth_id FROM auth.users WHERE email = NEW.email LIMIT 1;
+  IF v_auth_id IS NOT NULL THEN
+    NEW.id := v_auth_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS sync_admin_id_before_insert ON public.admin_users;
+CREATE TRIGGER sync_admin_id_before_insert
+  BEFORE INSERT ON public.admin_users
+  FOR EACH ROW EXECUTE FUNCTION public.sync_admin_user_id();
 
 -- Trigger to auto-generate monthly payment records when a lease is inserted
 CREATE OR REPLACE FUNCTION generate_lease_payments()
