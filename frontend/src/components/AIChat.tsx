@@ -394,12 +394,7 @@ export default function AIChat() {
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: 14 }}>{t('agentDesc')}</p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Status</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className={`led-dot ${backendStatus}`} />
-              <span style={{ color: backendStatus === 'online' ? 'var(--success)' : 'var(--warning)', fontWeight: 700 }}>
-                {backendStatus === 'online' ? t('agentConnected') : t('agentOffline')}
-              </span>
-            </div>
+            <span className={`led-dot ${backendStatus}`} />
           </div>
         </div>
 

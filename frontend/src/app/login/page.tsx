@@ -93,6 +93,8 @@ export default function LoginPage() {
     if (error) setErrorMsg(error.message);
   };
 
+
+
   // ---- Styles (design system tokens) ----
   const cardStyle: React.CSSProperties = {
     background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',

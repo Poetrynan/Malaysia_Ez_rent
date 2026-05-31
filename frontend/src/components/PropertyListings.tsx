@@ -345,6 +345,17 @@ interface AdminContact {
 
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
 
+const maskEmail = (email: string) => {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [local, domain] = parts;
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`;
+};
+
 export default function PropertyListings({ readOnly = false }: { readOnly?: boolean }) {
   const { t, lang } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
@@ -425,26 +436,27 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   const refreshInterests = async (supabase: Awaited<ReturnType<typeof import('@/utils/supabase/client').createClient>>, userId?: string) => {
     // Note: We include 'left' status here so we can detect if a confirmed tenant tried to cancel,
     // ensuring we don't show the "I Want to Rent" button to an active tenant.
-    const { data, error } = await supabase.from('tenant_interests').select('*');
-    if (error) {
-      console.error('[refreshInterests]', error);
+    const { data: interestsData, error: interestsError } = await supabase.from('tenant_interests').select('*');
+    if (interestsError) {
+      console.error('[refreshInterests]', interestsError);
       return;
     }
-    if (data) {
-      // For general display (occupancy count), filter out 'left'
-      setInterests(data.filter((i: TenantInterest) => i.status !== 'left'));
-      
-      const uid = userId ?? authUserId;
-      if (uid) {
-        // Find MY active/confirmed interest. 
-        // We look for ANY entry that isn't 'left' TO DRIVE THE UI.
-        const mine = data.find((i: TenantInterest) => String(i.user_id) === String(uid) && i.status !== 'left');
-        setMyInterest(mine ? mine.unit_id : null);
 
+    const { data: unitsData, error: unitsError } = await supabase.from('units').select('id, status');
+    if (unitsError) {
+      console.error('[refreshInterests units]', unitsError);
+      return;
+    }
+
+    if (interestsData && unitsData) {
+      const uid = userId ?? authUserId;
+      let activeLeasedUnitIds: string[] = [];
+
+      if (uid) {
         // Fetch active leases to see if the user is currently renting any units
         if (isMockDatabase) {
           const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
-          const activeLeasedUnitIds = mockLeases
+          activeLeasedUnitIds = mockLeases
             .filter((l: any) => String(l.tenant_id) === String(uid) && l.status === 'active')
             .map((l: any) => l.unit_id);
           setMyLeasedUnitIds(activeLeasedUnitIds);
@@ -455,10 +467,63 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
             .eq('tenant_id', uid)
             .eq('status', 'active');
           if (!leasesError && leasesData) {
-            setMyLeasedUnitIds(leasesData.map(l => l.unit_id));
+            activeLeasedUnitIds = leasesData.map(l => l.unit_id);
+            setMyLeasedUnitIds(activeLeasedUnitIds);
           } else {
             console.error('[refreshInterests leases]', leasesError);
           }
+        }
+      }
+
+      // Filter interests and identify stale interests to force-reset (clean up)
+      const staleInterestIds: string[] = [];
+      const cleanInterests = interestsData.filter((i: TenantInterest) => {
+        if (i.status === 'left') return false;
+
+        const unit = unitsData.find(u => u.id === i.unit_id);
+        if (unit) {
+          const isRented = unit.status !== 'available';
+          const isLeasedByMe = activeLeasedUnitIds.includes(i.unit_id);
+          // If the unit is rented by someone else, this interest is stale!
+          if (isRented && !isLeasedByMe) {
+            if (uid && String(i.user_id) === String(uid)) {
+              staleInterestIds.push(i.id);
+            }
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Update state
+      setInterests(cleanInterests);
+
+      if (uid) {
+        // Find MY active/confirmed interest. 
+        // We look for ANY entry that isn't 'left' and isn't stale TO DRIVE THE UI.
+        const mine = cleanInterests.find((i: TenantInterest) => String(i.user_id) === String(uid));
+        setMyInterest(mine ? mine.unit_id : null);
+
+        // Proactively reset/clean up stale interests in the database/mock database in the background
+        if (staleInterestIds.length > 0) {
+          (async () => {
+            console.log('[refreshInterests] Force-resetting stale interests:', staleInterestIds);
+            for (const id of staleInterestIds) {
+              if (isMockDatabase) {
+                const allInterests: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+                const idx = allInterests.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                  allInterests[idx].status = 'left';
+                  localStorage.setItem('ez_interests', JSON.stringify(allInterests));
+                }
+              } else {
+                await supabase
+                  .from('tenant_interests')
+                  .update({ status: 'left' })
+                  .eq('id', id);
+              }
+            }
+          })();
         }
       }
     }
@@ -609,33 +674,24 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 
   useEffect(() => {
     // Fetch tenant interests (public read — no login required to see counts)
-    if (isMockDatabase) {
-      const all: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
-      const active = all.filter(i => i.status !== 'left');
-      setInterests(active);
-      const mine = active.find(i => i.user_id === 'tenant-123');
-      if (mine) setMyInterest(mine.unit_id);
-
-      const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
-      const activeLeasedUnitIds = mockLeases
-        .filter((l: any) => String(l.tenant_id) === 'tenant-123' && l.status === 'active')
-        .map((l: any) => l.unit_id);
-      setMyLeasedUnitIds(activeLeasedUnitIds);
-    } else {
-      (async () => {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            setAuthUserId(user.id);
-          }
-          await refreshInterests(supabase, user?.id);
-        } catch (e) {
-          console.error('[load interests]', e);
+    (async () => {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        let uid = undefined;
+        if (user) {
+          setAuthUserId(user.id);
+          uid = user.id;
+        } else if (isMockDatabase) {
+          setAuthUserId('tenant-123');
+          uid = 'tenant-123';
         }
-      })();
-    }
+        await refreshInterests(supabase, uid);
+      } catch (e) {
+        console.error('[load interests]', e);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -1177,6 +1233,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                   const hasMyInterest = !!myEntry;
                   
                   const isWholeUnit = selected.room_type === 'Whole Unit';
+                  const isRented = selected.status !== 'available';
 
                   // Non–Whole Unit: single rent (大房/中房/小房/Studio)
                   if (!isWholeUnit) {
@@ -1193,6 +1250,12 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           <div style={{ padding: '12px', background: 'var(--success-light)', borderRadius: 10, border: '1px solid var(--success)' }}>
                             <span style={{ fontSize: '0.88rem', color: 'var(--success)', fontWeight: 600 }}>
                               ✓ {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this room'}
+                            </span>
+                          </div>
+                        ) : isRented ? (
+                          <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.06)', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <span style={{ fontSize: '0.88rem', color: 'var(--danger)', fontWeight: 600 }}>
+                              ✕ {lang === 'zh' ? '该房源已被承租' : 'This property is already rented'}
                             </span>
                           </div>
                         ) : (
@@ -1268,6 +1331,10 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600, marginLeft: 12 }}>
                             {lang === 'zh' ? '您已承租此房源' : 'You are currently renting this unit'}
                           </span>
+                        ) : isRented ? (
+                          <span style={{ fontSize: '0.82rem', color: 'var(--danger)', fontWeight: 600, marginLeft: 12 }}>
+                            {lang === 'zh' ? '该房源已被承租' : 'This property is already rented'}
+                          </span>
                         ) : (
                           <>
                             {!hasMyInterest && !isFull && !showNoteInput && (
@@ -1335,10 +1402,16 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                                 </div>
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>
-                                    {i.full_name || i.email.split('@')[0]}
+                                    {i.full_name || (isMe 
+                                      ? i.email.split('@')[0]
+                                      : (i.email.split('@')[0].length <= 2 
+                                        ? `${i.email.split('@')[0][0]}***` 
+                                        : `${i.email.split('@')[0].slice(0, 2)}***${i.email.split('@')[0].slice(-1)}`
+                                      )
+                                    )}
                                     {isMe && <span style={{ marginLeft: 6, fontSize: '0.68rem', color: 'var(--primary)' }}>({lang === 'zh' ? '我' : 'Me'})</span>}
                                   </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{i.email}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{isMe ? i.email : maskEmail(i.email)}</div>
                                 </div>
                                 {isMe ? (
                                   <button

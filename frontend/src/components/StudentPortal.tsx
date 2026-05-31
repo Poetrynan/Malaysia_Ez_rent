@@ -953,6 +953,122 @@ export default function StudentPortal({
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>{t('loadingApp')}</div>;
 
+  const renderToast = toastMsg && (
+    <div style={{
+      position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9999, pointerEvents: 'none',
+      animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        padding: '12px 24px', borderRadius: 12,
+        fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
+        width: 'fit-content', maxWidth: '90vw',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        color: 'var(--text-h)',
+        border: `1px solid ${
+          toastType === 'error' ? 'rgba(239, 68, 68, 0.45)' :
+          'rgba(16, 185, 129, 0.45)'
+        }`,
+        boxShadow: `0 8px 32px ${
+          toastType === 'error' ? 'rgba(239, 68, 68, 0.12)' :
+          'rgba(16, 185, 129, 0.12)'
+        }, inset 0 1px 1px rgba(255,255,255,0.1)`,
+      }}>
+        <span style={{
+          display: 'flex', alignItems: 'center',
+          color: toastType === 'error' ? '#ef4444' : '#10b981'
+        }}>
+          {toastType === 'error' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+        </span>
+        <span>{toastMsg}</span>
+      </div>
+    </div>
+  );
+
+  const renderCancelModal = showCancelConfirm && (
+    <div 
+      onClick={() => setShowCancelConfirm(false)}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+          borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
+          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+          position: 'relative'
+        }}
+      >
+        <button 
+          onClick={() => setShowCancelConfirm(false)}
+          style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          <X size={18} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertCircle size={20} color="var(--danger)" />
+          </div>
+          <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-h)' }}>
+            {lang === 'zh' ? '确定要取消租房意向吗？' : 'Cancel Rent Interest?'}
+          </h3>
+        </div>
+        
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 24 }}>
+          {lang === 'zh' ? (
+            <>
+              取消该意向后，系统将会把此房源的确认进度清空。您以后可以重新对其他房源提交租房意向。
+            </>
+          ) : (
+            <>
+              Canceling this interest will clear your application progress. You will be able to submit interest for other listings in the future.
+            </>
+          )}
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button 
+            onClick={() => setShowCancelConfirm(false)}
+            style={{
+              padding: '10px 16px', background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-h)', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer'
+            }}
+            disabled={cancelSubmitting}
+          >
+            {lang === 'zh' ? '暂不取消' : 'No, Keep It'}
+          </button>
+          <button 
+            onClick={confirmCancelInterest}
+            style={{
+              padding: '10px 16px', background: 'var(--danger)', border: 'none',
+              color: 'white', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 8
+            }}
+            disabled={cancelSubmitting}
+          >
+            {cancelSubmitting ? (
+              <>
+                <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                {lang === 'zh' ? '处理中...' : 'Processing...'}
+              </>
+            ) : (
+              lang === 'zh' ? '确定取消意向' : 'Confirm Cancel'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!lease) {
     if (mode !== 'maintenance' && interest) {
       return (
@@ -1042,19 +1158,25 @@ export default function StudentPortal({
               </button>
             </div>
           </div>
+          {renderCancelModal}
+          {renderToast}
         </div>
       );
     }
 
     return (
-      <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
-        <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
-        <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
-          {mode === 'maintenance' 
-            ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
-            : t('noLeaseDesc')}
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
+          <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
+          <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
+            {mode === 'maintenance' 
+              ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
+              : t('noLeaseDesc')}
+          </p>
+        </div>
+        {renderCancelModal}
+        {renderToast}
       </div>
     );
   }
@@ -1898,122 +2020,8 @@ export default function StudentPortal({
       )}
 
       {/* Toast notification */}
-      {toastMsg && (
-        <div style={{
-          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, pointerEvents: 'none',
-          animation: 'slideDown 0.3s cubic-bezier(0.16,1,0.3,1)',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-            padding: '12px 24px', borderRadius: 12,
-            fontSize: '0.875rem', fontWeight: 600, fontFamily: 'inherit',
-            width: 'fit-content', maxWidth: '90vw',
-            background: 'var(--glass-bg)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            color: 'var(--text-h)',
-            border: `1px solid ${
-              toastType === 'error' ? 'rgba(239, 68, 68, 0.45)' :
-              'rgba(16, 185, 129, 0.45)'
-            }`,
-            boxShadow: `0 8px 32px ${
-              toastType === 'error' ? 'rgba(239, 68, 68, 0.12)' :
-              'rgba(16, 185, 129, 0.12)'
-            }, inset 0 1px 1px rgba(255,255,255,0.1)`,
-          }}>
-            <span style={{
-              display: 'flex', alignItems: 'center',
-              color: toastType === 'error' ? '#ef4444' : '#10b981'
-            }}>
-              {toastType === 'error' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
-            </span>
-            <span>{toastMsg}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Cancel Interest Modal */}
-      {showCancelConfirm && (
-        <div 
-          onClick={() => setShowCancelConfirm(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
-              borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, paddingBottom: 20,
-              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-              position: 'relative'
-            }}
-          >
-            <button 
-              onClick={() => setShowCancelConfirm(false)}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-            >
-              <X size={18} />
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AlertCircle size={20} color="var(--danger)" />
-              </div>
-              <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-h)' }}>
-                {lang === 'zh' ? '确定要取消租房意向吗？' : 'Cancel Rent Interest?'}
-              </h3>
-            </div>
-            
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 24 }}>
-              {lang === 'zh' ? (
-                <>
-                  取消该意向后，系统将会把此房源的确认进度清空。您以后可以重新对其他房源提交租房意向。
-                </>
-              ) : (
-                <>
-                  Canceling this interest will clear your application progress. You will be able to submit interest for other listings in the future.
-                </>
-              )}
-            </p>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setShowCancelConfirm(false)}
-                style={{
-                  padding: '10px 16px', background: 'transparent', border: '1px solid var(--border)',
-                  color: 'var(--text-h)', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer'
-                }}
-                disabled={cancelSubmitting}
-              >
-                {lang === 'zh' ? '暂不取消' : 'No, Keep It'}
-              </button>
-              <button 
-                onClick={confirmCancelInterest}
-                style={{
-                  padding: '10px 16px', background: 'var(--danger)', border: 'none',
-                  color: 'white', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
-                  display: 'flex', alignItems: 'center', gap: 8
-                }}
-                disabled={cancelSubmitting}
-              >
-                {cancelSubmitting ? (
-                  <>
-                    <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                    {lang === 'zh' ? '处理中...' : 'Processing...'}
-                  </>
-                ) : (
-                  lang === 'zh' ? '确定取消意向' : 'Confirm Cancel'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderToast}
+      {renderCancelModal}
 
     </div>
   );
