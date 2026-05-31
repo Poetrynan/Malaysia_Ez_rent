@@ -231,6 +231,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   // ── Agent registrations state ──
   const [agentRegistrations, setAgentRegistrations] = useState<any[]>([]);
   const [agentReviewRejectId, setAgentReviewRejectId] = useState<string | null>(null);
+  const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
   const [agentReviewRejectReason, setAgentReviewRejectReason] = useState('');
 
   const fetchAgentRegistrations = async () => {
@@ -3851,9 +3852,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       )}
 
       {/* ── AGENT REVIEWS TAB ── */}
-      {tab === 'agent-reviews' && (() => {
-        const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
-        return (
+      {tab === 'agent-reviews' && (
         <div>
           {/* Image Preview Modal */}
           {reviewImgModal && (
@@ -3981,8 +3980,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </div>
           )}
         </div>
-        );
-      })()}
+      )}
 
       {/* ── PROFILE TAB ── */}
       {tab === 'profile' && (
