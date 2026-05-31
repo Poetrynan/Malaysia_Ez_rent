@@ -399,6 +399,10 @@ supabase/migrations/
 └── 024_maintenance_conversation.sql # 工单对话线程（admin_reply TEXT → replies JSONB，移除 rating）
     └── 025_fix_missing_public_users.sql # 修复缺失用户行（重建触发器 + 补建 public.users）
     └── 026_remove_unit_number_column.sql # 删除房源列表房号（彻底 DROP 掉 units.unit_number）
+    └── 027_leases_rls_policies.sql # leases + payment_records 表 RLS 策略补建
+    └── 028_update_admin_limits.sql # 超级管理员≤5限制 + 邮箱自动关联触发器 + auth用户注册触发器
+    └── 028_user_inbox_notifications.sql # 全用户收件箱系统（公告/通知/审批知会）
+    └── 029_agent_registration_cleanup.sql # 中介注册 DELETE 策略 + REN 字段 + Storage 删除策略
 ```
 
 迁移原则：
@@ -1667,5 +1671,46 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py \
 | `login/page.tsx` | 移除 `handleDevLogin` 及其快捷登录按钮。 |
 | `PropertyListings.tsx` | 新增 `maskEmail` 脱敏函数，在合租人列表中实现本人/他人差异化脱敏；在 `refreshInterests` 中集成实时失效意向检测、自动解锁及后台静默更新，并统一 mount 钩子调用。 |
 | `.gitignore` | 追加 `/scratch/` 以忽略调试脚本。 |
+
+---
+
+## 四十七、一键公告群发、指定通知与多模板收件箱系统（2026-06-01）
+
+**目标：** 实现全系统用户的收件箱（Inbox），为超级管理员提供批量公告群发、自定义特定通知、审批状态自动知会以及可插拔的多模板发送控制台，并采用极致毛玻璃动效设计。
+
+### 1. 独立高颜值 Inbox 消息组件
+* **消息分类过滤**：支持“全部消息”、“未读消息”、“系统通知”、“平台公告”、“版本更新”、“福利活动”的 Tab 切换，按最新时间倒序排列。
+* **高阶视觉微动效**：消息卡片采用毛玻璃质感（Glassmorphism），卡片左侧针对未读消息绘制主题色高亮条。卡片悬停时应用阴影与边框过渡（Notification Card Hover），点击卡片自动展开全文并触发数据库/Mock端 `is_read = true` 的静默置位。
+* **快捷消息管理**：集成“一键已读（Mark All Read）”与单条通知“永久删除（Delete Message）”确认。
+
+### 2. 超级管理员消息播控台
+* **接收对象四档切换**：支持“所有学生/租客”、“所有中介/管理员”、“所有用户 (全员)”、“指定单个用户”等 4 种接收范围。
+* **特定用户快速检索**：在选择“指定单个用户”时，动态滑出“用户与中介名录”面板，支持输入姓名或邮箱进行即时过滤，并一键完成目标选中。
+* **开箱即用四大预设模板**：
+  * **中介审核通过通知**：知会中介成功被批准，说明下次登录将自动切换角色。
+  * **中介审核拒绝通知**：包含拒绝原因占位，提醒重新上传 REN 照片。
+  * **系统维护停机公告**：告知维护时间段与功能受限范围。
+  * **新挂牌首月佣金折扣福利**：发布营销推广返利通知。
+
+### 3. 中介审批流程与消息知会机制无缝整合
+* **审批自动发信**：当超级管理员在后台批准或拒绝中介申请时，系统会自动拼接中英双语格式的注册结果通知，实时写入被审批人的 `user_notifications` 收件箱中，实现审核状态的自动触达知会。
+
+### 4. 数据库表定义与 RLS 安全控制
+* **存储表设计**：新建 `user_notifications` 表，关联 `auth.users`（级联删除），支持 5 种消息类型枚举。
+* **行级安全 RLS**：
+  * `SELECT` / `UPDATE` / `DELETE` 严格控制在 `auth.uid() = user_id`，防止越权。
+  * `INSERT` 特权只对在 `admin_users` 具有记录的管理员用户开放。
+* **Mock 自适应适配**：更新 Mock 数据库的 execute 流程，增加 unmapped table 自动回退 `localStorage` 的底层加载逻辑，使新表在 Mock 沙盒环境下能无缝跑通全部业务。
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `supabase/migrations/028_user_inbox_notifications.sql` | 新建用户通知表，配置 5 种策略（用户自管，管理员特权写入/修改）。 |
+| `frontend/src/lib/supabase.ts` | MockQueryBuilder.execute() 增加通用回退 localStorage 逻辑，使 user_notifications 表支持 Mock 数据存储。 |
+| `frontend/src/components/Inbox.tsx` | 实现收件箱、过滤、删除、已读、超级管理员群发控制台、检索面板及四大模板的应用。 |
+| `frontend/src/components/AdminPanel.tsx` | 中介审批（批准/拒绝）时，自动生成消息并插入到被审批人的收件箱中。 |
+| `frontend/src/app/page.tsx` | 侧边栏及视图容器集成“消息与公告”顶级 Tab（含 unreadInboxCount 红点角标计数）。 |
+
 
 
