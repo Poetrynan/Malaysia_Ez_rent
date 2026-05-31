@@ -55,7 +55,7 @@ export default function Dashboard({
   const [timeRange, setTimeRange] = useState<'1m' | '6m' | '1y' | 'custom'>('6m');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [hoveredSlice, setHoveredSlice] = useState<{ name: string; value: number; percent: number } | null>(null);
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -491,100 +491,39 @@ export default function Dashboard({
           
           {roomTypeData.length > 0 ? (() => {
             const total = roomTypeData.reduce((s, d) => s + d.value, 0);
+            // Build conic-gradient stops
+            let acc = 0;
+            const stops = roomTypeData.map((d, i) => {
+              const start = (acc / total) * 360;
+              acc += d.value;
+              const end = (acc / total) * 360;
+              return `${COLORS[i % COLORS.length]} ${start}deg ${end}deg`;
+            }).join(', ');
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', height: 180 }}>
-                <div style={{ position: 'relative', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minWidth: 0 }}>
-                  <PieChart width={110} height={110}>
-                    <Pie
-                      data={roomTypeData}
-                      cx={55}
-                      cy={55}
-                      innerRadius={36}
-                      outerRadius={52}
-                      paddingAngle={3}
-                      dataKey="value"
-                      onMouseEnter={(_, index) => {
-                        const item = roomTypeData[index];
-                        if (item) {
-                          setHoveredSlice({
-                            name: item.name,
-                            value: item.value,
-                            percent: total > 0 ? Math.round((item.value / total) * 100) : 0
-                          });
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredSlice(null)}
-                    >
-                      {roomTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none', cursor: 'pointer' }} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                  
-                  {/* Donut Center Display */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center', height: 180 }}>
+                {/* Donut via conic-gradient */}
+                <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
                   <div style={{
-                    position: 'absolute',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center',
-                    pointerEvents: 'none',
-                    width: 66,
-                    height: 66,
-                    borderRadius: '50%',
+                    width: 120, height: 120, borderRadius: '50%',
+                    background: `conic-gradient(${stops})`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {hoveredSlice ? (
-                      <>
-                        <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', padding: '0 2px' }}>
-                          {hoveredSlice.name}
-                        </span>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--primary)', marginTop: 1 }}>
-                          {hoveredSlice.value}{lang === 'zh' ? '间' : ' units'}
-                        </span>
-                        <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
-                          {hoveredSlice.percent}%
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                          {lang === 'zh' ? '总房源' : 'Total'}
-                        </span>
-                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-h)' }}>
-                          {total}
-                        </span>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                          {lang === 'zh' ? '间' : 'units'}
-                        </span>
-                      </>
-                    )}
+                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-surface-solid, var(--glass-bg))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '总房源' : 'Total'}</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-h)' }}>{total}</span>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '间' : 'units'}</span>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Legend (CSS-only hover effects to avoid infinite render loops) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 160, overflowY: 'auto', paddingRight: 4 }}>
-                  {roomTypeData.map((d, i) => {
-                    const percent = total > 0 ? Math.round((d.value / total) * 100) : 0;
-                    const isHovered = hoveredSlice && hoveredSlice.name === d.name;
-                    return (
-                      <div
-                        key={i}
-                        className="legend-item"
-                        style={{
-                          opacity: hoveredSlice ? (isHovered ? 1 : 0.4) : 0.8,
-                          color: isHovered ? 'var(--primary)' : 'var(--text-body)',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={() => setHoveredSlice({ name: d.name, value: d.value, percent })}
-                        onMouseLeave={() => setHoveredSlice(null)}
-                      >
-                        <span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
-                        <span style={{ fontWeight: isHovered ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{d.name}</span>
-                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.value}</span>
-                      </div>
-                    );
-                  })}
+                {/* Legend */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {roomTypeData.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-body)', fontWeight: 500 }}>{d.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
