@@ -110,18 +110,23 @@ export default function RegisterAgentPage() {
 
     if (isMockDatabase) {
       const loggedIn = localStorage.getItem('ez_logged_in');
-      if (!loggedIn) {
-        setAuthChecked(true);
-        return;
-      }
-      setUserId(localStorage.getItem('ez_tenant_id') || 'tenant-123');
-      setUserEmail(localStorage.getItem('ez_user_email') || '');
-      // Check existing registration
-      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-      const existing = regs.find((r: any) => r.auth_user_id === (localStorage.getItem('ez_tenant_id') || 'tenant-123'));
-      if (existing) {
-        setAlreadySubmitted(true);
-        setExistingStatus(existing.verification_status);
+      if (loggedIn) {
+        const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+        const email = localStorage.getItem('ez_user_email') || '';
+        setUserId(tenantId);
+        setUserEmail(email);
+        // Check existing registration by ID or Email
+        const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+        const existing = regs.find((r: any) => r.auth_user_id === tenantId || (r.email === email && email !== ''));
+        if (existing) {
+          setAlreadySubmitted(true);
+          setExistingStatus(existing.verification_status);
+          // Link if not linked
+          if (!existing.auth_user_id) {
+            existing.auth_user_id = tenantId;
+            localStorage.setItem('ez_agent_registrations', JSON.stringify(regs));
+          }
+        }
       }
       setAuthChecked(true);
     } else {
@@ -129,21 +134,30 @@ export default function RegisterAgentPage() {
         const { createClient } = await import('@/utils/supabase/client');
         const supabaseClient = createClient();
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) {
-          setAuthChecked(true);
-          return;
-        }
-        setUserId(user.id);
-        setUserEmail(user.email || '');
-        // Check existing registration
-        const { data: existing } = await supabaseClient
-          .from('agent_registrations')
-          .select('verification_status')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-        if (existing) {
-          setAlreadySubmitted(true);
-          setExistingStatus(existing.verification_status);
+        if (user) {
+          setUserId(user.id);
+          setUserEmail(user.email || '');
+          // Check existing registration
+          const { data: existing } = await supabaseClient
+            .from('agent_registrations')
+            .select('verification_status, auth_user_id')
+            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+            .maybeSingle();
+          if (existing) {
+            setAlreadySubmitted(true);
+            setExistingStatus(existing.verification_status);
+            // Auto link if null
+            if (!existing.auth_user_id) {
+              try {
+                await supabaseClient
+                  .from('agent_registrations')
+                  .update({ auth_user_id: user.id })
+                  .eq('email', user.email);
+              } catch (updErr) {
+                console.warn('[Agent Reg] Auto-link auth_user_id warning:', updErr);
+              }
+            }
+          }
         }
         setAuthChecked(true);
       } catch {
@@ -208,12 +222,6 @@ export default function RegisterAgentPage() {
     const normalizedREN = normalizeREN(renNumber);
     if (!normalizedREN) { setError(lang === 'zh' ? 'REN 编号格式不正确（如 REN12345）' : 'Invalid REN number format (e.g. REN12345)'); return; }
 
-    // Must be logged in
-    if (!userId) {
-      setError(lang === 'zh' ? '请先登录后再提交' : 'Please log in before submitting');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -225,8 +233,8 @@ export default function RegisterAgentPage() {
         const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
         regs.push({
           id: `reg-${Date.now()}`,
-          auth_user_id: userId,
-          email: userEmail,
+          auth_user_id: userId || null,
+          email: userEmail.toLowerCase().trim(),
           full_name: fullName.trim(),
           phone: normalizedPhone,
           whatsapp: normalizedWhatsapp,
@@ -274,16 +282,19 @@ export default function RegisterAgentPage() {
 
         // Insert registration
         console.log('[Agent Reg] Inserting into agent_registrations...');
-        const { error: insertErr } = await supabaseClient.from('agent_registrations').insert({
-          auth_user_id: userId,
-          email: userEmail,
+        const insertData: any = {
+          email: userEmail.toLowerCase().trim(),
           full_name: fullName.trim(),
           phone: normalizedPhone,
           whatsapp: normalizedWhatsapp,
           agency_name: agencyName.trim(),
           ren_number: normalizedREN,
           ren_tag_image_url: renTagUrl,
-        });
+        };
+        if (userId) {
+          insertData.auth_user_id = userId;
+        }
+        const { error: insertErr } = await supabaseClient.from('agent_registrations').insert(insertData);
 
         if (insertErr) {
           console.error('[Agent Reg] Insert error:', insertErr);
@@ -386,13 +397,22 @@ export default function RegisterAgentPage() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             {existingStatus === 'pending' && (
               <>
-                <Loader2 size={36} style={{ color: 'var(--warning)', marginBottom: 12 }} />
+                <Loader2 size={36} className="animate-spin" style={{ color: 'var(--warning)', marginBottom: 12 }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
                   {lang === 'zh' ? '审核中' : 'Under Review'}
                 </h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {lang === 'zh' ? '您的申请正在审核中，请耐心等待。' : 'Your application is being reviewed. Please wait.'}
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+                  {lang === 'zh' 
+                    ? '您的中介注册申请正在审核中，请耐心等待。目前因为权限原因只能使用租客端。' 
+                    : 'Your agent registration is under review. Currently, due to permission restrictions, you can only use the tenant portal.'}
                 </p>
+                <a href="/" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 10, background: 'var(--primary)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  {lang === 'zh' ? '进入租客端' : 'Enter Tenant Portal'}
+                </a>
               </>
             )}
             {existingStatus === 'approved' && (
@@ -401,20 +421,34 @@ export default function RegisterAgentPage() {
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
                   {lang === 'zh' ? '已通过审核' : 'Approved'}
                 </h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {lang === 'zh' ? '恭喜！请重新登录以访问中介管理后台。' : 'Congratulations! Please log in again to access the agent portal.'}
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+                  {lang === 'zh' ? '恭喜！您的中介申请已通过审核。请重新登录以访问中介管理后台。' : 'Congratulations! Your agent application has been approved. Please log in again to access the agent portal.'}
                 </p>
+                <a href="/login" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 10, background: 'var(--success)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  {lang === 'zh' ? '立即重新登录' : 'Log in again now'}
+                </a>
               </>
             )}
             {existingStatus === 'rejected' && (
               <>
                 <AlertCircle size={36} style={{ color: 'var(--danger)', marginBottom: 12 }} />
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 8 }}>
-                  {lang === 'zh' ? '申请被拒绝' : 'Application Rejected'}
+                  {lang === 'zh' ? '申请未通过审核' : 'Application Rejected'}
                 </h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {lang === 'zh' ? '很抱歉，您的申请未通过审核。请联系管理员了解详情。' : 'Sorry, your application was not approved. Please contact admin for details.'}
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+                  {lang === 'zh' ? '很抱歉，您的中介申请未通过审核。如有疑问请联系管理员。当前您只能使用租客端。' : 'Sorry, your agent application was not approved. Please contact admin for details. Currently you can only use the tenant portal.'}
                 </p>
+                <a href="/" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 10, background: 'var(--primary)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  {lang === 'zh' ? '进入租客端' : 'Enter Tenant Portal'}
+                </a>
               </>
             )}
           </div>
@@ -428,9 +462,15 @@ export default function RegisterAgentPage() {
               {lang === 'zh' ? '申请已提交！' : 'Application Submitted!'}
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
-              {lang === 'zh'
-                ? '您的中介注册申请已成功提交，审核通过后将自动移入中介管理端。'
-                : 'Your agent registration has been submitted. After approval, you will be moved to the agent portal.'}
+              {userId ? (
+                lang === 'zh'
+                  ? '您的中介注册申请已成功提交，审核通过后将自动移入中介管理端。当前您可以先查看租客端。'
+                  : 'Your agent registration has been submitted. After approval, you will be moved to the agent portal. You can view the tenant portal first.'
+              ) : (
+                lang === 'zh'
+                  ? '您的中介注册申请已成功提交！审核通过后即可直接进入中介后台。建议您立即登录绑定。'
+                  : 'Your agent registration has been submitted successfully! Once approved, you will directly enter the agent portal. We recommend logging in now to bind.'
+              )}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <a href="/" style={{
@@ -440,14 +480,16 @@ export default function RegisterAgentPage() {
               }}>
                 {lang === 'zh' ? '查看租客端' : 'View Tenant Portal'}
               </a>
-              <a href="/login" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '12px 20px', borderRadius: 10,
-                border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                color: 'var(--text-body)', fontSize: '0.88rem', fontWeight: 500, textDecoration: 'none',
-              }}>
-                {lang === 'zh' ? '稍后登录' : 'Login Later'}
-              </a>
+              {!userId && (
+                <a href="/login" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px 20px', borderRadius: 10,
+                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                  color: 'var(--text-body)', fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  {lang === 'zh' ? '立即登录绑定' : 'Log in now to bind'}
+                </a>
+              )}
             </div>
           </div>
         )}
@@ -468,7 +510,7 @@ export default function RegisterAgentPage() {
                 {lang === 'zh' ? '谷歌邮箱' : 'Google Email'} <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
               <input type="email" className="form-input" value={userEmail}
-                onChange={e => setUserEmail(e.target.value)}
+                onChange={e => setUserEmail(e.target.value.toLowerCase().trim())}
                 placeholder={lang === 'zh' ? 'yourname@gmail.com' : 'yourname@gmail.com'}
                 style={{ width: '100%', boxSizing: 'border-box' }} />
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>

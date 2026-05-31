@@ -49,18 +49,28 @@ export default function Home() {
       }
       // Check admin_users in localStorage to determine role
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+      const email = localStorage.getItem('ez_user_email') || 'student@ezrent.my';
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      const isAdmin = admins.some((a: any) => a.id === tenantId);
+      
+      const mockAdminIdx = admins.findIndex((a: any) => a.id === tenantId || (a.email === email && email !== ''));
+      let isAdmin = false;
+      if (mockAdminIdx !== -1) {
+        isAdmin = true;
+        if (admins[mockAdminIdx].id !== tenantId) {
+          admins[mockAdminIdx].id = tenantId;
+          localStorage.setItem('ez_admins', JSON.stringify(admins));
+        }
+      }
+
       const finalRole: 'student' | 'admin' = isAdmin ? 'admin' : 'student';
       localStorage.setItem('ez_user_role', finalRole);
       setRole(finalRole);
       setActiveTab(finalRole === 'admin' ? 'admin-properties' : 'listings');
-      setUserEmail(localStorage.getItem('ez_user_email') || 'student@ezrent.my');
+      setUserEmail(email);
       // Check agent registration status for THIS user only (match by email)
       if (finalRole === 'student') {
-        const email = localStorage.getItem('ez_user_email') || '';
         const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-        const myReg = regs.find((r: any) => r.email === email);
+        const myReg = regs.find((r: any) => r.auth_user_id === tenantId || (r.email === email && email !== ''));
         if (myReg) setAgentRegStatus(myReg.verification_status);
       }
     } else {
@@ -72,12 +82,38 @@ export default function Home() {
           window.location.href = '/login';
           return;
         }
-        // Check if user is an admin by looking up admin_users table
-        const { data: adminRecord } = await supabase
-          .from('admin_users')
-          .select('id, role')
-          .eq('id', user.id)
-          .maybeSingle();
+        // Check if user is an admin by looking up admin_users table (by id or email)
+        let adminRecord = null;
+        if (user.email) {
+          const { data: record } = await supabase
+            .from('admin_users')
+            .select('id, role, email')
+            .or(`id.eq.${user.id},email.eq.${user.email}`)
+            .maybeSingle();
+          if (record) {
+            adminRecord = record;
+            if (record.id !== user.id) {
+              console.log('[Auth Bootstrap] Found admin by email, updating id to user.id');
+              const { error: updErr } = await supabase
+                .from('admin_users')
+                .update({ id: user.id })
+                .eq('email', user.email);
+              if (!updErr) {
+                adminRecord.id = user.id;
+              } else {
+                console.error('[Auth Bootstrap] Failed to update admin id:', updErr);
+              }
+            }
+          }
+        } else {
+          const { data: record } = await supabase
+            .from('admin_users')
+            .select('id, role')
+            .eq('id', user.id)
+            .maybeSingle();
+          adminRecord = record;
+        }
+
         const activeRole = adminRecord ? 'admin' : 'student';
         if (adminRecord) {
           setAdminRole(adminRecord.role as 'super_admin' | 'editor');
@@ -86,12 +122,12 @@ export default function Home() {
         setActiveTab(activeRole === 'admin' ? 'admin-properties' : 'listings');
         setUserEmail(user.email || '');
         localStorage.setItem('ez_tenant_id', user.id);
-        // Check agent registration status if student (match by email)
+        // Check agent registration status if student (match by user.id or email)
         if (!adminRecord && user.email) {
           const { data: agentReg } = await supabase
             .from('agent_registrations')
             .select('verification_status')
-            .eq('email', user.email)
+            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
             .maybeSingle();
           if (agentReg) setAgentRegStatus(agentReg.verification_status);
         }
