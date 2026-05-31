@@ -344,7 +344,7 @@ interface AdminContact {
 
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
 
-export default function PropertyListings() {
+export default function PropertyListings({ readOnly = false }: { readOnly?: boolean }) {
   const { t, lang } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -1196,14 +1196,14 @@ export default function PropertyListings() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {!hasMyInterest && !isFull && (
+                            {!readOnly && !hasMyInterest && !isFull && (
                               <button onClick={() => expressInterest(selected.id)} style={{
                                 padding: '10px 24px', borderRadius: 8, border: 'none',
                                 background: 'var(--primary)', color: 'white',
                                 fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                               }}>{lang === 'zh' ? '我要租' : 'Express Interest'}</button>
                             )}
-                            {hasMyInterest && (
+                            {!readOnly && hasMyInterest && (
                               <button onClick={() => {
                                 if (myEntry?.status === 'confirmed') {
                                   // Check if the lease actually exists for this user and unit
@@ -1959,6 +1959,7 @@ export default function PropertyListings() {
                   )}
 
                   {/* Direct Contact Form */}
+                  {!readOnly && (
                   <div className="glass-card" style={{ padding: 18, background: 'var(--glass-bg)' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <MessageSquare size={14} style={{ color: 'var(--primary)' }} />
@@ -2023,6 +2024,7 @@ export default function PropertyListings() {
                       </button>
                     </form>
                   </div>
+                  )}
 
                 </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import StudentPortal from '@/components/StudentPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -11,7 +11,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-listings' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile'>('listings');
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -220,6 +220,10 @@ export default function Home() {
                     )}
                   </span>
                   <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                </li>
+                <li onClick={() => setActiveTab('admin-listings')} className={`nav-item ${activeTab === 'admin-listings' ? 'active' : ''}`}>
+                  <Eye size={16} />
+                  <span>{lang === 'zh' ? '房源浏览' : 'Browse Listings'}</span>
                 </li>
                 {adminRole === 'super_admin' && (
                   <li onClick={() => setActiveTab('admin-admins')} className={`nav-item ${activeTab === 'admin-admins' ? 'active' : ''}`}>
@@ -464,7 +468,10 @@ export default function Home() {
           <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
             <StudentPortal mode="maintenance" onUnreadFeedbackCountChange={(count) => setPendingCounts(prev => ({ ...prev, feedback: count }))} />
           </div>
-          <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') ? 'block' : 'none' }}>
+          <div style={{ display: role === 'admin' && activeTab === 'admin-listings' ? 'block' : 'none' }}>
+            <PropertyListings readOnly />
+          </div>
+          <div style={{ display: role === 'admin' && activeTab.startsWith('admin-') && activeTab !== 'admin-listings' ? 'block' : 'none' }}>
             <AdminPanel 
               adminRole={adminRole} 
               defaultTab={

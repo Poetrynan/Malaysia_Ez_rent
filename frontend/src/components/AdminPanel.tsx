@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone } from 'lucide-react';
 import Dashboard from './Dashboard';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
@@ -310,6 +310,26 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setAgentReviewRejectReason('');
     fetchAgentRegistrations();
     showToast(lang === 'zh' ? '已拒绝' : 'Agent rejected', 'success');
+  };
+
+  const deleteAgentRegistration = async (id: string, renTagUrl?: string) => {
+    if (!isLive) {
+      const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
+      localStorage.setItem('ez_agent_registrations', JSON.stringify(regs.filter((r: any) => r.id !== id)));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        // Delete REN tag image from Storage
+        if (renTagUrl) {
+          const pathMatch = renTagUrl.match(/ren-tags\/([^?]+)/);
+          if (pathMatch) await supabase.storage.from('unit-media').remove([`ren-tags/${pathMatch[1]}`]);
+        }
+        await supabase.from('agent_registrations').delete().eq('id', id);
+      } catch (e) { console.error('Delete agent registration error:', e); }
+    }
+    fetchAgentRegistrations();
+    showToast(lang === 'zh' ? '记录已删除' : 'Record deleted', 'success');
   };
 
   // ── Payment review state ──
@@ -3625,58 +3645,99 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {agentRegistrations.map(reg => (
+              {agentRegistrations.map(reg => {
+                const statusColor = reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)';
+                const statusBg = reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)';
+                const statusLabel = reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending');
+
+                return (
                 <div key={reg.id} style={{
-                  background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 20,
-                  opacity: reg.verification_status === 'rejected' ? 0.6 : 1,
+                  background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+                  borderRadius: 14, padding: 0, overflow: 'hidden',
+                  opacity: reg.verification_status === 'rejected' ? 0.65 : 1,
+                  transition: 'all 0.2s ease',
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>{reg.full_name}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{reg.agency_name}</div>
-                      {reg.email && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{reg.email}</div>}
+                  {/* Header: Name + Agency + Status + Delete */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: statusBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <User size={18} style={{ color: statusColor }} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', lineHeight: 1.2 }}>{reg.full_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.agency_name} · {reg.email}</div>
+                      </div>
                     </div>
-                    <span style={{
-                      fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                      background: reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)',
-                      color: reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)',
-                    }}>
-                      {reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending')}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: statusBg, color: statusColor }}>
+                        {statusLabel}
+                      </span>
+                      <button onClick={() => {
+                        if (confirm(lang === 'zh' ? `确定要删除 ${reg.full_name} 的注册记录吗？` : `Delete ${reg.full_name}'s registration?`)) {
+                          deleteAgentRegistration(reg.id, reg.ren_tag_image_url);
+                        }
+                      }} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 6,
+                        color: 'var(--text-muted)', transition: 'color 0.2s',
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                        title={lang === 'zh' ? '删除记录' : 'Delete record'}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 12, fontSize: '0.82rem' }}>
-                    <div><span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '手机号：' : 'Phone: '}</span><span style={{ color: 'var(--text-body)' }}>{reg.phone}</span></div>
-                    {reg.whatsapp && <div><span style={{ color: 'var(--text-muted)' }}>WhatsApp: </span><span style={{ color: 'var(--text-body)' }}>{reg.whatsapp}</span></div>}
-                    <div><span style={{ color: 'var(--text-muted)' }}>REN: </span><span style={{ color: 'var(--text-body)', fontWeight: 600 }}>{reg.ren_number}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '提交时间：' : 'Submitted: '}</span><span style={{ color: 'var(--text-body)' }}>{new Date(reg.created_at).toLocaleDateString()}</span></div>
+                  {/* Info grid */}
+                  <div style={{ padding: '12px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Phone size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-body)' }}>{reg.phone}</span>
+                    </div>
+                    {reg.whatsapp && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <MessageSquare size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        <span style={{ color: 'var(--text-body)' }}>{reg.whatsapp}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <ShieldCheck size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-body)', fontWeight: 600 }}>{reg.ren_number}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-body)' }}>{new Date(reg.created_at).toLocaleDateString()}</span>
+                    </div>
                   </div>
 
                   {/* REN Tag Image */}
                   {reg.ren_tag_image_url && (
-                    <div style={{ marginBottom: 12 }}>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>REN {lang === 'zh' ? '执照：' : 'Tag: '}</span>
-                      <a href={reg.ren_tag_image_url} target="_blank" rel="noopener noreferrer">
-                        <img src={reg.ren_tag_image_url} alt="REN Tag" style={{ maxWidth: 240, maxHeight: 160, borderRadius: 8, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer' }} />
+                    <div style={{ padding: '0 18px 12px' }}>
+                      <a href={reg.ren_tag_image_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                        <img src={reg.ren_tag_image_url} alt="REN Tag" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} />
                       </a>
                     </div>
                   )}
 
                   {/* Rejection reason */}
                   {reg.rejection_reason && (
-                    <div style={{ fontSize: '0.78rem', color: 'var(--danger)', marginBottom: 8 }}>
-                      {lang === 'zh' ? '拒绝原因：' : 'Rejection reason: '}{reg.rejection_reason}
+                    <div role="alert" style={{ padding: '8px 18px', background: 'var(--danger-light)', fontSize: '0.78rem', color: 'var(--danger)' }}>
+                      {lang === 'zh' ? '拒绝原因：' : 'Reason: '}{reg.rejection_reason}
                     </div>
                   )}
 
-                  {/* Action buttons */}
+                  {/* Action buttons — only for pending */}
                   {reg.verification_status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <div style={{ padding: '12px 18px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 10, alignItems: 'center' }}>
                       <button onClick={() => approveAgentRegistration(reg)} style={{
                         display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
                         border: 'none', background: 'var(--success)', color: 'white', fontSize: '0.82rem',
-                        fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
+                        fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--success)'}>
                         <CheckCircle2 size={14} /> {lang === 'zh' ? '通过' : 'Approve'}
                       </button>
                       {agentReviewRejectId === reg.id ? (
@@ -3689,7 +3750,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                             padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)',
                             color: 'white', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                           }}>
-                            {lang === 'zh' ? '确认拒绝' : 'Confirm'}
+                            {lang === 'zh' ? '确认' : 'Confirm'}
                           </button>
                           <button onClick={() => { setAgentReviewRejectId(null); setAgentReviewRejectReason(''); }} style={{
                             padding: '8px 14px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
@@ -3701,16 +3762,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       ) : (
                         <button onClick={() => setAgentReviewRejectId(reg.id)} style={{
                           display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8,
-                          border: '1px solid var(--danger)', background: 'var(--danger-light)', color: 'var(--danger)',
-                          fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
+                          border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)',
+                          fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                        }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-light)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
                           <X size={14} /> {lang === 'zh' ? '拒绝' : 'Reject'}
                         </button>
                       )}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
