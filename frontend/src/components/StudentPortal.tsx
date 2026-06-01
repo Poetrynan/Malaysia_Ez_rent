@@ -221,6 +221,9 @@ export default function StudentPortal({
   const [profileDocUrl, setProfileDocUrl] = useState<string | null>(null);
   const [profileDocBase64, setProfileDocBase64] = useState<string | null>(null);
   const [profileDocUploading, setProfileDocUploading] = useState(false);
+  const [profileStudentCardUrl, setProfileStudentCardUrl] = useState<string | null>(null);
+  const [profileStudentCardBase64, setProfileStudentCardBase64] = useState<string | null>(null);
+  const [profileStudentCardUploading, setProfileStudentCardUploading] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
@@ -335,6 +338,28 @@ export default function StudentPortal({
     reader.readAsDataURL(file);
   };
 
+  const handleStudentCardChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      try {
+        const { compressDataUrl } = await import('@/utils/compressImage');
+        const compressedBlob = await compressDataUrl(dataUrl, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 });
+        const compressedReader = new FileReader();
+        compressedReader.onloadend = () => {
+          setProfileStudentCardBase64(compressedReader.result as string);
+        };
+        compressedReader.readAsDataURL(compressedBlob);
+      } catch (err) {
+        console.error('Student card compression failed:', err);
+        setProfileStudentCardBase64(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const loadProfile = async () => {
     let name = '';
     if (isMockDatabase) {
@@ -351,6 +376,7 @@ export default function StudentPortal({
         setProfileCompany(u.company || '');
         setProfileLocalId(u.local_id_number || '');
         setProfileDocUrl(u.document_url || null);
+        setProfileStudentCardUrl(u.student_card_url || null);
       }
     } else {
       try {
@@ -358,7 +384,7 @@ export default function StudentPortal({
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('users').select('full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url').eq('id', user.id).single();
+        const { data } = await supabase.from('users').select('full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url, student_card_url').eq('id', user.id).single();
         if (data) {
           name = data.full_name || '';
           setProfileName(name);
@@ -369,6 +395,7 @@ export default function StudentPortal({
           setProfileCompany(data.company || '');
           setProfileLocalId(data.local_id_number || '');
           setProfileDocUrl(data.document_url || null);
+          setProfileStudentCardUrl(data.student_card_url || null);
         }
       } catch (e) { console.error('Load profile error:', e); }
     }
@@ -400,6 +427,27 @@ export default function StudentPortal({
       docUrl = profileDocBase64;
     }
 
+    // Upload student card if new one selected
+    let studentCardUrl = profileStudentCardUrl;
+    if (profileStudentCardBase64 && !isMockDatabase) {
+      setProfileStudentCardUploading(true);
+      try {
+        const { compressDataUrl } = await import('@/utils/compressImage');
+        const blob = await compressDataUrl(profileStudentCardBase64, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 });
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const path = `student-cards/${Date.now()}.jpg`;
+        const { error: uploadErr } = await supabase.storage.from('unit-media').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+        if (!uploadErr) {
+          const { data } = supabase.storage.from('unit-media').getPublicUrl(path);
+          studentCardUrl = data?.publicUrl || null;
+        }
+      } catch (e) { console.error('Student card upload error:', e); }
+      setProfileStudentCardUploading(false);
+    } else if (profileStudentCardBase64 && isMockDatabase) {
+      studentCardUrl = profileStudentCardBase64;
+    }
+
     const profileData: Record<string, string | null> = {
       full_name: profileName.trim(),
       phone: profilePhone.trim(),
@@ -409,6 +457,7 @@ export default function StudentPortal({
       company: profileCompany.trim() || null,
       local_id_number: profileLocalId.trim() || null,
       document_url: docUrl,
+      student_card_url: studentCardUrl,
     };
 
     if (isMockDatabase) {
@@ -422,6 +471,7 @@ export default function StudentPortal({
       }
       localStorage.setItem('ez_users', JSON.stringify(users));
       if (profileDocBase64) setProfileDocUrl(profileDocBase64);
+      if (profileStudentCardBase64) setProfileStudentCardUrl(profileStudentCardBase64);
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -431,11 +481,13 @@ export default function StudentPortal({
         const { error } = await supabase.from('users').upsert({ id: user.id, ...profileData });
         if (error) { console.error('Save profile error:', error); setProfileSaving(false); return; }
         if (docUrl) setProfileDocUrl(docUrl);
+        if (studentCardUrl) setProfileStudentCardUrl(studentCardUrl);
       } catch (e) { console.error('Save profile error:', e); setProfileSaving(false); return; }
     }
     setProfileSaving(false);
     setProfileSaved(true);
     setProfileDocBase64(null);
+    setProfileStudentCardBase64(null);
     setTimeout(() => setProfileSaved(false), 3000);
     window.dispatchEvent(new Event('ez_profile_updated'));
     setToastMsg(lang === 'zh' ? '个人信息已保存' : 'Profile saved');
@@ -1203,7 +1255,7 @@ export default function StudentPortal({
       {mode === 'profile' && (() => {
         const calculateProfileProgress = () => {
           let filled = 0;
-          let total = 8;
+          let total = 9;
           if (profileName.trim()) filled++;
           if (profilePhone.trim()) filled++;
           if (profileUnit.trim()) filled++;
@@ -1212,6 +1264,7 @@ export default function StudentPortal({
           if (profilePassport.trim()) filled++;
           if (profileLocalId.trim()) filled++;
           if (profileDocUrl || profileDocBase64) filled++;
+          if (profileStudentCardUrl || profileStudentCardBase64) filled++;
           return Math.round((filled / total) * 100);
         };
         const progressPercentage = calculateProfileProgress();
@@ -1365,9 +1418,50 @@ export default function StudentPortal({
               </div>
             </div>
 
+            {/* Section 4: Student card upload */}
+            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                {t('profileStudentCard')}
+              </label>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                  border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                  color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                >
+                  <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
+                  <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
+                </label>
+                {(profileStudentCardBase64 || profileStudentCardUrl) && (
+                  <div style={{ position: 'relative' }}>
+                    <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
+                      <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
+                        style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                    </a>
+                    <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
+                      style={{
+                        position: 'absolute', top: -8, right: -8,
+                        background: 'var(--danger)', color: 'white', border: 'none',
+                        borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                      }}>×</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Save button */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || !profileName.trim() || !profileUnit.trim()}
+              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || profileStudentCardUploading || !profileName.trim() || !profileUnit.trim()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
                   background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)',
@@ -1375,7 +1469,7 @@ export default function StudentPortal({
                   cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed',
                   boxShadow: (profileName.trim() && profileUnit.trim()) ? '0 2px 8px var(--primary-glow)' : 'none'
                 }}>
-                <Save size={14} /> {profileSaving || profileDocUploading ? t('saving') : t('profileSave')}
+                <Save size={14} /> {profileSaving || profileDocUploading || profileStudentCardUploading ? t('saving') : t('profileSave')}
               </button>
               {profileSaved && (
                 <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>

@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     company VARCHAR(200),
     local_id_number VARCHAR(100),
     document_url TEXT,
+    student_card_url TEXT,
     email VARCHAR(255)
 );
 

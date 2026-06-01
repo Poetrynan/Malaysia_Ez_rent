@@ -989,6 +989,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   // ── Tenant interests state ──
   const [interests, setInterests] = useState<TenantInterest[]>([]);
+  const [viewingTenantProfile, setViewingTenantProfile] = useState<{ userId: string; interestId: string } | null>(null);
+  const [tenantProfileData, setTenantProfileData] = useState<any>(null);
+  const [tenantProfileLoading, setTenantProfileLoading] = useState(false);
 
   const visibleInterests = adminRole === 'super_admin'
     ? interests
@@ -1026,6 +1029,31 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       const { data } = await supabase.from('tenant_interests').select('*').order('created_at');
       if (data) setInterests(data);
     } catch {}
+  };
+
+  const fetchTenantProfile = async (userId: string) => {
+    setTenantProfileLoading(true);
+    if (!isLive) {
+      const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const u = users.find((u: any) => u.id === userId);
+      setTenantProfileData(u || null);
+      setTenantProfileLoading(false);
+      return;
+    }
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('users')
+        .select('full_name, phone, email, unit_number, passport_number, school, company, local_id_number, document_url, student_card_url')
+        .eq('id', userId)
+        .maybeSingle();
+      setTenantProfileData(data || null);
+    } catch (e) {
+      console.error('Fetch tenant profile error:', e);
+      setTenantProfileData(null);
+    }
+    setTenantProfileLoading(false);
   };
 
   const confirmInterest = async (interestId: string, unitId: string) => {
@@ -3465,6 +3493,17 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                           </div>
                         )}
                       </div>
+                      <button onClick={() => {
+                        setViewingTenantProfile({ userId: i.user_id, interestId: i.id });
+                        fetchTenantProfile(i.user_id);
+                      }} style={{
+                        padding: '5px 12px', borderRadius: 6, border: '1px solid var(--primary)',
+                        background: 'transparent', color: 'var(--primary)',
+                        fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        <Eye size={13} /> {t('viewTenantProfile')}
+                      </button>
                       {i.status === 'interested' && (
                         <button onClick={() => confirmInterest(i.id, i.unit_id)} style={{
                           padding: '5px 12px', borderRadius: 6, border: 'none', background: 'var(--success)',
@@ -5296,6 +5335,106 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               {toast.type === 'error' ? <XCircle size={18} /> : toast.type === 'warning' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
             </span>
             <span>{toast.msg}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Tenant Profile Modal */}
+      {viewingTenantProfile && (
+        <div
+          onClick={() => { setViewingTenantProfile(null); setTenantProfileData(null); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+              borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh',
+              overflowY: 'auto', padding: 24,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+              position: 'relative'
+            }}
+          >
+            <button
+              onClick={() => { setViewingTenantProfile(null); setTenantProfileData(null); }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+
+            <h3 style={{ fontSize: '1.1rem', margin: '0 0 20px', color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <User size={18} style={{ color: 'var(--primary)' }} />
+              {t('tenantProfileTitle')}
+            </h3>
+
+            {tenantProfileLoading ? (
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>{t('loadingApp')}</div>
+            ) : tenantProfileData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Basic info grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
+                  {[
+                    { label: t('profileName'), value: tenantProfileData.full_name },
+                    { label: t('profilePhone'), value: tenantProfileData.phone },
+                    { label: 'Email', value: tenantProfileData.email },
+                    { label: t('profileUnit'), value: tenantProfileData.unit_number },
+                    { label: t('profileSchool'), value: tenantProfileData.school },
+                    { label: t('profileCompany'), value: tenantProfileData.company },
+                    { label: t('tenantPassport'), value: tenantProfileData.passport_number },
+                    { label: t('tenantLocalId'), value: tenantProfileData.local_id_number },
+                  ].filter(f => f.value).map((f, idx) => (
+                    <div key={idx}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>
+                        {f.label}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-h)', fontWeight: 500 }}>
+                        {f.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Document images */}
+                {(tenantProfileData.document_url || tenantProfileData.student_card_url) && (
+                  <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16 }}>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      {tenantProfileData.document_url && (
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                            {t('tenantDocument')}
+                          </div>
+                          <a href={tenantProfileData.document_url} target="_blank" rel="noopener noreferrer">
+                            <img src={tenantProfileData.document_url} alt="Document"
+                              style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '2px solid var(--glass-border)', cursor: 'pointer' }} />
+                          </a>
+                        </div>
+                      )}
+                      {tenantProfileData.student_card_url && (
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                            {t('tenantStudentCard')}
+                          </div>
+                          <a href={tenantProfileData.student_card_url} target="_blank" rel="noopener noreferrer">
+                            <img src={tenantProfileData.student_card_url} alt="Student Card"
+                              style={{ width: 120, height: 120, borderRadius: 10, objectFit: 'cover', border: '2px solid var(--glass-border)', cursor: 'pointer' }} />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24, fontSize: '0.85rem' }}>
+                {t('tenantNoProfile')}
+              </p>
+            )}
           </div>
         </div>
       )}
