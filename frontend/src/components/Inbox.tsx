@@ -323,12 +323,15 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
     setLoading(true);
     let userId = '';
 
+    const { createClient } = await import('@/utils/supabase/client');
+    const activeSupabase = isMockDatabase ? supabase : createClient();
+
     // Get Auth User ID
     if (isMockDatabase) {
       userId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       setAuthUserId(userId);
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await activeSupabase.auth.getUser();
       if (user) {
         userId = user.id;
         setAuthUserId(userId);
@@ -352,7 +355,7 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       const unreadCount = myNotifications.filter((n: any) => !n.is_read).length;
       if (onUnreadCountChange) onUnreadCountChange(unreadCount);
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await activeSupabase
         .from('user_notifications')
         .select('*')
         .eq('user_id', userId)
@@ -368,12 +371,16 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
     // Load Directory if admin/agent
     if (adminRole) {
       try {
-        if (isMockDatabase) {
-          const mockUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
-          const mockAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        // Query users and admin_users from Supabase (triggers default mock database seeding if in mock mode)
+        const { data: dbUsers, error: usersErr } = await activeSupabase.from('users').select('id, full_name, phone, email');
+        if (usersErr) console.error('[Inbox load directory users error]', usersErr);
+        
+        const { data: dbAdmins, error: adminsErr } = await activeSupabase.from('admin_users').select('id, display_name, email, role, phone, whatsapp');
+        if (adminsErr) console.error('[Inbox load directory admins error]', adminsErr);
 
-          const dir: UserDirectoryItem[] = [];
-          mockUsers.forEach((u: any) => {
+        const dir: UserDirectoryItem[] = [];
+        if (dbUsers) {
+          dbUsers.forEach((u: any) => {
             dir.push({ 
               id: u.id, 
               name: u.full_name || 'Tenant', 
@@ -382,7 +389,9 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
               phone: u.phone || '' 
             });
           });
-          mockAdmins.forEach((a: any) => {
+        }
+        if (dbAdmins) {
+          dbAdmins.forEach((a: any) => {
             dir.push({ 
               id: a.id, 
               name: a.display_name || 'Agent/Admin', 
@@ -392,41 +401,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
               whatsapp: a.whatsapp || '' 
             });
           });
-          setUsersDirectory(dir);
-        } else {
-          // Query users and admin_users from Supabase
-          const { data: dbUsers, error: usersErr } = await supabase.from('users').select('id, full_name, phone, email');
-          if (usersErr) console.error('[Inbox load directory users error]', usersErr);
-          
-          const { data: dbAdmins, error: adminsErr } = await supabase.from('admin_users').select('id, display_name, email, role, phone, whatsapp');
-          if (adminsErr) console.error('[Inbox load directory admins error]', adminsErr);
-
-          const dir: UserDirectoryItem[] = [];
-          if (dbUsers) {
-            dbUsers.forEach((u: any) => {
-              dir.push({ 
-                id: u.id, 
-                name: u.full_name || 'Tenant', 
-                email: u.email || u.phone || 'No Email', 
-                role: 'student', 
-                phone: u.phone || '' 
-              });
-            });
-          }
-          if (dbAdmins) {
-            dbAdmins.forEach((a: any) => {
-              dir.push({ 
-                id: a.id, 
-                name: a.display_name || 'Agent/Admin', 
-                email: a.email || 'No Email', 
-                role: a.role === 'super_admin' ? 'super_admin' : 'agent', 
-                phone: a.phone || '', 
-                whatsapp: a.whatsapp || '' 
-              });
-            });
-          }
-          setUsersDirectory(dir);
         }
+        setUsersDirectory(dir);
       } catch (err) {
         console.error('[Inbox load directory failed]', err);
       }

@@ -4253,7 +4253,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   <div className="glass-card" style={{
                     width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
                     gap: 16, boxShadow: 'var(--card-shadow)', border: '1px solid var(--glass-border)',
-                    position: 'relative', background: 'var(--card-bg)', textAlign: 'left'
+                    position: 'relative', background: 'var(--bg-surface-solid)', textAlign: 'left'
                   }}>
                     <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)' }}>
                       <CheckCircle2 size={20} />
@@ -4323,7 +4323,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   <div className="glass-card" style={{
                     width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
                     gap: 16, boxShadow: 'var(--card-shadow)', border: '1px solid var(--glass-border)',
-                    position: 'relative', background: 'var(--card-bg)', textAlign: 'left'
+                    position: 'relative', background: 'var(--bg-surface-solid)', textAlign: 'left'
                   }}>
                     <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)' }}>
                       <AlertTriangle size={20} />
