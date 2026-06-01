@@ -168,6 +168,57 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
   );
 };
 
+/* ── History Payment Grid (lazy-loaded per lease) ── */
+function HistoryPaymentGrid({ leaseId, lang }: { leaseId: string; lang: string }) {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (isMockDatabase) {
+          const all: any[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+          setPayments(all.filter(p => p.lease_id === leaseId).sort((a: any, b: any) => a.billing_month.localeCompare(b.billing_month)));
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data } = await supabase.from('payment_records').select('id, billing_month, paid, paid_date, status, evidence_url').eq('lease_id', leaseId).order('billing_month');
+          setPayments(data || []);
+        }
+      } catch (e) { console.error('HistoryPaymentGrid load error:', e); }
+      setLoading(false);
+    })();
+  }, [leaseId]);
+
+  if (loading) return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: 8 }}>{lang === 'zh' ? '加载中...' : 'Loading...'}</div>;
+  if (payments.length === 0) return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: 8 }}>{lang === 'zh' ? '暂无付款记录' : 'No payment records'}</div>;
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6 }}>
+      {payments.map(p => {
+        const month = new Date(p.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+        const isPaid = p.paid || p.status === 'approved';
+        const isRejected = p.status === 'rejected';
+        const isPending = p.status === 'pending_review';
+        return (
+          <div key={p.id} style={{
+            padding: '8px 10px', borderRadius: 8, textAlign: 'center', fontSize: '0.72rem',
+            border: `1px solid ${isPaid ? 'rgba(16,185,129,0.3)' : isRejected ? 'rgba(239,68,68,0.3)' : isPending ? 'rgba(245,158,11,0.3)' : 'var(--glass-border)'}`,
+            background: isPaid ? 'rgba(16,185,129,0.06)' : isRejected ? 'rgba(239,68,68,0.06)' : isPending ? 'rgba(245,158,11,0.06)' : 'var(--glass-bg)',
+            color: isPaid ? 'var(--success)' : isRejected ? 'var(--danger)' : isPending ? 'var(--warning)' : 'var(--text-muted)',
+            fontWeight: 600,
+          }}>
+            <div>{month}</div>
+            <div style={{ fontSize: '0.65rem', marginTop: 2 }}>
+              {isPaid ? '✓' : isRejected ? '✕' : isPending ? '⏳' : '—'}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TenantPortal({
   mode = 'lease', 
   onUnreadFeedbackCountChange 
@@ -231,6 +282,7 @@ export default function TenantPortal({
 
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   const [leaseTab, setLeaseTab] = useState<'current' | 'history'>('current');
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
 
   const handleTerminateLease = async () => {
@@ -619,12 +671,12 @@ export default function TenantPortal({
               .select('*')
               .eq('lease_id', leaseData.id)
               .order('billing_month', { ascending: true }),
-            supabase.from('units').select('id, community_id, room_type, agent_id, landlord_qr_code, landlord_bank_info').eq('id', leaseData.unit_id).single(),
+            supabase.from('units').select('id, community_id, room_type, agent_id, landlord_qr_code, landlord_bank_info, communities(id, name)').eq('id', leaseData.unit_id).single(),
           ]);
           setPayments(payRes.data || []);
           if (unitRes.data) {
-            setUnit(unitRes.data);
-            const { data: commData } = await supabase.from('communities').select('id, name').eq('id', unitRes.data.community_id).single();
+            const { communities: commData, ...unitRow } = unitRes.data as any;
+            setUnit(unitRow);
             if (commData) setCommunity(commData);
           }
 
@@ -701,7 +753,7 @@ export default function TenantPortal({
         setRoommates([]);
       }
     }
-    await loadMyFeedbacks();
+    if (mode === 'maintenance') await loadMyFeedbacks();
     setLoading(false);
   };
 
@@ -1274,41 +1326,65 @@ export default function TenantPortal({
           {/* Lease History — history tab only */}
           {leaseTab === 'history' && (
             leaseHistory.length > 0 ? (
-              <div className="glass-card">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {leaseHistory.map(h => {
-                    const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
-                      expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
-                      terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
-                      completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
-                    };
-                    const cfg = statusConfig[h.status] || statusConfig.completed;
-                    return (
-                      <div key={h.id} style={{
-                        padding: '12px 16px', borderRadius: 10,
-                        border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
-                        background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
-                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {leaseHistory.map(h => {
+                  const isExpanded = expandedHistoryId === h.id;
+                  const statusConfig: Record<string, { bg: string; color: string; border: string; label: string; labelZh: string; note: string; noteEn: string }> = {
+                    expired: { bg: 'rgba(245,158,11,0.02)', color: 'var(--warning)', border: 'rgba(245,158,11,0.3)', label: 'Expired', labelZh: '已到期', note: '⏰ 合约已到期', noteEn: '⏰ Lease expired' },
+                    terminated: { bg: 'rgba(239,68,68,0.02)', color: 'var(--danger)', border: 'rgba(239,68,68,0.3)', label: 'Terminated', labelZh: '已终止', note: '⚠️ 租客已手动终止', noteEn: '⚠️ Terminated by tenant' },
+                    completed: { bg: 'rgba(16,185,129,0.01)', color: 'var(--success)', border: 'rgba(16,185,129,0.2)', label: 'Archived', labelZh: '已归档', note: '✅ 已结算归档', noteEn: '✅ Settled & archived' },
+                  };
+                  const cfg = statusConfig[h.status] || statusConfig.completed;
+                  const leaseDuration = (() => {
+                    const s = new Date(h.start_date); const e = new Date(h.end_date);
+                    const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+                    return months > 0 ? months : 1;
+                  })();
+                  return (
+                    <div key={h.id} style={{
+                      borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                      border: `1px solid ${cfg.border}`, background: cfg.bg,
+                    }}>
+                      {/* Card header — clickable */}
+                      <div onClick={() => setExpandedHistoryId(isExpanded ? null : h.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)', transition: 'background 0.2s' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>
+                              RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: cfg.bg, color: cfg.color, fontWeight: 600, border: `1px solid ${cfg.border}` }}>
+                              {lang === 'zh' ? cfg.labelZh : cfg.label}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
-                            {lang === 'zh' ? cfg.labelZh : cfg.label}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {h.start_date} → {h.end_date}
-                        </div>
-                        {h.unit_number && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
-                            {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
+                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
                           </div>
-                        )}
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                            {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: cfg.color, marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
+                            {lang === 'zh' ? cfg.note : cfg.noteEn}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {lang === 'zh' ? '押金' : 'Deposit'}: <strong style={{ color: 'var(--text-h)' }}>RM {h.deposit_amount?.toLocaleString()}</strong>
+                        </div>
+                        {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Expanded: payment history */}
+                      {isExpanded && (
+                        <div style={{ padding: '12px 16px', borderTop: `1px solid ${cfg.border}`, background: 'var(--bg-surface)' }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>
+                            {lang === 'zh' ? '付款记录' : 'Payment History'}
+                          </div>
+                          <HistoryPaymentGrid leaseId={h.id} lang={lang} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
@@ -1965,41 +2041,65 @@ export default function TenantPortal({
           {/* Lease History — history tab only */}
           {leaseTab === 'history' && (
             leaseHistory.length > 0 ? (
-              <div className="glass-card">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {leaseHistory.map(h => {
-                    const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
-                      expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
-                      terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
-                      completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
-                    };
-                    const cfg = statusConfig[h.status] || statusConfig.completed;
-                    return (
-                      <div key={h.id} style={{
-                        padding: '12px 16px', borderRadius: 10,
-                        border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
-                        background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
-                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {leaseHistory.map(h => {
+                  const isExpanded = expandedHistoryId === h.id;
+                  const statusConfig: Record<string, { bg: string; color: string; border: string; label: string; labelZh: string; note: string; noteEn: string }> = {
+                    expired: { bg: 'rgba(245,158,11,0.02)', color: 'var(--warning)', border: 'rgba(245,158,11,0.3)', label: 'Expired', labelZh: '已到期', note: '⏰ 合约已到期', noteEn: '⏰ Lease expired' },
+                    terminated: { bg: 'rgba(239,68,68,0.02)', color: 'var(--danger)', border: 'rgba(239,68,68,0.3)', label: 'Terminated', labelZh: '已终止', note: '⚠️ 租客已手动终止', noteEn: '⚠️ Terminated by tenant' },
+                    completed: { bg: 'rgba(16,185,129,0.01)', color: 'var(--success)', border: 'rgba(16,185,129,0.2)', label: 'Archived', labelZh: '已归档', note: '✅ 已结算归档', noteEn: '✅ Settled & archived' },
+                  };
+                  const cfg = statusConfig[h.status] || statusConfig.completed;
+                  const leaseDuration = (() => {
+                    const s = new Date(h.start_date); const e = new Date(h.end_date);
+                    const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+                    return months > 0 ? months : 1;
+                  })();
+                  return (
+                    <div key={h.id} style={{
+                      borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                      border: `1px solid ${cfg.border}`, background: cfg.bg,
+                    }}>
+                      {/* Card header — clickable */}
+                      <div onClick={() => setExpandedHistoryId(isExpanded ? null : h.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)', transition: 'background 0.2s' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>
+                              RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: cfg.bg, color: cfg.color, fontWeight: 600, border: `1px solid ${cfg.border}` }}>
+                              {lang === 'zh' ? cfg.labelZh : cfg.label}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
-                            {lang === 'zh' ? cfg.labelZh : cfg.label}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {h.start_date} → {h.end_date}
-                        </div>
-                        {h.unit_number && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
-                            {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
+                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
                           </div>
-                        )}
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                            {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: cfg.color, marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
+                            {lang === 'zh' ? cfg.note : cfg.noteEn}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {lang === 'zh' ? '押金' : 'Deposit'}: <strong style={{ color: 'var(--text-h)' }}>RM {h.deposit_amount?.toLocaleString()}</strong>
+                        </div>
+                        {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Expanded: payment history */}
+                      {isExpanded && (
+                        <div style={{ padding: '12px 16px', borderTop: `1px solid ${cfg.border}`, background: 'var(--bg-surface)' }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>
+                            {lang === 'zh' ? '付款记录' : 'Payment History'}
+                          </div>
+                          <HistoryPaymentGrid leaseId={h.id} lang={lang} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
