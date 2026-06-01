@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Home, FileText, DollarSign, AlertTriangle, Wrench, TrendingUp, Clock, Users, Building2, BarChart3, HelpCircle } from 'lucide-react';
+import { Home, FileText, DollarSign, AlertTriangle, Wrench, TrendingUp, Clock, Users, Building2, BarChart3, HelpCircle, ChevronRight } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import {
   ResponsiveContainer,
@@ -35,6 +35,7 @@ interface DashboardProps {
   communities: Community[];
   visibleUnitIds: string[];
   visibleLeaseIds: string[];
+  onNavigate?: (tab: string) => void;
 }
 
 // Color palette using design system CSS variables for perfect light/dark mode adaptability
@@ -49,7 +50,7 @@ const COLORS = [
 
 export default function Dashboard({
   units, leases, interests, feedbacks, communities,
-  visibleUnitIds, visibleLeaseIds,
+  visibleUnitIds, visibleLeaseIds, onNavigate,
 }: DashboardProps) {
   const { lang } = useApp();
   const [timeRange, setTimeRange] = useState<'1m' | '6m' | '1y' | 'custom'>('6m');
@@ -177,10 +178,10 @@ export default function Dashboard({
   }, [feedbacks]);
 
   const urgentItems = useMemo(() => {
-    const items: { icon: React.ReactNode; text: string; color: string }[] = [];
-    if (kpis.overdue > 0) items.push({ icon: <DollarSign size={14} />, text: `${kpis.overdue} ${lang === 'zh' ? '笔账单逾期未付' : 'bills overdue'}`, color: 'var(--danger)' });
-    if (maintenanceStats.open > 0) items.push({ icon: <Wrench size={14} />, text: `${maintenanceStats.open} ${lang === 'zh' ? '条报修工单待处理' : 'tickets open'}`, color: 'var(--warning)' });
-    if (kpis.expiringLeases > 0) items.push({ icon: <Clock size={14} />, text: `${kpis.expiringLeases} ${lang === 'zh' ? '个租约即将到期' : 'leases expiring'}`, color: 'var(--primary)' });
+    const items: { icon: React.ReactNode; label: string; count: number; color: string; bg: string; tab: string }[] = [];
+    if (kpis.overdue > 0) items.push({ icon: <DollarSign size={20} />, label: lang === 'zh' ? '账单逾期' : 'Overdue', count: kpis.overdue, color: 'var(--danger)', bg: 'rgba(239,68,68,0.08)', tab: 'leases' });
+    if (maintenanceStats.open > 0) items.push({ icon: <Wrench size={20} />, label: lang === 'zh' ? '报修待处理' : 'Open Tickets', count: maintenanceStats.open, color: 'var(--warning)', bg: 'rgba(245,158,11,0.08)', tab: 'feedback' });
+    if (kpis.expiringLeases > 0) items.push({ icon: <Clock size={20} />, label: lang === 'zh' ? '即将到期' : 'Expiring', count: kpis.expiringLeases, color: 'var(--primary)', bg: 'rgba(20,184,166,0.08)', tab: 'leases' });
     return items;
   }, [kpis, maintenanceStats, lang]);
 
@@ -626,17 +627,37 @@ export default function Dashboard({
 
       {/* Urgent Items */}
       {urgentItems.length > 0 && (
-        <div style={{ ...card, borderLeft: '3px solid var(--danger)', background: 'var(--danger-light)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <AlertTriangle size={16} style={{ color: 'var(--danger)' }} />
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '待办事项' : 'Action Required'}</span>
           </div>
-          {urgentItems.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', padding: '4px 0' }}>
-              <div style={{ color: item.color, display: 'flex' }}>{item.icon}</div>
-              <span style={{ color: item.color, fontWeight: 500 }}>{item.text}</span>
-            </div>
-          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${urgentItems.length}, 1fr)`, gap: 12 }}>
+            {urgentItems.map((item, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onNavigate?.(item.tab)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '16px 18px', borderRadius: 12,
+                  background: item.bg, border: `1px solid ${item.color}22`,
+                  cursor: onNavigate ? 'pointer' : 'default', textAlign: 'left',
+                  transition: 'all 0.2s ease', fontFamily: 'inherit',
+                  borderLeft: `3px solid ${item.color}`,
+                }}
+                onMouseEnter={e => { if (onNavigate) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 4px 12px ${item.color}18`; } }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <div style={{ color: item.color, display: 'flex', opacity: 0.85 }}>{item.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: item.color, lineHeight: 1 }}>{item.count}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, fontWeight: 500 }}>{item.label}</div>
+                </div>
+                {onNavigate && <ChevronRight size={16} style={{ color: 'var(--text-muted)', flexShrink: 0, opacity: 0.5 }} />}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

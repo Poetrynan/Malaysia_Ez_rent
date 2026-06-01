@@ -1282,7 +1282,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           <div style={{ padding: '12px', background: 'rgba(59,130,246,0.06)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: '14px' }}>ℹ️</span>
                             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                              {lang === 'zh' ? '租房操作仅限租客使用，中介可通过"意向管理"审核租客申请。' : 'Renting is for tenants only. Agents can review applications via "Interest Management".'}
+                              {lang === 'zh' ? '租房操作仅限租客使用，中介可通过"租约 & 财务台账"中的"租客意向"审核租客申请。' : 'Renting is for tenants only. Agents can review applications via "Interest Management".'}
                             </span>
                           </div>
                         ) : (
