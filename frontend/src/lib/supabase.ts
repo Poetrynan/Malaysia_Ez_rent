@@ -55,7 +55,7 @@ const DEFAULT_PAYMENTS = [
 ];
 
 const DEFAULT_USERS = [
-  { id: 'tenant-123', email: 'student@ezrent.my', phone: '+8618812345678', full_name: 'Alex Lim', avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Alex', created_at: new Date().toISOString() }
+  { id: 'tenant-123', email: 'tenant@ezrent.my', phone: '+8618812345678', full_name: 'Alex Lim', avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Alex', created_at: new Date().toISOString() }
 ];
 
 const DEFAULT_ADMINS = [
@@ -444,7 +444,7 @@ const mockSupabase = {
       if (mockRole === 'admin') {
         return { data: { user: { id: 'admin-999', email: 'admin@ezrent.my' } }, error: null };
       }
-      return { data: { user: { id: 'tenant-123', email: 'student@ezrent.my' } }, error: null };
+      return { data: { user: { id: 'tenant-123', email: 'tenant@ezrent.my' } }, error: null };
     },
     async signInWithOtp({ email, options }: { email: string; options?: { emailRedirectTo?: string } }) {
       // Mock: simulate Magic Link send, auto-login after delay
@@ -476,7 +476,7 @@ const mockSupabase = {
             const loggedIn = e.newValue;
             if (loggedIn) {
               const role = localStorage.getItem('ez_user_role') || 'student';
-              const email = localStorage.getItem('ez_user_email') || 'student@ezrent.my';
+              const email = localStorage.getItem('ez_user_email') || 'tenant@ezrent.my';
               callback('SIGNED_IN', { user: { id: role === 'admin' ? 'admin-999' : 'tenant-123', email } });
             } else {
               callback('SIGNED_OUT', null);
@@ -493,7 +493,7 @@ const mockSupabase = {
         const loggedIn = localStorage.getItem('ez_logged_in');
         if (loggedIn) {
           const role = localStorage.getItem('ez_user_role') || 'student';
-          const email = localStorage.getItem('ez_user_email') || (role === 'admin' ? 'admin@ezrent.my' : 'student@ezrent.my');
+          const email = localStorage.getItem('ez_user_email') || (role === 'admin' ? 'admin@ezrent.my' : 'tenant@ezrent.my');
           return { data: { session: { user: { id: role === 'admin' ? 'admin-999' : 'tenant-123', email } } }, error: null };
         }
       }
@@ -502,7 +502,7 @@ const mockSupabase = {
     async exchangeCodeForSession(code: string) {
       // Mock: treat any code as valid, auto-login as student
       if (typeof window !== 'undefined') {
-        const email = localStorage.getItem('ez_user_email') || 'student@ezrent.my';
+        const email = localStorage.getItem('ez_user_email') || 'tenant@ezrent.my';
         const role = email === 'admin@ezrent.my' ? 'admin' : 'student';
         localStorage.setItem('ez_user_role', role);
         localStorage.setItem('ez_logged_in', '1');

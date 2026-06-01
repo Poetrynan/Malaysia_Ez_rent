@@ -1,6 +1,6 @@
 import json
 import asyncio
-from typing import AsyncGenerator, Dict, Any, List
+from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.config import Config
 from app.tools import (
     calculate_commute,
@@ -32,15 +32,15 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
             "1. 🔍 **浏览/搜索房源**：请直接点击上方导航栏的 **“房源列表”** 页面，您可以利用筛选条件和地图直接查找最心仪的房间。\n"
             "2. 💳 **查看账单/交租**：请直接点击上方导航栏的 **“我的租约”** 页面，里面有您实时的月度收租账单台账，并提供付款扫码与凭证上传功能。\n\n"
             "---\n\n"
-            "作为您的 **AI 留学助手**，我当前支持以下核心功能，您可以随时向我提问：\n\n"
+            "作为您的 **AI 租房助手**，我当前支持以下核心功能，您可以随时向我提问：\n\n"
             "- 🚇 **交通通勤测算**：根据您输入的出发地址（如小区名字、地标），帮您测算到双威、莫纳什等校区的通勤路程与时间。\n"
             "  *示例 Prompt*: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
             "- 💱 **实时汇率换算**：快速查询和换算令吉（MYR）至人民币（CNY）或美元（USD）的最新汇率。\n"
             "  *示例 Prompt*: `3000令吉等于多少人民币？`\n"
             "- 📅 **大马节假日查询**：查询马来西亚官方的公众假期，方便您规划签证办理或银行办事时间。\n"
             "  *示例 Prompt*: `查一下2026年马来西亚有哪些国定假日？`\n"
-            "- 🌐 **留学生活指南**：解答关于大马电话卡、公交卡办理、生活费水平等各种生活常识。\n"
-            "  *示例 Prompt*: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`"
+            "- 🌐 **租客生活指南**：解答关于大马电话卡、公交卡办理、生活费水平等各种生活常识。\n"
+            "  *示例 Prompt*: `租客在吉隆坡怎么办理 Touch 'n Go 公交卡？`"
         )
         for char in resp:
             yield sse_event({"type": "text", "delta": char})
@@ -167,7 +167,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         yield sse_event({"type": "tool_result", "tool_name": "get_web_realtime_info", "result": web_result})
         await asyncio.sleep(0.5)
         
-        intro = "根据马来西亚最新留学与生活资讯：\n\n"
+        intro = "根据马来西亚最新租房与生活资讯：\n\n"
         for char in intro:
             yield sse_event({"type": "text", "delta": char})
             await asyncio.sleep(0.005)
@@ -267,8 +267,8 @@ async def live_agent_stream(
         {
             "role": "system",
             "content": (
-                "You are an expert AI Assistant for international students in Malaysia. "
-                "Your role is to assist students with room recommendations, commute calculations, exchange rates, holiday schedules, and general student life information.\n\n"
+                "You are an expert AI Assistant for tenants and renters in Malaysia. "
+                "Your role is to assist tenants with room recommendations, commute calculations, exchange rates, holiday schedules, and general life information.\n\n"
                 "## TOOL USAGE RULES (CRITICAL)\n"
                 "- You MUST resolve user abbreviations and casual language into FULL, PROPER names BEFORE calling any tool.\n"
                 "  Examples: 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers KLCC', 'sunway geo' → 'Sunway Geo Residences'.\n"
@@ -287,8 +287,8 @@ async def live_agent_stream(
                 "     示例: `3000令吉等于多少人民币？`\n"
                 "   - 📅 **大马节假日查询**：查询马来西亚公众假期。\n"
                 "     示例: `查一下2026年马来西亚有哪些国定假日？`\n"
-                "   - 🌐 **留学生活指南**：解答电话卡、公交卡、生活费等生活常识。\n"
-                "     示例: `留学生在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
+                "   - 🌐 **租客生活指南**：解答电话卡、公交卡、生活费等生活常识。\n"
+                "     示例: `租客在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
                 "3. ALWAYS explain your thoughts briefly in Chinese before invoking any tool.\n"
                 "4. Answer clearly in Chinese, with structured formatting.\n"
                 "5. For currency conversion, use convert_currency_frankfurter.\n"

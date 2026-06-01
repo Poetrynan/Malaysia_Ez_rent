@@ -365,37 +365,70 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       }
     }
 
-    // Load Directory if super admin
-    if (adminRole === 'super_admin') {
-      if (isMockDatabase) {
-        const mockUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
-        const mockAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+    // Load Directory if admin/agent
+    if (adminRole) {
+      try {
+        if (isMockDatabase) {
+          const mockUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
+          const mockAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
 
-        const dir: UserDirectoryItem[] = [];
-        mockUsers.forEach((u: any) => {
-          dir.push({ id: u.id, name: u.full_name || 'Tenant', email: u.email || u.phone || 'No Email', role: 'student', phone: u.phone });
-        });
-        mockAdmins.forEach((a: any) => {
-          dir.push({ id: a.id, name: a.display_name || 'Agent/Admin', email: a.email, role: a.role === 'super_admin' ? 'super_admin' : 'agent', phone: a.phone, whatsapp: a.whatsapp });
-        });
-        setUsersDirectory(dir);
-      } else {
-        // Query users and admin_users from Supabase
-        const { data: dbUsers } = await supabase.from('users').select('id, full_name, phone, email');
-        const { data: dbAdmins } = await supabase.from('admin_users').select('id, display_name, email, role, phone, whatsapp');
+          const dir: UserDirectoryItem[] = [];
+          mockUsers.forEach((u: any) => {
+            dir.push({ 
+              id: u.id, 
+              name: u.full_name || 'Tenant', 
+              email: u.email || u.phone || 'No Email', 
+              role: 'student', 
+              phone: u.phone || '' 
+            });
+          });
+          mockAdmins.forEach((a: any) => {
+            dir.push({ 
+              id: a.id, 
+              name: a.display_name || 'Agent/Admin', 
+              email: a.email || 'No Email', 
+              role: a.role === 'super_admin' ? 'super_admin' : 'agent', 
+              phone: a.phone || '', 
+              whatsapp: a.whatsapp || '' 
+            });
+          });
+          setUsersDirectory(dir);
+        } else {
+          // Query users and admin_users from Supabase
+          const { data: dbUsers, error: usersErr } = await supabase.from('users').select('id, full_name, phone, email');
+          if (usersErr) console.error('[Inbox load directory users error]', usersErr);
+          
+          const { data: dbAdmins, error: adminsErr } = await supabase.from('admin_users').select('id, display_name, email, role, phone, whatsapp');
+          if (adminsErr) console.error('[Inbox load directory admins error]', adminsErr);
 
-        const dir: UserDirectoryItem[] = [];
-        if (dbUsers) {
-          dbUsers.forEach((u: any) => {
-            dir.push({ id: u.id, name: u.full_name || 'Tenant', email: u.email || u.phone || 'No Email', role: 'student', phone: u.phone });
-          });
+          const dir: UserDirectoryItem[] = [];
+          if (dbUsers) {
+            dbUsers.forEach((u: any) => {
+              dir.push({ 
+                id: u.id, 
+                name: u.full_name || 'Tenant', 
+                email: u.email || u.phone || 'No Email', 
+                role: 'student', 
+                phone: u.phone || '' 
+              });
+            });
+          }
+          if (dbAdmins) {
+            dbAdmins.forEach((a: any) => {
+              dir.push({ 
+                id: a.id, 
+                name: a.display_name || 'Agent/Admin', 
+                email: a.email || 'No Email', 
+                role: a.role === 'super_admin' ? 'super_admin' : 'agent', 
+                phone: a.phone || '', 
+                whatsapp: a.whatsapp || '' 
+              });
+            });
+          }
+          setUsersDirectory(dir);
         }
-        if (dbAdmins) {
-          dbAdmins.forEach((a: any) => {
-            dir.push({ id: a.id, name: a.display_name || 'Agent/Admin', email: a.email, role: a.role === 'super_admin' ? 'super_admin' : 'agent', phone: a.phone, whatsapp: a.whatsapp });
-          });
-        }
-        setUsersDirectory(dir);
+      } catch (err) {
+        console.error('[Inbox load directory failed]', err);
       }
     }
 
@@ -610,8 +643,12 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
   });
 
   const filteredDirectory = usersDirectory.filter(u => {
-    const q = searchQuery.toLowerCase();
-    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    const nameStr = (u.name || '').toLowerCase();
+    const emailStr = (u.email || '').toLowerCase();
+    const phoneStr = (u.phone || '').toLowerCase();
+    return nameStr.includes(q) || emailStr.includes(q) || phoneStr.includes(q);
   });
 
   return (

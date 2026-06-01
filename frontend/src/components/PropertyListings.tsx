@@ -737,7 +737,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
         next[existingIdx] = { ...next[existingIdx], note, status: 'interested' };
       } else {
         next.push({
-          id: `i-${Date.now()}`, unit_id: unitId, user_id: 'tenant-123', email: 'student@ezrent.my',
+          id: `i-${Date.now()}`, unit_id: unitId, user_id: 'tenant-123', email: 'tenant@ezrent.my',
           full_name: 'Alex Lim', note, status: 'interested', created_at: new Date().toISOString(),
         });
       }
@@ -900,7 +900,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
     const userProfile = {
       full_name: enquiryName.trim(),
       phone: enquiryPhone.trim(),
-      email: isMockDatabase ? 'student@ezrent.my' : ''
+      email: isMockDatabase ? 'tenant@ezrent.my' : ''
     };
     localStorage.setItem('ez_user_profile', JSON.stringify(userProfile));
 

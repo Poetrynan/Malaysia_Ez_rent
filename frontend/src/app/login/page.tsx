@@ -63,7 +63,7 @@ export default function LoginPage() {
   };
 
   const handleMockLogin = (role: 'student' | 'admin') => {
-    localStorage.setItem('ez_user_email', email.trim() || (role === 'admin' ? 'admin@ezrent.my' : 'student@ezrent.my'));
+    localStorage.setItem('ez_user_email', email.trim() || (role === 'admin' ? 'admin@ezrent.my' : 'tenant@ezrent.my'));
     localStorage.setItem('ez_user_role', role);
     localStorage.setItem('ez_logged_in', '1');
     localStorage.setItem('ez_tenant_id', role === 'admin' ? 'admin-999' : 'tenant-123');

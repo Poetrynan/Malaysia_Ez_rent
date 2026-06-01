@@ -467,7 +467,45 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
 
-  const approvePayment = async (paymentId: string) => {
+  // Payment review approval confirmation modal states
+  const [paymentApproveConfirmRecord, setPaymentApproveConfirmRecord] = useState<Payment | null>(null);
+  const [payApproveSendUserNotif, setPayApproveSendUserNotif] = useState(true);
+  const [payApproveNotifTitle, setPayApproveNotifTitle] = useState('');
+  const [payApproveNotifContent, setPayApproveNotifContent] = useState('');
+  const [payApproveSendAllBroadcast, setPayApproveSendAllBroadcast] = useState(false);
+
+  // Payment review rejection confirmation modal states
+  const [paymentRejectConfirmRecord, setPaymentRejectConfirmRecord] = useState<Payment | null>(null);
+  const [payRejectReasonText, setPayRejectReasonText] = useState('');
+  const [payRejectSendUserNotif, setPayRejectSendUserNotif] = useState(true);
+  const [payRejectNotifTitle, setPayRejectNotifTitle] = useState('');
+  const [payRejectNotifContent, setPayRejectNotifContent] = useState('');
+
+  const openApprovePaymentModal = (payment: Payment) => {
+    setPaymentApproveConfirmRecord(payment);
+    const monthStr = new Date(payment.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+    setPayApproveNotifTitle(lang === 'zh' ? `账单通过：您的房租付款已确认` : `Rent payment approved`);
+    setPayApproveNotifContent(lang === 'zh' 
+      ? `您好，您提交的账期为 ${monthStr} 的房租付款凭证已成功通过审核，该账期已更新为“已缴”状态。感谢您的配合！` 
+      : `Hello, your rent payment voucher for billing month ${monthStr} has been successfully verified. The status is now updated to "Paid". Thank you!`);
+  };
+
+  const openRejectPaymentModal = (payment: Payment) => {
+    setPaymentRejectConfirmRecord(payment);
+    setPayRejectReasonText('');
+    const monthStr = new Date(payment.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+    setPayRejectNotifTitle(lang === 'zh' ? `账单退回：请重新上传付款凭证` : `Rent payment rejected`);
+    setPayRejectNotifContent(lang === 'zh' 
+      ? `您好，非常抱歉地通知您，您提交的账期为 ${monthStr} 的房租付款凭证未通过审核。原因：[请在下方输入拒绝原因]\n请重新确认付款金额并上传正确的付款凭证，或联系管理员/中介。` 
+      : `Hello, we regret to inform you that your rent payment voucher for billing month ${monthStr} was rejected.\nReason: [Please enter reason below]\nPlease re-upload correct payment evidence, or contact support.`);
+  };
+
+  const commitApprovePayment = async () => {
+    if (!paymentApproveConfirmRecord) return;
+    const paymentId = paymentApproveConfirmRecord.id;
+    const lease = leases.find(l => l.id === paymentApproveConfirmRecord.lease_id);
+    const tenantId = lease?.tenant_id;
+
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -479,6 +517,38 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           admin_notes: adminNote.trim() || null,
         }).eq('id', paymentId);
         if (error) { showToast(error.message, 'error'); return; }
+
+        if (payApproveSendUserNotif && tenantId) {
+          await supabase.from('user_notifications').insert({
+            user_id: tenantId,
+            title: payApproveNotifTitle,
+            content: payApproveNotifContent,
+            type: 'system',
+            is_read: false
+          });
+        }
+
+        if (payApproveSendAllBroadcast) {
+          const { data: dbUsers } = await supabase.from('users').select('id');
+          const { data: dbAdmins } = await supabase.from('admin_users').select('id');
+          const allIds = [
+            ...(dbUsers || []).map((u: any) => u.id),
+            ...(dbAdmins || []).map((a: any) => a.id)
+          ];
+          const monthStr = new Date(paymentApproveConfirmRecord.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+          const rows = allIds.map(uid => ({
+            user_id: uid,
+            title: lang === 'zh' ? `公告：有新的房租对账已完成审核` : `Announcement: Rent payment verified`,
+            content: lang === 'zh'
+              ? `恭喜！系统已顺利完成本月 ${monthStr} 的部分房租对账。感谢您的及时缴租！`
+              : `System has verified some rent payments for month ${monthStr}. Thank you for paying on time!`,
+            type: 'announcement',
+            is_read: false
+          }));
+          if (rows.length > 0) {
+            await supabase.from('user_notifications').insert(rows);
+          }
+        }
       } catch (e: any) { showToast(e.message, 'error'); return; }
     } else {
       const all: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
@@ -490,14 +560,57 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (adminNote.trim()) all[idx].admin_notes = adminNote.trim();
         localStorage.setItem('ez_payments', JSON.stringify(all));
       }
+
+      if (payApproveSendUserNotif && tenantId) {
+        const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+        notifs.push({
+          id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+          user_id: tenantId,
+          title: payApproveNotifTitle,
+          content: payApproveNotifContent,
+          type: 'system',
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+      }
+
+      if (payApproveSendAllBroadcast) {
+        const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+        const mockUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
+        const mockAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        const allIds = [...mockUsers.map((u: any) => u.id), ...mockAdmins.map((a: any) => a.id)];
+        const monthStr = new Date(paymentApproveConfirmRecord.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+        allIds.forEach(uid => {
+          notifs.push({
+            id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+            user_id: uid,
+            title: lang === 'zh' ? `公告：有新的房租对账已完成审核` : `Announcement: Rent payment verified`,
+            content: lang === 'zh'
+              ? `恭喜！系统已顺利完成本月 ${monthStr} 的部分房租对账。感谢您的及时缴租！`
+              : `System has verified some rent payments for month ${monthStr}. Thank you for paying on time!`,
+            type: 'announcement',
+            is_read: false,
+            created_at: new Date().toISOString()
+          });
+        });
+        localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+      }
     }
+
+    setPaymentApproveConfirmRecord(null);
     setReviewingPayment(null);
     setAdminNote('');
     loadAll();
-    showToast(lang === 'zh' ? '审核已通过！可在下方“有效租约 & 收租核查表”展开该租约查看详情。' : 'Review approved! You can expand this lease in the "Active Leases" table below to check details.', 'success');
+    showToast(lang === 'zh' ? '审核已通过并已成功发送通知/公告！' : 'Review approved and notification sent successfully!', 'success');
   };
 
-  const rejectPayment = async (paymentId: string) => {
+  const commitRejectPayment = async () => {
+    if (!paymentRejectConfirmRecord) return;
+    const paymentId = paymentRejectConfirmRecord.id;
+    const lease = leases.find(l => l.id === paymentRejectConfirmRecord.lease_id);
+    const tenantId = lease?.tenant_id;
+
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -509,6 +622,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           admin_notes: adminNote.trim() || null,
         }).eq('id', paymentId);
         if (error) { showToast(error.message, 'error'); return; }
+
+        if (payRejectSendUserNotif && tenantId) {
+          await supabase.from('user_notifications').insert({
+            user_id: tenantId,
+            title: payRejectNotifTitle,
+            content: payRejectNotifContent,
+            type: 'system',
+            is_read: false
+          });
+        }
       } catch (e: any) { showToast(e.message, 'error'); return; }
     } else {
       const all: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
@@ -520,11 +643,27 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (adminNote.trim()) all[idx].admin_notes = adminNote.trim();
         localStorage.setItem('ez_payments', JSON.stringify(all));
       }
+
+      if (payRejectSendUserNotif && tenantId) {
+        const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+        notifs.push({
+          id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+          user_id: tenantId,
+          title: payRejectNotifTitle,
+          content: payRejectNotifContent,
+          type: 'system',
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+      }
     }
+
+    setPaymentRejectConfirmRecord(null);
     setReviewingPayment(null);
     setAdminNote('');
     loadAll();
-    showToast(lang === 'zh' ? '审核已驳回！可在下方“有效租约 & 收租核查表”展开该租约查看详情。' : 'Review rejected! You can expand this lease in the "Active Leases" table below to check details.', 'warning');
+    showToast(lang === 'zh' ? '审核已拒绝并已向租客发送驳回通知！' : 'Review rejected and notification sent to tenant!', 'warning');
   };
 
   const clearEvidence = (paymentId: string) => {
@@ -4600,11 +4739,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => approvePayment(reviewingPayment.id)}
+              <button onClick={() => openApprovePaymentModal(reviewingPayment)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', borderRadius: 8, border: 'none', background: 'var(--success)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}>
                 <CheckCircle2 size={16} /> {t('reviewApprove')}
               </button>
-              <button onClick={() => rejectPayment(reviewingPayment.id)}
+              <button onClick={() => openRejectPaymentModal(reviewingPayment)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}>
                 <XCircle size={16} /> {t('reviewReject')}
               </button>
@@ -4723,6 +4862,205 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 }} 
                 className="btn btn-primary" 
                 style={{ flex: 1, padding: '10px', background: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 700 }}
+              >
+                {t('confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Approval Confirmation Modal ── */}
+      {paymentApproveConfirmRecord && (
+        <div className="modal-overlay" onClick={() => setPaymentApproveConfirmRecord(null)} style={{ zIndex: 500 }}>
+          <div className="modal-content" style={{ width: 480, maxWidth: '95vw', textAlign: 'left', padding: '24px' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 16, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={20} style={{ color: 'var(--success)' }} />
+              {lang === 'zh' ? '确认通过付款审核吗？' : 'Confirm Payment Approval?'}
+            </h3>
+            
+            <div style={{ background: 'var(--primary-light)', padding: '12px 16px', borderRadius: 10, border: '1px solid var(--glass-border)', marginBottom: 16 }}>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-h)', fontWeight: 600 }}>
+                {lang === 'zh' ? '对账账期：' : 'Billing Month: '}
+                <span style={{ color: 'var(--primary)' }}>
+                  {new Date(paymentApproveConfirmRecord.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' })}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                {lang === 'zh' ? '租客姓名：' : 'Tenant Name: '} 
+                {leases.find(l => l.id === paymentApproveConfirmRecord.lease_id)?.tenantName || (lang === 'zh' ? '租客' : 'Tenant')}
+              </div>
+            </div>
+
+            {/* Checkbox: Send User Notification */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <input
+                type="checkbox"
+                id="payApproveSendUserNotif"
+                checked={payApproveSendUserNotif}
+                onChange={e => setPayApproveSendUserNotif(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="payApproveSendUserNotif" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-h)', cursor: 'pointer' }}>
+                {lang === 'zh' ? '发送系统通知给该租客' : 'Send system notification to tenant'}
+              </label>
+            </div>
+
+            {payApproveSendUserNotif && (
+              <div style={{ border: '1px solid var(--glass-border)', padding: 12, borderRadius: 8, background: 'rgba(0,0,0,0.1)', marginBottom: 16 }}>
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '通知标题' : 'Notification Title'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={payApproveNotifTitle}
+                    onChange={e => setPayApproveNotifTitle(e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '6px 10px' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '通知内容' : 'Notification Content'}</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    value={payApproveNotifContent}
+                    onChange={e => setPayApproveNotifContent(e.target.value)}
+                    style={{ fontSize: '0.82rem', padding: '6px 10px', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Checkbox: Send Platform Broadcast */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <input
+                type="checkbox"
+                id="payApproveSendAllBroadcast"
+                checked={payApproveSendAllBroadcast}
+                onChange={e => setPayApproveSendAllBroadcast(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="payApproveSendAllBroadcast" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-h)', cursor: 'pointer' }}>
+                {lang === 'zh' ? '同时向全员发布房租对账公告' : 'Broadcast announcement to everyone'}
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setPaymentApproveConfirmRecord(null)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '10px' }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={commitApprovePayment} 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '10px', background: 'var(--success)', borderColor: 'var(--success)', fontWeight: 700 }}
+              >
+                {t('confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Rejection Confirmation Modal ── */}
+      {paymentRejectConfirmRecord && (
+        <div className="modal-overlay" onClick={() => setPaymentRejectConfirmRecord(null)} style={{ zIndex: 500 }}>
+          <div className="modal-content" style={{ width: 480, maxWidth: '95vw', textAlign: 'left', padding: '24px' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 16, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={20} style={{ color: 'var(--danger)' }} />
+              {lang === 'zh' ? '确认拒绝/退回付款凭证吗？' : 'Confirm Payment Rejection?'}
+            </h3>
+            
+            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '12px 16px', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.2)', marginBottom: 16 }}>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-h)', fontWeight: 600 }}>
+                {lang === 'zh' ? '对账账期：' : 'Billing Month: '}
+                <span style={{ color: 'var(--danger)' }}>
+                  {new Date(paymentRejectConfirmRecord.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' })}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                {lang === 'zh' ? '租客姓名：' : 'Tenant Name: '} 
+                {leases.find(l => l.id === paymentRejectConfirmRecord.lease_id)?.tenantName || (lang === 'zh' ? '租客' : 'Tenant')}
+              </div>
+            </div>
+
+            {/* Input: Rejection Reason */}
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 6, display: 'block' }}>
+                {lang === 'zh' ? '退回/拒绝原因 (必填)' : 'Rejection Reason (Required)'}
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                value={payRejectReasonText}
+                onChange={e => {
+                  const reason = e.target.value;
+                  setPayRejectReasonText(reason);
+                  const monthStr = new Date(paymentRejectConfirmRecord.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+                  setPayRejectNotifContent(lang === 'zh' 
+                    ? `您好，非常抱歉地通知您，您提交的账期为 ${monthStr} 的房租付款凭证未通过审核。原因：${reason}\n请重新确认付款金额并上传正确的付款凭证，或联系管理员/中介。` 
+                    : `Hello, we regret to inform you that your rent payment voucher for billing month ${monthStr} was rejected.\nReason: ${reason}\nPlease re-upload correct payment evidence, or contact support.`);
+                }}
+                placeholder={lang === 'zh' ? '例如：付款凭证模糊 / 金额不符' : 'e.g. Voucher blurry / Wrong amount'}
+                required
+              />
+            </div>
+
+            {/* Checkbox: Send User Rejection Notification */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <input
+                type="checkbox"
+                id="payRejectSendUserNotif"
+                checked={payRejectSendUserNotif}
+                onChange={e => setPayRejectSendUserNotif(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="payRejectSendUserNotif" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-h)', cursor: 'pointer' }}>
+                {lang === 'zh' ? '发送系统通知给该租客' : 'Send system notification to tenant'}
+              </label>
+            </div>
+
+            {payRejectSendUserNotif && (
+              <div style={{ border: '1px solid var(--glass-border)', padding: 12, borderRadius: 8, background: 'rgba(0,0,0,0.1)', marginBottom: 20 }}>
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '通知标题' : 'Notification Title'}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={payRejectNotifTitle}
+                    onChange={e => setPayRejectNotifTitle(e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '6px 10px' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '通知内容' : 'Notification Content'}</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={4}
+                    value={payRejectNotifContent}
+                    onChange={e => setPayRejectNotifContent(e.target.value)}
+                    style={{ fontSize: '0.82rem', padding: '6px 10px', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setPaymentRejectConfirmRecord(null)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '10px' }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={commitRejectPayment} 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '10px', background: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 700 }}
+                disabled={!payRejectReasonText.trim()}
               >
                 {t('confirm')}
               </button>

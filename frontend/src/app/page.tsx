@@ -51,7 +51,7 @@ export default function Home() {
       }
       // Check admin_users in localStorage to determine role
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
-      const email = localStorage.getItem('ez_user_email') || 'student@ezrent.my';
+      const email = localStorage.getItem('ez_user_email') || 'tenant@ezrent.my';
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
       
       const mockAdminIdx = admins.findIndex((a: any) => a.id === tenantId || (a.email === email && email !== ''));
@@ -62,6 +62,9 @@ export default function Home() {
           admins[mockAdminIdx].id = tenantId;
           localStorage.setItem('ez_admins', JSON.stringify(admins));
         }
+        setAdminRole(admins[mockAdminIdx].role as 'super_admin' | 'editor');
+      } else {
+        setAdminRole(null);
       }
 
       const finalRole: 'student' | 'admin' = isAdmin ? 'admin' : 'student';
