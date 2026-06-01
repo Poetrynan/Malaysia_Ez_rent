@@ -3066,7 +3066,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               )}
 
               {(mediaImages.length > 0 || mediaVideo) && (
-                <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '5px 12px' }}
+                <button type="button" className="btn" style={{ fontSize: '0.75rem', padding: '6px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 600 }}
                   onClick={() => { setMediaImages([]); setMediaVideo(null); }}>
                   {t('uploadClear')}
                 </button>

@@ -6,7 +6,8 @@ import {
   Building2, X, ChevronRight, ChevronLeft, CheckCircle2, Car, Footprints,
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store,
-  Grid, List, User, Calendar, Globe, MessageSquare, XCircle, AlertTriangle
+  Grid, List, User, Calendar, Globe, MessageSquare, XCircle, AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -935,11 +936,30 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   return (
     <div className="listings-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-        <h2 style={{ fontSize: '1.4rem' }}>{t('listingsTitle')}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <h2 style={{ fontSize: '1.4rem', margin: 0 }}>{t('listingsTitle')}</h2>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           {filtered.length} {t('listingsSubtitle')}
         </span>
+        <button
+          type="button"
+          onClick={() => { loadListings(); }}
+          disabled={listingsLoading}
+          title={lang === 'zh' ? '刷新房源列表' : 'Refresh listings'}
+          style={{
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', border: '1px solid var(--glass-border)',
+            borderRadius: 8, background: 'var(--glass-bg)', cursor: listingsLoading ? 'not-allowed' : 'pointer',
+            fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)',
+            transition: 'all 0.2s', opacity: listingsLoading ? 0.6 : 1,
+          }}
+          onMouseEnter={e => { if (!listingsLoading) { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; } }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+        >
+          <RefreshCw size={14} style={{ animation: listingsLoading ? 'spin 1s linear infinite' : 'none' }} />
+          {lang === 'zh' ? '刷新' : 'Refresh'}
+        </button>
       </div>
 
       {/* ── Filter Bar ── */}
@@ -1256,6 +1276,13 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.06)', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             <span style={{ fontSize: '0.88rem', color: 'var(--danger)', fontWeight: 600 }}>
                               ✕ {lang === 'zh' ? '该房源已被承租' : 'This property is already rented'}
+                            </span>
+                          </div>
+                        ) : readOnly ? (
+                          <div style={{ padding: '12px', background: 'rgba(59,130,246,0.06)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '14px' }}>ℹ️</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              {lang === 'zh' ? '租房操作仅限租客使用，中介可通过"意向管理"审核租客申请。' : 'Renting is for tenants only. Agents can review applications via "Interest Management".'}
                             </span>
                           </div>
                         ) : (
