@@ -21,10 +21,11 @@ export default function Home() {
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [agentRegStatus, setAgentRegStatus] = useState<string | null>(null);
 
-  const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCount: number) => {
+  const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCount: number, agentReviewsCount?: number) => {
     setPendingCounts(prev => {
-      if (prev.leases === leasesCount && prev.feedback === feedbackCount) return prev;
-      return { ...prev, leases: leasesCount, feedback: feedbackCount };
+      const nextReviews = agentReviewsCount !== undefined ? agentReviewsCount : prev.agentReviews;
+      if (prev.leases === leasesCount && prev.feedback === feedbackCount && prev.agentReviews === nextReviews) return prev;
+      return { ...prev, leases: leasesCount, feedback: feedbackCount, agentReviews: nextReviews };
     });
   }, []);
 
@@ -130,7 +131,7 @@ export default function Home() {
         // Fetch pending agent registrations count for admin badge
         if (activeRole === 'admin') {
           const { count } = await supabase.from('agent_registrations').select('*', { count: 'exact', head: true }).eq('verification_status', 'pending');
-          if (count && count > 0) setPendingCounts(prev => ({ ...prev, agentReviews: count }));
+          setPendingCounts(prev => ({ ...prev, agentReviews: count || 0 }));
         }
         // Check agent registration status if student (match by user.id or email)
         if (!adminRecord && user.email) {

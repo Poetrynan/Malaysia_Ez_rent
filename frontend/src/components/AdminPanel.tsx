@@ -75,7 +75,7 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
@@ -83,6 +83,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'payment' | 'review' | 'ledger' | 'settle'>('interests');
 
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     if (propAdminRole) setAdminRole(propAdminRole);
@@ -998,11 +999,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const leasesPendingCount = pendingCount + visibleInterests.filter(i => i.status === 'interested').length + terminatedLeases.length;
 
+  const pendingAgentReviewsCount = agentRegistrations.filter(r => r.verification_status === 'pending').length;
+
   useEffect(() => {
     if (onPendingCountsChange) {
-      onPendingCountsChange(leasesPendingCount, feedbackPendingCount);
+      onPendingCountsChange(leasesPendingCount, feedbackPendingCount, pendingAgentReviewsCount);
     }
-  }, [leasesPendingCount, feedbackPendingCount, onPendingCountsChange]);
+  }, [leasesPendingCount, feedbackPendingCount, pendingAgentReviewsCount, onPendingCountsChange]);
+
+  useEffect(() => {
+    if (isLive && adminRole === 'super_admin') {
+      fetchAgentRegistrations();
+    }
+  }, [adminRole, isLive]);
 
   const fetchInterests = async () => {
     if (!isLive) {
@@ -1075,8 +1084,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     bio: '', experience_years: 0, experience_months: 0, area_expertise: '', property_types: '',
     ren_number: '', ren_tag_url: '',
   });
-
-  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     detectModeAndLoad();

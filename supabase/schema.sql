@@ -267,6 +267,21 @@ BEGIN
   -- If this email exists in admin_users, link the auth ID
   IF NEW.email IS NOT NULL THEN
     UPDATE public.admin_users SET id = NEW.id WHERE email = NEW.email;
+    
+    -- Also send an approval notification if they were linked as admin/agent
+    IF FOUND THEN
+      -- Check if notification already exists to avoid duplicates
+      IF NOT EXISTS (SELECT 1 FROM public.user_notifications WHERE user_id = NEW.id AND type = 'agent_status') THEN
+        INSERT INTO public.user_notifications (user_id, title, content, type, is_read)
+        VALUES (
+          NEW.id,
+          '中介申请已通过 / Agent Application Approved',
+          '您的中介申请已通过审核，现在您可以发布房源和管理租约了！ / Your agent application has been approved, you can now post listings and manage leases!',
+          'agent_status',
+          FALSE
+        );
+      END IF;
+    END IF;
   END IF;
 
   RETURN NEW;
