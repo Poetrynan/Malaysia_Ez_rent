@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-06-01 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · **彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交** **
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · **中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器** **
 
 
 
@@ -212,6 +212,8 @@ Malaysia_Ez_rent/
 | 75 | Vercel 构建 `currentEnquiryUnit.community` 类型错误 | `getUnitsForAgent` 改为 `UnitWithCommunity[]`，与主列表 join 的 `community` 一致 |
 | 76 | 学生登录后房源列表空白 | `loadListings`/`loadAdmins` 抽离 + 错误重试；`middleware` anon key 回退；`SIGNED_IN` 时重新拉取 |
 | 77 | 旧房源无 `agent_id` 中介主页不显示 | 管理端 **编辑 → 保存** 同一条记录即可写入当前用户 `agent_id`（UPDATE，非新建） |
+| 78 | 租客/中介注销账号时其在 `admin_users` 记录残留 | 原因是 `deleteAccountAction` 中使用常规 RLS 受限客户端。现已修改为提权 Service Role 的 `adminClient` 强制安全级联清理。 |
+| 79 | 免登录提交中介申请的用户在通过审核后没有收件箱消息 | 原因是免登录状态申请时无 `auth_user_id`。现已通过更新 `handle_new_auth_user` 触发器，在用户随后的首次注册/登录（`on_auth_user_created` 触发）期间，自动从 `admin_users` 匹配其邮箱并补发“中介申请已通过”的欢迎通知。 |
 
 ---
 
@@ -355,6 +357,11 @@ Storage Bucket：
 | `024_maintenance_conversation.sql` | **工单对话线程**：`admin_reply` TEXT 改为 `replies` JSONB（支持最多 3 轮 Agent↔Student 对话），移除 `rating` 列 |
 | `025_fix_missing_public_users.sql` | **修复缺失用户行**：重建 `handle_new_auth_user` 触发器 + 补建所有缺失的 `public.users` 行（解决工单列表显示 UUID 问题） |
 | `026_remove_unit_number_column.sql` | **删除房源列表房号**：从 units 表中彻底 DROP 掉 unit_number 字段以防止中介恶意竞争，并重构前端工单/报修系统仅展示用户个人信息的房间号 |
+| `027_leases_rls_policies.sql` | **租约与账单策略补建**：补充建立 leases 和 payment_records 表的相关安全读写 RLS 策略 |
+| `028_user_inbox_notifications.sql` | **收件箱系统**：创建 `user_notifications` 系统公告/消息通知表，添加 RLS 权限控制与未读统计 |
+| `029_update_admin_limits.sql` | **管理员上限优化**：重构限制 super_admin≤5 的触发器及邮箱自动关联逻辑 |
+| `030_agent_registration_cleanup.sql` | **中介审核清退规则**：添加中介注册申请记录删除 RLS 策略，并在审核拒绝或删除账号时同步执行物理数据清除 |
+| `031_agent_pre_approval_notification.sql` | **离线审核通知触发器**：升级 handle_new_auth_user 触发器，在离线通过的中介后续完成系统首注登录时，自动补投“审核通过”系统通知消息 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -403,6 +410,7 @@ supabase/migrations/
     └── 028_user_inbox_notifications.sql # 全用户收件箱系统（公告/通知/审批知会）
     └── 029_update_admin_limits.sql # 超级管理员≤5限制 + 邮箱自动关联触发器 + auth用户注册触发器
     └── 030_agent_registration_cleanup.sql # 中介注册 DELETE 策略 + REN 字段 + Storage 删除策略
+    └── 031_agent_pre_approval_notification.sql # 离线中介前置审批在首注登录后自动投递消息触发器
 ```
 
 迁移原则：

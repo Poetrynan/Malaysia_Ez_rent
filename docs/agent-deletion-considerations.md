@@ -68,3 +68,42 @@
 ---
 
 > **开发团队建议**：首选 **方案一（转移后删除）**，这样可以零改动保障线上数据安全；若想减少管理员操作量，可运行上文的 SQL 脚本升级为 **方案二（自动置空）**；后续如系统规模扩大，推荐升级到 **方案三（软删除）** 以便进行完整的合规审计。
+
+---
+
+## 3. 账号注销及离线审核生命周期同步设计
+
+在处理用户注销账号（物理删除）及先申请后注册的异步场景中，系统在数据库级与服务端层面进行了以下核心同步设计：
+
+### 3.1 绕过 Row Level Security (RLS) 的物理级注销安全移除
+* **背景问题**：
+  在租客或二级管理员（`editor` / `agent`）调用“注销账号”时，系统需要将其彻底从数据库中抹除。但由于 `admin_users` 表由 RLS 策略保护（限制了非 `super_admin` 角色的 `DELETE` 操作），使用常规的浏览器/用户权限 Supabase 客户端去执行 `DELETE` 会被数据库行级安全拦截，造成用户在 `auth.users` 和 `public.users` 中已被删除，但在中介管理员表 `admin_users` 中却残留的“僵尸数据”现象。
+* **同步机制**：
+  在服务端的账号删除接口 `deleteAccountAction` 中，改用提权过的 Service Role 客户端进行数据清除。这能够强制绕过 RLS 策略保护，确保用户在执行账号注销时，其在中介表 `admin_users` 里的数据亦可跟随 `users` 表一并彻底、安全地删除。
+
+### 3.2 离线审核通过时的“系统通知投递”冷启动关联
+* **背景问题**：
+  若中介在申请时未登录（即为免密申请的外部邮箱），其注册申请记录 `agent_registrations` 中的 `auth_user_id` 为 `NULL`。当超级管理员点击“同意”通过其申请时，由于缺少外键引用的 Auth 用户，数据库约束了无法向其直接插入 `user_notifications`。若后期该中介注册账号登录，其收件箱将是一片空白，缺少通过状态的仪式感。
+* **同步机制**：
+  通过升级 `on_auth_user_created` 对应的 `handle_new_auth_user()` 触发器函数，将通过逻辑后置。管理员通过离线申请后只会在中介表生成记录；当该邮箱用户后续注册登录时，数据库会自动检测关联，并在绑定身份的瞬间自动向其追加“中介申请已通过”的初始通知消息：
+  ```sql
+  -- 如果新注册用户的邮箱在 admin_users 中已被超级管理员预审核通过
+  IF NEW.email IS NOT NULL THEN
+    UPDATE public.admin_users SET id = NEW.id WHERE email = NEW.email;
+    IF FOUND THEN
+      -- 自动补发初始通过通知
+      IF NOT EXISTS (SELECT 1 FROM public.user_notifications WHERE user_id = NEW.id AND type = 'agent_status') THEN
+        INSERT INTO public.user_notifications (user_id, title, content, type, is_read)
+        VALUES (
+          NEW.id,
+          '中介申请已通过 / Agent Application Approved',
+          '您的中介申请已通过审核，现在您可以发布房源和管理租约了！',
+          'agent_status',
+          FALSE
+        );
+      END IF;
+    END IF;
+  END IF;
+  ```
+  该逻辑的完整 SQL 执行补丁存放在 [supabase/update_trigger.sql](file:///c:/Users/Administrator/Desktop/Malaysia_Ez_rent/supabase/update_trigger.sql) 中。
+
