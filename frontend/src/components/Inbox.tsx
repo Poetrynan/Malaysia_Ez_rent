@@ -539,7 +539,15 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       )}
 
       {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: adminRole === 'super_admin' ? '1fr 380px' : '1fr', gap: 24, alignItems: 'start' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: adminRole === 'super_admin' ? '1fr 380px' : '1fr',
+        gap: 24,
+        alignItems: 'start',
+        maxWidth: adminRole === 'super_admin' ? '1200px' : '860px',
+        width: '100%',
+        margin: '0 auto'
+      }}>
         
         {/* Left Side: Personal Messages Inbox */}
         <div style={{
@@ -659,10 +667,13 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
                           </h4>
                           
                           {/* Snippet or full content */}
-                          <p style={{
+                          <p style={isExpanded ? {
                             fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5,
-                            margin: 0, whiteSpace: isExpanded ? 'pre-wrap' : 'nowrap',
-                            textOverflow: 'ellipsis', overflow: 'hidden'
+                            margin: 0, whiteSpace: 'pre-wrap'
+                          } : {
+                            fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5,
+                            margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden', textOverflow: 'ellipsis'
                           }}>
                             {item.content}
                           </p>
