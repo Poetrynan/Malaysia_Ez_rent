@@ -32,6 +32,12 @@ interface UserDirectoryItem {
 export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
   const { lang } = useApp();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const getSupabaseClient = async () => {
+    if (isMockDatabase) return supabase;
+    const { createClient } = await import('@/utils/supabase/client');
+    return createClient();
+  };
   const [loading, setLoading] = useState<boolean>(true);
   const [authUserId, setAuthUserId] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -323,8 +329,7 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
     setLoading(true);
     let userId = '';
 
-    const { createClient } = await import('@/utils/supabase/client');
-    const activeSupabase = isMockDatabase ? supabase : createClient();
+    const activeSupabase = await getSupabaseClient();
 
     // Get Auth User ID
     if (isMockDatabase) {
@@ -442,7 +447,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
         localStorage.setItem('ez_user_notifications', JSON.stringify(allNotifications));
       }
     } else {
-      await supabase
+      const client = await getSupabaseClient();
+      await client
         .from('user_notifications')
         .update({ is_read: true })
         .eq('id', msgId);
@@ -467,7 +473,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       });
       localStorage.setItem('ez_user_notifications', JSON.stringify(filtered));
     } else {
-      await supabase
+      const client = await getSupabaseClient();
+      await client
         .from('user_notifications')
         .update({ is_read: true })
         .eq('user_id', authUserId);
@@ -489,7 +496,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       const filtered = allNotifications.filter((n: any) => n.id !== msgId);
       localStorage.setItem('ez_user_notifications', JSON.stringify(filtered));
     } else {
-      await supabase
+      const client = await getSupabaseClient();
+      await client
         .from('user_notifications')
         .delete()
         .eq('id', msgId);
@@ -564,7 +572,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
           is_read: false
         }));
 
-        const { error } = await supabase.from('user_notifications').insert(rows);
+        const client = await getSupabaseClient();
+        const { error } = await client.from('user_notifications').insert(rows);
 
         if (error) throw error;
         

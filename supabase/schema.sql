@@ -14,7 +14,14 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(30) UNIQUE,
     full_name VARCHAR(100),
     avatar_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    unit_number VARCHAR(100),
+    passport_number VARCHAR(100),
+    school VARCHAR(200),
+    company VARCHAR(200),
+    local_id_number VARCHAR(100),
+    document_url TEXT,
+    email VARCHAR(255)
 );
 
 -- Table 2: admin_users (Administrators linked with auth.users)
@@ -39,6 +46,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
     area_expertise TEXT[],
     property_types TEXT[],
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    payment_qr_code TEXT,
+    facebook_url TEXT,
+    website_url TEXT,
     CONSTRAINT at_least_one_contact CHECK (phone IS NOT NULL OR whatsapp IS NOT NULL OR wechat_id IS NOT NULL)
 );
 
@@ -49,7 +59,8 @@ CREATE TABLE IF NOT EXISTS communities (
     address TEXT NOT NULL,
     lat DECIMAL(10,8),
     lng DECIMAL(11,8),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    amenities TEXT[] DEFAULT '{}'::text[]
 );
 
 -- Table 4: amenities (Facility Dictionary)
@@ -78,7 +89,12 @@ CREATE TABLE IF NOT EXISTS units (
     bathrooms INT DEFAULT 1,
     description TEXT,
     embedding VECTOR(1536), -- Text Embedding for room details
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    max_occupants INT DEFAULT 1,
+    media_urls TEXT[] DEFAULT '{}'::text[],
+    video_url TEXT,
+    landlord_qr_code TEXT,
+    landlord_bank_info TEXT
 );
 
 -- Table 7: unit_images (Unit Media Assets)
@@ -90,7 +106,17 @@ CREATE TABLE IF NOT EXISTS unit_images (
     sort_order INT DEFAULT 0
 );
 
--- Table 8: leases (Rental Agreements)
+-- Table 8: lease_groups (Groups of leases for co-living/co-tenanting)
+CREATE TABLE IF NOT EXISTS lease_groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
+    contract_start_date DATE NOT NULL,
+    contract_end_date DATE NOT NULL,
+    status VARCHAR(20) CHECK (status IN ('active', 'breached', 'completed')) DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table 9: leases (Rental Agreements)
 CREATE TABLE IF NOT EXISTS leases (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
@@ -99,12 +125,15 @@ CREATE TABLE IF NOT EXISTS leases (
     end_date DATE NOT NULL,
     monthly_rent DECIMAL(10,2) NOT NULL,
     deposit_amount DECIMAL(10,2) NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('active', 'completed', 'terminated')) DEFAULT 'active',
+    status VARCHAR(20) CHECK (status IN ('active', 'completed', 'terminated', 'transferred')) DEFAULT 'active',
     admin_notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    security_deposit_months DECIMAL DEFAULT 2,
+    utility_deposit_months DECIMAL DEFAULT 0.5,
+    lease_group_id UUID REFERENCES lease_groups(id) ON DELETE SET NULL
 );
 
--- Table 9: payment_records (Monthly Ledger Billing with Mobile Evidence Support)
+-- Table 10: payment_records (Monthly Ledger Billing with Mobile Evidence Support)
 CREATE TABLE IF NOT EXISTS payment_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lease_id UUID REFERENCES leases(id) ON DELETE CASCADE,
@@ -118,7 +147,7 @@ CREATE TABLE IF NOT EXISTS payment_records (
     UNIQUE (lease_id, billing_month)
 );
 
--- Table 10: universities (Malaysian University GPS coordinates)
+-- Table 11: universities (Malaysian University GPS coordinates)
 CREATE TABLE IF NOT EXISTS universities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) UNIQUE NOT NULL,
@@ -126,7 +155,7 @@ CREATE TABLE IF NOT EXISTS universities (
     lng DECIMAL(11,8) NOT NULL
 );
 
--- Table 11: agent_conversations (Conversational AI Memory Logs)
+-- Table 12: agent_conversations (Conversational AI Memory Logs)
 CREATE TABLE IF NOT EXISTS agent_conversations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -134,6 +163,87 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
     role VARCHAR(20) CHECK (role IN ('user', 'assistant')) NOT NULL,
     content TEXT NOT NULL,
     intermediate_steps JSONB DEFAULT '[]'::jsonb, -- Thoughts/Tool traces
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table 13: lease_transfers (Tracks co-tenant substitutions)
+CREATE TABLE IF NOT EXISTS lease_transfers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lease_group_id UUID REFERENCES lease_groups(id) ON DELETE CASCADE,
+    exiting_lease_id UUID REFERENCES leases(id) ON DELETE RESTRICT,
+    exiting_tenant_id UUID REFERENCES users(id) ON DELETE RESTRICT,
+    incoming_tenant_id UUID REFERENCES users(id) ON DELETE RESTRICT,
+    transfer_date DATE NOT NULL,
+    deposit_handle_type VARCHAR(20) CHECK (deposit_handle_type IN ('transfer_to_new', 'refunded', 'forfeited')),
+    admin_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table 14: tenant_interests (Tenant expressions of interest)
+CREATE TABLE IF NOT EXISTS tenant_interests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    unit_id UUID REFERENCES units(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    full_name TEXT,
+    phone TEXT,
+    note TEXT DEFAULT '',
+    status TEXT DEFAULT 'interested' CHECK (status IN ('interested', 'confirmed', 'left')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (unit_id, user_id)
+);
+
+-- Table 15: maintenance_requests (Maintenance issues submitted by tenants)
+CREATE TABLE IF NOT EXISTS maintenance_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lease_id UUID REFERENCES leases(id) ON DELETE SET NULL,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('Aircon', 'Plumbing', 'Electrical', 'Furniture', 'Appliance', 'Others')),
+    content TEXT NOT NULL,
+    photo_url TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved')),
+    assigned_to UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    replies JSONB DEFAULT '[]'::jsonb
+);
+
+-- Table 16: mobile_upload_sessions (Temporary mobile image uploads)
+CREATE TABLE IF NOT EXISTS mobile_upload_sessions (
+    id VARCHAR(100) PRIMARY KEY,
+    media_urls TEXT[] DEFAULT '{}'::text[],
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table 17: agent_registrations (Agent sign up applications)
+CREATE TABLE IF NOT EXISTS agent_registrations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    auth_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(30) NOT NULL CHECK (phone ~ '^601[0-9]{8,9}$'),
+    whatsapp VARCHAR(30) CHECK (whatsapp IS NULL OR whatsapp ~ '^601[0-9]{8,9}$'),
+    agency_name VARCHAR(200) NOT NULL,
+    ren_number VARCHAR(20) NOT NULL CHECK (ren_number ~ '^REN[0-9]{4,7}$'),
+    ren_tag_image_url TEXT NOT NULL,
+    verification_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'approved', 'rejected', 'suspended', 'banned')),
+    rejection_reason TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES admin_users(id) ON DELETE SET NULL
+);
+
+-- Table 18: user_notifications (System Inbox Messages / Announcements)
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    type VARCHAR(30) NOT NULL DEFAULT 'system' CHECK (type IN ('system', 'announcement', 'update', 'bonus', 'agent_status')),
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -145,11 +255,12 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, full_name, avatar_url)
+  INSERT INTO public.users (id, full_name, avatar_url, email)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '')
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
+    NEW.email
   )
   ON CONFLICT (id) DO NOTHING;
 
@@ -277,153 +388,33 @@ BEGIN
 END;
 $$;
 
--- ==========================================
--- 4. Row Level Security (RLS) Policies
--- ==========================================
-
--- Enable RLS
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE communities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE amenities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE community_amenities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE units ENABLE ROW LEVEL SECURITY;
-ALTER TABLE unit_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payment_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE universities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agent_conversations ENABLE ROW LEVEL SECURITY;
-
--- users policies
-CREATE POLICY "Allow public read on users" ON users FOR SELECT USING (true);
-CREATE POLICY "Users can edit own profile" ON users FOR ALL USING (auth.uid() = id);
-
--- admin_users policies
-CREATE POLICY "Admin check policy" ON admin_users FOR SELECT USING (true);
-CREATE POLICY "Allow self insert admin" ON admin_users FOR INSERT WITH CHECK (
-  id = auth.uid() 
-  AND email = 'admin@ezrent.my'
-  AND role = 'super_admin'
-);
-CREATE POLICY "Allow self update admin" ON admin_users FOR UPDATE USING (id = auth.uid() OR email = auth.jwt()->>'email');
-CREATE POLICY "Super admin can manage admins" ON admin_users FOR ALL USING (
-  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid() AND role = 'super_admin')
-);
-
--- communities / amenities policies
-CREATE POLICY "Allow public read on communities" ON communities FOR SELECT USING (true);
-CREATE POLICY "Admin write communities" ON communities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
-CREATE POLICY "Allow public read on amenities" ON amenities FOR SELECT USING (true);
-CREATE POLICY "Admin write amenities" ON amenities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
-CREATE POLICY "Allow public read on community_amenities" ON community_amenities FOR SELECT USING (true);
-CREATE POLICY "Admin write community_amenities" ON community_amenities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
--- units / unit_images policies
-CREATE POLICY "Allow public read on units" ON units FOR SELECT USING (true);
-CREATE POLICY "Admin write units" ON units FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
-CREATE POLICY "Allow public read on unit_images" ON unit_images FOR SELECT USING (true);
-CREATE POLICY "Admin write unit_images" ON unit_images FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
--- leases policies
-CREATE POLICY "Admin read and write leases" ON leases FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-CREATE POLICY "Tenant can read own lease" ON leases FOR SELECT USING (auth.uid() = tenant_id);
-
--- payment_records policies
-CREATE POLICY "Admin full control payments" ON payment_records FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-CREATE POLICY "Tenant read own payments" ON payment_records FOR SELECT USING (
-    EXISTS (
-        SELECT 1 FROM leases 
-        WHERE leases.id = payment_records.lease_id 
-          AND leases.tenant_id = auth.uid()
-    )
-);
-CREATE POLICY "Tenant update own payment evidence" ON payment_records FOR UPDATE USING (
-    EXISTS (
-        SELECT 1 FROM leases 
-        WHERE leases.id = payment_records.lease_id 
-          AND leases.tenant_id = auth.uid()
-    )
-) WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM leases 
-        WHERE leases.id = payment_records.lease_id 
-          AND leases.tenant_id = auth.uid()
-    )
-);
-
--- universities policies
-CREATE POLICY "Allow public read on universities" ON universities FOR SELECT USING (true);
-CREATE POLICY "Admin write universities" ON universities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
-
--- agent_conversations policies
-CREATE POLICY "Users can manage own conversation history" ON agent_conversations FOR ALL USING (auth.uid() = user_id);
-
--- ==========================================
--- 5. Realtime Replication Subscription Setup
--- ==========================================
-
--- Ensure the supabase_realtime publication exists and subscribe to payment_records
-DO $$
+-- Trigger to auto-update maintenance_requests timestamp
+CREATE OR REPLACE FUNCTION update_maintenance_timestamp()
+RETURNS TRIGGER AS $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    CREATE PUBLICATION supabase_realtime;
-  END IF;
-END
-$$;
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE payment_records;
+DROP TRIGGER IF EXISTS maintenance_updated_at ON maintenance_requests;
+CREATE TRIGGER maintenance_updated_at
+  BEFORE UPDATE ON maintenance_requests
+  FOR EACH ROW EXECUTE FUNCTION update_maintenance_timestamp();
 
--- ==========================================
--- 6. Co-tenant substitution for Whole Unit rentals
--- ==========================================
+-- Trigger to auto-update agent_registrations timestamp
+CREATE OR REPLACE FUNCTION update_agent_reg_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Update leases status check constraint
-ALTER TABLE leases DROP CONSTRAINT IF EXISTS leases_status_check;
-ALTER TABLE leases ADD CONSTRAINT leases_status_check CHECK (status IN ('active', 'completed', 'terminated', 'transferred'));
-
--- Create Lease Group table if not exists
-CREATE TABLE IF NOT EXISTS lease_groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
-    contract_start_date DATE NOT NULL,
-    contract_end_date DATE NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('active', 'breached', 'completed')) DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Add lease_group_id to leases table if not exists
-ALTER TABLE leases ADD COLUMN IF NOT EXISTS lease_group_id UUID REFERENCES lease_groups(id) ON DELETE SET NULL;
-
--- Create Lease Transfers tracking table
-CREATE TABLE IF NOT EXISTS lease_transfers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lease_group_id UUID REFERENCES lease_groups(id) ON DELETE CASCADE,
-    exiting_lease_id UUID REFERENCES leases(id) ON DELETE RESTRICT,
-    exiting_tenant_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    incoming_tenant_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    transfer_date DATE NOT NULL,
-    deposit_handle_type VARCHAR(20) CHECK (deposit_handle_type IN ('transfer_to_new', 'refunded', 'forfeited')),
-    admin_notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable RLS on new tables
-ALTER TABLE lease_groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lease_transfers ENABLE ROW LEVEL SECURITY;
-
--- Add simple admin policies
-CREATE POLICY "Admins manage lease groups" ON lease_groups FOR ALL USING (
-  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())
-);
-CREATE POLICY "Anyone read lease groups" ON lease_groups FOR SELECT USING (true);
-
-CREATE POLICY "Admins manage lease transfers" ON lease_transfers FOR ALL USING (
-  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())
-);
-CREATE POLICY "Anyone read lease transfers" ON lease_transfers FOR SELECT USING (true);
+DROP TRIGGER IF EXISTS agent_reg_updated_at ON agent_registrations;
+CREATE TRIGGER agent_reg_updated_at
+  BEFORE UPDATE ON agent_registrations
+  FOR EACH ROW EXECUTE FUNCTION update_agent_reg_timestamp();
 
 -- Create Transactional RPC for substituting a co-tenant (No pro-rating)
 CREATE OR REPLACE FUNCTION substitute_co_tenant(
@@ -574,3 +565,149 @@ BEGIN
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==========================================
+-- 4. Row Level Security (RLS) Policies
+-- ==========================================
+
+-- Enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE communities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE amenities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_amenities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE unit_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE universities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lease_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lease_transfers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_interests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
+
+-- users policies
+CREATE POLICY "Allow public read on users" ON users FOR SELECT USING (true);
+CREATE POLICY "Users can edit own profile" ON users FOR ALL USING (auth.uid() = id);
+
+-- admin_users policies
+CREATE POLICY "Admin check policy" ON admin_users FOR SELECT USING (true);
+CREATE POLICY "Allow self insert admin" ON admin_users FOR INSERT WITH CHECK (
+  id = auth.uid() 
+  AND email = 'admin@ezrent.my'
+  AND role = 'super_admin'
+);
+CREATE POLICY "Allow self update admin" ON admin_users FOR UPDATE USING (id = auth.uid() OR email = auth.jwt()->>'email');
+CREATE POLICY "Super admin can manage admins" ON admin_users FOR ALL USING (
+  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid() AND role = 'super_admin')
+);
+
+-- communities / amenities policies
+CREATE POLICY "Allow public read on communities" ON communities FOR SELECT USING (true);
+CREATE POLICY "Admin write communities" ON communities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+CREATE POLICY "Allow public read on amenities" ON amenities FOR SELECT USING (true);
+CREATE POLICY "Admin write amenities" ON amenities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+CREATE POLICY "Allow public read on community_amenities" ON community_amenities FOR SELECT USING (true);
+CREATE POLICY "Admin write community_amenities" ON community_amenities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+-- units / unit_images policies
+CREATE POLICY "Allow public read on units" ON units FOR SELECT USING (true);
+CREATE POLICY "Admin write units" ON units FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+CREATE POLICY "Allow public read on unit_images" ON unit_images FOR SELECT USING (true);
+CREATE POLICY "Admin write unit_images" ON unit_images FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+-- leases policies
+CREATE POLICY "Admin read and write leases" ON leases FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+CREATE POLICY "Tenant can read own lease" ON leases FOR SELECT USING (auth.uid() = tenant_id);
+
+-- payment_records policies
+CREATE POLICY "Admin full control payments" ON payment_records FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+CREATE POLICY "Tenant read own payments" ON payment_records FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM leases 
+        WHERE leases.id = payment_records.lease_id 
+          AND leases.tenant_id = auth.uid()
+    )
+);
+CREATE POLICY "Tenant update own payment evidence" ON payment_records FOR UPDATE USING (
+    EXISTS (
+        SELECT 1 FROM leases 
+        WHERE leases.id = payment_records.lease_id 
+          AND leases.tenant_id = auth.uid()
+     )
+) WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM leases 
+        WHERE leases.id = payment_records.lease_id 
+          AND leases.tenant_id = auth.uid()
+    )
+);
+
+-- universities policies
+CREATE POLICY "Allow public read on universities" ON universities FOR SELECT USING (true);
+CREATE POLICY "Admin write universities" ON universities FOR ALL USING (auth.uid() IN (SELECT id FROM admin_users));
+
+-- agent_conversations policies
+CREATE POLICY "Users can manage own conversation history" ON agent_conversations FOR ALL USING (auth.uid() = user_id);
+
+-- lease_groups / lease_transfers policies
+CREATE POLICY "Admins manage lease groups" ON lease_groups FOR ALL USING (
+  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())
+);
+CREATE POLICY "Anyone read lease groups" ON lease_groups FOR SELECT USING (true);
+
+CREATE POLICY "Admins manage lease transfers" ON lease_transfers FOR ALL USING (
+  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())
+);
+CREATE POLICY "Anyone read lease transfers" ON lease_transfers FOR SELECT USING (true);
+
+-- tenant_interests policies
+CREATE POLICY "Anyone can view interests" ON tenant_interests FOR SELECT USING (true);
+CREATE POLICY "Users can express interest" ON tenant_interests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can cancel own interest" ON tenant_interests FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own interest" ON tenant_interests FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admins can manage all interests" ON tenant_interests FOR ALL USING (
+  EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid())
+);
+
+-- maintenance_requests policies
+CREATE POLICY "Students can insert maintenance requests" ON maintenance_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Students can view own maintenance requests" ON maintenance_requests FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Students can update own maintenance requests" ON maintenance_requests FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admins can view all maintenance requests" ON maintenance_requests FOR SELECT USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+CREATE POLICY "Admins can update all maintenance requests" ON maintenance_requests FOR UPDATE USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+CREATE POLICY "Admins can delete maintenance requests" ON maintenance_requests FOR DELETE USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+
+-- agent_registrations policies
+CREATE POLICY "Anyone can register as agent" ON agent_registrations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can read own registration" ON agent_registrations FOR SELECT USING (auth_user_id = auth.uid());
+CREATE POLICY "Admins can read all registrations" ON agent_registrations FOR SELECT USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+CREATE POLICY "Admins can update registrations" ON agent_registrations FOR UPDATE USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+
+-- user_notifications policies
+CREATE POLICY "Users can read own notifications" ON user_notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own notifications" ON user_notifications FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own notifications" ON user_notifications FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can insert notifications" ON user_notifications FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+CREATE POLICY "Admins can update/delete any notification" ON user_notifications FOR ALL USING (EXISTS (SELECT 1 FROM admin_users WHERE id = auth.uid()));
+
+-- ==========================================
+-- 5. Realtime Replication Subscription Setup
+-- ==========================================
+
+-- Ensure the supabase_realtime publication exists and subscribe to payment_records
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END
+$$;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE payment_records;
