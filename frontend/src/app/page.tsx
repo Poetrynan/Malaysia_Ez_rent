@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail } from 'lucide-react';
 import AIChat from '@/components/AIChat';
-import StudentPortal from '@/components/StudentPortal';
+import TenantPortal from '@/components/TenantPortal';
 import AdminPanel from '@/components/AdminPanel';
 import PropertyListings from '@/components/PropertyListings';
 import Inbox from '@/components/Inbox';
@@ -568,13 +568,13 @@ export default function Home() {
             <AIChat />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'student' ? 'block' : 'none' }}>
-            <StudentPortal mode="lease" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
+            <TenantPortal mode="lease" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'profile' ? 'block' : 'none' }}>
-            <StudentPortal mode="profile" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
+            <TenantPortal mode="profile" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'student' && activeTab === 'maintenance' ? 'block' : 'none' }}>
-            <StudentPortal mode="maintenance" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
+            <TenantPortal mode="maintenance" onUnreadFeedbackCountChange={handleStudentFeedbackCountChange} />
           </div>
           <div style={{ display: role === 'admin' && activeTab === 'admin-listings' ? 'block' : 'none' }}>
             <PropertyListings readOnly />

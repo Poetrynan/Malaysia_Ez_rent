@@ -168,7 +168,7 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
   );
 };
 
-export default function StudentPortal({ 
+export default function TenantPortal({
   mode = 'lease', 
   onUnreadFeedbackCountChange 
 }: { 
@@ -693,7 +693,7 @@ export default function StudentPortal({
           }
         }
       } catch (e) {
-        console.error('StudentPortal load error:', e);
+        console.error('TenantPortal load error:', e);
         setLease(null);
         setPayments([]);
         setUnit(null);
@@ -972,7 +972,7 @@ export default function StudentPortal({
     }
   };
 
-  // Listen for profile updates from other StudentPortal instances
+  // Listen for profile updates from other TenantPortal instances
   useEffect(() => {
     const handler = () => { loadProfile(); };
     window.addEventListener('ez_profile_updated', handler);
@@ -981,7 +981,7 @@ export default function StudentPortal({
 
   useEffect(() => { load(); loadProfile(); }, [tick]);
 
-  // Realtime subscription for StudentPortal
+  // Realtime subscription for TenantPortal
   useEffect(() => {
     if (isMockDatabase) return;
     let channelInterests: any = null;
