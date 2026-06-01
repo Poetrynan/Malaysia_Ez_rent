@@ -13,6 +13,7 @@ interface Lease {
   security_deposit_months?: number; utility_deposit_months?: number;
   status: string;
   admin_notes?: string;
+  unit_number?: string;
 }
 interface Payment {
   id: string; lease_id: string; billing_month: string;
@@ -181,6 +182,7 @@ export default function StudentPortal({
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [lease, setLease] = useState<Lease | null>(null);
+  const [leaseHistory, setLeaseHistory] = useState<Lease[]>([]);
   const [roommates, setRoommates] = useState<{ id: string; tenant_id: string; tenantName: string; status: string; start_date: string; end_date: string; }[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [unit, setUnit] = useState<Unit | null>(null);
@@ -510,6 +512,8 @@ export default function StudentPortal({
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const myLease = leases.find(l => l.tenant_id === tenantId && l.status === 'active') || null;
       setLease(myLease);
+      // Load lease history (expired/completed/terminated)
+      setLeaseHistory(leases.filter(l => l.tenant_id === tenantId && l.status !== 'active').sort((a, b) => b.end_date.localeCompare(a.end_date)));
       if (myLease) {
         setPayments(
           allPayments
@@ -559,13 +563,19 @@ export default function StudentPortal({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
 
-        const [leaseRes, interestRes] = await Promise.all([
+        const [leaseRes, historyRes, interestRes] = await Promise.all([
           supabase
             .from('leases')
             .select('*')
             .eq('tenant_id', user.id)
             .eq('status', 'active')
             .maybeSingle(),
+          supabase
+            .from('leases')
+            .select('*')
+            .eq('tenant_id', user.id)
+            .neq('status', 'active')
+            .order('end_date', { ascending: false }),
           supabase
             .from('tenant_interests')
             .select(`
@@ -587,6 +597,7 @@ export default function StudentPortal({
 
         const leaseData = leaseRes.data;
         const interestData = interestRes.data;
+        setLeaseHistory(historyRes.data || []);
 
         if (leaseData) {
           setLease(leaseData);
@@ -1743,6 +1754,50 @@ export default function StudentPortal({
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
           </div>
         </>
+      )}
+
+      {/* Lease History */}
+      {mode === 'lease' && leaseHistory.length > 0 && (
+        <div className="glass-card">
+          <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px' }}>
+            <Clock size={16} style={{ color: 'var(--text-muted)' }} />
+            {lang === 'zh' ? '历史租约' : 'Lease History'}
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {leaseHistory.map(h => {
+              const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
+                expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
+                terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
+                completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
+              };
+              const cfg = statusConfig[h.status] || statusConfig.completed;
+              return (
+                <div key={h.id} style={{
+                  padding: '12px 16px', borderRadius: 10,
+                  border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
+                  background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
+                      RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                    </div>
+                    <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
+                      {lang === 'zh' ? cfg.labelZh : cfg.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {h.start_date} → {h.end_date}
+                  </div>
+                  {h.unit_number && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
+                      {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Maintenance Request Panel */}

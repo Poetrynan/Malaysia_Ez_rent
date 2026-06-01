@@ -735,8 +735,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       ? leases
       : leases.filter(l => l.unitData?.agent_id === currentUserId || !l.unitData?.agent_id);
     
-    // Sort leases: active first, then terminated, then transferred, then completed
-    const statusOrder: Record<string, number> = { active: 0, terminated: 1, transferred: 2, completed: 3 };
+    // Sort leases: active first, then expired, then terminated, then transferred, then completed
+    const statusOrder: Record<string, number> = { active: 0, expired: 1, terminated: 2, transferred: 3, completed: 4 };
     return [...raw].sort((a, b) => {
       const aVal = statusOrder[a.status] ?? 0;
       const bVal = statusOrder[b.status] ?? 0;
@@ -747,7 +747,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
 
-  const terminatedLeases = useMemo(() => visibleLeases.filter(l => l.status === 'terminated'), [visibleLeases]);
+  const terminatedLeases = useMemo(() => visibleLeases.filter(l => l.status === 'terminated' || l.status === 'expired'), [visibleLeases]);
 
   // ── Feedback state ──
   interface FeedbackItem {
@@ -1351,6 +1351,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const loadFromSupabase = async (supabase: any) => {
     try {
+      // Auto-expire leases past their end_date (one call per session is enough)
+      await supabase.rpc('expire_ended_leases').then(() => {}).catch(() => {});
+
       const [commRes, unitRes, leaseRes, paymentRes, userRes, interestRes, adminRes] = await Promise.all([
         supabase.from('communities').select('*'),
         supabase.from('units').select('*'),
@@ -1425,11 +1428,24 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const loadFromLocalStorage = () => {
     const c: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
     const u: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-    const l: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+    let l: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
     const p: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
     const users: any[] = JSON.parse(localStorage.getItem('ez_users') || '[]');
     const ints: TenantInterest[] = JSON.parse(localStorage.getItem('ez_interests') || '[]');
     const admins: any[] = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+
+    // Auto-expire leases past their end_date
+    const today = new Date().toISOString().split('T')[0];
+    let changed = false;
+    l = l.map(lease => {
+      if (lease.status === 'active' && lease.end_date < today) {
+        changed = true;
+        return { ...lease, status: 'expired' as const };
+      }
+      return lease;
+    });
+    if (changed) localStorage.setItem('ez_leases', JSON.stringify(l));
+
     setCommunities(c);
     setUnits(u);
     setAllUsers(users);
@@ -3542,21 +3558,25 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               const { unit, community } = resolveLeaseUnit(l, units, communities);
               const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
               return (
-                <div key={l.id} style={{ 
-                  border: l.status === 'terminated' 
-                    ? '1px solid rgba(239, 68, 68, 0.3)' 
-                    : l.status === 'completed'
-                      ? '1px solid rgba(16, 185, 129, 0.2)'
-                      : '1px solid var(--glass-border)', 
-                  borderRadius: 'var(--radius-md)', 
-                  marginBottom: 12, 
+                <div key={l.id} style={{
+                  border: l.status === 'terminated'
+                    ? '1px solid rgba(239, 68, 68, 0.3)'
+                    : l.status === 'expired'
+                      ? '1px solid rgba(245, 158, 11, 0.3)'
+                      : l.status === 'completed'
+                        ? '1px solid rgba(16, 185, 129, 0.2)'
+                        : '1px solid var(--glass-border)',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: 12,
                   overflow: 'hidden',
                   opacity: l.status === 'completed' ? 0.75 : 1,
                   background: l.status === 'terminated'
                     ? 'rgba(239, 68, 68, 0.02)'
-                    : l.status === 'completed'
-                      ? 'rgba(16, 185, 129, 0.01)'
-                      : 'transparent'
+                    : l.status === 'expired'
+                      ? 'rgba(245, 158, 11, 0.02)'
+                      : l.status === 'completed'
+                        ? 'rgba(16, 185, 129, 0.01)'
+                        : 'transparent'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)' }} onClick={() => setExpandedLease(isExpanded ? null : l.id)}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -3565,6 +3585,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         {l.status === 'terminated' && (
                           <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', fontWeight: 600 }}>
                             {lang === 'zh' ? '已终止' : 'Terminated'}
+                          </span>
+                        )}
+                        {l.status === 'expired' && (
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: 'var(--warning)', fontWeight: 600 }}>
+                            {lang === 'zh' ? '已到期' : 'Expired'}
                           </span>
                         )}
                         {l.status === 'completed' && (
@@ -3582,6 +3607,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       {l.status === 'terminated' && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
                           {lang === 'zh' ? '⚠️ 租客已手动终止' : '⚠️ Terminated by tenant'}
+                        </div>
+                      )}
+                      {l.status === 'expired' && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
+                          {lang === 'zh' ? '⏰ 合约已到期' : '⏰ Lease expired'}
                         </div>
                       )}
                     </div>
@@ -3618,7 +3648,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         {[...(l.payments || [])].sort((a, b) => a.billing_month.localeCompare(b.billing_month)).map(p => {
                           const isPending = p.status === 'pending_review' && p.evidence_url;
                           const isRejected = p.status === 'rejected';
-                          const isArchived = l.status === 'completed' || l.status === 'terminated';
+                          const isArchived = l.status === 'completed' || l.status === 'terminated' || l.status === 'expired';
                           const cellBg = p.paid ? 'var(--success-light)' : isPending ? 'rgba(245,158,11,0.12)' : isRejected ? 'rgba(239,68,68,0.12)' : 'var(--danger-light)';
                           const cellBorder = p.paid ? 'var(--success)' : isPending ? 'var(--warning)' : isRejected ? 'var(--danger)' : 'var(--danger)';
                           return (
@@ -3650,7 +3680,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                                 {p.paid ? t('approved') : isPending ? t('pendingReview') : isRejected ? t('rejected') : t('unpaid')}
                               </div>
                               {isPending && <div style={{ fontSize: '0.58rem', color: 'var(--warning)', marginTop: 2 }}>{t('reviewClick')}</div>}
-                              {!p.paid && (l.status === 'completed' || l.status === 'terminated') && (
+                              {!p.paid && (l.status === 'completed' || l.status === 'terminated' || l.status === 'expired') && (
                                 <div style={{ fontSize: '0.56rem', color: 'var(--text-muted)', marginTop: 1, fontWeight: 600 }}>
                                   ({lang === 'zh' ? '已归档' : 'Archived'})
                                 </div>

@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-06-01 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · **中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器** **
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · **租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转**
 
 
 
@@ -312,7 +312,7 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 | `admin_users` | 管理员账号（姓名、电话、WhatsApp、微信号、收款二维码，最多 5 人）|
 | `communities` | 小区/公寓楼（含经纬度、配套设施 amenities[]）|
 | `units` | 房间单元（类型、租金、状态、最大入住人数、图片 URL 数组、pgvector 向量）|
-| `leases` | 租约合同（租客 ID、单元 ID、起止日期、押金、安全押金月数、水电押金月数）|
+| `leases` | 租约合同（租客 ID、单元 ID、起止日期、押金、安全押金月数、水电押金月数、**单元号 unit_number**）|
 | `payment_records` | 每月账单记录（paid 状态、支付日期、凭证 URL、审核状态）|
 | `tenant_interests` | 合租意向（unit_id、user_id、note 备注、status: interested/confirmed/left）|
 | `universities` | 马来西亚大学 GPS 坐标 |
@@ -323,6 +323,7 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 - `on_auth_user_created` — 新用户注册自动创建 users 记录
 - `limit_admin_count` — 管理员上限 5 人
 - `after_lease_insert` — 创建租约自动生成月账单
+- `trigger_clear_unit_number` — 合约离开 active 状态时清空 users.unit_number
 
 Storage Bucket：
 - `unit-media` — 房源图片 + 管理员收款码（公开访问，管理员可上传/删除）
@@ -361,7 +362,8 @@ Storage Bucket：
 | `028_user_inbox_notifications.sql` | **收件箱系统**：创建 `user_notifications` 系统公告/消息通知表，添加 RLS 权限控制与未读统计 |
 | `029_update_admin_limits.sql` | **管理员上限优化**：重构限制 super_admin≤5 的触发器及邮箱自动关联逻辑 |
 | `030_agent_registration_cleanup.sql` | **中介审核清退规则**：添加中介注册申请记录删除 RLS 策略，并在审核拒绝或删除账号时同步执行物理数据清除 |
-| `031_agent_pre_approval_notification.sql` | **离线审核通知触发器**：升级 handle_new_auth_user 触发器，在离线通过的中介后续完成系统首注登录时，自动补投“审核通过”系统通知消息 |
+| `031_agent_pre_approval_notification.sql` | **离线审核通知触发器**：升级 handle_new_auth_user 触发器，在离线通过的中介后续完成系统首注登录时，自动补投”审核通过”系统通知消息 |
+| `032_lease_unit_number.sql` | **租约单元号 + 自动过期**：leases 加 unit_number；合约离开 active 时清空 users.unit_number 触发器；expire_ended_leases() 自动过期函数 |
 
 迁移原则：
 - 用 `ALTER TABLE ... ADD COLUMN` 加字段，不删表
@@ -411,6 +413,7 @@ supabase/migrations/
     └── 029_update_admin_limits.sql # 超级管理员≤5限制 + 邮箱自动关联触发器 + auth用户注册触发器
     └── 030_agent_registration_cleanup.sql # 中介注册 DELETE 策略 + REN 字段 + Storage 删除策略
     └── 031_agent_pre_approval_notification.sql # 离线中介前置审批在首注登录后自动投递消息触发器
+    └── 032_lease_unit_number.sql     # 租约 unit_number + 自动过期 + 清空触发器
 ```
 
 迁移原则：
@@ -1734,7 +1737,70 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py \
 |------|------|
 | `frontend/src/components/AdminPanel.tsx` | 重构中介申请审批逻辑，加入通过与拒绝双确认模态框，支持通知/公告勾选与即时自定义编辑；修改中介描述相关的“学生”字眼为“租客”。 |
 | `frontend/src/lib/i18n.ts` | 替换 prompt3、uploadQRHint、reviewNotesHint、confirmClearEvidence 的“学生”/“留学生”为“租客”。 |
-| `frontend/src/app/layout.tsx` | 更新 SEO 描述，将“马来西亚留学生 AI 智能租房系统”更改为“马来西亚 AI 智能租房系统”。 |
+| `frontend/src/app/layout.tsx` | 更新 SEO 描述，将”马来西亚留学生 AI 智能租房系统”更改为”马来西亚 AI 智能租房系统”。 |
 
+---
+
+## 四十八、租约生命周期管理与 Unit Number 单向流转（2026-06-01）
+
+**目标：** 实现完整租约生命周期（active → expired/terminated → completed），中介创建合约时填写 unit number 并单向流转到租客端，付款审核时显示 unit number 防止同名租客混淆。
+
+### 租约状态流转
+
+```
+active → expired（到期自动）→ completed（中介归档）
+active → terminated（租客终止）→ completed（中介归档）
+```
+
+| 状态 | 触发方式 | 颜色 | 含义 |
+|------|---------|------|------|
+| `active` | 中介创建合约 | 🟢 绿 | 生效中 |
+| `expired` | 到期自动（`end_date < today`） | 🟡 黄 | 已到期 |
+| `terminated` | 租客手动终止 | 🔴 红 | 已终止 |
+| `completed` | 中介归档 | ⚪ 灰 | 已归档 |
+
+### unit_number 数据流
+
+```
+中介创建合约 → 填写 unit_number → 存入 leases.unit_number
+                                        ↓
+                    租客个人资料自动读取（只读 disabled 输入）
+                                        ↓
+                    租客缴费 → 中介审核 → 显示 #unit_number
+                                        ↓
+                    合约离开 active → 触发器清空 users.unit_number
+```
+
+### 自动过期机制
+
+- **Live 模式**：调用 `supabase.rpc('expire_ended_leases')`，数据库执行 `UPDATE leases SET status='expired' WHERE status='active' AND end_date < CURRENT_DATE`
+- **Mock 模式**：加载时遍历 localStorage 中的 leases，`end_date < today` 的标记为 `expired` 并写回
+- 每次加载合约列表时执行一次，幂等操作
+
+### 数据库迁移
+
+| 文件 | 内容 |
+|------|------|
+| `032_lease_unit_number.sql` | `leases` 表加 `unit_number` 字段；触发器：合约离开 active 时清空 `users.unit_number`；`expire_ended_leases()` 自动过期函数 |
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `AdminPanel.tsx` | Lease/LeaseForm 接口加 `unit_number`；合约表单加单元号输入框；`createLease` 写入 `unit_number`；`formatLeasePropertyLabel` 4处调用传入 `unit_number`；付款审核弹窗显示 unit number；live 模式调用 `expire_ended_leases()` RPC；mock 模式本地自动过期；`expired` 状态样式/标签/结算区域；statusOrder 加 `expired`；`terminatedLeases` 同时包含 `terminated` 和 `expired`；`isArchived` 包含 `expired` |
+| `StudentPortal.tsx` | Lease 接口加 `unit_number`；`leaseHistory` 状态 + mock/live 加载（Promise.all 并行查询历史租约）；房间号输入 `disabled` + 标注”由合约自动填写”；保存时不写入 `unit_number`；`profileComplete` 不再要求 `unit_number`；保存按钮移除 `unit_number` 校验；新增历史租约 UI（状态标签 + unit number + 日期范围）；从活跃合约读取 `unit_number` 自动填入个人资料 |
+
+### 租客端历史租约
+
+- 新增 `leaseHistory` 状态，存储 expired/terminated/completed 的合约
+- 按 `end_date` 降序排列（最近的在前）
+- 每条显示：月租、日期范围、状态标签（颜色编码）、unit number（如有）
+- 仅在 `mode === 'lease'` 下显示
+
+### 付款审核增强
+
+- `formatLeasePropertyLabel()` 返回格式：`小区名 · (房型) #单元号`
+- 付款审核弹窗 billing month 旁新增 unit number 标签（蓝色背景）
+- Ledger、Review、Settlement 区域均显示完整 label
 
 

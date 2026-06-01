@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-05-30 (UTC+8)
+Last updated: 2026-06-01 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -105,6 +105,29 @@ Malaysia_Ez_rent/
 ### Privacy Constraints
 
 - **Door Number Removal**: All door numbers (`unit_number`) are completely hidden from all visual displays across the student portal, AI chat, admin panel (including table list and dropdowns), and mobile upload pages.
+
+### Lease Lifecycle & unit_number Flow
+
+**Lease statuses:** `active` → `expired` (auto) / `terminated` (manual) → `completed` (archived)
+
+**unit_number management:**
+- `units.unit_number` column was **dropped** in migration 026 (privacy).
+- `leases.unit_number` was **added** in migration 032 — agent fills it when creating a lease contract.
+- `users.unit_number` is **read-only** for tenants — auto-populated from their active lease.
+- Tenants **cannot** edit `unit_number` in their profile; it is managed entirely by the lease.
+- When a lease leaves `active` status (expired/terminated/completed), a DB trigger **clears** `users.unit_number`.
+
+**Auto-expiry:**
+- `expire_ended_leases()` RPC (migration 032) sets `status = 'expired'` for any `active` lease where `end_date < CURRENT_DATE`.
+- Called once per session on lease list load (both live and mock mode).
+- Mock mode: local comparison `end_date < today` + `localStorage` write.
+
+**Tenant profile impact:**
+- `profileComplete` only requires `profileName` (not `unit_number`).
+- Save function does **not** write `unit_number` to `users` table (it's lease-managed).
+- On profile load, `unit_number` is fetched from the active lease; falls back to `users.unit_number` if no active lease.
+
+**Payment review:** `formatLeasePropertyLabel()` includes `unit_number` as `#unit_number` suffix (e.g. `Sunway · (Master Room) #A-12-3`). Shown in review cards, review modal, ledger, and settlement areas.
 
 ### Mobile evidence upload
 
