@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -232,20 +232,6 @@ export default function StudentPortal({
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   const [leaseTab, setLeaseTab] = useState<'current' | 'history'>('current');
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
-  const leaseWasActive = useRef(false);
-
-  // Track if lease was previously active (to detect termination)
-  useEffect(() => {
-    if (lease !== null) leaseWasActive.current = true;
-  }, [lease]);
-
-  // After lease is terminated (was active, now null), reload to pick up history
-  useEffect(() => {
-    if (lease === null && leaseWasActive.current && mode === 'lease') {
-      leaseWasActive.current = false;
-      load();
-    }
-  }, [lease]);
 
   const handleTerminateLease = async () => {
     if (!lease?.id) return;
@@ -275,7 +261,7 @@ export default function StudentPortal({
           localStorage.setItem('ez_interests', JSON.stringify(interests));
         }
       }
-      setTimeout(async () => {
+      setTimeout(() => {
         setLease(null);
         setPayments([]);
         setUnit(null);
@@ -283,6 +269,7 @@ export default function StudentPortal({
         setRoommates([]);
         setTerminateSubmitting(false);
         setShowTerminateConfirm(false);
+        load();
       }, 300);
     } else {
       try {
@@ -304,6 +291,7 @@ export default function StudentPortal({
         setRoommates([]);
         setTerminateSubmitting(false);
         setShowTerminateConfirm(false);
+        load();
       } catch (e) {
         console.error('Terminate lease error:', e);
         setTerminateSubmitting(false);

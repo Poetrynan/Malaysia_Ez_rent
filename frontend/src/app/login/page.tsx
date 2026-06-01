@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
 import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
+import LegalContent from '@/components/LegalContent';
 
 export default function LoginPage() {
   const { lang, setLang, theme, toggleTheme } = useApp();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [mockModal, setMockModal] = useState(false);
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [roleView, setRoleView] = useState<'choose' | 'student' | 'agent'>('choose');
@@ -402,7 +404,14 @@ export default function LoginPage() {
 
         {/* ── FOOTER ── */}
         <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
-          {lang === 'zh' ? '登录即代表您同意我们的 服务条款 与 隐私政策' : 'By logging in you agree to our Terms & Privacy Policy'}
+          {lang === 'zh' ? '登录即代表您同意我们的 ' : 'By logging in you agree to our '}
+          <span onClick={() => setLegalModal('terms')} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>
+            {lang === 'zh' ? '服务条款' : 'Terms of Service'}
+          </span>
+          {lang === 'zh' ? ' 与 ' : ' & '}
+          <span onClick={() => setLegalModal('privacy')} style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>
+            {lang === 'zh' ? '隐私政策' : 'Privacy Policy'}
+          </span>
         </p>
       </div>
 
@@ -434,6 +443,11 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── LEGAL CONTENT MODAL ── */}
+      {legalModal && (
+        <LegalContent type={legalModal} onClose={() => setLegalModal(null)} />
       )}
     </div>
   );
