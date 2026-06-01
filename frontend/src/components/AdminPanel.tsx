@@ -77,7 +77,7 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
   const { t, lang } = useApp();
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
@@ -2625,7 +2625,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           communities={communities}
           visibleUnitIds={visibleUnitIds}
           visibleLeaseIds={visibleLeaseIds}
-          onNavigate={(t) => { setTab(t as typeof tab); if (t === 'properties') setPropertiesView('inventory'); }}
+          onNavigate={(t) => { setTab(t as typeof tab); if (t === 'properties') setPropertiesView('inventory'); onTabChange?.(t); }}
         />
       )}
 

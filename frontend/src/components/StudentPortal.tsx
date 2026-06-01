@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -230,7 +230,22 @@ export default function StudentPortal({
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
+  const [leaseTab, setLeaseTab] = useState<'current' | 'history'>('current');
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
+  const leaseWasActive = useRef(false);
+
+  // Track if lease was previously active (to detect termination)
+  useEffect(() => {
+    if (lease !== null) leaseWasActive.current = true;
+  }, [lease]);
+
+  // After lease is terminated (was active, now null), reload to pick up history
+  useEffect(() => {
+    if (lease === null && leaseWasActive.current && mode === 'lease') {
+      leaseWasActive.current = false;
+      load();
+    }
+  }, [lease]);
 
   const handleTerminateLease = async () => {
     if (!lease?.id) return;
@@ -260,7 +275,7 @@ export default function StudentPortal({
           localStorage.setItem('ez_interests', JSON.stringify(interests));
         }
       }
-      setTimeout(() => {
+      setTimeout(async () => {
         setLease(null);
         setPayments([]);
         setUnit(null);
@@ -513,7 +528,10 @@ export default function StudentPortal({
       const myLease = leases.find(l => l.tenant_id === tenantId && l.status === 'active') || null;
       setLease(myLease);
       // Load lease history (expired/completed/terminated)
-      setLeaseHistory(leases.filter(l => l.tenant_id === tenantId && l.status !== 'active').sort((a, b) => b.end_date.localeCompare(a.end_date)));
+      const history = leases.filter(l => l.tenant_id === tenantId && l.status !== 'active').sort((a, b) => b.end_date.localeCompare(a.end_date));
+      setLeaseHistory(history);
+      // Auto-switch to history tab if no active lease but has history
+      if (!myLease && history.length > 0) setLeaseTab('history');
       if (myLease) {
         setPayments(
           allPayments
@@ -597,7 +615,10 @@ export default function StudentPortal({
 
         const leaseData = leaseRes.data;
         const interestData = interestRes.data;
-        setLeaseHistory(historyRes.data || []);
+        const historyData = historyRes.data || [];
+        setLeaseHistory(historyData);
+        // Auto-switch to history tab if no active lease but has history
+        if (!leaseData && historyData.length > 0) setLeaseTab('history');
 
         if (leaseData) {
           setLease(leaseData);
@@ -1508,7 +1529,26 @@ export default function StudentPortal({
 
       {mode === 'lease' && (
         <>
-          {/* Hero lease card */}
+          {/* Lease sub-tabs */}
+          <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+            <button type="button" onClick={() => setLeaseTab('current')}
+              style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: leaseTab === 'current' ? 'var(--primary)' : 'transparent', color: leaseTab === 'current' ? 'white' : 'var(--text-muted)' }}>
+              {lang === 'zh' ? '当前租约' : 'Current Lease'}
+            </button>
+            <button type="button" onClick={() => setLeaseTab('history')}
+              style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: leaseTab === 'history' ? 'var(--primary)' : 'transparent', color: leaseTab === 'history' ? 'white' : 'var(--text-muted)', position: 'relative' }}>
+              {lang === 'zh' ? '历史租约' : 'Lease History'}
+              {leaseHistory.length > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
+                  {leaseHistory.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Current lease content */}
+          {leaseTab === 'current' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="glass-card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--bg-surface) 100%)', position: 'relative' }}>
             
             {/* Terminate Lease action (Moved to top right of the hero card) */}
@@ -1753,51 +1793,56 @@ export default function StudentPortal({
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
           </div>
-        </>
-      )}
-
-      {/* Lease History */}
-      {mode === 'lease' && leaseHistory.length > 0 && (
-        <div className="glass-card">
-          <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px' }}>
-            <Clock size={16} style={{ color: 'var(--text-muted)' }} />
-            {lang === 'zh' ? '历史租约' : 'Lease History'}
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {leaseHistory.map(h => {
-              const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
-                expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
-                terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
-                completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
-              };
-              const cfg = statusConfig[h.status] || statusConfig.completed;
-              return (
-                <div key={h.id} style={{
-                  padding: '12px 16px', borderRadius: 10,
-                  border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
-                  background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
-                      RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
-                    </div>
-                    <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
-                      {lang === 'zh' ? cfg.labelZh : cfg.label}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {h.start_date} → {h.end_date}
-                  </div>
-                  {h.unit_number && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
-                      {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
-        </div>
+          )}
+
+          {/* Lease History — history tab only */}
+          {leaseTab === 'history' && (
+            leaseHistory.length > 0 ? (
+              <div className="glass-card">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {leaseHistory.map(h => {
+                    const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
+                      expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
+                      terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
+                      completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
+                    };
+                    const cfg = statusConfig[h.status] || statusConfig.completed;
+                    return (
+                      <div key={h.id} style={{
+                        padding: '12px 16px', borderRadius: 10,
+                        border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
+                        background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
+                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                          </div>
+                          <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
+                            {lang === 'zh' ? cfg.labelZh : cfg.label}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {h.start_date} → {h.end_date}
+                        </div>
+                        {h.unit_number && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
+                            {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+              </div>
+            )
+          )}
+        </>
       )}
 
       {/* Maintenance Request Panel */}

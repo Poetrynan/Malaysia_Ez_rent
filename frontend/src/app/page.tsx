@@ -594,6 +594,7 @@ export default function Home() {
               }
               hideTabBar={true}
               onPendingCountsChange={handlePendingCountsChange}
+              onTabChange={(t) => setActiveTab(`admin-${t}` as typeof activeTab)}
             />
           </div>
           <div style={{ display: (role === 'student' && activeTab === 'inbox') || (role === 'admin' && activeTab === 'admin-inbox') ? 'block' : 'none' }}>
