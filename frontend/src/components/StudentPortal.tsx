@@ -213,7 +213,7 @@ export default function StudentPortal({
   const [profileUnit, setProfileUnit] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
-  const profileComplete = profileName.trim().length > 0 && profileUnit.trim().length > 0;
+  const profileComplete = profileName.trim().length > 0;
   const [profilePassport, setProfilePassport] = useState('');
   const [profileSchool, setProfileSchool] = useState('');
   const [profileCompany, setProfileCompany] = useState('');
@@ -377,6 +377,10 @@ export default function StudentPortal({
         setProfileLocalId(u.local_id_number || '');
         setProfileDocUrl(u.document_url || null);
         setProfileStudentCardUrl(u.student_card_url || null);
+        // Get unit_number from active lease
+        const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+        const mockActiveLease = mockLeases.find((l: any) => l.tenant_id === tenantId && l.status === 'active');
+        if (mockActiveLease?.unit_number) setProfileUnit(mockActiveLease.unit_number);
       }
     } else {
       try {
@@ -389,7 +393,6 @@ export default function StudentPortal({
           name = data.full_name || '';
           setProfileName(name);
           setProfilePhone(data.phone || '');
-          setProfileUnit(data.unit_number || '');
           setProfilePassport(data.passport_number || '');
           setProfileSchool(data.school || '');
           setProfileCompany(data.company || '');
@@ -397,6 +400,9 @@ export default function StudentPortal({
           setProfileDocUrl(data.document_url || null);
           setProfileStudentCardUrl(data.student_card_url || null);
         }
+        // Get unit_number from active lease
+        const { data: activeLease } = await supabase.from('leases').select('unit_number').eq('tenant_id', user.id).eq('status', 'active').maybeSingle();
+        setProfileUnit(activeLease?.unit_number || data?.unit_number || '');
       } catch (e) { console.error('Load profile error:', e); }
     }
     if (!name) setShowProfile(true);
@@ -451,7 +457,7 @@ export default function StudentPortal({
     const profileData: Record<string, string | null> = {
       full_name: profileName.trim(),
       phone: profilePhone.trim(),
-      unit_number: profileUnit.trim(),
+      // unit_number is managed by the lease, not the tenant — don't overwrite it
       passport_number: profilePassport.trim() || null,
       school: profileSchool.trim() || null,
       company: profileCompany.trim() || null,
@@ -1342,10 +1348,14 @@ export default function StudentPortal({
               </div>
               <div>
                 <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                  {t('profileUnit')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  {t('profileUnit')}
+                  <span style={{ fontSize: '0.68rem', marginLeft: 6, color: 'var(--text-muted)', fontWeight: 400 }}>
+                    {lang === 'zh' ? '（由合约自动填写）' : '(set by lease)'}
+                  </span>
                 </label>
-                <input type="text" className="form-input" value={profileUnit} onChange={e => setProfileUnit(e.target.value)}
-                  placeholder={t('profileUnitPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                <input type="text" className="form-input" value={profileUnit} disabled
+                  placeholder={lang === 'zh' ? '等待中介生成合约后自动填入' : 'Auto-filled when lease is created'}
+                  style={{ width: '100%', boxSizing: 'border-box', opacity: profileUnit ? 1 : 0.5, cursor: 'not-allowed' }} />
               </div>
               <div>
                 <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
@@ -1379,95 +1389,100 @@ export default function StudentPortal({
               </div>
             </div>
 
-            {/* Section 3: Document upload */}
+            {/* Section 3 & 4: Document + Student card upload (side by side) */}
             <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                  border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                  color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                >
-                  <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
-                  <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
-                </label>
-                {(profileDocBase64 || profileDocUrl) && (
-                  <div style={{ position: 'relative' }}>
-                    <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
-                        style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                    </a>
-                    <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
-                      style={{
-                        position: 'absolute', top: -8, right: -8,
-                        background: 'var(--danger)', color: 'white', border: 'none',
-                        borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                      }}>×</button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                {/* Document upload */}
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                      border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                      cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                      color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                    }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                    >
+                      <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
+                      <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
+                    </label>
+                    {(profileDocBase64 || profileDocUrl) && (
+                      <div style={{ position: 'relative' }}>
+                        <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
+                          <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
+                            style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                        </a>
+                        <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
+                          style={{
+                            position: 'absolute', top: -8, right: -8,
+                            background: 'var(--danger)', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                          }}>×</button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            {/* Section 4: Student card upload */}
-            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-              <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                {t('profileStudentCard')}
-              </label>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                  border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                  color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                >
-                  <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
-                  <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
-                </label>
-                {(profileStudentCardBase64 || profileStudentCardUrl) && (
-                  <div style={{ position: 'relative' }}>
-                    <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
-                        style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                    </a>
-                    <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
-                      style={{
-                        position: 'absolute', top: -8, right: -8,
-                        background: 'var(--danger)', color: 'white', border: 'none',
-                        borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                      }}>×</button>
+                {/* Student card upload */}
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                    {t('profileStudentCard')}
+                  </label>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                      border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                      cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                      color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                    }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                    >
+                      <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
+                      <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
+                    </label>
+                    {(profileStudentCardBase64 || profileStudentCardUrl) && (
+                      <div style={{ position: 'relative' }}>
+                        <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
+                          <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
+                            style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                        </a>
+                        <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
+                          style={{
+                            position: 'absolute', top: -8, right: -8,
+                            background: 'var(--danger)', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                          }}>×</button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
             {/* Save button */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || profileStudentCardUploading || !profileName.trim() || !profileUnit.trim()}
+              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || profileStudentCardUploading || !profileName.trim()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
-                  background: (profileName.trim() && profileUnit.trim()) ? 'var(--primary)' : 'var(--glass-border)',
+                  background: profileName.trim() ? 'var(--primary)' : 'var(--glass-border)',
                   color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: (profileName.trim() && profileUnit.trim()) ? 'pointer' : 'not-allowed',
-                  boxShadow: (profileName.trim() && profileUnit.trim()) ? '0 2px 8px var(--primary-glow)' : 'none'
+                  cursor: profileName.trim() ? 'pointer' : 'not-allowed',
+                  boxShadow: profileName.trim() ? '0 2px 8px var(--primary-glow)' : 'none'
                 }}>
                 <Save size={14} /> {profileSaving || profileDocUploading || profileStudentCardUploading ? t('saving') : t('profileSave')}
               </button>

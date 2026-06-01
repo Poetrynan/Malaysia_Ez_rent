@@ -24,8 +24,8 @@ const AMENITIES = [
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
 interface Unit { id: string; community_id: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
-interface Lease { id: string; unit_id: string; lease_group_id?: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; admin_notes?: string; }
-interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; }
+interface Lease { id: string; unit_id: string; lease_group_id?: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; admin_notes?: string; unit_number?: string; }
+interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; unit_number: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
 interface LeaseWithMeta extends Lease { unitData?: Unit; communityData?: Community; tenantName?: string; payments?: Payment[]; }
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
@@ -44,11 +44,13 @@ function formatLeasePropertyLabel(
   unit: Unit | undefined,
   community: Community | undefined,
   unknownLabel: string,
+  unitNumber?: string,
 ) {
   if (!unit && !community) return unknownLabel;
   const parts: string[] = [];
   if (community?.name) parts.push(community.name);
   if (unit?.room_type) parts.push(`(${unit.room_type})`);
+  if (unitNumber) parts.push(`#${unitNumber}`);
   return parts.join(' · ') || unknownLabel;
 }
 
@@ -148,7 +150,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   // ── Leases state ──
   const [leases, setLeases] = useState<LeaseWithMeta[]>([]);
   const [expandedLease, setExpandedLease] = useState<string | null>(null);
-  const [leaseForm, setLeaseForm] = useState<LeaseForm>({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5' });
+  const [leaseForm, setLeaseForm] = useState<LeaseForm>({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5', unit_number: '' });
   interface UserProfile { id: string; full_name: string | null; phone?: string | null; }
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminIds, setAdminIds] = useState<string[]>([]);
@@ -2116,7 +2118,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     const secMonths = nonNegativeNumber(leaseForm.security_deposit_months);
     const utilMonths = nonNegativeNumber(leaseForm.utility_deposit_months);
     const totalDeposit = rent * (secMonths + utilMonths);
-    const newLease: Lease = { id: isLive ? crypto.randomUUID() : `l-${Date.now()}`, unit_id: leaseForm.unit_id, tenant_id: finalTenantId, start_date: leaseForm.start_date, end_date: leaseForm.end_date, monthly_rent: rent, deposit_amount: totalDeposit, security_deposit_months: secMonths, utility_deposit_months: utilMonths, status: 'active' };
+    const newLease: Lease = { id: isLive ? crypto.randomUUID() : `l-${Date.now()}`, unit_id: leaseForm.unit_id, tenant_id: finalTenantId, start_date: leaseForm.start_date, end_date: leaseForm.end_date, monthly_rent: rent, deposit_amount: totalDeposit, security_deposit_months: secMonths, utility_deposit_months: utilMonths, status: 'active', unit_number: leaseForm.unit_number.trim() || undefined };
     if (isLive) {
       try {
         const { createClient } = await import('@/utils/supabase/client');
@@ -2145,7 +2147,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       localStorage.setItem('ez_payments', JSON.stringify([...allP, ...payments]));
       showToast(lang === 'zh' ? '租约创建成功！（模拟模式）' : 'Lease created successfully! (Mock)', 'success');
     }
-    setLeaseForm({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5' });
+    setLeaseForm({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5', unit_number: '' });
     loadAll();
   };
 
@@ -3258,6 +3260,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   )}
                 </select>
               </div>
+              <div className="form-group">
+                <label>{lang === 'zh' ? '单元号' : 'Unit Number'}</label>
+                <input type="text" className="form-input" placeholder={lang === 'zh' ? '如 A-12-3' : 'e.g. A-12-3'} value={leaseForm.unit_number} onChange={e => setLeaseForm(f => ({ ...f, unit_number: e.target.value }))} />
+              </div>
               <div className="form-group"><label>{t('monthlyRent')} (RM)</label><input type="number" min={0} className="form-input" value={leaseForm.monthly_rent} onChange={e => setLeaseForm(f => ({ ...f, monthly_rent: nonNegativeInputValue(e.target.value) }))} /></div>
               <div className="form-group"><label>{t('startDate')}</label><input type="date" className="form-input" value={leaseForm.start_date} onChange={e => setLeaseForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div className="form-group"><label>{t('endDate')}</label><input type="date" className="form-input" value={leaseForm.end_date} onChange={e => setLeaseForm(f => ({ ...f, end_date: e.target.value }))} /></div>
@@ -3292,7 +3298,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 .filter(p => p.status === 'pending_review' && p.evidence_url)
                 .map(p => {
                   const { unit, community } = resolveLeaseUnit(l, units, communities);
-                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
                   return (
                     <div key={p.id} onClick={() => { setReviewingPayment(p); setAdminNote(''); }}
                       style={{ 
@@ -3358,7 +3364,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {terminatedLeases.map(l => {
                   const { unit, community } = resolveLeaseUnit(l, units, communities);
-                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
                   return (
                     <div key={l.id} style={{
                       padding: '12px 16px',
@@ -3418,7 +3424,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {terminatedLeases.map(l => {
                   const { unit, community } = resolveLeaseUnit(l, units, communities);
-                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+                  const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
                   const notesLines = (l.admin_notes || '').split('\n');
                   const termLine = notesLines.find((ln: string) => ln.includes('Terminated by tenant'));
                   // Translate the English termination note to Chinese if needed
@@ -3534,7 +3540,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             {visibleLeases.map(l => {
               const isExpanded = expandedLease === l.id;
               const { unit, community } = resolveLeaseUnit(l, units, communities);
-              const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'));
+              const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
               return (
                 <div key={l.id} style={{ 
                   border: l.status === 'terminated' 
@@ -4752,8 +4758,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <Eye size={18} style={{ color: 'var(--primary)' }} />
               {t('reviewTitle')}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {t('reviewMonth')}：{fmtMonth(reviewingPayment.billing_month)}
+              {(() => { const l = visibleLeases.find(x => x.id === reviewingPayment.lease_id); return l?.unit_number ? <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '1px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600 }}>{lang === 'zh' ? '单元' : 'Unit'} #{l.unit_number}</span> : null; })()}
               <span className="status-badge" style={{
                 fontSize: '0.7rem',
                 padding: '2px 8px',
