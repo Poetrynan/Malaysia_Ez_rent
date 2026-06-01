@@ -2607,7 +2607,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           communities={communities}
           visibleUnitIds={visibleUnitIds}
           visibleLeaseIds={visibleLeaseIds}
-          onNavigate={(t) => setTab(t as typeof tab)}
+          onNavigate={(t) => { setTab(t as typeof tab); if (t === 'properties') setPropertiesView('inventory'); }}
         />
       )}
 
