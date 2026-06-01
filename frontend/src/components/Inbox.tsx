@@ -48,6 +48,11 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
   const [sending, setSending] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; success: boolean } | null>(null);
 
+  // Sub tab navigation for super admin and dynamic templates
+  const [activeSubTab, setActiveSubTab] = useState<'my-inbox' | 'broadcast'>('my-inbox');
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
+
   // Translations
   const t = {
     zh: {
@@ -66,9 +71,9 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       deleteMsg: '删除消息',
       timeAgo: '发送于',
       recipientLabel: '接收对象',
-      recipientAllStudents: '所有学生/租客',
-      recipientAllAgents: '所有中介/管理员',
-      recipientAllUsers: '所有用户 (全员)',
+      recipientAllStudents: '所有租客',
+      recipientAllAgents: '所有中介',
+      recipientAllUsers: '所有用户（全员）',
       recipientSpecific: '指定单个用户',
       searchPlaceholder: '搜索用户姓名或邮箱...',
       titleLabel: '消息标题',
@@ -110,10 +115,10 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       deleteMsg: 'Delete Message',
       timeAgo: 'Received at',
       recipientLabel: 'Recipient Target',
-      recipientAllStudents: 'All Students / Tenants',
-      recipientAllAgents: 'All Agents / Managers',
-      recipientAllUsers: 'All Platform Users',
-      recipientSpecific: 'Specific Individual',
+      recipientAllStudents: 'All Tenants',
+      recipientAllAgents: 'All Agents',
+      recipientAllUsers: 'All Users (Everyone)',
+      recipientSpecific: 'Specific User',
       searchPlaceholder: 'Search by name or email...',
       titleLabel: 'Notification Title',
       titlePlaceholder: 'Enter title...',
@@ -214,12 +219,103 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       setNewType('announcement');
       return;
     }
-    const tmpl = getTemplates().find(t => t.id === templateId);
+    const tmpl = customTemplates.find(t => t.id === templateId);
     if (tmpl) {
       setNewTitle(tmpl.title);
       setNewContent(tmpl.content);
       setNewType(tmpl.type);
     }
+  };
+
+  // Save custom template
+  const handleSaveNewTemplate = () => {
+    if (!newTitle.trim() || !newContent.trim()) {
+      showToast(lang === 'zh' ? '标题和内容不能为空' : 'Title and content cannot be empty', false);
+      return;
+    }
+    const tmplName = prompt(lang === 'zh' ? '请输入新模板的名称：' : 'Please enter a name for the new template:');
+    if (!tmplName || !tmplName.trim()) return;
+
+    const newTmpl = {
+      id: `tmpl-custom-${Date.now()}`,
+      name: tmplName.trim(),
+      title: newTitle.trim(),
+      content: newContent.trim(),
+      type: newType
+    };
+
+    const storedCustom = localStorage.getItem('ez_notification_templates_custom');
+    const customList = storedCustom ? JSON.parse(storedCustom) : [];
+    const updated = [...customList, newTmpl];
+    localStorage.setItem('ez_notification_templates_custom', JSON.stringify(updated));
+
+    const defaults = getTemplates();
+    setCustomTemplates([...defaults, ...updated]);
+    setSelectedTemplateId(newTmpl.id);
+    showToast(lang === 'zh' ? '新模板已保存！' : 'New template saved!', true);
+  };
+
+  // Update current template
+  const handleUpdateTemplate = () => {
+    if (selectedTemplateId === 'none') {
+      showToast(lang === 'zh' ? '请先选择一个预设模板以进行修改' : 'Please select a template to modify first', false);
+      return;
+    }
+    if (!selectedTemplateId.startsWith('tmpl-custom-')) {
+      showToast(lang === 'zh' ? '默认系统模板无法直接修改，请使用“另存为新模板”' : 'Default templates cannot be modified directly. Please use "Save As New"', false);
+      return;
+    }
+    if (!newTitle.trim() || !newContent.trim()) {
+      showToast(lang === 'zh' ? '标题和内容不能为空' : 'Title and content cannot be empty', false);
+      return;
+    }
+
+    const storedCustom = localStorage.getItem('ez_notification_templates_custom');
+    const customList = storedCustom ? JSON.parse(storedCustom) : [];
+    const updated = customList.map((tmpl: any) => {
+      if (tmpl.id === selectedTemplateId) {
+        return {
+          ...tmpl,
+          title: newTitle.trim(),
+          content: newContent.trim(),
+          type: newType
+        };
+      }
+      return tmpl;
+    });
+
+    localStorage.setItem('ez_notification_templates_custom', JSON.stringify(updated));
+
+    const defaults = getTemplates();
+    setCustomTemplates([...defaults, ...updated]);
+    showToast(lang === 'zh' ? '模板修改已成功保存！' : 'Template updated successfully!', true);
+  };
+
+  // Delete current template
+  const handleDeleteTemplate = () => {
+    if (selectedTemplateId === 'none') {
+      showToast(lang === 'zh' ? '请选择需要删除的模板' : 'Please select a template to delete', false);
+      return;
+    }
+    if (!selectedTemplateId.startsWith('tmpl-custom-')) {
+      showToast(lang === 'zh' ? '默认系统模板无法删除' : 'Default templates cannot be deleted', false);
+      return;
+    }
+    if (!confirm(lang === 'zh' ? '确定要删除这个模板吗？' : 'Are you sure you want to delete this template?')) return;
+
+    const storedCustom = localStorage.getItem('ez_notification_templates_custom');
+    const customList = storedCustom ? JSON.parse(storedCustom) : [];
+    const updated = customList.filter((tmpl: any) => tmpl.id !== selectedTemplateId);
+    localStorage.setItem('ez_notification_templates_custom', JSON.stringify(updated));
+    
+    const defaults = getTemplates();
+    setCustomTemplates([...defaults, ...updated]);
+
+    setSelectedTemplateId('none');
+    setNewTitle('');
+    setNewContent('');
+    setNewType('announcement');
+    showToast(lang === 'zh' ? '模板已删除' : 'Template deleted', true);
   };
 
   // Fetch current user ID and load notifications
@@ -277,7 +373,7 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
 
         const dir: UserDirectoryItem[] = [];
         mockUsers.forEach((u: any) => {
-          dir.push({ id: u.id, name: u.full_name || 'Student User', email: u.phone || 'No Email', role: 'student', phone: u.phone });
+          dir.push({ id: u.id, name: u.full_name || 'Tenant', email: u.email || u.phone || 'No Email', role: 'student', phone: u.phone });
         });
         mockAdmins.forEach((a: any) => {
           dir.push({ id: a.id, name: a.display_name || 'Agent/Admin', email: a.email, role: a.role === 'super_admin' ? 'super_admin' : 'agent', phone: a.phone, whatsapp: a.whatsapp });
@@ -285,13 +381,13 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
         setUsersDirectory(dir);
       } else {
         // Query users and admin_users from Supabase
-        const { data: dbUsers } = await supabase.from('users').select('id, full_name, phone');
+        const { data: dbUsers } = await supabase.from('users').select('id, full_name, phone, email');
         const { data: dbAdmins } = await supabase.from('admin_users').select('id, display_name, email, role, phone, whatsapp');
 
         const dir: UserDirectoryItem[] = [];
         if (dbUsers) {
           dbUsers.forEach((u: any) => {
-            dir.push({ id: u.id, name: u.full_name || 'Student Tenant', email: u.phone || 'No Email', role: 'student', phone: u.phone });
+            dir.push({ id: u.id, name: u.full_name || 'Tenant', email: u.email || u.phone || 'No Email', role: 'student', phone: u.phone });
           });
         }
         if (dbAdmins) {
@@ -303,12 +399,18 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
       }
     }
 
+    // Load templates
+    const storedCustom = localStorage.getItem('ez_notification_templates_custom');
+    const customList = storedCustom ? JSON.parse(storedCustom) : [];
+    const defaults = getTemplates();
+    setCustomTemplates([...defaults, ...customList]);
+
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-  }, [adminRole]);
+  }, [adminRole, lang]);
 
   // Handle Mark Message as Read
   const handleMarkAsRead = async (msgId: string) => {
@@ -538,182 +640,221 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
         </div>
       )}
 
-      {/* Main Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: adminRole === 'super_admin' ? '1fr 380px' : '1fr',
-        gap: 24,
-        alignItems: 'start',
-        maxWidth: adminRole === 'super_admin' ? '1200px' : '860px',
-        width: '100%',
-        margin: '0 auto'
-      }}>
+      {/* Main Container */}
+      <div style={{ maxWidth: '860px', width: '100%', margin: '0 auto' }}>
         
-        {/* Left Side: Personal Messages Inbox */}
-        <div style={{
-          background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
-          borderRadius: 16, padding: 24, boxShadow: 'var(--card-shadow)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Mail size={22} style={{ color: 'var(--primary)' }} />
-                {t.inboxTitle}
-                {notifications.filter(n => !n.is_read).length > 0 && (
-                  <span style={{ fontSize: '0.72rem', background: 'var(--danger)', color: 'white', padding: '2px 8px', borderRadius: 20, verticalAlign: 'middle' }}>
-                    {notifications.filter(n => !n.is_read).length}
-                  </span>
-                )}
-              </h2>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>{t.inboxSubtitle}</p>
-            </div>
-            
-            {notifications.some(n => !n.is_read) && (
-              <button onClick={handleMarkAllRead} style={{
-                background: 'var(--primary-light)', color: 'var(--primary)', border: 'none',
-                padding: '6px 14px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
-                cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: 4
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                <CheckCircle2 size={13} />
-                {t.markAllRead}
-              </button>
-            )}
-          </div>
-
-          {/* Filtering row */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+        {/* Sub-navigation Tabs for Super Admin */}
+        {adminRole === 'super_admin' && (
+          <div style={{
+            display: 'flex', gap: 10, marginBottom: 24, borderBottom: '1px solid var(--glass-border)',
+            paddingBottom: 10
+          }}>
             {[
-              { id: 'all', label: t.typeAll },
-              { id: 'unread', label: t.typeUnread },
-              { id: 'system', label: t.typeSystem },
-              { id: 'announcement', label: t.typeAnnouncement },
-              { id: 'update', label: t.typeUpdate },
-              { id: 'bonus', label: t.typeBonus }
+              { id: 'my-inbox', label: lang === 'zh' ? '我的收件箱' : 'My Inbox', count: notifications.filter(n => !n.is_read).length },
+              { id: 'broadcast', label: lang === 'zh' ? '发送通知与模板管理' : 'Broadcast & Templates' }
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setFilterType(tab.id)}
+                type="button"
+                onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
-                  padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', border: '1px solid var(--glass-border)',
-                  background: filterType === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
-                  color: filterType === tab.id ? 'white' : 'var(--text-body)',
-                  cursor: 'pointer', fontWeight: 600, transition: '0.2s'
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: activeSubTab === tab.id ? 'var(--primary-light)' : 'transparent',
+                  color: activeSubTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',
+                  fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 6
                 }}
+                onMouseEnter={e => { if (activeSubTab !== tab.id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={e => { if (activeSubTab !== tab.id) e.currentTarget.style.background = 'transparent'; }}
               >
                 {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span style={{ fontSize: '0.68rem', background: 'var(--danger)', color: 'white', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
+                    {tab.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
+        )}
 
-          {/* Inbox List */}
-          {loading ? (
-            <div style={{ padding: '60px 0', textAlign: 'center' }}>
-              <div style={{ width: 28, height: 28, border: '2px solid var(--glass-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading messages...</span>
+        {/* Tab 1: Personal Messages Inbox */}
+        {(adminRole !== 'super_admin' || activeSubTab === 'my-inbox') && (
+          <div style={{
+            background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
+            borderRadius: 16, padding: 24, boxShadow: 'var(--card-shadow)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Mail size={22} style={{ color: 'var(--primary)' }} />
+                  {t.inboxTitle}
+                  {notifications.filter(n => !n.is_read).length > 0 && (
+                    <span style={{ fontSize: '0.72rem', background: 'var(--danger)', color: 'white', padding: '2px 8px', borderRadius: 20, verticalAlign: 'middle' }}>
+                      {notifications.filter(n => !n.is_read).length}
+                    </span>
+                  )}
+                </h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>{t.inboxSubtitle}</p>
+              </div>
+              
+              {notifications.some(n => !n.is_read) && (
+                <button onClick={handleMarkAllRead} style={{
+                  background: 'var(--primary-light)', color: 'var(--primary)', border: 'none',
+                  padding: '6px 14px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
+                  cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: 4
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                  <CheckCircle2 size={13} />
+                  {t.markAllRead}
+                </button>
+              )}
             </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--glass-bg)', borderRadius: 12, border: '1px dashed var(--glass-border)' }}>
-              <MailOpen size={40} style={{ color: 'var(--text-muted)', opacity: 0.35, marginBottom: 12 }} />
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>{t.noMessages}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {filteredNotifications.map(item => {
-                const isExpanded = expandedId === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      setExpandedId(isExpanded ? null : item.id);
-                      if (!item.is_read) handleMarkAsRead(item.id);
-                    }}
-                    style={{
-                      background: item.is_read ? 'var(--glass-bg)' : 'rgba(13, 148, 136, 0.04)',
-                      border: `1px solid ${item.is_read ? 'var(--glass-border)' : 'var(--primary-glow)'}`,
-                      borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: '0.2s',
-                      position: 'relative', overflow: 'hidden'
-                    }}
-                    className="notification-card-hover"
-                  >
-                    {/* Left colored stripe indicator for unread */}
-                    {!item.is_read && (
-                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--primary)' }} />
-                    )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
-                        <div style={{
-                          marginTop: 2, padding: 8, borderRadius: 8,
-                          background: item.is_read ? 'rgba(0,0,0,0.02)' : 'var(--primary-light)'
-                        }}>
-                          {renderTypeIcon(item.type)}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-                              {getTypeName(item.type)}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {t.timeAgo} {new Date(item.created_at).toLocaleString()}
-                            </span>
+            {/* Filtering row */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+              {[
+                { id: 'all', label: t.typeAll },
+                { id: 'unread', label: t.typeUnread },
+                { id: 'system', label: t.typeSystem },
+                { id: 'announcement', label: t.typeAnnouncement },
+                { id: 'update', label: t.typeUpdate },
+                { id: 'bonus', label: t.typeBonus }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterType(tab.id)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', border: '1px solid var(--glass-border)',
+                    background: filterType === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                    color: filterType === tab.id ? 'white' : 'var(--text-body)',
+                    fontWeight: 600, cursor: 'pointer', transition: '0.2s'
+                  }}
+                  onMouseEnter={e => { if (filterType !== tab.id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={e => { if (filterType !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Inbox List */}
+            {loading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 8px', color: 'var(--primary)' }} />
+                <p style={{ fontSize: '0.82rem', margin: 0 }}>{lang === 'zh' ? '加载通知中...' : 'Loading alerts...'}</p>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
+              <div style={{
+                border: '1px dashed var(--glass-border)', borderRadius: 12, padding: '48px 24px',
+                textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'
+              }}>
+                <MailOpen size={40} style={{ color: 'var(--text-muted)', opacity: 0.35, marginBottom: 12 }} />
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>{t.noMessages}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {filteredNotifications.map(item => {
+                  const isExpanded = expandedId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setExpandedId(isExpanded ? null : item.id);
+                        if (!item.is_read) handleMarkAsRead(item.id);
+                      }}
+                      style={{
+                        background: item.is_read ? 'var(--glass-bg)' : 'rgba(13, 148, 136, 0.04)',
+                        border: `1px solid ${item.is_read ? 'var(--glass-border)' : 'var(--primary-glow)'}`,
+                        borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: '0.2s',
+                        position: 'relative', overflow: 'hidden'
+                      }}
+                      className="notification-card-hover"
+                    >
+                      {/* Left colored stripe indicator for unread */}
+                      {!item.is_read && (
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--primary)' }} />
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                          <div style={{
+                            marginTop: 2, padding: 8, borderRadius: 8,
+                            background: item.is_read ? 'rgba(0,0,0,0.02)' : 'var(--primary-light)'
+                          }}>
+                            {renderTypeIcon(item.type)}
                           </div>
-                          <h4 style={{
-                            fontSize: '0.9rem', fontWeight: item.is_read ? 600 : 800,
-                            color: 'var(--text-h)', margin: '8px 0 4px', lineHeight: 1.4
-                          }}>
-                            {item.title}
-                          </h4>
-                          
-                          {/* Snippet or full content */}
-                          <p style={isExpanded ? {
-                            fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5,
-                            margin: 0, whiteSpace: 'pre-wrap'
-                          } : {
-                            fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5,
-                            margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden', textOverflow: 'ellipsis'
-                          }}>
-                            {item.content}
-                          </p>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                                {getTypeName(item.type)}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {t.timeAgo} {new Date(item.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <h4 style={{
+                              fontSize: '0.9rem', fontWeight: item.is_read ? 600 : 800,
+                              color: 'var(--text-h)', margin: '8px 0 4px', lineHeight: 1.4
+                            }}>
+                              {item.title}
+                            </h4>
+                            
+                            {/* Snippet or full content */}
+                            <p style={isExpanded ? {
+                              fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5,
+                              margin: 0, whiteSpace: 'pre-wrap'
+                            } : {
+                              fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5,
+                              margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden', textOverflow: 'ellipsis'
+                            }}>
+                              {item.content}
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Right Action buttons */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteMessage(item.id);
-                          }}
-                          style={{
-                            background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                            padding: 4, borderRadius: 6, cursor: 'pointer', transition: '0.2s'
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-light)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                          title={t.deleteMsg}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <ChevronRight size={16} style={{
-                          color: 'var(--text-muted)', transition: '0.2s',
-                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                          marginTop: 8
-                        }} />
+                        {/* Right Action buttons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(item.id);
+                            }}
+                            style={{
+                              background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                              padding: 4, borderRadius: 6, cursor: 'pointer', transition: '0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-light)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                            title={t.deleteMsg}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <ChevronRight size={16} style={{
+                            color: 'var(--text-muted)', transition: '0.2s',
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            marginTop: 8
+                          }} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Right Side: Super Admin Send Console */}
-        {adminRole === 'super_admin' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Tab 2: Send Console for Super Admin */}
+        {adminRole === 'super_admin' && activeSubTab === 'broadcast' && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: recipientScope === 'specific' ? '1fr 320px' : '1fr',
+            gap: 20,
+            alignItems: 'start'
+          }}>
             {/* Send panel */}
             <div style={{
               background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
@@ -759,7 +900,7 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
                       <User size={14} style={{ color: 'var(--primary)' }} />
                       <div>
                         <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-h)' }}>
-                          {selectedRecipient ? selectedRecipient.name : (lang === 'zh' ? '请在下方列表选择用户' : 'Select user from list below')}
+                          {selectedRecipient ? selectedRecipient.name : (lang === 'zh' ? '请在右侧列表选择用户' : 'Select user from directory on the right')}
                         </div>
                         {selectedRecipient && (
                           <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{selectedRecipient.email}</div>
@@ -781,19 +922,90 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
                     {t.templateLabel}
                   </label>
                   <select
-                    onChange={(e) => applyTemplate(e.target.value)}
-                    defaultValue="none"
+                    value={selectedTemplateId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedTemplateId(id);
+                      if (id === 'none') {
+                        setNewTitle('');
+                        setNewContent('');
+                        setNewType('announcement');
+                      } else {
+                        const tmpl = customTemplates.find(t => t.id === id);
+                        if (tmpl) {
+                          setNewTitle(tmpl.title);
+                          setNewContent(tmpl.content);
+                          setNewType(tmpl.type);
+                        }
+                      }
+                    }}
                     className="form-select"
                     style={{
                       fontSize: '0.82rem', height: 'auto'
                     }}
                   >
                     <option value="none">{t.templateNone}</option>
-                    <option value="approve">{t.templateApproveTitle}</option>
-                    <option value="reject">{t.templateRejectTitle}</option>
-                    <option value="maintain">{t.templateMaintainTitle}</option>
-                    <option value="promo">{t.templatePromoTitle}</option>
+                    {customTemplates.map(tmpl => (
+                      <option key={tmpl.id} value={tmpl.id}>
+                        {tmpl.name}
+                      </option>
+                    ))}
                   </select>
+
+                  {/* Template action buttons */}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleSaveNewTemplate}
+                      style={{
+                        flex: 1, padding: '6px 0', border: '1px solid var(--glass-border)',
+                        borderRadius: 6, background: 'var(--glass-bg)', color: 'var(--text-body)',
+                        fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
+                    >
+                      {lang === 'zh' ? '另存为新模板' : 'Save As New'}
+                    </button>
+
+                    {selectedTemplateId !== 'none' && (
+                      <>
+                        {selectedTemplateId.startsWith('tmpl-custom-') && (
+                          <button
+                            type="button"
+                            onClick={handleUpdateTemplate}
+                            style={{
+                              flex: 1, padding: '6px 0', border: '1px solid var(--glass-border)',
+                              borderRadius: 6, background: 'var(--glass-bg)', color: 'var(--text-body)',
+                              fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
+                          >
+                            {lang === 'zh' ? '保存修改' : 'Save Changes'}
+                          </button>
+                        )}
+
+                        {selectedTemplateId.startsWith('tmpl-custom-') && (
+                          <button
+                            type="button"
+                            onClick={handleDeleteTemplate}
+                            style={{
+                              padding: '6px 12px', border: '1px solid rgba(220, 38, 38, 0.2)',
+                              borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)',
+                              fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                          >
+                            {lang === 'zh' ? '删除' : 'Delete'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Title */}
@@ -882,8 +1094,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
             {recipientScope === 'specific' && (
               <div style={{
                 background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
-                borderRadius: 16, padding: 20, maxHeight: 300, display: 'flex', flexDirection: 'column',
-                boxShadow: 'var(--card-shadow)'
+                borderRadius: 16, padding: 20, maxHeight: 450, display: 'flex', flexDirection: 'column',
+                boxShadow: 'var(--card-shadow)', width: '320px'
               }}>
                 <h3 style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 2px' }}>{t.userDirTitle}</h3>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>{t.userDirDesc}</p>

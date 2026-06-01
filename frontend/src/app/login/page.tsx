@@ -155,7 +155,7 @@ export default function LoginPage() {
             Malaysia Ez Rent
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-            {lang === 'zh' ? 'AI 智能留学生租房助手' : 'AI Smart Housing Assistant'}
+            {lang === 'zh' ? 'AI 智能租房助手' : 'AI Smart Housing Assistant'}
           </div>
         </div>
 
@@ -228,7 +228,7 @@ export default function LoginPage() {
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
-                  {lang === 'zh' ? '我是学生' : 'I\'m a Student'}
+                  {lang === 'zh' ? '我是租客' : 'I\'m a Tenant'}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   {lang === 'zh' ? '找房、缴租、报修' : 'Find rooms, pay rent, maintenance'}
@@ -279,7 +279,7 @@ export default function LoginPage() {
                 <User size={22} style={{ color: 'var(--primary)' }} />
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
-                {lang === 'zh' ? '学生登录' : 'Student Login'}
+                {lang === 'zh' ? '租客登录' : 'Tenant Login'}
               </div>
             </div>
 
@@ -424,7 +424,7 @@ export default function LoginPage() {
               <button onClick={() => handleMockLogin('student')} style={{ flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}>
                 <User size={20} style={{ color: 'var(--primary)' }} />
-                {lang === 'zh' ? '学生' : 'Student'}
+                {lang === 'zh' ? '租客' : 'Tenant'}
               </button>
               <button onClick={() => handleMockLogin('admin')} style={{ flex: 1, padding: '14px 10px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}>

@@ -55,7 +55,7 @@ const DEFAULT_PAYMENTS = [
 ];
 
 const DEFAULT_USERS = [
-  { id: 'tenant-123', phone: '+8618812345678', full_name: 'Alex Lim', avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Alex', created_at: new Date().toISOString() }
+  { id: 'tenant-123', email: 'student@ezrent.my', phone: '+8618812345678', full_name: 'Alex Lim', avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Alex', created_at: new Date().toISOString() }
 ];
 
 const DEFAULT_ADMINS = [

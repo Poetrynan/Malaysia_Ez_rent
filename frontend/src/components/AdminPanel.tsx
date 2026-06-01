@@ -230,9 +230,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   // ── Agent registrations state ──
   const [agentRegistrations, setAgentRegistrations] = useState<any[]>([]);
-  const [agentReviewRejectId, setAgentReviewRejectId] = useState<string | null>(null);
   const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
-  const [agentReviewRejectReason, setAgentReviewRejectReason] = useState('');
+
+  // Approve state
+  const [approveModalRecord, setApproveModalRecord] = useState<any | null>(null);
+  const [approveSendUserNotif, setApproveSendUserNotif] = useState(true);
+  const [approveSendAllBroadcast, setApproveSendAllBroadcast] = useState(false);
+  const [approveNotifTitle, setApproveNotifTitle] = useState('');
+  const [approveNotifContent, setApproveNotifContent] = useState('');
+
+  // Reject state
+  const [rejectModalRecord, setRejectModalRecord] = useState<any | null>(null);
+  const [rejectSendUserNotif, setRejectSendUserNotif] = useState(true);
+  const [rejectReasonText, setRejectReasonText] = useState('');
+  const [rejectNotifTitle, setRejectNotifTitle] = useState('');
+  const [rejectNotifContent, setRejectNotifContent] = useState('');
 
   const fetchAgentRegistrations = async () => {
     if (!isLive) {
@@ -255,7 +267,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     }
   };
 
-  const approveAgentRegistration = async (reg: any) => {
+  const commitApproveAgentRegistration = async () => {
+    if (!approveModalRecord) return;
+    const reg = approveModalRecord;
+
     if (!isLive) {
       const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
       const idx = regs.findIndex((r: any) => r.id === reg.id);
@@ -265,19 +280,41 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       admins.push({ id: reg.auth_user_id || reg.id, email: reg.email || `${reg.full_name.toLowerCase().replace(/\s+/g, '')}@agent.ezrent.my`, display_name: reg.full_name, phone: reg.phone, whatsapp: reg.whatsapp, role: 'editor', agency_name: reg.agency_name, job_title: 'Real Estate Negotiator', ren_number: reg.ren_number, ren_tag_url: reg.ren_tag_url });
       localStorage.setItem('ez_admins', JSON.stringify(admins));
 
-      // Add a user notification for the approval
-      if (reg.auth_user_id) {
+      // Add user notification for the approval
+      if (approveSendUserNotif && reg.auth_user_id) {
         const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
         notifs.push({
           id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
           user_id: reg.auth_user_id,
-          title: lang === 'zh' ? '恭喜！您的中介注册申请已通过审核' : 'Congratulations! Your Agent Registration is Approved',
-          content: lang === 'zh' 
-            ? `尊敬的申请人 ${reg.full_name}，您的中介注册申请已成功通过超级管理员审核。\n\n在下次重新登录后，您的账户将自动切换为中介身份，并直接进入中介管理后台开始录入和管理挂牌房源。感谢您选择 Malaysia Ez Rent！`
-            : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`,
+          title: approveNotifTitle,
+          content: approveNotifContent,
           type: 'agent_status',
           is_read: false,
           created_at: new Date().toISOString()
+        });
+        localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
+      }
+
+      // Add broadcast notification if checked
+      if (approveSendAllBroadcast) {
+        const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
+        // Fetch all user ids in mock
+        const mockUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
+        const mockAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        const allIds = [...mockUsers.map((u: any) => u.id), ...mockAdmins.map((a: any) => a.id)];
+        
+        allIds.forEach(userId => {
+          notifs.push({
+            id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
+            user_id: userId,
+            title: lang === 'zh' ? `公告：欢迎新中介 ${reg.full_name} 加入！` : `Announcement: Welcome new agent ${reg.full_name}!`,
+            content: lang === 'zh'
+              ? `中介新成员 ${reg.full_name}（来自 ${reg.agency_name}，REN: ${reg.ren_number}）已成功入驻平台，即日起为您提供更优质的看房与租约服务！`
+              : `New agent member ${reg.full_name} (from ${reg.agency_name}, REN: ${reg.ren_number}) has joined the platform to serve your housing needs!`,
+            type: 'announcement',
+            is_read: false,
+            created_at: new Date().toISOString()
+          });
         });
         localStorage.setItem('ez_user_notifications', JSON.stringify(notifs));
       }
@@ -299,17 +336,38 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           ren_tag_url: reg.ren_tag_url,
         });
 
-        // Add a user notification for the approval
-        if (reg.auth_user_id) {
+        // Add user notification for the approval
+        if (approveSendUserNotif && reg.auth_user_id) {
           await supabase.from('user_notifications').insert({
             user_id: reg.auth_user_id,
-            title: lang === 'zh' ? '恭喜！您的中介注册申请已通过审核' : 'Congratulations! Your Agent Registration is Approved',
-            content: lang === 'zh' 
-              ? `尊敬的申请人 ${reg.full_name}，您的中介注册申请已成功通过超级管理员审核。\n\n在下次重新登录后，您的账户将自动切换为中介身份，并直接进入中介管理后台开始录入和管理挂牌房源。感谢您选择 Malaysia Ez Rent！`
-              : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`,
+            title: approveNotifTitle,
+            content: approveNotifContent,
             type: 'agent_status',
             is_read: false
           });
+        }
+
+        // Add broadcast notification if checked
+        if (approveSendAllBroadcast) {
+          // Fetch all user and admin ids
+          const { data: dbUsers } = await supabase.from('users').select('id');
+          const { data: dbAdmins } = await supabase.from('admin_users').select('id');
+          const allIds = [
+            ...(dbUsers || []).map((u: any) => u.id),
+            ...(dbAdmins || []).map((a: any) => a.id)
+          ];
+          const rows = allIds.map(userId => ({
+            user_id: userId,
+            title: lang === 'zh' ? `公告：欢迎新中介 ${reg.full_name} 加入！` : `Announcement: Welcome new agent ${reg.full_name}!`,
+            content: lang === 'zh'
+              ? `中介新成员 ${reg.full_name}（来自 ${reg.agency_name}，REN: ${reg.ren_number}）已成功入驻平台，即日起为您提供更优质的看房与租约服务！`
+              : `New agent member ${reg.full_name} (from ${reg.agency_name}, REN: ${reg.ren_number}) has joined the platform to serve your housing needs!`,
+            type: 'announcement',
+            is_read: false
+          }));
+          if (rows.length > 0) {
+            await supabase.from('user_notifications').insert(rows);
+          }
         }
 
         // Delete REN tag image from Storage
@@ -319,34 +377,40 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             await supabase.storage.from('unit-media').remove([`ren-tags/${pathMatch[1]}`]);
           }
         }
+
         // Delete registration record
         await supabase.from('agent_registrations').delete().eq('id', reg.id);
       } catch (e) { console.error('Approve agent error:', e); }
     }
+    setApproveModalRecord(null);
     fetchAgentRegistrations();
-    showToast(lang === 'zh' ? '已通过审核，注册记录已清理' : 'Agent approved, registration cleaned up', 'success');
+    showToast(lang === 'zh' ? '已通过审核' : 'Agent approved', 'success');
   };
 
-  const rejectAgentRegistration = async (id: string) => {
+  const commitRejectAgentRegistration = async () => {
+    if (!rejectModalRecord) return;
+    const reg = rejectModalRecord;
+    const finalReason = rejectReasonText.trim() || (lang === 'zh' ? '证件不清晰或信息不匹配' : 'Invalid document details or mismatch');
+
+    // Replace reason placeholder in the content
+    const finalContent = rejectNotifContent.replace(/\[请在下方输入拒绝原因\]|\[Please specify reason\]/g, finalReason);
+
     if (!isLive) {
       const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-      const idx = regs.findIndex((r: any) => r.id === id);
+      const idx = regs.findIndex((r: any) => r.id === reg.id);
       if (idx !== -1) {
         regs[idx].verification_status = 'rejected';
-        regs[idx].rejection_reason = agentReviewRejectReason;
+        regs[idx].rejection_reason = finalReason;
         localStorage.setItem('ez_agent_registrations', JSON.stringify(regs));
 
         // Add a notification for rejection
-        const reg = regs[idx];
-        if (reg.auth_user_id) {
+        if (rejectSendUserNotif && reg.auth_user_id) {
           const notifs = JSON.parse(localStorage.getItem('ez_user_notifications') || '[]');
           notifs.push({
             id: `msg-mock-${Math.random().toString(36).substring(2, 11)}`,
             user_id: reg.auth_user_id,
-            title: lang === 'zh' ? '关于您的中介注册申请审核结果通知' : 'Notification Regarding Your Agent Registration Status',
-            content: lang === 'zh'
-              ? `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：${agentReviewRejectReason}\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`
-              : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: ${agentReviewRejectReason}\n\nPlease re-upload valid REN credentials or contact admin support directly.`,
+            title: rejectNotifTitle,
+            content: finalContent,
             type: 'agent_status',
             is_read: false,
             created_at: new Date().toISOString()
@@ -358,25 +422,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        await supabase.from('agent_registrations').update({ verification_status: 'rejected', rejection_reason: agentReviewRejectReason, reviewed_at: new Date().toISOString() }).eq('id', id);
+        await supabase.from('agent_registrations').update({ verification_status: 'rejected', rejection_reason: finalReason, reviewed_at: new Date().toISOString() }).eq('id', reg.id);
 
-        // Find the registration to get auth_user_id
-        const { data: reg } = await supabase.from('agent_registrations').select('auth_user_id, full_name').eq('id', id).maybeSingle();
-        if (reg && reg.auth_user_id) {
+        if (rejectSendUserNotif && reg.auth_user_id) {
           await supabase.from('user_notifications').insert({
             user_id: reg.auth_user_id,
-            title: lang === 'zh' ? '关于您的中介注册申请审核结果通知' : 'Notification Regarding Your Agent Registration Status',
-            content: lang === 'zh'
-              ? `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：${agentReviewRejectReason}\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`
-              : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: ${agentReviewRejectReason}\n\nPlease re-upload valid REN credentials or contact admin support directly.`,
+            title: rejectNotifTitle,
+            content: finalContent,
             type: 'agent_status',
             is_read: false
           });
         }
       } catch (e) { console.error('Reject agent error:', e); }
     }
-    setAgentReviewRejectId(null);
-    setAgentReviewRejectReason('');
+    setRejectModalRecord(null);
+    setRejectReasonText('');
     fetchAgentRegistrations();
     showToast(lang === 'zh' ? '已拒绝' : 'Agent rejected', 'success');
   };
@@ -1851,7 +1911,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const removeQR = () => {
     setGenericConfirm({
       title: lang === 'zh' ? '确认删除收款码' : 'Delete QR Code',
-      message: lang === 'zh' ? '确定删除收款码？删除后学生将无法扫码付款。' : 'Are you sure you want to delete this payment QR code? Students will not be able to scan and pay.',
+      message: lang === 'zh' ? '确定删除收款码？删除后租客将无法扫码付款。' : 'Are you sure you want to delete this payment QR code? Tenants will not be able to scan and pay.',
       isDanger: true,
       onConfirm: async () => {
         setAdminQR(null);
@@ -4003,10 +4063,26 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {reg.verification_status === 'pending' ? (
                               <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                <button onClick={() => approveAgentRegistration(reg)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--success)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                                <button onClick={() => {
+                                  setApproveModalRecord(reg);
+                                  setApproveSendUserNotif(true);
+                                  setApproveSendAllBroadcast(false);
+                                  setApproveNotifTitle(lang === 'zh' ? '恭喜！您的中介注册申请已通过审核' : 'Congratulations! Your Agent Registration is Approved');
+                                  setApproveNotifContent(lang === 'zh' 
+                                    ? `尊敬的申请人 ${reg.full_name}，您的中介注册申请已成功通过超级管理员审核。\n\n在下次重新登录后，您的账户将自动切换为中介身份，并直接进入中介管理后台开始录入和管理挂牌房源。感谢您选择 Malaysia Ez Rent！`
+                                    : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`);
+                                }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--success)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
                                   <CheckCircle2 size={12} />
                                 </button>
-                                <button onClick={() => setAgentReviewRejectId(reg.id)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                                <button onClick={() => {
+                                  setRejectModalRecord(reg);
+                                  setRejectReasonText('');
+                                  setRejectSendUserNotif(true);
+                                  setRejectNotifTitle(lang === 'zh' ? '关于您的中介注册申请审核结果通知' : 'Notification Regarding Your Agent Registration Status');
+                                  setRejectNotifContent(lang === 'zh'
+                                    ? `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：[请在下方输入拒绝原因]\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`
+                                    : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: [Please specify reason]\n\nPlease re-upload valid REN credentials or contact admin support directly.`);
+                                }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
                                   <X size={12} />
                                 </button>
                               </div>
@@ -4028,20 +4104,152 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 </table>
               </div>
 
-              {/* Rejection reason input (shows when reject is clicked) */}
-              {agentReviewRejectId && (
-                <div style={{ padding: '12px 16px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(239,68,68,0.03)' }}>
-                  <AlertTriangle size={14} style={{ color: 'var(--danger)', flexShrink: 0 }} />
-                  <input type="text" className="form-input" value={agentReviewRejectReason}
-                    onChange={e => setAgentReviewRejectReason(e.target.value)}
-                    placeholder={lang === 'zh' ? '拒绝原因（选填）' : 'Reason (optional)'}
-                    style={{ flex: 1, fontSize: '0.82rem' }} />
-                  <button onClick={() => rejectAgentRegistration(agentReviewRejectId)} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
-                    {lang === 'zh' ? '确认拒绝' : 'Confirm'}
-                  </button>
-                  <button onClick={() => { setAgentReviewRejectId(null); setAgentReviewRejectReason(''); }} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-body)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
-                    {lang === 'zh' ? '取消' : 'Cancel'}
-                  </button>
+              {/* Approve Confirmation Modal */}
+              {approveModalRecord && (
+                <div style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                  backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease',
+                }}>
+                  <div className="glass-card" style={{
+                    width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
+                    gap: 16, boxShadow: 'var(--card-shadow)', border: '1px solid var(--glass-border)',
+                    position: 'relative', background: 'var(--card-bg)', textAlign: 'left'
+                  }}>
+                    <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)' }}>
+                      <CheckCircle2 size={20} />
+                      {lang === 'zh' ? '审核通过确认' : 'Approve Agent Application'}
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>
+                      {lang === 'zh'
+                        ? `您确定要批准中介 ${approveModalRecord.full_name}（公司：${approveModalRecord.agency_name}，REN：${approveModalRecord.ren_number}）的注册申请吗？通过后该账户将被赋予中介权限。`
+                        : `Are you sure you want to approve agent ${approveModalRecord.full_name} (Company: ${approveModalRecord.agency_name}, REN: ${approveModalRecord.ren_number})? This will grant them agent portal privileges.`}
+                    </p>
+
+                    {/* Notifications setup */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-hover)', padding: 14, borderRadius: 8, border: '1px solid var(--glass-border)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-h)' }}>
+                        {lang === 'zh' ? '通知设置' : 'Notification Settings'}
+                      </div>
+                      
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-body)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={approveSendUserNotif} onChange={e => setApproveSendUserNotif(e.target.checked)} />
+                        {lang === 'zh' ? '向该用户发送通过通知' : 'Send approval alert to applicant'}
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-body)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={approveSendAllBroadcast} onChange={e => setApproveSendAllBroadcast(e.target.checked)} />
+                        {lang === 'zh' ? '同时向全员发布广播公告 (欢迎新成员入驻)' : 'Broadcast welcoming announcement to all users'}
+                      </label>
+                    </div>
+
+                    {/* Edit fields if sending to user */}
+                    {approveSendUserNotif && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-h)', display: 'block', marginBottom: 4 }}>
+                            {lang === 'zh' ? '通知标题' : 'Notification Title'}
+                          </label>
+                          <input type="text" className="form-input" value={approveNotifTitle} onChange={e => setApproveNotifTitle(e.target.value)} style={{ fontSize: '0.8rem', height: 'auto', width: '100%', padding: '8px 12px' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-h)', display: 'block', marginBottom: 4 }}>
+                            {lang === 'zh' ? '通知内容' : 'Notification Body'}
+                          </label>
+                          <textarea className="form-input" rows={4} value={approveNotifContent} onChange={e => setApproveNotifContent(e.target.value)} style={{ fontSize: '0.78rem', height: 'auto', width: '100%', padding: '8px 12px', fontFamily: 'inherit', resize: 'vertical' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                      <button onClick={() => setApproveModalRecord(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-body)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                        {lang === 'zh' ? '取消' : 'Cancel'}
+                      </button>
+                      <button onClick={commitApproveAgentRegistration} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--success)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                        {lang === 'zh' ? '确认通过' : 'Confirm Approve'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Reject Confirmation Modal */}
+              {rejectModalRecord && (
+                <div style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                  backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease',
+                }}>
+                  <div className="glass-card" style={{
+                    width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
+                    gap: 16, boxShadow: 'var(--card-shadow)', border: '1px solid var(--glass-border)',
+                    position: 'relative', background: 'var(--card-bg)', textAlign: 'left'
+                  }}>
+                    <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)' }}>
+                      <AlertTriangle size={20} />
+                      {lang === 'zh' ? '驳回/拒绝申请确认' : 'Reject Agent Application'}
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>
+                      {lang === 'zh'
+                        ? `确定要拒绝中介 ${rejectModalRecord.full_name}（公司：${rejectModalRecord.agency_name}）的注册申请吗？该操作会将记录设为拒绝状态并通知对方。`
+                        : `Are you sure you want to reject agent ${rejectModalRecord.full_name} (Company: ${rejectModalRecord.agency_name})? This will mark their status as rejected and notify them.`}
+                    </p>
+
+                    {/* Rejection input */}
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-h)', display: 'block', marginBottom: 4 }}>
+                        {lang === 'zh' ? '拒绝原因' : 'Rejection Reason'}
+                      </label>
+                      <input type="text" className="form-input" value={rejectReasonText} onChange={e => {
+                        const val = e.target.value;
+                        setRejectReasonText(val);
+                        setRejectNotifContent(prev => {
+                          if (lang === 'zh') {
+                            return `您好，非常抱歉地通知您，您提交的中介注册申请未通过审核。拒绝原因：${val || '[请在上方输入拒绝原因]'}\n\n如果您对此有任何疑问，请联系系统管理员或重新提交正确的证件。`;
+                          } else {
+                            return `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: ${val || '[Please specify reason]'}\n\nPlease re-upload valid REN credentials or contact admin support directly.`;
+                          }
+                        });
+                      }} placeholder={lang === 'zh' ? '如：REN执照照片模糊、证件信息与REN编号不匹配...' : 'e.g. Blurred REN license photo, credentials mismatch...'} style={{ fontSize: '0.8rem', height: 'auto', width: '100%', padding: '8px 12px' }} />
+                    </div>
+
+                    {/* Notifications setup */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-hover)', padding: 14, borderRadius: 8, border: '1px solid var(--glass-border)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-body)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={rejectSendUserNotif} onChange={e => setRejectSendUserNotif(e.target.checked)} />
+                        {lang === 'zh' ? '向该用户发送拒绝通知' : 'Send rejection alert to applicant'}
+                      </label>
+                    </div>
+
+                    {/* Edit fields if sending to user */}
+                    {rejectSendUserNotif && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-h)', display: 'block', marginBottom: 4 }}>
+                            {lang === 'zh' ? '通知标题' : 'Notification Title'}
+                          </label>
+                          <input type="text" className="form-input" value={rejectNotifTitle} onChange={e => setRejectNotifTitle(e.target.value)} style={{ fontSize: '0.8rem', height: 'auto', width: '100%', padding: '8px 12px' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-h)', display: 'block', marginBottom: 4 }}>
+                            {lang === 'zh' ? '通知内容' : 'Notification Body'}
+                          </label>
+                          <textarea className="form-input" rows={4} value={rejectNotifContent} onChange={e => setRejectNotifContent(e.target.value)} style={{ fontSize: '0.78rem', height: 'auto', width: '100%', padding: '8px 12px', fontFamily: 'inherit', resize: 'vertical' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                      <button onClick={() => setRejectModalRecord(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-body)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                        {lang === 'zh' ? '取消' : 'Cancel'}
+                      </button>
+                      <button onClick={commitRejectAgentRegistration} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                        {lang === 'zh' ? '确认拒绝' : 'Confirm Reject'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -4059,8 +4267,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
               {lang === 'zh' 
-                ? '此处填写的个人与中介信息（资质证书、从业经验、擅长区域等）将在学生端以专业中介主页形式展示，提升信任感。' 
-                : 'The personal and agency information you enter here will be shown to students on your professional agent profile page.'}
+                ? '此处填写的个人与中介信息（资质证书、从业经验、擅长区域等）将在租客端以专业中介主页形式展示，提升信任感。' 
+                : 'The personal and agency information you enter here will be shown to tenants on your professional agent profile page.'}
             </p>
 
             {/* Section 1: Basic Info */}
@@ -4281,7 +4489,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   rows={3}
                   value={myProfile.bio}
                   onChange={e => setMyProfile(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder={lang === 'zh' ? '简单介绍您的租客服务特色，帮助学生建立信任。' : 'Introduce yourself and your specialization to students.'}
+                  placeholder={lang === 'zh' ? '简单介绍您的租客服务特色，帮助租客建立信任。' : 'Introduce yourself and your specialization to tenants.'}
                   style={{ resize: 'vertical' }}
                 />
               </div>

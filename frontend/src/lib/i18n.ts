@@ -16,7 +16,7 @@ export const translations = {
     navAI: 'AI 找房助手',
     navPortal: '我的租约',
     navAdmin: '管理后台',
-    roleStudent: '学生',
+    roleStudent: '租客',
     roleAdmin: '管理员',
     roleTenantBadge: '租客',
     roleListingBadge: '浏览',
@@ -25,7 +25,7 @@ export const translations = {
     sandboxSwitch: '沙盒角色切换',
     userStudent: 'Alex Lim',
     userAdmin: '管理员',
-    userStudentRole: '学生租客',
+    userStudentRole: '租客',
     userAdminRole: '管理员账号',
 
     // Mode banner
@@ -33,7 +33,7 @@ export const translations = {
     liveMode: '数据库已连通 (云端实时数据库)',
 
     // AI Chat
-    chatWelcome: '您好！我是您的 AI 留学生活助手。我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
+    chatWelcome: '您好！我是您的 AI 租房与生活助手。我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
     chatPlaceholder: '输入地址测算通勤、询问汇率、查放假、吉隆坡生活指南…',
     chatSend: '发送',
     chatAgentName: '留学 AI 助手',
@@ -105,7 +105,7 @@ export const translations = {
     detailMoreUnits: '同小区其他房间',
     prompt1: '帮我计算从 Sunway Geo Residences 到莫纳什大学通勤要多久？',
     prompt2: '3000令吉等于多少人民币？',
-    prompt3: '留学生在吉隆坡怎么办理 Touch \'n Go 公交卡？',
+    prompt3: '在吉隆坡怎么办理 Touch \'n Go 公交车/地铁卡？',
 
     // Map card
     driving: '驾车 (4分钟)',
@@ -225,7 +225,7 @@ export const translations = {
     noLeases: '暂无租约记录',
     paymentSettings: '收款设置',
     uploadQR: '上传收款二维码',
-    uploadQRHint: '上传后，学生在缴租支付弹窗中将看到并扫描此二维码，替换默认系统演示码。',
+    uploadQRHint: '上传后，租客在缴租支付弹窗中将看到并扫描此二维码，替换默认系统演示码。',
     qrPreview: '收款码预览',
     // Validation
     validationCommunityRequired: '请填写小区名称和完整地址后再保存',
@@ -259,7 +259,7 @@ export const translations = {
     reviewTitle: '审核支付凭证',
     reviewMonth: '账单月份',
     reviewNotes: '备注（可选）',
-    reviewNotesHint: '驳回时建议填写原因，方便学生查看',
+    reviewNotesHint: '驳回时建议填写原因，方便租客查看',
     reviewApprove: '批准',
     reviewReject: '驳回',
     amenitiesLabel: '配套设施',
@@ -293,7 +293,7 @@ export const translations = {
     reviewNoEvidence: '暂无凭证',
     reviewApproved: '已批准',
     clearEvidence: '删除凭证',
-    confirmClearEvidence: '确定删除该凭证？删除后学生需要重新上传。',
+    confirmClearEvidence: '确定删除该凭证？删除后租客需要重新上传。',
     evidenceCleared: '凭证已删除',
     noReviewPending: '暂无待审核的支付凭证',
     // 意见箱 -> 维修工单
@@ -374,7 +374,7 @@ export const translations = {
     navAI: 'AI Assistant',
     navPortal: 'My Tenancy',
     navAdmin: 'Admin Console',
-    roleStudent: 'Student',
+    roleStudent: 'Tenant',
     roleAdmin: 'Admin',
     roleTenantBadge: 'Tenant',
     roleListingBadge: 'Browse',
@@ -383,13 +383,13 @@ export const translations = {
     sandboxSwitch: 'Sandbox Role',
     userStudent: 'Alex Lim',
     userAdmin: 'Admin',
-    userStudentRole: 'Student Tenant',
+    userStudentRole: 'Tenant',
     userAdminRole: 'Admin Account',
 
     sandboxMode: 'Database Connected (Local Mock)',
     liveMode: 'Database Connected (Cloud Live)',
 
-    chatWelcome: "Hi! I'm your Malaysia Student AI Assistant. I can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer student life guides.",
+    chatWelcome: "Hi! I'm your Malaysia Housing AI Assistant. I can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer rental life guides.",
     chatPlaceholder: 'Ask about commute route, currency, holidays, or life in KL…',
     chatSend: 'Send',
     chatAgentName: 'AI Assistant',

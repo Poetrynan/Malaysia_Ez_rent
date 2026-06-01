@@ -1712,5 +1712,21 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py \
 | `frontend/src/components/AdminPanel.tsx` | 中介审批（批准/拒绝）时，自动生成消息并插入到被审批人的收件箱中。 |
 | `frontend/src/app/page.tsx` | 侧边栏及视图容器集成“消息与公告”顶级 Tab（含 unreadInboxCount 红点角标计数）。 |
 
+### 5. 中介审核双重确认 Modal 与通知发送功能 (2026-06-01)
+* **审批确认双 Modal 交互**：超级管理员在后台点击通过（Checkmark）或拒绝（Cross）中介申请时，系统会分别弹出高颜值的磨砂玻璃对话框，而非直接执行。
+* **个性化通知与全员公告**：在审核通过/拒绝 Modal 中，管理员可选择是否向申请人发送自定义通知（支持任意编辑通知标题和正文），以及是否向全员发送广播公告（如通过时发送欢迎新中介加入的公告）。
+* **拒绝原因动态同步**：管理员可在拒绝 Modal 中实时输入具体原因，系统会自动将该原因注入通知正文中，并同步写入 `agent_registrations` 的拒绝原因中。
+
+### 6. 全站“学生端”至“租客端”用词规范化 (2026-06-01)
+* **词义规范化**：将全站所有面向用户的“学生端”、“留学生”、“我是学生”等相关表达、占位符、多语言翻译（`i18n.ts`）、SEO metadata (`layout.tsx`) 以及确认警告等，一律统一重构为了“租客端”、“租客”或“租客服务特色”。
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `frontend/src/components/AdminPanel.tsx` | 重构中介申请审批逻辑，加入通过与拒绝双确认模态框，支持通知/公告勾选与即时自定义编辑；修改中介描述相关的“学生”字眼为“租客”。 |
+| `frontend/src/lib/i18n.ts` | 替换 prompt3、uploadQRHint、reviewNotesHint、confirmClearEvidence 的“学生”/“留学生”为“租客”。 |
+| `frontend/src/app/layout.tsx` | 更新 SEO 描述，将“马来西亚留学生 AI 智能租房系统”更改为“马来西亚 AI 智能租房系统”。 |
+
 
 
