@@ -1,6 +1,6 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-06-01 (UTC+8)
+> 最后更新：2026-06-02 (UTC+8)
 > 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 学生已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 学生端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 学生端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · **租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转**
 
 
@@ -1803,4 +1803,42 @@ active → terminated（租客终止）→ completed（中介归档）
 - 付款审核弹窗 billing month 旁新增 unit number 标签（蓝色背景）
 - Ledger、Review、Settlement 区域均显示完整 label
 
+---
+
+## 四十九、租约二级导航 · 服务条款隐私政策 · 导航同步修复 · 终止后刷新（2026-06-02）
+
+**目标：** 修复租约终止后租客端空白、二级导航缺失、Dashboard 跳转不同步等问题，并新增法律合规页面。
+
+### Bug 修复
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 终止合约后租客端空白 | `handleTerminateLease` 终止后只清空状态，未刷新历史租约 | 终止后调用 `load()` 重新加载数据 |
+| 无活跃租约时看不到二级 Tab | `if (!lease)` 的 early return 在 tabs 渲染之前就退出了 | 重构三个渲染路径（有租约/有意向/无租约），每个路径都包含 tabs |
+| Dashboard "查看全部"跳转后侧边栏不更新 | AdminPanel 内部 `setTab` 未通知 page.tsx 更新 `activeTab` | 新增 `onTabChange` 回调，page.tsx 映射为 `admin-{tab}` |
+| 终止后 tab 停留在"当前租约" | 无自动切换逻辑 | `load()` 中检测到无活跃租约但有历史时，自动切到"历史租约"Tab |
+
+### 新增功能
+
+| 功能 | 说明 |
+|------|------|
+| 租约二级导航 | "我的租约"页面新增 `当前租约 | 历史租约` 药丸形标签（匹配 Inbox 风格） |
+| 服务条款 | 登录页可点击查看，10 章节，针对马来西亚 Ez Rent 量身定制（REN 牌照、首月付中介、AI 助手等） |
+| 隐私政策 | 登录页可点击查看，12 章节，符合马来西亚 PDPA 2010 合规要求 |
+| Dashboard "查看全部"跳转 | 社区分布图标题旁新增链接，跳转到房源管理 → 已登记房源库 |
+| 房源列表手动刷新 | PropertyListings 标题栏右侧新增刷新按钮（带旋转动画） |
+| 证件/学生证上传横排 | StudentPortal 个人资料两个上传区合并为同一横排 Grid 布局 |
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `StudentPortal.tsx` | 租约三级渲染路径（有租约/有意向/无租约）均包含 tabs；终止后 `load()` 刷新；自动切 Tab；证件上传横排 Grid；移除 `unit_number` 保存；房间号 disabled |
+| `AdminPanel.tsx` | 新增 `onTabChange` prop；Dashboard `onNavigate` 同步调用 |
+| `Dashboard.tsx` | 社区分布图标题旁新增 "查看全部 →" 链接 |
+| `PropertyListings.tsx` | 导入 `RefreshCw`；标题栏新增刷新按钮 |
+| `page.tsx` | 传入 `onTabChange` 回调映射侧边栏 `activeTab` |
+| `login/page.tsx` | 页脚服务条款/隐私政策可点击；导入 `LegalContent` |
+| `LegalContent.tsx` | **新建** — 服务条款（10 章）+ 隐私政策（12 章），中英双语，PDPA 合规 |
+| `032_lease_unit_number.sql` | leases 加 unit_number；触发器清空 users.unit_number；expire_ended_leases() 函数 |
 

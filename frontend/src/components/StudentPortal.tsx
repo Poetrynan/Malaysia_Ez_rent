@@ -1151,6 +1151,38 @@ export default function StudentPortal({
     if (mode !== 'maintenance' && interest) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Lease sub-tabs — pill style matching Inbox */}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            {[
+              { id: 'current' as const, label: lang === 'zh' ? '当前租约' : 'Current Lease' },
+              { id: 'history' as const, label: lang === 'zh' ? '历史租约' : 'Lease History' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setLeaseTab(tab.id)}
+                style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
+                  border: '1px solid var(--glass-border)',
+                  background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                  color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
+                  fontWeight: 600, cursor: 'pointer', transition: '0.2s',
+                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
+              >
+                {tab.label}
+                {tab.id === 'history' && leaseHistory.length > 0 && (
+                  <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
+                    {leaseHistory.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {leaseTab === 'current' && (<>
           <div className="glass-card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--bg-surface) 100%)', position: 'relative', padding: '32px 24px' }}>
             <h3 style={{ fontSize: '1.15rem', marginBottom: 6, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <TrendingUp size={20} color="var(--primary)" />
@@ -1236,6 +1268,56 @@ export default function StudentPortal({
               </button>
             </div>
           </div>
+          </>
+          )}
+
+          {/* Lease History — history tab only */}
+          {leaseTab === 'history' && (
+            leaseHistory.length > 0 ? (
+              <div className="glass-card">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {leaseHistory.map(h => {
+                    const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
+                      expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
+                      terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
+                      completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
+                    };
+                    const cfg = statusConfig[h.status] || statusConfig.completed;
+                    return (
+                      <div key={h.id} style={{
+                        padding: '12px 16px', borderRadius: 10,
+                        border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
+                        background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
+                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                          </div>
+                          <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
+                            {lang === 'zh' ? cfg.labelZh : cfg.label}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {h.start_date} → {h.end_date}
+                        </div>
+                        {h.unit_number && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
+                            {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+              </div>
+            )
+          )}
+
           {renderCancelModal}
           {renderToast}
         </div>
@@ -1244,15 +1326,97 @@ export default function StudentPortal({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
-          <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
-          <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
-            {mode === 'maintenance' 
-              ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
-              : t('noLeaseDesc')}
-          </p>
+        {/* Lease sub-tabs — always visible */}
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {[
+            { id: 'current' as const, label: lang === 'zh' ? '当前租约' : 'Current Lease' },
+            { id: 'history' as const, label: lang === 'zh' ? '历史租约' : 'Lease History' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setLeaseTab(tab.id)}
+              style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
+                border: '1px solid var(--glass-border)',
+                background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
+                fontWeight: 600, cursor: 'pointer', transition: '0.2s',
+                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              onMouseEnter={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+              onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
+            >
+              {tab.label}
+              {tab.id === 'history' && leaseHistory.length > 0 && (
+                <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
+                  {leaseHistory.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
+
+        {/* Current tab — no active lease, show empty state */}
+        {leaseTab === 'current' && (
+          <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
+            <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
+            <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
+              {mode === 'maintenance'
+                ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
+                : t('noLeaseDesc')}
+            </p>
+          </div>
+        )}
+
+        {/* History tab */}
+        {leaseTab === 'history' && (
+          leaseHistory.length > 0 ? (
+            <div className="glass-card">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {leaseHistory.map(h => {
+                  const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
+                    expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
+                    terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
+                    completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
+                  };
+                  const cfg = statusConfig[h.status] || statusConfig.completed;
+                  return (
+                    <div key={h.id} style={{
+                      padding: '12px 16px', borderRadius: 10,
+                      border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
+                      background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
+                          RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                        </div>
+                        <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
+                          {lang === 'zh' ? cfg.labelZh : cfg.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {h.start_date} → {h.end_date}
+                      </div>
+                      {h.unit_number && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
+                          {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+              <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+              <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+            </div>
+          )
+        )}
+
         {renderCancelModal}
         {renderToast}
       </div>
@@ -1517,21 +1681,35 @@ export default function StudentPortal({
 
       {mode === 'lease' && (
         <>
-          {/* Lease sub-tabs */}
-          <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-            <button type="button" onClick={() => setLeaseTab('current')}
-              style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: leaseTab === 'current' ? 'var(--primary)' : 'transparent', color: leaseTab === 'current' ? 'white' : 'var(--text-muted)' }}>
-              {lang === 'zh' ? '当前租约' : 'Current Lease'}
-            </button>
-            <button type="button" onClick={() => setLeaseTab('history')}
-              style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: leaseTab === 'history' ? 'var(--primary)' : 'transparent', color: leaseTab === 'history' ? 'white' : 'var(--text-muted)', position: 'relative' }}>
-              {lang === 'zh' ? '历史租约' : 'Lease History'}
-              {leaseHistory.length > 0 && (
-                <span style={{ marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
-                  {leaseHistory.length}
-                </span>
-              )}
-            </button>
+          {/* Lease sub-tabs — pill style matching Inbox */}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            {[
+              { id: 'current' as const, label: lang === 'zh' ? '当前租约' : 'Current Lease' },
+              { id: 'history' as const, label: lang === 'zh' ? '历史租约' : 'Lease History' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setLeaseTab(tab.id)}
+                style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
+                  border: '1px solid var(--glass-border)',
+                  background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                  color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
+                  fontWeight: 600, cursor: 'pointer', transition: '0.2s',
+                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
+              >
+                {tab.label}
+                {tab.id === 'history' && leaseHistory.length > 0 && (
+                  <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
+                    {leaseHistory.length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Current lease content */}
