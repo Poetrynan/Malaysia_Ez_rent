@@ -322,6 +322,7 @@ export default function TenantPortal({
   const [leaseTab, setLeaseTab] = useState<'current' | 'history'>('current');
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [terminateSubmitting, setTerminateSubmitting] = useState(false);
+  const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null);
 
   const handleTerminateLease = async () => {
     if (!lease?.id) return;
@@ -387,6 +388,32 @@ export default function TenantPortal({
         setTerminateSubmitting(false);
       }
     }
+  };
+
+  // Delete a historical lease and its payment records
+  const deleteHistoryLease = async (leaseId: string) => {
+    if (isMockDatabase) {
+      // Mock mode: remove from localStorage
+      const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      localStorage.setItem('ez_leases', JSON.stringify(leases.filter(l => l.id !== leaseId)));
+      const payments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+      localStorage.setItem('ez_payments', JSON.stringify(payments.filter(p => p.lease_id !== leaseId)));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        // Delete payment records first (foreign key constraint)
+        await supabase.from('payment_records').delete().eq('lease_id', leaseId);
+        // Delete the lease
+        const { error } = await supabase.from('leases').delete().eq('id', leaseId);
+        if (error) throw error;
+      } catch (e) {
+        console.error('Delete history lease error:', e);
+        return;
+      }
+    }
+    // Update local state
+    setLeaseHistory(prev => prev.filter(l => l.id !== leaseId));
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1237,6 +1264,76 @@ export default function TenantPortal({
     </div>
   );
 
+  const renderDeleteHistoryModal = deleteHistoryId && (
+    <div
+      onClick={() => setDeleteHistoryId(null)}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+          borderRadius: 16, width: '100%', maxWidth: 400, padding: 24,
+          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+          position: 'relative'
+        }}
+      >
+        <button
+          onClick={() => setDeleteHistoryId(null)}
+          style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          <X size={18} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertCircle size={20} color="var(--danger)" />
+          </div>
+          <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--text-h)' }}>
+            {lang === 'zh' ? '删除历史租约' : 'Delete History'}
+          </h3>
+        </div>
+
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 24 }}>
+          {lang === 'zh'
+            ? '确定要删除这条历史租约记录吗？删除后将无法恢复，包括所有付款记录。'
+            : 'Are you sure you want to delete this lease history? This action cannot be undone and will remove all payment records.'}
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeleteHistoryId(null)}
+            style={{
+              padding: '10px 16px', background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-h)', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer'
+            }}
+          >
+            {lang === 'zh' ? '取消' : 'Cancel'}
+          </button>
+          <button
+            onClick={async () => {
+              if (deleteHistoryId) {
+                await deleteHistoryLease(deleteHistoryId);
+                setDeleteHistoryId(null);
+              }
+            }}
+            style={{
+              padding: '10px 16px', background: 'var(--danger)', border: 'none',
+              color: 'white', borderRadius: 8, fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600
+            }}
+          >
+            {lang === 'zh' ? '确认删除' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Profile mode — render independently of lease state
   if (mode === 'profile') {
     return (
@@ -1810,11 +1907,7 @@ export default function TenantPortal({
                 onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
               >
                 {tab.label}
-                {tab.id === 'history' && leaseHistory.length > 0 && (
-                  <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
-                    {leaseHistory.length}
-                  </span>
-                )}
+                {tab.id === 'history' && leaseHistory.length > 0 && null}
               </button>
             ))}
           </div>
@@ -1988,6 +2081,7 @@ export default function TenantPortal({
           )}
 
           {renderCancelModal}
+          {renderDeleteHistoryModal}
           {renderToast}
         </div>
       );
@@ -2093,6 +2187,13 @@ export default function TenantPortal({
                       <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
                         {isExpanded ? <><ChevronUp size={13} /> {lang === 'zh' ? '收起' : 'Hide'}</> : <><ChevronDown size={13} /> {lang === 'zh' ? '查看收租核查' : 'Show Audit'}</>}
                       </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteHistoryId(h.id); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                        title={lang === 'zh' ? '删除此历史记录' : 'Delete this history'}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
 
                     {/* Expanded: rent collection audit table */}
@@ -2164,11 +2265,7 @@ export default function TenantPortal({
                 onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
               >
                 {tab.label}
-                {tab.id === 'history' && leaseHistory.length > 0 && (
-                  <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
-                    {leaseHistory.length}
-                  </span>
-                )}
+                {tab.id === 'history' && leaseHistory.length > 0 && null}
               </button>
             ))}
           </div>
