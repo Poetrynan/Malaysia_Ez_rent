@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -168,8 +168,8 @@ const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActiv
   );
 };
 
-/* ── History Payment Grid (lazy-loaded per lease) ── */
-function HistoryPaymentGrid({ leaseId, lang }: { leaseId: string; lang: string }) {
+/* ── History Payment Grid (archived audit table — tenant-side, simplified) ── */
+function HistoryPaymentGrid({ leaseId, startDate, endDate, lang }: { leaseId: string; startDate: string; endDate: string; lang: string }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -190,27 +190,65 @@ function HistoryPaymentGrid({ leaseId, lang }: { leaseId: string; lang: string }
     })();
   }, [leaseId]);
 
+  const fmtMonth = (d: string) => new Date(d).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+
+  // Generate all months based on lease period
+  const allMonths = useMemo(() => {
+    const months: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const current = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (current <= end) {
+      months.push(current.toISOString().slice(0, 7)); // 'YYYY-MM'
+      current.setMonth(current.getMonth() + 1);
+    }
+    return months;
+  }, [startDate, endDate]);
+
+  // Create a set of months that have been paid
+  const paidMonths = useMemo(() => {
+    const set = new Set<string>();
+    payments.forEach(p => {
+      if (p.paid || p.status === 'approved') {
+        set.add(p.billing_month);
+      }
+    });
+    return set;
+  }, [payments]);
+
+  // Find the last paid month index (payments are consecutive, no gaps)
+  const lastPaidIndex = useMemo(() => {
+    let lastIdx = -1;
+    allMonths.forEach((month, idx) => {
+      if (paidMonths.has(month)) lastIdx = idx;
+    });
+    return lastIdx;
+  }, [allMonths, paidMonths]);
+
   if (loading) return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: 8 }}>{lang === 'zh' ? '加载中...' : 'Loading...'}</div>;
-  if (payments.length === 0) return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: 8 }}>{lang === 'zh' ? '暂无付款记录' : 'No payment records'}</div>;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6 }}>
-      {payments.map(p => {
-        const month = new Date(p.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
-        const isPaid = p.paid || p.status === 'approved';
-        const isRejected = p.status === 'rejected';
-        const isPending = p.status === 'pending_review';
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
+      {allMonths.map((month, idx) => {
+        // Simple logic: paid if month is at or before the last paid month
+        const isPaid = idx <= lastPaidIndex;
+        const cellBg = isPaid ? 'var(--success-light)' : 'var(--danger-light)';
+        const cellBorder = isPaid ? 'var(--success)' : 'var(--danger)';
         return (
-          <div key={p.id} style={{
-            padding: '8px 10px', borderRadius: 8, textAlign: 'center', fontSize: '0.72rem',
-            border: `1px solid ${isPaid ? 'rgba(16,185,129,0.3)' : isRejected ? 'rgba(239,68,68,0.3)' : isPending ? 'rgba(245,158,11,0.3)' : 'var(--glass-border)'}`,
-            background: isPaid ? 'rgba(16,185,129,0.06)' : isRejected ? 'rgba(239,68,68,0.06)' : isPending ? 'rgba(245,158,11,0.06)' : 'var(--glass-bg)',
-            color: isPaid ? 'var(--success)' : isRejected ? 'var(--danger)' : isPending ? 'var(--warning)' : 'var(--text-muted)',
-            fontWeight: 600,
+          <div key={month} style={{
+            background: cellBg,
+            border: `1px solid ${cellBorder}`,
+            borderRadius: 8,
+            padding: '10px 8px',
+            textAlign: 'center',
+            opacity: !isPaid ? 0.7 : 1,
           }}>
-            <div>{month}</div>
-            <div style={{ fontSize: '0.65rem', marginTop: 2 }}>
-              {isPaid ? '✓' : isRejected ? '✕' : isPending ? '⏳' : '—'}
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>{fmtMonth(month)}</div>
+            {isPaid
+              ? <CheckCircle2 size={18} style={{ color: 'var(--success)' }} />
+              : <XCircle size={18} style={{ color: 'var(--danger)' }} />}
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: isPaid ? 'var(--success)' : 'var(--danger)', marginTop: 2 }}>
+              {isPaid ? (lang === 'zh' ? '已付' : 'Paid') : (lang === 'zh' ? '未付' : 'Unpaid')}
             </div>
           </div>
         );
@@ -1199,8 +1237,555 @@ export default function TenantPortal({
     </div>
   );
 
+  // Profile mode — render independently of lease state
+  if (mode === 'profile') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {(() => {
+          const calculateProfileProgress = () => {
+            let filled = 0;
+            let total = 9;
+            if (profileName.trim()) filled++;
+            if (profilePhone.trim()) filled++;
+            if (profileUnit.trim()) filled++;
+            if (profileSchool.trim()) filled++;
+            if (profileCompany.trim()) filled++;
+            if (profilePassport.trim()) filled++;
+            if (profileLocalId.trim()) filled++;
+            if (profileDocUrl || profileDocBase64) filled++;
+            if (profileStudentCardUrl || profileStudentCardBase64) filled++;
+            return Math.round((filled / total) * 100);
+          };
+          const progressPercentage = calculateProfileProgress();
+          return (
+            <div className="glass-card">
+              <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
+                <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
+              </h4>
+
+              {/* Profile Completion Progress Bar */}
+              <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {lang === 'zh' ? '个人资料完善度' : 'Profile Completion'}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 700 }}>
+                    {progressPercentage}%
+                  </span>
+                </div>
+                <div style={{ height: 6, background: 'var(--glass-border)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${progressPercentage}%`,
+                    background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)',
+                    borderRadius: 3,
+                    transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }} />
+                </div>
+              </div>
+
+              {/* Privacy Safety Banner */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: 'rgba(59, 130, 246, 0.05)',
+                border: '1px solid rgba(59, 130, 246, 0.15)',
+                marginBottom: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <span style={{ fontSize: '16px' }}>🔒</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.4 }}>
+                  {lang === 'zh'
+                    ? '安全加密保护：您的身份证件及个人敏感信息已根据 Supabase RLS 安全策略进行多重加密存储，仅供分配的中介及房东进行租约审核，系统绝不泄露给任何第三方。'
+                    : 'Encrypted Security: Your ID documents and personal info are heavily encrypted using RLS policies, accessible only by authorized agents/landlords for verification.'
+                  }
+                </p>
+              </div>
+
+              {/* Section 1: Basic info — 2-column grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                    {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <input type="text" className="form-input" value={profileName} onChange={e => setProfileName(e.target.value)}
+                    placeholder={t('profileNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
+                  <input type="tel" className="form-input" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
+                    placeholder={t('profilePhonePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                    {t('profileUnit')}
+                    <span style={{ fontSize: '0.68rem', marginLeft: 6, color: 'var(--text-muted)', fontWeight: 400 }}>
+                      {lang === 'zh' ? '（由合约自动填写）' : '(set by lease)'}
+                    </span>
+                  </label>
+                  <input type="text" className="form-input" value={profileUnit} disabled
+                    placeholder={lang === 'zh' ? '等待中介生成合约后自动填入' : 'Auto-filled when lease is created'}
+                    style={{ width: '100%', boxSizing: 'border-box', opacity: profileUnit ? 1 : 0.5, cursor: 'not-allowed' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
+                  <input type="text" className="form-input" value={profileSchool} onChange={e => setProfileSchool(e.target.value)}
+                    placeholder={t('profileSchoolPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
+                  <input type="text" className="form-input" value={profileCompany} onChange={e => setProfileCompany(e.target.value)}
+                    placeholder={t('profileCompanyPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              {/* Section 2: ID section */}
+              <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertCircle size={14} />
+                  {t('profileIdHint')}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
+                    <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
+                      placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
+                    <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
+                      placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3 & 4: Document + Student card upload (side by side) */}
+              <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  {/* Document upload */}
+                  <div>
+                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                      <label style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                        border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                        cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                        color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                      >
+                        <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
+                        <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
+                      </label>
+                      {(profileDocBase64 || profileDocUrl) && (
+                        <div style={{ position: 'relative' }}>
+                          <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
+                            <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
+                              style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                          </a>
+                          <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
+                            style={{
+                              position: 'absolute', top: -8, right: -8,
+                              background: 'var(--danger)', color: 'white', border: 'none',
+                              borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                            }}>×</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Student card upload */}
+                  <div>
+                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                      {t('profileStudentCard')}
+                    </label>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                      <label style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
+                        border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                        cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                        color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
+                      >
+                        <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
+                        <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
+                      </label>
+                      {(profileStudentCardBase64 || profileStudentCardUrl) && (
+                        <div style={{ position: 'relative' }}>
+                          <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
+                            <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
+                              style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
+                          </a>
+                          <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
+                            style={{
+                              position: 'absolute', top: -8, right: -8,
+                              background: 'var(--danger)', color: 'white', border: 'none',
+                              borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                            }}>×</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || profileStudentCardUploading || !profileName.trim()}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
+                    background: profileName.trim() ? 'var(--primary)' : 'var(--glass-border)',
+                    color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+                    cursor: profileName.trim() ? 'pointer' : 'not-allowed',
+                    boxShadow: profileName.trim() ? '0 2px 8px var(--primary-glow)' : 'none'
+                  }}>
+                  <Save size={14} /> {profileSaving || profileDocUploading || profileStudentCardUploading ? t('saving') : t('profileSave')}
+                </button>
+                {profileSaved && (
+                  <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0 0' }}>{t('profileHint')}</p>
+            </div>
+          );
+        })()}
+        {renderToast}
+      </div>
+    );
+  }
+
+  // Maintenance mode — render independently of lease state
+  if (mode === 'maintenance') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="glass-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+              <MessageSquare size={16} style={{ color: 'var(--primary)' }} /> {t('feedback')}
+            </h4>
+            <button onClick={() => {
+              const opening = !showMyFeedbacks;
+              setShowMyFeedbacks(opening);
+              if (opening) {
+                loadMyFeedbacks();
+                localStorage.setItem('ez_feedback_last_seen', Date.now().toString());
+                setFeedbackUnreadCount(0);
+                if (onUnreadFeedbackCountChange) onUnreadFeedbackCountChange(0);
+              }
+            }}
+              style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
+              <span>{t('feedbackMy')} ({myFeedbacks.length})</span>
+              {feedbackUnreadCount > 0 && (
+                <span style={{
+                  background: 'var(--danger)',
+                  color: 'white',
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 'var(--radius-full)',
+                  lineHeight: '1',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 14,
+                  height: 14,
+                  marginLeft: 4
+                }}>
+                  {feedbackUnreadCount}
+                </span>
+              )}
+              {showMyFeedbacks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
+
+          {/* Submit form */}
+          <div style={{ marginBottom: 12 }}>
+            {!profileComplete && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)', marginBottom: 12 }}>
+                <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>{t('profileRequired')}</span>
+              </div>
+            )}
+
+            {/* Category selection */}
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>{t('feedbackCategory')}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              {['Aircon', 'Plumbing', 'Electrical', 'Furniture', 'Appliance', 'Others'].map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setFeedbackCategory(cat)}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    border: '1px solid ' + (feedbackCategory === cat ? 'var(--primary)' : 'var(--glass-border)'),
+                    background: feedbackCategory === cat ? 'var(--primary-light)' : 'none',
+                    color: feedbackCategory === cat ? 'var(--primary)' : 'var(--text-body)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {lang === 'zh' ? {
+                    Aircon: '空调冷气',
+                    Plumbing: '水管漏水',
+                    Electrical: '电路照明',
+                    Furniture: '家具五金',
+                    Appliance: '家用电器',
+                    Others: '其他问题'
+                  }[cat] : cat}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              className="form-textarea"
+              rows={3}
+              value={feedbackText}
+              onChange={e => setFeedbackText(e.target.value)}
+              placeholder={t('feedbackPlaceholder')}
+              style={{ resize: 'vertical', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
+            />
+
+            {/* Photo upload field */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 8,
+                border: '1px solid var(--glass-border)',
+                background: 'var(--bg-surface)',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: 'var(--text-body)',
+                transition: 'all 0.2s'
+              }}>
+                <Camera size={14} style={{ color: 'var(--primary)' }} />
+                <span>{t('feedbackPhoto')}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {photoBase64 && (
+                <div style={{ position: 'relative' }}>
+                  <img
+                    src={photoBase64}
+                    alt="Preview"
+                    style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPhotoBase64(null)}
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      background: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 14,
+                      height: 14,
+                      fontSize: '9px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+              <div style={{ flex: 1 }} />
+              <button onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackText.trim() || !profileComplete}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: (feedbackText.trim() && profileComplete) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: (feedbackText.trim() && profileComplete) ? 'pointer' : 'not-allowed' }}>
+                <Send size={13} /> {t('feedbackSubmit')}
+              </button>
+            </div>
+          </div>
+
+          {/* My feedback list */}
+          {showMyFeedbacks && (
+            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
+              {myFeedbacks.length === 0 ? (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>{t('feedbackNoItems')}</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
+                  {myFeedbacks.map(f => (
+                    <div key={f.id} style={{ padding: '12px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
+                            {lang === 'zh' ? {
+                              Aircon: '空调冷气',
+                              Plumbing: '水管漏水',
+                              Electrical: '电路照明',
+                              Furniture: '家具五金',
+                              Appliance: '家用电器',
+                              Others: '其他问题'
+                            }[f.category || 'Others'] : f.category}
+                          </span>
+                        </div>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: f.status === 'resolved' ? 'var(--success-light)' : f.status === 'in_progress' ? 'var(--info-light)' : 'var(--warning-light)',
+                          color: f.status === 'resolved' ? 'var(--success)' : f.status === 'in_progress' ? 'var(--info)' : 'var(--warning)',
+                          fontWeight: 700
+                        }}>
+                          {f.status === 'resolved' ? t('feedbackResolved') : f.status === 'in_progress' ? t('feedbackStatusInProgress') : t('feedbackPending')}
+                        </span>
+                      </div>
+
+                      {f.unit_info && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                          {f.unit_info}
+                        </div>
+                      )}
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: '4px 0 6px', whiteSpace: 'pre-wrap' }}>{f.content}</p>
+
+                      {f.photo_url && (
+                        <div style={{ marginBottom: 8 }}>
+                          <a href={f.photo_url} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={f.photo_url}
+                              alt="Evidence"
+                              style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: 6, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer' }}
+                            />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Conversation thread */}
+                      {f.replies && f.replies.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, background: 'rgba(0,0,0,0.1)', padding: 12, borderRadius: 10 }}>
+                          {f.replies.map((r, i) => {
+                            const isAgent = r.role === 'agent';
+                            return (
+                              <div key={i} style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignSelf: isAgent ? 'flex-start' : 'flex-end',
+                                maxWidth: '85%',
+                                gap: 3
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  alignSelf: isAgent ? 'flex-start' : 'flex-end',
+                                  fontSize: '0.68rem',
+                                  color: 'var(--text-muted)',
+                                  padding: '0 4px'
+                                }}>
+                                  <span style={{ fontWeight: 700, color: isAgent ? 'var(--primary)' : 'var(--success)' }}>
+                                    {isAgent ? (lang === 'zh' ? '中介' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
+                                  </span>
+                                  <span>
+                                    {new Date(r.at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <div style={{
+                                  padding: '10px 14px',
+                                  borderRadius: isAgent ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
+                                  background: isAgent ? 'var(--bg-surface-solid)' : 'var(--primary)',
+                                  color: isAgent ? 'var(--text-body)' : 'white',
+                                  border: isAgent ? '1px solid var(--border)' : 'none',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                                  fontSize: '0.8rem',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  lineHeight: 1.45
+                                }}>
+                                  {r.content}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Student reply input — only when ticket is open and agent has replied */}
+                      {f.status !== 'resolved' && f.replies && f.replies.length > 0 && (() => {
+                        const agentReplies = f.replies.filter(r => r.role === 'agent').length;
+                        const studentReplies = f.replies.filter(r => r.role === 'student').length;
+                        const canReply = studentReplies < agentReplies && studentReplies < 3;
+                        if (!canReply) return null;
+                        return (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={studentReply[f.id] || ''}
+                              onChange={e => setStudentReply(prev => ({ ...prev, [f.id]: e.target.value }))}
+                              placeholder={lang === 'zh' ? '回复中介…' : 'Reply to agent…'}
+                              style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
+                            />
+                            <button onClick={() => sendStudentReply(f.id)} disabled={!studentReply[f.id]?.trim()}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: studentReply[f.id]?.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: studentReply[f.id]?.trim() ? 'pointer' : 'not-allowed' }}>
+                              <Send size={12} /> {lang === 'zh' ? '发送' : 'Send'}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {renderToast}
+      </div>
+    );
+  }
+
   if (!lease) {
-    if (mode !== 'maintenance' && interest) {
+    if (interest) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Lease sub-tabs — pill style matching Inbox */}
@@ -1323,16 +1908,16 @@ export default function TenantPortal({
           </>
           )}
 
-          {/* Lease History — history tab only */}
+          {/* Lease History — history tab only (archived audit cards) */}
           {leaseTab === 'history' && (
             leaseHistory.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {leaseHistory.map(h => {
                   const isExpanded = expandedHistoryId === h.id;
-                  const statusConfig: Record<string, { bg: string; color: string; border: string; label: string; labelZh: string; note: string; noteEn: string }> = {
-                    expired: { bg: 'rgba(245,158,11,0.02)', color: 'var(--warning)', border: 'rgba(245,158,11,0.3)', label: 'Expired', labelZh: '已到期', note: '⏰ 合约已到期', noteEn: '⏰ Lease expired' },
-                    terminated: { bg: 'rgba(239,68,68,0.02)', color: 'var(--danger)', border: 'rgba(239,68,68,0.3)', label: 'Terminated', labelZh: '已终止', note: '⚠️ 租客已手动终止', noteEn: '⚠️ Terminated by tenant' },
-                    completed: { bg: 'rgba(16,185,129,0.01)', color: 'var(--success)', border: 'rgba(16,185,129,0.2)', label: 'Archived', labelZh: '已归档', note: '✅ 已结算归档', noteEn: '✅ Settled & archived' },
+                  const statusConfig: Record<string, { bg: string; color: string; border: string; label: string; labelZh: string }> = {
+                    expired: { bg: 'rgba(245,158,11,0.02)', color: 'var(--warning)', border: 'rgba(245,158,11,0.3)', label: 'Expired', labelZh: '已到期' },
+                    terminated: { bg: 'rgba(239,68,68,0.02)', color: 'var(--danger)', border: 'rgba(239,68,68,0.3)', label: 'Terminated', labelZh: '已终止' },
+                    completed: { bg: 'rgba(16,185,129,0.01)', color: 'var(--success)', border: 'rgba(16,185,129,0.2)', label: 'Archived', labelZh: '已归档' },
                   };
                   const cfg = statusConfig[h.status] || statusConfig.completed;
                   const leaseDuration = (() => {
@@ -1363,23 +1948,31 @@ export default function TenantPortal({
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                             {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: cfg.color, marginTop: 4, fontStyle: 'italic', fontWeight: 500 }}>
-                            {lang === 'zh' ? cfg.note : cfg.noteEn}
+                          {/* Termination reason */}
+                          <div style={{ fontSize: '0.75rem', color: cfg.color, marginTop: 4, fontWeight: 600 }}>
+                            {h.status === 'terminated'
+                              ? (lang === 'zh' ? '⚠️ 租客自行终止' : '⚠️ Terminated by tenant')
+                              : h.status === 'expired'
+                                ? (lang === 'zh' ? '⏰ 合约自然到期' : '⏰ Lease naturally expired')
+                                : (lang === 'zh' ? '✅ 已结算归档' : '✅ Settled & archived')
+                            }
                           </div>
                         </div>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {lang === 'zh' ? '押金' : 'Deposit'}: <strong style={{ color: 'var(--text-h)' }}>RM {h.deposit_amount?.toLocaleString()}</strong>
                         </div>
-                        {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+                        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+                          {isExpanded ? <><ChevronUp size={13} /> {lang === 'zh' ? '收起' : 'Hide'}</> : <><ChevronDown size={13} /> {lang === 'zh' ? '查看收租核查' : 'Show Audit'}</>}
+                        </button>
                       </div>
 
-                      {/* Expanded: payment history */}
+                      {/* Expanded: rent collection audit table */}
                       {isExpanded && (
-                        <div style={{ padding: '12px 16px', borderTop: `1px solid ${cfg.border}`, background: 'var(--bg-surface)' }}>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>
-                            {lang === 'zh' ? '付款记录' : 'Payment History'}
+                        <div style={{ padding: '16px', borderTop: `1px solid ${cfg.border}`, background: 'var(--bg-surface)' }}>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {lang === 'zh' ? '📋 收租核查表' : '📋 Rent Collection Audit'}
                           </div>
-                          <HistoryPaymentGrid leaseId={h.id} lang={lang} />
+                          <HistoryPaymentGrid leaseId={h.id} startDate={h.start_date} endDate={h.end_date} lang={lang} />
                         </div>
                       )}
                     </div>
@@ -1437,53 +2030,83 @@ export default function TenantPortal({
         {leaseTab === 'current' && (
           <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
             <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
-            <h3 style={{ marginBottom: 8 }}>{mode === 'maintenance' ? (lang === 'zh' ? '暂无报修权限' : 'No Maintenance Access') : t('noLeaseTitle')}</h3>
+            <h3 style={{ marginBottom: 8 }}>{t('noLeaseTitle')}</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
-              {mode === 'maintenance'
-                ? (lang === 'zh' ? '您当前账号下没有处于活动状态的租约合同，无法提交维护和报修申请。如有疑问请联系管理员。' : 'Your account has no active lease contract, so you cannot submit maintenance requests. Please contact the administrator.')
-                : t('noLeaseDesc')}
+              {t('noLeaseDesc')}
             </p>
           </div>
         )}
 
-        {/* History tab */}
+        {/* History tab — archived lease audit cards (matches admin panel style) */}
         {leaseTab === 'history' && (
           leaseHistory.length > 0 ? (
-            <div className="glass-card">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {leaseHistory.map(h => {
-                  const statusConfig: Record<string, { bg: string; color: string; label: string; labelZh: string }> = {
-                    expired: { bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', label: 'Expired', labelZh: '已到期' },
-                    terminated: { bg: 'rgba(239,68,68,0.12)', color: 'var(--danger)', label: 'Terminated', labelZh: '已终止' },
-                    completed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--success)', label: 'Archived', labelZh: '已归档' },
-                  };
-                  const cfg = statusConfig[h.status] || statusConfig.completed;
-                  return (
-                    <div key={h.id} style={{
-                      padding: '12px 16px', borderRadius: 10,
-                      border: `1px solid ${h.status === 'expired' ? 'rgba(245,158,11,0.2)' : h.status === 'terminated' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)'}`,
-                      background: h.status === 'expired' ? 'rgba(245,158,11,0.03)' : h.status === 'terminated' ? 'rgba(239,68,68,0.03)' : 'rgba(16,185,129,0.02)',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.88rem' }}>
-                          RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {leaseHistory.map(h => {
+                const isExpanded = expandedHistoryId === h.id;
+                const statusConfig: Record<string, { bg: string; color: string; border: string; label: string; labelZh: string }> = {
+                  expired: { bg: 'rgba(245,158,11,0.02)', color: 'var(--warning)', border: 'rgba(245,158,11,0.3)', label: 'Expired', labelZh: '已到期' },
+                  terminated: { bg: 'rgba(239,68,68,0.02)', color: 'var(--danger)', border: 'rgba(239,68,68,0.3)', label: 'Terminated', labelZh: '已终止' },
+                  completed: { bg: 'rgba(16,185,129,0.01)', color: 'var(--success)', border: 'rgba(16,185,129,0.2)', label: 'Archived', labelZh: '已归档' },
+                };
+                const cfg = statusConfig[h.status] || statusConfig.completed;
+                const leaseDuration = (() => {
+                  const s = new Date(h.start_date); const e = new Date(h.end_date);
+                  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+                  return months > 0 ? months : 1;
+                })();
+                return (
+                  <div key={h.id} style={{
+                    borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                    border: `1px solid ${cfg.border}`, background: cfg.bg,
+                  }}>
+                    {/* Card header — clickable */}
+                    <div onClick={() => setExpandedHistoryId(isExpanded ? null : h.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)', transition: 'background 0.2s' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>
+                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                          </span>
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: cfg.bg, color: cfg.color, fontWeight: 600, border: `1px solid ${cfg.border}` }}>
+                            {lang === 'zh' ? cfg.labelZh : cfg.label}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>
-                          {lang === 'zh' ? cfg.labelZh : cfg.label}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        {h.start_date} → {h.end_date}
-                      </div>
-                      {h.unit_number && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: 4, fontWeight: 500 }}>
-                          {lang === 'zh' ? '单元' : 'Unit'} #{h.unit_number}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
+                          {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
                         </div>
-                      )}
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
+                        </div>
+                        {/* Termination reason */}
+                        <div style={{ fontSize: '0.75rem', color: cfg.color, marginTop: 4, fontWeight: 600 }}>
+                          {h.status === 'terminated'
+                            ? (lang === 'zh' ? '⚠️ 租客自行终止' : '⚠️ Terminated by tenant')
+                            : h.status === 'expired'
+                              ? (lang === 'zh' ? '⏰ 合约自然到期' : '⏰ Lease naturally expired')
+                              : (lang === 'zh' ? '✅ 已结算归档' : '✅ Settled & archived')
+                          }
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {lang === 'zh' ? '押金' : 'Deposit'}: <strong style={{ color: 'var(--text-h)' }}>RM {h.deposit_amount?.toLocaleString()}</strong>
+                      </div>
+                      <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+                        {isExpanded ? <><ChevronUp size={13} /> {lang === 'zh' ? '收起' : 'Hide'}</> : <><ChevronDown size={13} /> {lang === 'zh' ? '查看收租核查' : 'Show Audit'}</>}
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Expanded: rent collection audit table */}
+                    {isExpanded && (
+                      <div style={{ padding: '16px', borderTop: `1px solid ${cfg.border}`, background: 'var(--bg-surface)' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {lang === 'zh' ? '📋 收租核查表' : '📋 Rent Collection Audit'}
+                        </div>
+                        <HistoryPaymentGrid leaseId={h.id} startDate={h.start_date} endDate={h.end_date} lang={lang} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
@@ -1517,244 +2140,6 @@ export default function TenantPortal({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Profile — standalone page mode */}
-      {mode === 'profile' && (() => {
-        const calculateProfileProgress = () => {
-          let filled = 0;
-          let total = 9;
-          if (profileName.trim()) filled++;
-          if (profilePhone.trim()) filled++;
-          if (profileUnit.trim()) filled++;
-          if (profileSchool.trim()) filled++;
-          if (profileCompany.trim()) filled++;
-          if (profilePassport.trim()) filled++;
-          if (profileLocalId.trim()) filled++;
-          if (profileDocUrl || profileDocBase64) filled++;
-          if (profileStudentCardUrl || profileStudentCardBase64) filled++;
-          return Math.round((filled / total) * 100);
-        };
-        const progressPercentage = calculateProfileProgress();
-        return (
-          <div className="glass-card">
-            <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
-              <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
-            </h4>
-
-            {/* Profile Completion Progress Bar */}
-            <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  {lang === 'zh' ? '个人资料完善度' : 'Profile Completion'}
-                </span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 700 }}>
-                  {progressPercentage}%
-                </span>
-              </div>
-              <div style={{ height: 6, background: 'var(--glass-border)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${progressPercentage}%`,
-                  background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)',
-                  borderRadius: 3,
-                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-                }} />
-              </div>
-            </div>
-
-            {/* Privacy Safety Banner */}
-            <div style={{
-              padding: '12px 14px',
-              borderRadius: 12,
-              background: 'rgba(59, 130, 246, 0.05)',
-              border: '1px solid rgba(59, 130, 246, 0.15)',
-              marginBottom: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10
-            }}>
-              <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background: 'rgba(59, 130, 246, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <span style={{ fontSize: '16px' }}>🔒</span>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.4 }}>
-                {lang === 'zh' 
-                  ? '安全加密保护：您的身份证件及个人敏感信息已根据 Supabase RLS 安全策略进行多重加密存储，仅供分配的中介及房东进行租约审核，系统绝不泄露给任何第三方。'
-                  : 'Encrypted Security: Your ID documents and personal info are heavily encrypted using RLS policies, accessible only by authorized agents/landlords for verification.'
-                }
-              </p>
-            </div>
-
-            {/* Section 1: Basic info — 2-column grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                  {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <input type="text" className="form-input" value={profileName} onChange={e => setProfileName(e.target.value)}
-                  placeholder={t('profileNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePhone')}</label>
-                <input type="tel" className="form-input" value={profilePhone} onChange={e => setProfilePhone(e.target.value)}
-                  placeholder={t('profilePhonePlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                  {t('profileUnit')}
-                  <span style={{ fontSize: '0.68rem', marginLeft: 6, color: 'var(--text-muted)', fontWeight: 400 }}>
-                    {lang === 'zh' ? '（由合约自动填写）' : '(set by lease)'}
-                  </span>
-                </label>
-                <input type="text" className="form-input" value={profileUnit} disabled
-                  placeholder={lang === 'zh' ? '等待中介生成合约后自动填入' : 'Auto-filled when lease is created'}
-                  style={{ width: '100%', boxSizing: 'border-box', opacity: profileUnit ? 1 : 0.5, cursor: 'not-allowed' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileSchool')}</label>
-                <input type="text" className="form-input" value={profileSchool} onChange={e => setProfileSchool(e.target.value)}
-                  placeholder={t('profileSchoolPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileCompany')}</label>
-                <input type="text" className="form-input" value={profileCompany} onChange={e => setProfileCompany(e.target.value)}
-                  placeholder={t('profileCompanyPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-              </div>
-            </div>
-
-            {/* Section 2: ID section */}
-            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-              <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <AlertCircle size={14} />
-                {t('profileIdHint')}
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
-                <div>
-                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
-                  <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
-                    placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
-                  <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
-                    placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3 & 4: Document + Student card upload (side by side) */}
-            <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                {/* Document upload */}
-                <div>
-                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    <label style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                      border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                      cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                      color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                    >
-                      <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
-                      <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
-                    </label>
-                    {(profileDocBase64 || profileDocUrl) && (
-                      <div style={{ position: 'relative' }}>
-                        <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
-                          <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
-                            style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                        </a>
-                        <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
-                          style={{
-                            position: 'absolute', top: -8, right: -8,
-                            background: 'var(--danger)', color: 'white', border: 'none',
-                            borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                          }}>×</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Student card upload */}
-                <div>
-                  <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                    {t('profileStudentCard')}
-                  </label>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    <label style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                      border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                      cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                      color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                    >
-                      <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
-                      <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
-                    </label>
-                    {(profileStudentCardBase64 || profileStudentCardUrl) && (
-                      <div style={{ position: 'relative' }}>
-                        <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
-                          <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
-                            style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                        </a>
-                        <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
-                          style={{
-                            position: 'absolute', top: -8, right: -8,
-                            background: 'var(--danger)', color: 'white', border: 'none',
-                            borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                          }}>×</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Save button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button onClick={saveProfile} disabled={profileSaving || profileDocUploading || profileStudentCardUploading || !profileName.trim()}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none',
-                  background: profileName.trim() ? 'var(--primary)' : 'var(--glass-border)',
-                  color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: profileName.trim() ? 'pointer' : 'not-allowed',
-                  boxShadow: profileName.trim() ? '0 2px 8px var(--primary-glow)' : 'none'
-                }}>
-                <Save size={14} /> {profileSaving || profileDocUploading || profileStudentCardUploading ? t('saving') : t('profileSave')}
-              </button>
-              {profileSaved && (
-                <span style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>{t('profileSaved')}</span>
-              )}
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0 0' }}>{t('profileHint')}</p>
-          </div>
-        );
-      })()}
-
       {mode === 'lease' && (
         <>
           {/* Lease sub-tabs — pill style matching Inbox */}
@@ -2094,7 +2479,7 @@ export default function TenantPortal({
                           <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 8 }}>
                             {lang === 'zh' ? '付款记录' : 'Payment History'}
                           </div>
-                          <HistoryPaymentGrid leaseId={h.id} lang={lang} />
+                          <HistoryPaymentGrid leaseId={h.id} startDate={h.start_date} endDate={h.end_date} lang={lang} />
                         </div>
                       )}
                     </div>
@@ -2109,303 +2494,6 @@ export default function TenantPortal({
             )
           )}
         </>
-      )}
-
-      {/* Maintenance Request Panel */}
-      {mode === 'maintenance' && (
-        <div className="glass-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-            <MessageSquare size={16} style={{ color: 'var(--primary)' }} /> {t('feedback')}
-          </h4>
-          <button onClick={() => {
-            const opening = !showMyFeedbacks;
-            setShowMyFeedbacks(opening);
-            if (opening) {
-              loadMyFeedbacks();
-              localStorage.setItem('ez_feedback_last_seen', Date.now().toString());
-              setFeedbackUnreadCount(0);
-              if (onUnreadFeedbackCountChange) onUnreadFeedbackCountChange(0);
-            }
-          }}
-            style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
-            <span>{t('feedbackMy')} ({myFeedbacks.length})</span>
-            {feedbackUnreadCount > 0 && (
-              <span style={{ 
-                background: 'var(--danger)', 
-                color: 'white', 
-                fontSize: '0.6rem', 
-                fontWeight: 700, 
-                padding: '1px 5px', 
-                borderRadius: 'var(--radius-full)', 
-                lineHeight: '1', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                minWidth: 14, 
-                height: 14, 
-                marginLeft: 4 
-              }}>
-                {feedbackUnreadCount}
-              </span>
-            )}
-            {showMyFeedbacks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        </div>
-
-        {/* Submit form */}
-        <div style={{ marginBottom: 12 }}>
-          {!profileComplete && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)', marginBottom: 12 }}>
-              <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>{t('profileRequired')}</span>
-            </div>
-          )}
-
-          {/* Category selection */}
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>{t('feedbackCategory')}</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-            {['Aircon', 'Plumbing', 'Electrical', 'Furniture', 'Appliance', 'Others'].map(cat => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setFeedbackCategory(cat)}
-                style={{
-                  fontSize: '0.75rem',
-                  padding: '6px 12px',
-                  borderRadius: 20,
-                  border: '1px solid ' + (feedbackCategory === cat ? 'var(--primary)' : 'var(--glass-border)'),
-                  background: feedbackCategory === cat ? 'var(--primary-light)' : 'none',
-                  color: feedbackCategory === cat ? 'var(--primary)' : 'var(--text-body)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {lang === 'zh' ? {
-                  Aircon: '空调冷气',
-                  Plumbing: '水管漏水',
-                  Electrical: '电路照明',
-                  Furniture: '家具五金',
-                  Appliance: '家用电器',
-                  Others: '其他问题'
-                }[cat] : cat}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            className="form-textarea"
-            rows={3}
-            value={feedbackText}
-            onChange={e => setFeedbackText(e.target.value)}
-            placeholder={t('feedbackPlaceholder')}
-            style={{ resize: 'vertical', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
-          />
-
-          {/* Photo upload field */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--glass-border)',
-              background: 'var(--bg-surface)',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: 'var(--text-body)',
-              transition: 'all 0.2s'
-            }}>
-              <Camera size={14} style={{ color: 'var(--primary)' }} />
-              <span>{t('feedbackPhoto')}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                style={{ display: 'none' }}
-              />
-            </label>
-            {photoBase64 && (
-              <div style={{ position: 'relative' }}>
-                <img
-                  src={photoBase64}
-                  alt="Preview"
-                  style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setPhotoBase64(null)}
-                  style={{
-                    position: 'absolute',
-                    top: -6,
-                    right: -6,
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 14,
-                    height: 14,
-                    fontSize: '9px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <div style={{ flex: 1 }} />
-            <button onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackText.trim() || !profileComplete}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: (feedbackText.trim() && profileComplete) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: (feedbackText.trim() && profileComplete) ? 'pointer' : 'not-allowed' }}>
-              <Send size={13} /> {t('feedbackSubmit')}
-            </button>
-          </div>
-        </div>
-
-        {/* My feedback list */}
-        {showMyFeedbacks && (
-          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
-            {myFeedbacks.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>{t('feedbackNoItems')}</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
-                {myFeedbacks.map(f => (
-                  <div key={f.id} style={{ padding: '12px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
-                          {lang === 'zh' ? {
-                            Aircon: '空调冷气',
-                            Plumbing: '水管漏水',
-                            Electrical: '电路照明',
-                            Furniture: '家具五金',
-                            Appliance: '家用电器',
-                            Others: '其他问题'
-                          }[f.category || 'Others'] : f.category}
-                        </span>
-                      </div>
-                      <span style={{
-                        fontSize: '0.65rem',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-full)',
-                        background: f.status === 'resolved' ? 'var(--success-light)' : f.status === 'in_progress' ? 'var(--info-light)' : 'var(--warning-light)',
-                        color: f.status === 'resolved' ? 'var(--success)' : f.status === 'in_progress' ? 'var(--info)' : 'var(--warning)',
-                        fontWeight: 700
-                      }}>
-                        {f.status === 'resolved' ? t('feedbackResolved') : f.status === 'in_progress' ? t('feedbackStatusInProgress') : t('feedbackPending')}
-                      </span>
-                    </div>
-
-                    {f.unit_info && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                        {f.unit_info}
-                      </div>
-                    )}
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-body)', margin: '4px 0 6px', whiteSpace: 'pre-wrap' }}>{f.content}</p>
-
-                    {f.photo_url && (
-                      <div style={{ marginBottom: 8 }}>
-                        <a href={f.photo_url} target="_blank" rel="noopener noreferrer">
-                          <img
-                            src={f.photo_url}
-                            alt="Evidence"
-                            style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: 6, border: '1px solid var(--glass-border)', objectFit: 'cover', cursor: 'pointer' }}
-                          />
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Conversation thread */}
-                    {f.replies && f.replies.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, background: 'rgba(0,0,0,0.1)', padding: 12, borderRadius: 10 }}>
-                        {f.replies.map((r, i) => {
-                          const isAgent = r.role === 'agent';
-                          return (
-                            <div key={i} style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignSelf: isAgent ? 'flex-start' : 'flex-end',
-                              maxWidth: '85%',
-                              gap: 3
-                            }}>
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                alignSelf: isAgent ? 'flex-start' : 'flex-end',
-                                fontSize: '0.68rem',
-                                color: 'var(--text-muted)',
-                                padding: '0 4px'
-                              }}>
-                                <span style={{ fontWeight: 700, color: isAgent ? 'var(--primary)' : 'var(--success)' }}>
-                                  {isAgent ? (lang === 'zh' ? '中介' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
-                                </span>
-                                <span>
-                                  {new Date(r.at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                              <div style={{
-                                padding: '10px 14px',
-                                borderRadius: isAgent ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-                                background: isAgent ? 'var(--bg-surface-solid)' : 'var(--primary)',
-                                color: isAgent ? 'var(--text-body)' : 'white',
-                                border: isAgent ? '1px solid var(--border)' : 'none',
-                                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                                fontSize: '0.8rem',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                                lineHeight: 1.45
-                              }}>
-                                {r.content}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Student reply input — only when ticket is open and agent has replied */}
-                    {f.status !== 'resolved' && f.replies && f.replies.length > 0 && (() => {
-                      const agentReplies = f.replies.filter(r => r.role === 'agent').length;
-                      const studentReplies = f.replies.filter(r => r.role === 'student').length;
-                      const canReply = studentReplies < agentReplies && studentReplies < 3;
-                      if (!canReply) return null;
-                      return (
-                        <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            className="form-input"
-                            value={studentReply[f.id] || ''}
-                            onChange={e => setStudentReply(prev => ({ ...prev, [f.id]: e.target.value }))}
-                            placeholder={lang === 'zh' ? '回复中介…' : 'Reply to agent…'}
-                            style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
-                          />
-                          <button onClick={() => sendStudentReply(f.id)} disabled={!studentReply[f.id]?.trim()}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none', background: studentReply[f.id]?.trim() ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.78rem', cursor: studentReply[f.id]?.trim() ? 'pointer' : 'not-allowed' }}>
-                            <Send size={12} /> {lang === 'zh' ? '发送' : 'Send'}
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        </div>
       )}
 
       {/* Terminate Lease Modal */}

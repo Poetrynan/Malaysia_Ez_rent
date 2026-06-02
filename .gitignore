@@ -25,3 +25,6 @@ frontend/.env.local
 # Third-party skills (not our code)
 .ui-ux-pro-max/
 .claude/skills/
+
+# History snapshots (local reference only)
+history/
