@@ -2218,6 +2218,7 @@ export default function TenantPortal({
         )}
 
         {renderCancelModal}
+        {renderDeleteHistoryModal}
         {renderToast}
       </div>
     );
@@ -2682,7 +2683,7 @@ export default function TenantPortal({
       {/* Toast notification */}
       {renderToast}
       {renderCancelModal}
-
+      {renderDeleteHistoryModal}
     </div>
   );
 }

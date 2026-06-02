@@ -203,19 +203,24 @@ export default function AIChat() {
       const detail = err?.message || String(err);
       const isNetwork = detail.includes('Failed to fetch') || detail.includes('NetworkError') || detail.includes('ERR_NETWORK');
       const is401 = detail.includes('401');
+      const is503 = detail.includes('503') || detail.includes('UNAVAILABLE') || detail.includes('high demand');
       let errorMsg: string;
       if (is401) {
         errorMsg = lang === 'zh'
           ? '⚠️ 认证失败，请重新登录后再试。'
           : '⚠️ Authentication failed. Please log in and try again.';
+      } else if (is503) {
+        errorMsg = lang === 'zh'
+          ? '⚠️ AI 服务繁忙，请稍后再试。'
+          : '⚠️ AI service is busy. Please try again later.';
       } else if (isNetwork) {
         errorMsg = lang === 'zh'
-          ? `⚠️ 无法连接到 AI 后端服务 (${apiUrl})，请检查网络或稍后再试。`
-          : `⚠️ Cannot reach AI backend (${apiUrl}). Please check your network or try again later.`;
+          ? '⚠️ 无法连接到 AI 后端服务，请检查网络或稍后再试。'
+          : '⚠️ Cannot reach AI backend. Please check your network or try again later.';
       } else {
         errorMsg = lang === 'zh'
-          ? `⚠️ AI 助手请求出错: ${detail}`
-          : `⚠️ AI assistant error: ${detail}`;
+          ? '⚠️ AI 助手暂时无法响应，请稍后再试。'
+          : '⚠️ AI assistant is temporarily unavailable. Please try again later.';
       }
       setMessages(p => p.map(m => m.id === aid ? {
         ...m,
