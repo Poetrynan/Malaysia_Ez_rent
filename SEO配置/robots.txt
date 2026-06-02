@@ -1,0 +1,18 @@
+# robots.txt - Malaysia Ez Rent
+# https://ezrent.my/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /register-agent/
+Disallow: /mobile-upload/
+Disallow: /mobile-upload-property/
+Disallow: /mobile-upload-qr/
+Disallow: /diagnose/
+
+# Sitemap
+Sitemap: https://ezrent.my/sitemap.xml
+
+# Crawl-delay (optional, helps with server load)
+Crawl-delay: 1
