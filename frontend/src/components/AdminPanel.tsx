@@ -9,7 +9,7 @@ import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
 import { isMockDatabase } from '@/lib/supabase';
 
-const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
+const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Ensuite', 'Whole Unit'];
 
 const AMENITIES = [
   { key: 'gym', label: 'Gym', labelZh: '健身房', icon: React.createElement(Dumbbell, { size: 14 }) },

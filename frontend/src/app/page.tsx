@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, UserCheck, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import TenantPortal from '@/components/TenantPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -335,7 +335,7 @@ export default function Home() {
                 </li>
                 {adminRole === 'super_admin' && (
                   <li onClick={() => setActiveTab('admin-agent-reviews')} className={`nav-item ${activeTab === 'admin-agent-reviews' ? 'active' : ''}`}>
-                    <Building2 size={16} />
+                    <UserCheck size={16} />
                     <span style={{ display: 'flex', alignItems: 'center' }}>
                       {lang === 'zh' ? '中介审核' : 'Agent Reviews'}
                       {pendingCounts.agentReviews > 0 && (
