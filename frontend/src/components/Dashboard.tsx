@@ -5,6 +5,8 @@ import { Home, FileText, DollarSign, AlertTriangle, Wrench, TrendingUp, Clock, U
 import { useApp } from '@/lib/ThemeProvider';
 import {
   ResponsiveContainer,
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -437,24 +439,14 @@ export default function Dashboard({
           {revenueData.length > 0 ? (
             <div style={{ width: '100%', height: 180, minWidth: 0 }}>
               <ResponsiveContainer width="99%" height={180}>
-                <BarChart data={revenueData} margin={{ top: 10, right: 5, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--success)" stopOpacity={0.95}/>
-                      <stop offset="95%" stopColor="var(--success)" stopOpacity={0.4}/>
-                    </linearGradient>
-                    <linearGradient id="colorReceivable" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.95}/>
-                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.4}/>
-                    </linearGradient>
-                  </defs>
+                <LineChart data={revenueData} margin={{ top: 10, right: 5, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={m => m.slice(5)} />
                   <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomRevenueTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
-                  <Bar dataKey="collected" name="collected" fill="url(#colorCollected)" radius={[3, 3, 0, 0]} maxBarSize={15} style={{ cursor: 'pointer' }} />
-                  <Bar dataKey="receivable" name="receivable" fill="url(#colorReceivable)" radius={[3, 3, 0, 0]} maxBarSize={15} style={{ cursor: 'pointer' }} />
-                </BarChart>
+                  <Tooltip content={<CustomRevenueTooltip />} cursor={{ stroke: 'rgba(255, 255, 255, 0.1)' }} />
+                  <Line type="monotone" dataKey="collected" name="collected" stroke="var(--success)" strokeWidth={2} dot={{ fill: 'var(--success)', r: 3 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="receivable" name="receivable" stroke="var(--primary)" strokeWidth={2} dot={{ fill: 'var(--primary)', r: 3 }} activeDot={{ r: 5 }} strokeDasharray="5 5" />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
@@ -462,8 +454,8 @@ export default function Dashboard({
           )}
           
           <div style={{ display: 'flex', gap: 12, marginTop: 8, justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--success)', display: 'inline-block' }} />{lang === 'zh' ? '已收' : 'Collected'}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--primary)', display: 'inline-block' }} />{lang === 'zh' ? '应收' : 'Receivable'}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 2, borderRadius: 1, background: 'var(--success)', display: 'inline-block' }} />{lang === 'zh' ? '已收' : 'Collected'}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 2, borderRadius: 1, background: 'var(--primary)', display: 'inline-block', borderTop: '2px dashed var(--primary)' }} />{lang === 'zh' ? '应收' : 'Receivable'}</span>
           </div>
         </div>
 
