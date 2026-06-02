@@ -40,7 +40,7 @@ interface Community {
 }
 interface UnitWithCommunity extends Unit { community: Community | null; }
 
-const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Whole Unit'];
+const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Ensuite', 'Whole Unit'];
 
 const FACILITY_ICONS: Record<string, React.ReactNode> = {
   '24小时门卫': <ShieldCheck size={16} />, '24-hr Security': <ShieldCheck size={16} />,
