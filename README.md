@@ -1,6 +1,6 @@
 # 🏠 Malaysia Ez Rent
 
-> 🇲🇾 马来西亚留学生智能租房平台 — AI Agent + 全栈 Web 应用
+> 🇲🇾 马来西亚智能租房平台 — AI Agent + 全栈 Web 应用
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi)](https://fastapi.tiangolo.com)
@@ -12,7 +12,7 @@
 
 ## ✨ 项目简介
 
-**Malaysia Ez Rent** 是专为马来西亚国际留学生打造的一站式智能租房平台。集成 AI 助手（支持通勤测算、汇率换算、节假日查询、留学生活指南）、全流程租约管理、手机扫码缴租、多中介独立挂牌、合租意向系统等功能。
+**Malaysia Ez Rent** 是专为马来西亚打造的智能租房平台，面向所有国际租客（留学生、外派员工、外籍人士等）提供一站式租房服务。集成 AI 助手（支持通勤测算、汇率换算、节假日查询）、全流程租约管理、手机扫码缴租、多中介独立挂牌、合租意向系统等功能。
 
 ### 🎯 核心亮点
 
@@ -21,9 +21,9 @@
 | 🤖 **AI 智能助手** | ReAct Agent + SSE 流式对话，支持 Google Maps 通勤测算、Frankfurter 汇率、Nager.Date 节假日、Tavily 实时搜索 |
 | 🏘️ **智能房源浏览** | 卡片/列表双模式、图片 Lightbox、看房视频、GPS 地图定位 |
 | 🚇 **动态通勤路线** | Google Maps Embed 自动绘制起点→终点路线，支持驾车/公交/步行切换 |
-| 💳 **全流程缴租** | 12 个月台账、手机扫码上传凭证、首月→中介 / 后续→房东 分离收款 |
+| 💳 **全流程缴租** | 月度台账、手机扫码上传凭证、首月→中介 / 后续→房东 分离收款 |
 | 🏠 **合租系统** | Whole Unit 合租意向提交/取消、室友名单、联保退租警示、租约原子替换 |
-| 🔧 **报修中心** | Agent↔Student 多轮对话工单、分类管理、图片上传 |
+| 🔧 **报修中心** | 中介↔租客多轮对话工单、分类管理、图片上传 |
 | 📊 **数据看板** | 中介端 Dashboard：出租率、收租率、月收入趋势、房源分布、意向转化、报修概览 |
 | 👨‍💼 **多中介管理** | 独立挂牌、复制挂牌、Agent 级收款码与数据隔离 |
 | 📱 **手机匿名上传** | 扫码即传支付凭证，无需登录，图片自动压缩 |
@@ -47,7 +47,7 @@
 ├─────────────────────────────────────────────────────┤
 │                   DATABASE                         │
 │  Supabase (PostgreSQL + pgvector + Auth + Storage)  │
-│  26+ migrations · RLS policies · RPC functions      │
+│  33 migrations · RLS policies · RPC functions       │
 ├─────────────────────────────────────────────────────┤
 │                  DEPLOYMENT                        │
 │  Vercel (Frontend) · Render (Backend)               │
@@ -73,10 +73,11 @@ Malaysia_Ez_rent/
 │   │   │   ├── PropertyListings.tsx  # 🏘️ 房源列表 + 详情 + 合租
 │   │   │   ├── AIChat.tsx            # 🤖 AI 对话界面 (SSE)
 │   │   │   ├── MapAndCard.tsx        # 🗺️ 通勤路线地图
-│   │   │   ├── StudentPortal.tsx     # 👤 学生门户（租约 + 报修 + 个人资料）
+│   │   │   ├── TenantPortal.tsx      # 👤 租客门户（租约 + 报修 + 个人资料）
 │   │   │   ├── LeaseLedgerCard.tsx   # 💳 缴租台账 + 支付弹窗
 │   │   │   ├── Dashboard.tsx         # 📊 数据看板 (recharts)
-│   │   │   └── AdminPanel.tsx        # ⚙️ 管理后台
+│   │   │   ├── AdminPanel.tsx        # ⚙️ 管理后台
+│   │   │   └── Inbox.tsx             # 📬 消息收件箱
 │   │   ├── lib/
 │   │   │   ├── supabase.ts           # 双模式客户端 (Live / Mock)
 │   │   │   ├── ThemeProvider.tsx      # 主题 + 语言 Context
@@ -96,7 +97,19 @@ Malaysia_Ez_rent/
 │
 ├── supabase/                    # 🗄️ 数据库
 │   ├── schema.sql               # 完整 Schema
-│   └── migrations/              # 26+ 增量迁移脚本
+│   └── migrations/              # 33 个增量迁移脚本
+│
+├── 售卖策略/                     # 💼 商业文档
+│   ├── README.md                # 目录索引
+│   ├── 盈利模式.md               # 变现方式
+│   ├── SaaS模式.md              # 软件即服务方案
+│   ├── 系统功能.md               # 功能清单
+│   ├── 技术架构.md               # 技术栈说明
+│   ├── 部署指南.md               # 部署步骤
+│   ├── 交接清单.md               # 代码交付事项
+│   ├── 定价策略.md               # 收费方案
+│   ├── 市场分析.md               # 市场分析
+│   └── 竞品对比.md               # 竞品分析
 │
 └── docs/                        # 📚 文档
     ├── ai-architecture.md       # AI Agent 架构详解
@@ -150,10 +163,10 @@ python run.py
 -- 2. 迁移脚本 (按编号顺序)
 \i supabase/migrations/001_add_admin_contact.sql
 \i supabase/migrations/002_limit_admins_and_ui.sql
--- ... 依次执行到 026
+-- ... 依次执行到 033
 ```
 
-> 💡 详细部署步骤请参考 [docs/deployment-guide.md](docs/deployment-guide.md)
+> 💡 详细部署步骤请参考 [售卖策略/部署指南.md](售卖策略/部署指南.md)
 
 ---
 
@@ -196,7 +209,7 @@ SSE 流式返回:
 | 工具 | API | 用途 |
 |------|-----|------|
 | 🚇 `calculate_commute` | Google Maps Geocoding + Distance Matrix | 任意两地址间通勤测算 |
-| 🌐 `get_web_realtime_info` | Tavily Search | 留学生活常识（排除 iProperty 等竞品） |
+| 🌐 `get_web_realtime_info` | Tavily Search | 生活常识搜索（排除竞品租房站） |
 | 💱 `convert_currency_frankfurter` | Frankfurter API | MYR/CNY/USD 实时汇率换算 |
 | 📅 `get_malaysia_holidays` | Nager.Date API | 马来西亚公众假期查询 |
 
@@ -206,19 +219,24 @@ SSE 流式返回:
 
 ## 🗄️ 数据库
 
-### 核心表
+### 核心表（18 张）
 
 | 表名 | 说明 |
 |------|------|
-| `users` | 学生用户（护照/IC、学校、公司、证件照） |
-| `admin_users` | 管理员（角色、收款码、中介信息） |
+| `users` | 租客用户（护照/IC、学校、公司、证件照） |
+| `admin_users` | 管理员/中介（角色、收款码、REN牌照） |
 | `communities` | 小区/公寓（GPS 坐标、配套设施） |
 | `units` | 房源（房型、租金、状态、pgvector 向量） |
 | `leases` | 租约（押金配置、合租组） |
 | `payment_records` | 月账单（支付凭证、审核状态） |
+| `lease_groups` | 合租组 |
+| `lease_transfers` | 租约转移记录 |
 | `tenant_interests` | 合租意向（interested/confirmed/left） |
 | `maintenance_requests` | 报修工单（分类、对话线程） |
 | `agent_registrations` | 中介注册申请（REN 验证） |
+| `agent_conversations` | AI 对话历史 |
+| `universities` | 马来西亚大学 GPS |
+| `user_notifications` | 系统通知/收件箱 |
 
 ### Storage 结构
 
@@ -228,7 +246,7 @@ unit-media/
 ├── evidence/            # 支付凭证截图
 ├── qr/                  # 中介收款码
 ├── ren-tags/            # 中介 REN 牌照
-└── documents/           # 学生证件照
+└── documents/           # 租客证件照
 ```
 
 ---
@@ -275,7 +293,7 @@ unit-media/
 
 ## 📊 迁移脚本
 
-共 **26+** 个增量迁移，覆盖：
+共 **33** 个增量迁移，覆盖：
 
 | 迁移 | 功能 |
 |------|------|
@@ -287,16 +305,19 @@ unit-media/
 | 016-019 | 报修工单 + 中介主页 + 租约终止 + 联保替换 |
 | 020-023 | 移动端房源上传 + 用户门牌号 + 中介注册 + 个人信息扩展 |
 | 024-026 | 工单对话线程 + 用户行补建 + 门牌号字段删除 |
+| 027-030 | 租约 RLS + 通知系统 + 管理员上限 + 中介清理 |
+| 031-032 | 用户邮箱 + 中介预审批 + 学生证件照 + 租约门牌号 |
+| 033 | Ensuite 房型 + 租约支付自动触发器 |
 
 ---
 
 ## 🛡️ 安全设计
 
-- **RLS 策略**：所有表均有 Row Level Security，学生只能操作自己的数据
+- **RLS 策略**：所有表均有 Row Level Security，租客只能操作自己的数据
 - **Agent 隔离**：普通管理员只能看到自己录入的房源和租约
 - **Service Role**：仅后端使用，前端不暴露高权限 Key
 - **匿名上传**：手机缴租凭证通过 RPC + Storage Policy 安全写入
-- **账户注销**：Server Action 彻底清理 5 张表数据，保留财务记录
+- **账户注销**：Server Action 按角色清理数据，中介保留财务记录
 
 ---
 
@@ -322,51 +343,24 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 
 ## 📄 文档
 
+- [售卖策略](售卖策略/README.md) — 商业文档、盈利模式、定价策略
 - [AI 架构详解](docs/ai-architecture.md) — Agent 设计、工具链、开发规范
-- [SaaS 发展路线图](docs/saas-roadmap.md) — 多租户改造、计费系统、白标方案
-- [商业策略](docs/business-strategy.md) — 卖点分析、变现模式、销售策略
 - [常见问题](docs/FAQ.md) — Supabase、手机上传、部署问题
-- [前后端解释](docs/前后端解释.md) — SDK、RLS、HTTP 请求流程
-- [部署指南](docs/deployment-guide.md) — Vercel + Render 部署步骤
+- [部署指南](售卖策略/部署指南.md) — 完整部署步骤
 
 ---
 
-## 📈 最近更新 (2026-05-31)
+## 📈 最近更新 (2026-06-02)
 
-### 📊 Recharts 数据看板重构与系统稳定性修复
-- **图表系统全面升级**：将原有的纯 CSS 简易图表全部替换为基于 Recharts 库的高保真交互式图表（BarChart、PieChart、Tooltip 等）。
-- **解决重渲染崩溃死循环（React Error #185）**：
-  * **饼图（Donut）稳定化**：由于饼图尺寸固定，移除了其外层的 `<ResponsiveContainer>`，直接渲染固定宽高的 `<PieChart width={110} height={110}>`，彻底避免了容器初始化尺寸为 `-1` 时引起的循环测算崩溃。
-  * **Grid 布局容器降噪**：在 CSS Grid 容器上设置 `minmax(0, 1fr)` 并在其他 ResponsiveContainer 上使用宽度 `width="99%"`，打破了 Flex/Grid 弹性尺寸与图表自适应计算的死循环。
-  * **Legend 列表 Hover 位移去 State 化**：利用纯 CSS 动画和过渡效果响应 Legend Item 悬停（Hover），避免了因 State 改变引起 Font Weight 或 Transform 的变化导致布局尺寸偏移、进而触发 MouseLeave/MouseEnter 重复死循环的 Bug。
-- **时间跨度筛选完美呈现**：完美支持 1M/6M/1Y 时间跨度实时过滤。折线与柱状图自适应变细，无交易账单月份自动留空占位。
-- **新增计算规则解释**：所有指标标题旁增加 `HelpCircle` 悬停提示，通过磨砂玻璃材质的 Tooltip 弹出层精确说明出租率、收租率、有效租约和逾期的计算公式。
+### 🏠 租客门户重构
+- **TenantPortal 组件独立渲染**：个人资料和维修反馈中心不再依赖租约状态
+- **历史租约收租核查表**：与中介端完全一致的付款网格，支持展开查看
+- **删除历史租约功能**：租客可删除不需要的历史记录
+- **AI 错误信息优化**：503 等错误显示友好提示而非技术细节
 
-### 👨‍💼 中介与管理员管理 UI 美化
-- **浅色模式文字可见性修复**：彻底清除了管理员与中介列表卡片在浅色模式下由于 `#F0F6FF` 浅蓝/白字硬编码导致的“名字不可见”问题，统一绑定为系统级主题变量 `var(--text-h)` / `var(--text-body)`。
-- **引入高颜值渐变头像**：为每一位管理员/中介生成姓名首字母缩写徽章头像，普通中介展示蓝绿活力渐变，超级管理员（super_admin）展示金橙色尊贵渐变，并配有卡片玻璃态浮雕阴影与圆角。
-- **表单布局卡片化**：新增中介表单包裹在 `var(--primary-light)` 玻璃质感背景容器中，重点突出，排版整洁大方。
-
----
-
-## 📈 最近更新 (2026-05-30)
-
-### 🧠 AI Agent 智能化改造
-
-- **移除所有硬编码数据**：大学别名表、COMMUNITIES 匹配、Monash 默认回退全部删除
-- **工具纯 API 化**：`calculate_commute` 现在只调 Google Geocoding + Distance Matrix，不做任何字符串匹配
-- **LLM 意图解析**：系统提示要求 LLM 在调用工具前解析缩写（`UM` → `Universiti Malaya`），模糊地址主动追问
-- **Google Geocoding**：新增 `_google_geocode()` 函数，任意文本地址 → 经纬度 + 格式化地址
-- **错误引导**：工具返回 error 时，LLM 根据系统提示引导用户补充具体地址
-- **CORS 修复**：支持多域名配置（`FRONTEND_URL` + `EXTRA_ORIGINS`）
-- **认证容错**：未登录用户可正常使用 AI 助手（anonymous-user 回退）
-- **前端错误信息**：区分网络错误、401 认证、其他错误，显示实际 API 地址
-
-### 🗺️ MapAndCard 地图优化
-
-- **通勤场景**：AI 回复通勤结果时，直接显示路线地图（不再需要点击"查看路线"）
-- **房源列表**：保留"点击查看"按钮，节省 Google Maps API 配额
-- **交通模式切换**：驾车/公交/步行切换时自动更新地图路线
+### 💼 商业文档
+- **新增售卖策略文件夹**：包含盈利模式、SaaS方案、定价策略、市场分析等完整商业文档
+- **数据库触发器迁移**：033 号迁移文件支持 Ensuite 房型和自动账单生成
 
 ---
 
@@ -377,5 +371,5 @@ MIT © 2026 Malaysia Ez Rent
 ---
 
 <p align="center">
-  <b>🏠 Malaysia Ez Rent</b> — 让留学租房更简单 🇲🇾
+  <b>🏠 Malaysia Ez Rent</b> — 让租房更简单 🇲🇾
 </p>

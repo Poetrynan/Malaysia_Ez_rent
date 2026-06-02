@@ -2111,11 +2111,7 @@ export default function TenantPortal({
               onMouseLeave={e => { if (leaseTab !== tab.id) e.currentTarget.style.background = 'var(--glass-bg)'; }}
             >
               {tab.label}
-              {tab.id === 'history' && leaseHistory.length > 0 && (
-                <span style={{ background: leaseTab === 'history' ? 'rgba(255,255,255,0.25)' : 'var(--warning)', color: 'white', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
-                  {leaseHistory.length}
-                </span>
-              )}
+              {tab.id === 'history' && leaseHistory.length > 0 && null}
             </button>
           ))}
         </div>
