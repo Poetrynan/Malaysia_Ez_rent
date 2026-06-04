@@ -249,8 +249,6 @@ export default function AIChat() {
 
 
 
-  const prompts = [t('prompt1'), t('prompt2'), t('prompt3')];
-
   return (
     <div className="chat-layout">
       {/* Chat pane */}
@@ -407,20 +405,6 @@ export default function AIChat() {
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder={t('chatPlaceholder')} className="chat-input" disabled={isGenerating} />
           <button type="submit" className="send-button" disabled={isGenerating}><Send size={16} /></button>
         </form>
-      </div>
-
-      {/* Side panel */}
-      <div className="side-context-panel">
-        <div className="glass-card">
-          <h4 style={{ fontSize: '0.88rem', marginBottom: 12 }}>{t('quickPromptsTitle')}</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {prompts.map((p, i) => (
-              <div key={i} className="prompt-pill" onClick={() => setQuery(p)}>
-                {p}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <style>{`
