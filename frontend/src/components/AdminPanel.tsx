@@ -105,6 +105,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         fetchFeedbacks();
       } else if (defaultTab === 'agent-reviews') {
         fetchAgentRegistrations();
+      } else if (defaultTab === 'reviews') {
+        if (!reviewsLoaded) fetchAllReviews();
       }
     }
   }, [defaultTab]);

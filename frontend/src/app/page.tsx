@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, UserCheck, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail } from 'lucide-react';
+import { MessageSquare, User, ShieldAlert, BadgeInfo, Sun, Moon, Globe, Building2, LogOut, FileText, QrCode, Users, Wrench, UserX, UserCheck, BarChart3, CheckCircle2, AlertTriangle, Eye, Mail, Star } from 'lucide-react';
 import AIChat from '@/components/AIChat';
 import TenantPortal from '@/components/TenantPortal';
 import AdminPanel from '@/components/AdminPanel';
@@ -12,7 +12,7 @@ import { useApp } from '@/lib/ThemeProvider';
 
 export default function Home() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'inbox' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-listings' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-profile' | 'admin-inbox'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'chat' | 'student' | 'profile' | 'maintenance' | 'inbox' | 'admin-dashboard' | 'admin-properties' | 'admin-leases' | 'admin-listings' | 'admin-admins' | 'admin-feedback' | 'admin-agent-reviews' | 'admin-reviews' | 'admin-profile' | 'admin-inbox'>('listings');
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
   const [role, setRole] = useState<'student' | 'admin' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
@@ -347,6 +347,13 @@ export default function Home() {
                     <span className="role-badge admin">{t('roleManagerBadge')}</span>
                   </li>
                 )}
+                {adminRole === 'super_admin' && (
+                  <li onClick={() => setActiveTab('admin-reviews')} className={`nav-item ${activeTab === 'admin-reviews' ? 'active' : ''}`}>
+                    <Star size={16} />
+                    <span>{lang === 'zh' ? '评论管理' : 'Reviews'}</span>
+                    <span className="role-badge admin">{t('roleManagerBadge')}</span>
+                  </li>
+                )}
                 <li onClick={() => setActiveTab('admin-profile')} className={`nav-item ${activeTab === 'admin-profile' ? 'active' : ''}`}>
                   <User size={16} />
                   <span>{lang === 'zh' ? '个人设置' : 'Profile Settings'}</span>
@@ -589,6 +596,7 @@ export default function Home() {
                 activeTab === 'admin-admins' ? 'admins' :
                 activeTab === 'admin-feedback' ? 'feedback' :
                 activeTab === 'admin-agent-reviews' ? 'agent-reviews' :
+                activeTab === 'admin-reviews' ? 'reviews' :
                 activeTab === 'admin-profile' ? 'profile' :
                 'dashboard'
               }
