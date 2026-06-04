@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Bot, User } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -27,8 +27,9 @@ export default function AIChat() {
   }, [lang, t]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
-  const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});
   const [resultsPanel, setResultsPanel] = useState<{ component: string; props: any }[]>([]);
+  const [toolBoardCards, setToolBoardCards] = useState<{ name: string; args: any; result?: any; status: 'running' | 'done' }[]>([]);
+  const [textStarted, setTextStarted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [userId, setUserId] = useState<string>(() => {
@@ -63,8 +64,6 @@ export default function AIChat() {
   }, []);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const toggleThoughts = (id: string) => setCollapsedThoughts(p => ({ ...p, [id]: !p[id] }));
 
   // Helper to parse simple markdown to JSX elements
   const renderMarkdown = (text: string) => {
@@ -148,6 +147,9 @@ export default function AIChat() {
     const userText = query;
     setQuery('');
     setIsGenerating(true);
+    setToolBoardCards([]);
+    setTextStarted(false);
+    setResultsPanel([]);
     const uid = `msg-${Date.now()}`;
     const aid = `msg-a-${Date.now()}`;
     setMessages(p => [...p, { id: uid, role: 'user', content: userText }]);
@@ -236,16 +238,20 @@ export default function AIChat() {
     setMessages(p => p.map(m => {
       if (m.id !== id) return m;
       const thoughts = [...(m.thoughts || [])];
-      const toolCalls = [...(m.toolCalls || [])];
       let content = m.content;
-      if (ev.type === 'thinking') thoughts.push(ev.step);
-      else if (ev.type === 'tool_call') toolCalls.push({ name: ev.tool_name, args: ev.args });
-      else if (ev.type === 'tool_result' && toolCalls.length) toolCalls[toolCalls.length - 1].result = ev.result;
-      else if (ev.type === 'text') content += ev.delta;
-      else if (ev.type === 'ui_component') {
+      if (ev.type === 'thinking') {
+        thoughts.push(ev.step);
+      } else if (ev.type === 'tool_call') {
+        setToolBoardCards(prev => [...prev, { name: ev.tool_name, args: ev.args, status: 'running' }]);
+      } else if (ev.type === 'tool_result') {
+        setToolBoardCards(prev => prev.map((c, i) => i === prev.length - 1 ? { ...c, result: ev.result, status: 'done' } : c));
+      } else if (ev.type === 'text') {
+        content += ev.delta;
+        setTextStarted(true);
+      } else if (ev.type === 'ui_component') {
         setResultsPanel(prev => [...prev, { component: ev.component, props: ev.props }]);
       }
-      return { ...m, content, thoughts, toolCalls };
+      return { ...m, content, thoughts };
     }));
   };
 
@@ -266,7 +272,6 @@ export default function AIChat() {
         <div className="chat-messages">
           {messages.map(m => {
             const hasThoughts = m.thoughts && m.thoughts.length > 0;
-            const open = !collapsedThoughts[m.id];
             return (
               <div key={m.id} className="chat-bubble-container">
                 <div className="bubble-meta" style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -278,101 +283,15 @@ export default function AIChat() {
                 <div className={`chat-bubble ${m.role}`}>
                   {m.role === 'assistant' && hasThoughts && (
                     <div style={{
-                      background: 'var(--bg-hover)',
-                      borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      overflow: 'hidden',
-                      marginBottom: 10,
+                      fontSize: '0.72rem',
+                      color: 'var(--text-muted)',
+                      marginBottom: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
                     }}>
-                      <div onClick={() => toggleThoughts(m.id)} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        userSelect: 'none'
-                      }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          {m.thoughts?.length || 0} 步推理{m.toolCalls?.length ? ` · ${m.toolCalls.length} 工具` : ''}
-                        </span>
-                        {open ? <ChevronUp size={13} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} /> : <ChevronDown size={13} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} />}
-                      </div>
-                      {open && (
-                        <div style={{
-                          padding: '0 14px 12px',
-                          fontSize: '0.8rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                          maxHeight: 260,
-                          overflowY: 'auto'
-                        }}>
-                          {m.thoughts?.map((th, i) => (
-                            <div key={i} style={{ display: 'flex', gap: 8, lineHeight: 1.5 }}>
-                              <span style={{
-                                flexShrink: 0,
-                                width: 18, height: 18,
-                                borderRadius: '50%',
-                                background: 'var(--primary-light)',
-                                color: 'var(--primary)',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                marginTop: 1
-                              }}>{i + 1}</span>
-                              <span style={{ color: 'var(--text-body)' }}>{th}</span>
-                            </div>
-                          ))}
-                          {m.toolCalls?.map((tc, i) => {
-                            const isSearch = tc.name.includes('db') || tc.name.includes('search') || tc.name.includes('knowledge');
-                            const isCommute = tc.name.includes('commute');
-                            const isWeb = tc.name.includes('web');
-                            const icon = isSearch ? '🔍' : isCommute ? '🚇' : isWeb ? '🌐' : '💱';
-                            const done = !!tc.result;
-                            return (
-                              <div key={i} style={{
-                                padding: '8px 10px',
-                                borderRadius: 8,
-                                background: 'var(--bg-hover)',
-                                border: '1px solid var(--border)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                  <span style={{ fontSize: '0.85rem' }}>{icon}</span>
-                                  <span style={{
-                                    fontSize: '0.7rem',
-                                    padding: '2px 7px',
-                                    borderRadius: 6,
-                                    background: done ? 'var(--success-light)' : 'var(--primary-light)',
-                                    color: done ? 'var(--success)' : 'var(--primary)',
-                                    fontWeight: 700,
-                                  }}>{tc.name}</span>
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                                    {Object.keys(tc.args).map(k => `${k}: ${tc.args[k]}`).join(', ')}
-                                  </span>
-                                  {done && <span style={{ marginLeft: 'auto', color: 'var(--success)', fontSize: '0.7rem' }}>✓</span>}
-                                </div>
-                                {tc.result && (
-                                  <div style={{
-                                    color: 'var(--text-muted)',
-                                    borderTop: '1px solid var(--border)',
-                                    paddingTop: 5,
-                                    marginTop: 3,
-                                    maxHeight: 80,
-                                    overflowY: 'auto',
-                                    fontSize: '0.72rem',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word',
-                                    lineHeight: 1.4
-                                  }}>
-                                    {JSON.stringify(tc.result).slice(0, 300)}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <span style={{ color: 'var(--primary)', fontSize: '0.6rem' }}>●</span>
+                      {m.thoughts?.length || 0} 步推理
                     </div>
                   )}
                   <div className="markdown-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -382,13 +301,8 @@ export default function AIChat() {
               </div>
             );
           })}
-          {isGenerating && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px' }}>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <span className="thinking-dot" style={{ animationDelay: '0s' }} />
-                <span className="thinking-dot" style={{ animationDelay: '0.15s' }} />
-                <span className="thinking-dot" style={{ animationDelay: '0.3s' }} />
-              </div>
+          {isGenerating && !textStarted && toolBoardCards.length === 0 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 14px' }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{t('chatThinking')}</span>
             </div>
           )}
@@ -403,13 +317,71 @@ export default function AIChat() {
 
       {/* Results panel (right side) */}
       <div className="results-panel">
-        {resultsPanel.length === 0 ? (
-          <div className="results-empty">
-            <Bot size={48} style={{ color: 'var(--border)', opacity: 0.5 }} />
-            <span style={{ fontSize: '0.9rem' }}>{t('chatWelcome')}</span>
+        {/* Phase 1: Tool execution board */}
+        {!textStarted && toolBoardCards.length > 0 && (
+          <div className="tool-board">
+            {toolBoardCards.map((card, i) => {
+              const icon = card.name.includes('search') || card.name.includes('knowledge') ? '🔍'
+                : card.name.includes('commute') ? '🚇'
+                : card.name.includes('web') ? '🌐' : '💱';
+              return (
+                <div key={i} className={`tool-board-card ${card.status}`}>
+                  <div className="tool-board-card-header">
+                    <span className="tool-board-icon">{icon}</span>
+                    <span className="tool-board-name">{card.name}</span>
+                    <span className={`tool-board-status ${card.status}`}>
+                      {card.status === 'running'
+                        ? <span className="tool-spinner" />
+                        : '✓'
+                      }
+                    </span>
+                  </div>
+                  <div className="tool-board-args">
+                    {Object.entries(card.args).map(([k, v]) => (
+                      <span key={k} className="tool-board-arg">{k}: {String(v)}</span>
+                    ))}
+                  </div>
+                  {card.status === 'done' && card.result && (
+                    <div className="tool-board-result">
+                      {typeof card.result === 'object'
+                        ? `${Array.isArray(card.result) ? card.result.length + ' 条结果' : '完成'}`
+                        : String(card.result).slice(0, 80)
+                      }
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ) : (
+        )}
+
+        {/* Phase 1b: Thinking indicator (no tools yet) */}
+        {!textStarted && toolBoardCards.length === 0 && isGenerating && (
+          <div className="results-empty">
+            <div className="thinking-dots">
+              <span className="thinking-dot" style={{ animationDelay: '0s' }} />
+              <span className="thinking-dot" style={{ animationDelay: '0.15s' }} />
+              <span className="thinking-dot" style={{ animationDelay: '0.3s' }} />
+            </div>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>分析中...</span>
+          </div>
+        )}
+
+        {/* Phase 2: Tool cards summary + Map/Cards */}
+        {textStarted && (
           <div className="results-content">
+            {/* Compact tool summary */}
+            {toolBoardCards.length > 0 && (
+              <div className="tool-summary">
+                {toolBoardCards.map((card, i) => (
+                  <div key={i} className="tool-summary-item">
+                    <span style={{ color: 'var(--success)' }}>✓</span>
+                    <span>{card.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Map/Cards */}
             {resultsPanel.map((item, i) => (
               <div key={i} className="ui-component-wrapper">
                 {item.component === 'MapAndCard' && <MapAndCard {...item.props} />}
@@ -418,6 +390,14 @@ export default function AIChat() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isGenerating && toolBoardCards.length === 0 && resultsPanel.length === 0 && (
+          <div className="results-empty">
+            <Bot size={48} style={{ color: 'var(--border)', opacity: 0.5 }} />
+            <span style={{ fontSize: '0.9rem' }}>{t('chatWelcome')}</span>
           </div>
         )}
       </div>

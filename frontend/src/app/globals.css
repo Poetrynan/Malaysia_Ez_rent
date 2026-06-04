@@ -433,6 +433,119 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   width: 100%;
 }
 
+/* Tool execution board */
+.tool-board {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.tool-board-card {
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: all 0.3s ease;
+  animation: slideUp 0.2s ease-out;
+}
+.tool-board-card.running {
+  border-left: 3px solid var(--primary);
+}
+.tool-board-card.done {
+  border-left: 3px solid var(--success);
+  opacity: 0.85;
+}
+.tool-board-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tool-board-icon { font-size: 1rem; }
+.tool-board-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-h);
+  font-family: monospace;
+}
+.tool-board-status {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.tool-board-status.running { color: var(--primary); }
+.tool-board-status.done { color: var(--success); }
+.tool-board-args {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.tool-board-arg {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.tool-board-result {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--success);
+}
+
+/* Spinner */
+.tool-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Tool summary (compact, after text starts) */
+.tool-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.tool-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--success-light);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* Thinking dots for results panel */
+.results-empty .thinking-dots {
+  display: flex;
+  gap: 6px;
+}
+.thinking-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.4;
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.2); }
+}
+
 /* Chat input */
 .chat-input-wrapper {
   background: var(--bg-surface-solid);
