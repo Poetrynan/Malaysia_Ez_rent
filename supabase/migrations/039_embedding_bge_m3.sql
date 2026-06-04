@@ -1,4 +1,4 @@
--- 007_embedding_bge_m3.sql
+-- 039_embedding_bge_m3.sql
 -- Migrate embedding column from 1536 dims (bge-large-zh-v1.5) to 1024 dims (bge-m3)
 
 -- 1. Change embedding column dimension (existing vectors become invalid, need regeneration)

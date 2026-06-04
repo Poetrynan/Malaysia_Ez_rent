@@ -16,4 +16,7 @@ WHERE a.user_id = b.user_id
   AND a.created_at < b.created_at;
 
 -- 3. Add unique constraint (one review per user per unit)
-ALTER TABLE reviews ADD CONSTRAINT unique_review_per_user_unit UNIQUE (user_id, unit_id);
+DO $$ BEGIN
+  ALTER TABLE reviews ADD CONSTRAINT unique_review_per_user_unit UNIQUE (user_id, unit_id);
+EXCEPTION WHEN duplicate_table THEN NULL;
+END $$;
