@@ -252,9 +252,24 @@ export default function AIChat() {
         {/* Welcome */}
         {messages.length === 0 && (
           <div className="manus-welcome">
-            <Bot size={40} style={{ color: 'var(--primary)' }} />
+            <Bot size={48} style={{ color: 'var(--primary)' }} />
             <h2>{t('chatAgentName')}</h2>
             <p>{t('chatWelcome')}</p>
+            <div className="quick-prompts">
+              {[
+                { icon: '🚇', text: '从 Sunway Geo 到 Monash 大学要多久？' },
+                { icon: '💱', text: '3000 令吉等于多少人民币？' },
+                { icon: '🏘️', text: 'NILAI 附近有什么推荐的小区？' },
+                { icon: '📅', text: '2026 年马来西亚有哪些公共假期？' },
+                { icon: '🌐', text: '吉隆坡留学生怎么办理手机卡？' },
+                { icon: '🔍', text: '帮我找便宜又安全的租房' },
+              ].map((item, i) => (
+                <div key={i} className="quick-prompt-card" onClick={() => setQuery(item.text)}>
+                  <span className="quick-prompt-icon">{item.icon}</span>
+                  <span className="quick-prompt-text">{item.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
