@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -271,7 +271,7 @@ export default function AIChat() {
                 <div className="bubble-meta" style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   {m.role === 'assistant'
                     ? <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={14} style={{ color: 'var(--primary)' }} /></div>
-                    : <span style={{ fontSize: '1rem' }}>👤</span>
+                    : <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={14} style={{ color: 'var(--text-muted)' }} /></div>
                   }
                 </div>
                 <div className={`chat-bubble ${m.role}`}>
