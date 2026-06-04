@@ -260,6 +260,7 @@ export default function AIChat() {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <Bot size={32} style={{ color: 'var(--primary)' }} />
             <span style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)', letterSpacing: '-0.01em' }}>{t('chatAgentName')}</span>
+            <span className={`led-dot ${backendStatus}`} style={{ width: 8, height: 8 }} />
           </div>
         </div>
         <div className="chat-messages">
@@ -422,17 +423,6 @@ export default function AIChat() {
 
       {/* Side panel */}
       <div className="side-context-panel">
-        <div className="glass-card">
-          <h3 style={{ fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={15} style={{ color: 'var(--primary)' }} /> {t('agentStatus')}
-          </h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: 14 }}>{t('agentDesc')}</p>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Status</span>
-            <span className={`led-dot ${backendStatus}`} />
-          </div>
-        </div>
-
         <div className="glass-card">
           <h4 style={{ fontSize: '0.88rem', marginBottom: 12 }}>{t('quickPromptsTitle')}</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
