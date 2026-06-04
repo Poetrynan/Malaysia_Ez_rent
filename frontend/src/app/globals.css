@@ -410,7 +410,6 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 .bubble-meta {
   display: flex; align-items: center; gap: 6px;
-  font-size: 0.72rem; color: var(--text-muted);
   margin-bottom: 4px;
 }
 

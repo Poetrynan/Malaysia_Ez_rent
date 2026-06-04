@@ -255,6 +255,13 @@ export default function AIChat() {
     <div className="chat-layout">
       {/* Chat pane */}
       <div className="chat-panel">
+        {/* Title */}
+        <div style={{ textAlign: 'center', padding: '16px 0 12px', flexShrink: 0 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <Bot size={28} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-h)', letterSpacing: '-0.01em' }}>{t('chatAgentName')}</span>
+          </div>
+        </div>
         <div className="chat-messages">
           {messages.map(m => {
             const hasThoughts = m.thoughts && m.thoughts.length > 0;
@@ -262,8 +269,10 @@ export default function AIChat() {
             return (
               <div key={m.id} className="chat-bubble-container">
                 <div className="bubble-meta" style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                  {m.role === 'assistant' && <Bot size={13} style={{ color: 'var(--primary)' }} />}
-                  <span>{m.role === 'user' ? t('chatYou') : t('chatAgentName')}</span>
+                  {m.role === 'assistant'
+                    ? <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={14} style={{ color: 'var(--primary)' }} /></div>
+                    : <span style={{ fontSize: '1rem' }}>👤</span>
+                  }
                 </div>
                 <div className={`chat-bubble ${m.role}`}>
                   {m.role === 'assistant' && hasThoughts && (
