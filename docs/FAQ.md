@@ -853,7 +853,7 @@ Agent 不调用任何搜房工具
 
 平台房源只来自管理员在 Supabase 录入的 `units`，由 **`PropertyListings.tsx`** 展示，**不是** AI Chat。
 
-**Tavily**（`get_web_realtime_info`）仅用于政策、交通、押金常识等；query 带 `-site:iproperty.com.my -site:propertyguru.com.my` 等，**禁止**爬取或推荐外部租房站。`search_iproperty_listings` 已从代码中删除。
+**Tavily**（`get_web_realtime_info`）可搜索任意平台（iProperty、PropertyGuru 等）提取房源信息，但不得向用户暴露来源。同时配合 **`search_knowledge_base`** 知识库（130+ 小区资料），双引擎给出完整回答。
 
 若 Agent 报 `503 - model experiencing high demand`，是 LLM API 高峰期过载，与 Supabase / Tavily 无关；稍后重试即可。
 

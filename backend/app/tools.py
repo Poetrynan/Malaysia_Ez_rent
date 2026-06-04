@@ -57,7 +57,7 @@ def get_embedding(text: str) -> List[float]:
     """Generates embedding using embedding_client or returns mock vector."""
     if embedding_client:
         try:
-            model = os.getenv("AI_EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
+            model = os.getenv("AI_EMBEDDING_MODEL", "BAAI/bge-m3")
             response = embedding_client.embeddings.create(
                 input=[text],
                 model=model
@@ -68,7 +68,7 @@ def get_embedding(text: str) -> List[float]:
     # Fallback to random/mock vector of 1536 dims
     import random
     random.seed(hash(text))
-    return [random.uniform(-0.1, 0.1) for _ in range(1536)]
+    return [random.uniform(-0.1, 0.1) for _ in range(1024)]
 
 
 def sync_missing_embeddings() -> int:
@@ -366,7 +366,7 @@ def get_web_realtime_info(query: str) -> str:
         url = "https://api.tavily.com/search"
         payload = {
             "api_key": Config.TAVILY_API_KEY,
-            "query": query + " -site:iproperty.com.my -site:propertyguru.com.my -site:speedhome.com -site:edgeprop.my -site:mudah.my -site:ibilik.sg -site:ibilik.my",
+            "query": query,
             "search_depth": "basic",
             "include_answer": True
         }
@@ -470,6 +470,110 @@ def check_my_own_rental_status(user_id: str) -> Dict[str, Any]:
             "message": f"Error querying database: {str(e)}",
             "debug_info": f"Exception during Supabase query for user_id={user_id[:8]}..."
         }
+
+
+# Tool: search_knowledge_base (RAG rental knowledge base)
+def search_knowledge_base(
+    semantic_query: str,
+    state: Optional[str] = None,
+    max_results: int = 5
+) -> List[Dict[str, Any]]:
+    """
+    Search the rental knowledge base (community profiles) using semantic similarity.
+    Returns rich community info: price ranges, ratings, pros/cons, transportation, etc.
+    """
+    print(f"[Tool: search_knowledge_base] Query: '{semantic_query}', state: {state}, max: {max_results}")
+
+    if not supabase_service_client:
+        print("[Tool: search_knowledge_base] Supabase not configured, returning empty.")
+        return []
+
+    # Ensure embeddings are synced
+    sync_kb_embeddings()
+
+    try:
+        query_vec = get_embedding(semantic_query)
+    except Exception as e:
+        print(f"[Tool: search_knowledge_base] Embedding error: {e}")
+        return []
+
+    try:
+        result = supabase_service_client.rpc("match_knowledge_base", {
+            "query_embedding": query_vec,
+            "match_threshold": 0.15,
+            "match_count": max_results,
+            "filter_state": state
+        }).execute()
+
+        if not result.data:
+            return []
+
+        results = []
+        for row in result.data:
+            entry = {
+                "id": row["id"],
+                "university_name": row["university_name"],
+                "community_name": row["community_name"],
+                "address": row["address"],
+                "state": row["state"],
+                "latitude": row.get("latitude"),
+                "longitude": row.get("longitude"),
+                "description": row.get("description"),
+                "property_type": row.get("property_type"),
+                "similarity": round(row.get("similarity", 0), 3),
+            }
+            # Merge rich data from JSONB
+            rich = row.get("data")
+            if isinstance(rich, str):
+                rich = json.loads(rich)
+            if isinstance(rich, dict):
+                entry["price_range"] = rich.get("price_range")
+                entry["room_types_available"] = rich.get("room_types_available")
+                entry["distance_to_university"] = rich.get("distance_to_university")
+                entry["pros"] = rich.get("pros")
+                entry["cons"] = rich.get("cons")
+                entry["facilities"] = rich.get("facilities")
+                entry["tenant_rating"] = rich.get("tenant_rating")
+                entry["transportation"] = rich.get("transportation")
+                entry["target_tenants"] = rich.get("target_tenants")
+                entry["lease_terms"] = rich.get("lease_terms")
+                entry["building_details"] = rich.get("building_details")
+            results.append(entry)
+
+        return results
+
+    except Exception as e:
+        print(f"[Tool: search_knowledge_base] Supabase RPC error: {e}")
+        return []
+
+
+def sync_kb_embeddings() -> int:
+    """Generate embeddings for knowledge base entries that are missing them."""
+    if not supabase_service_client:
+        return 0
+    try:
+        rows = supabase_service_client.table("rental_knowledge_base")\
+            .select("id,community_name,description,property_type")\
+            .is_("embedding", "null").execute()
+        if not rows.data:
+            return 0
+        count = 0
+        for row in rows.data:
+            text = f"{row['community_name']} {row.get('property_type','')} {row.get('description','')}"
+            try:
+                vec = get_embedding(text)
+                supabase_service_client.table("rental_knowledge_base")\
+                    .update({"embedding": vec}).eq("id", row["id"]).execute()
+                count += 1
+                import time; time.sleep(0.05)
+            except Exception as e:
+                print(f"[sync_kb_embeddings] Failed for {row['community_name']}: {e}")
+        if count > 0:
+            print(f"[sync_kb_embeddings] Generated {count} embeddings")
+        return count
+    except Exception as e:
+        print(f"[sync_kb_embeddings] Error: {e}")
+        return 0
 
 
 def convert_currency_frankfurter(amount: float = 1.0, from_currency: str = "MYR", to_currency: str = "CNY") -> Dict[str, Any]:

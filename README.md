@@ -213,7 +213,7 @@ SSE 流式返回:
 | 💱 `convert_currency_frankfurter` | Frankfurter API | MYR/CNY/USD 实时汇率换算 |
 | 📅 `get_malaysia_holidays` | Nager.Date API | 马来西亚公众假期查询 |
 
-> ⚠️ **硬性禁止**：不得搜索/推荐 iProperty、PropertyGuru、SpeedHome 等外部租房平台
+> ℹ️ **外部搜索策略**：Tavily 可搜索任意平台（iProperty、PropertyGuru 等）提取房源信息，但不得向用户暴露来源链接/平台名称。知识库 + 联网搜索双引擎回答。
 
 ---
 

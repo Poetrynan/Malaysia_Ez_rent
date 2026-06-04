@@ -1,14 +1,13 @@
--- 006_bedrooms_bathrooms.sql
--- Add bedrooms and bathrooms to units table and update match_units function
+-- 007_embedding_bge_m3.sql
+-- Migrate embedding column from 1536 dims (bge-large-zh-v1.5) to 1024 dims (bge-m3)
 
--- 1. Add columns to units table if they do not exist
-ALTER TABLE units ADD COLUMN IF NOT EXISTS bedrooms INT DEFAULT 1;
-ALTER TABLE units ADD COLUMN IF NOT EXISTS bathrooms INT DEFAULT 1;
+-- 1. Change embedding column dimension (existing vectors become invalid, need regeneration)
+ALTER TABLE units ALTER COLUMN embedding TYPE VECTOR(1024);
 
--- 2. Drop the existing function first (required because the return table type changed)
+-- 2. Drop the existing function first (required because parameter type changed)
 DROP FUNCTION IF EXISTS match_units(vector, double precision, integer, character varying, numeric);
 
--- 3. Update match_units RPC function to return bedrooms and bathrooms columns
+-- 3. Recreate match_units with 1024-dim vector parameter
 CREATE OR REPLACE FUNCTION match_units (
     query_embedding VECTOR(1024),
     match_threshold FLOAT,
@@ -28,7 +27,7 @@ CREATE OR REPLACE FUNCTION match_units (
 ) LANGUAGE plpgsql AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         u.id,
         c.name AS community_name,
         u.room_type,
@@ -48,3 +47,6 @@ BEGIN
     LIMIT match_count;
 END;
 $$;
+
+-- 4. Null out old 1536-dim embeddings so sync_missing_embeddings() regenerates them
+UPDATE units SET embedding = NULL WHERE embedding IS NOT NULL;

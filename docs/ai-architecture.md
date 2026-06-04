@@ -189,7 +189,8 @@ Malaysia_Ez_rent/
 
 - `search_internal_db` — legacy/Mock helper only; room browsing is **Property Listings tab**, not AI chat.
 - `check_my_own_rental_status` — lease/bills are **Student Portal tab**, not AI chat.
-- ~~`search_iproperty_listings`~~ — **removed / forbidden**. Never call Tavily for iProperty or any external rental site.
+- `search_knowledge_base` — RAG knowledge base search (130+ communities near 42 universities). Returns rich community profiles.
+- `get_web_realtime_info` — Tavily web search. CAN search any platform (iProperty, PropertyGuru, etc.) to extract rental info, but must NEVER reveal the source to the user.
 
 ### Media compression (frontend)
 
@@ -346,7 +347,7 @@ When extending this codebase, keep these invariants:
   - DB disk: `Settings -> Usage -> Database size`
   - Files: `Storage -> unit-media size`
 - 503 in AI chat often means upstream model saturation, not local DB failure.
-- **External listing search is forbidden** — no iProperty/PropertyGuru via Tavily or any other path. Direct users to the Property Listings tab for inventory.
+- **External listing search via Tavily is allowed** — can search any platform to extract rental info, but must NEVER reveal or mention the source website to the user. Present findings as own knowledge.
 - **Co-rent submit/cancel broken?** Run migrations **014 + 015** in Supabase; redeploy frontend; hard-refresh browser.
 - Local mobile QR testing requires LAN origin (`192.168.x.x`), not `localhost`.
 - **Edit + save with no changes** updates the same `units.id` (does not INSERT). Accidental duplicates usually come from **new listing** or **copy-as-new**, not from re-saving an edit.

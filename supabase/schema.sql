@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS units (
     bedrooms INT DEFAULT 1,
     bathrooms INT DEFAULT 1,
     description TEXT,
-    embedding VECTOR(1536), -- Text Embedding for room details
+    embedding VECTOR(1024), -- Text Embedding for room details (bge-m3)
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     max_occupants INT DEFAULT 1,
     media_urls TEXT[] DEFAULT '{}'::text[],
@@ -365,7 +365,7 @@ EXECUTE FUNCTION generate_lease_payments();
 
 -- Stored Procedure for Cosine Distance Semantic Matching (pgvector)
 CREATE OR REPLACE FUNCTION match_units (
-    query_embedding VECTOR(1536),
+    query_embedding VECTOR(1024),
     match_threshold FLOAT,
     match_count INT,
     filter_room_type VARCHAR DEFAULT NULL,

@@ -8,6 +8,7 @@ from app.tools import (
     convert_currency_frankfurter,
     get_malaysia_holidays,
     search_internal_db,
+    search_knowledge_base,
     openai_client
 )
 
@@ -260,6 +261,22 @@ async def live_agent_stream(
                     "required": ["semantic_query"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_knowledge_base",
+                "description": "Search the rental knowledge base for community/property profiles near Malaysian universities. Returns rich info: price ranges, ratings, pros/cons, transportation, facilities, distance to university, etc. Use this when users ask about neighborhoods, communities, or want recommendations.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "semantic_query": {"type": "string", "description": "Natural language query, e.g. 'affordable condo near Sunway University', 'safe apartment with gym in Nilai'."},
+                        "state": {"type": "string", "description": "Optional Malaysian state filter, e.g. 'Selangor', 'Kuala Lumpur', 'Perak'."},
+                        "max_results": {"type": "integer", "default": 5, "description": "Max number of results to return (default 5)."}
+                    },
+                    "required": ["semantic_query"]
+                }
+            }
         }
     ]
 
@@ -268,34 +285,45 @@ async def live_agent_stream(
             "role": "system",
             "content": (
                 "You are an expert AI Assistant for tenants and renters in Malaysia. "
-                "Your role is to assist tenants with room recommendations, commute calculations, exchange rates, holiday schedules, and general life information.\n\n"
+                "Your role is to assist tenants with neighborhood recommendations, room search, commute calculations, exchange rates, holiday schedules, and general life information. "
+                "You have access to a knowledge base of 130+ communities near 42 Malaysian universities.\n\n"
                 "## TOOL USAGE RULES (CRITICAL)\n"
                 "- You MUST resolve user abbreviations and casual language into FULL, PROPER names BEFORE calling any tool.\n"
                 "  Examples: 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers KLCC', 'sunway geo' → 'Sunway Geo Residences'.\n"
                 "- Pass EXACT full address strings to tools. The tools call Google Maps API directly — they do NOT match against any internal list.\n"
                 "- If the user's origin or destination is vague or ambiguous (e.g. '公司', '学校', '我住的地方'), ASK the user to provide a specific address or landmark. Do NOT guess.\n"
                 "- NEVER make up coordinates, distances, or travel times. Always rely on tool results.\n"
-                "- If a tool returns an error about an unrecognized address, relay the error to the user and ask them to clarify.\n\n"
+                "- If a tool returns an error about an unrecognized address, relay the error to the user and ask them to clarify.\n"
+                "- When users ask about neighborhoods, communities, or 'which area is good near X university', ALWAYS use search_knowledge_base first. Do NOT make up community info.\n"
+                "- When presenting knowledge base results, present the information as your own knowledge. NEVER say 'according to the knowledge base' or reveal the data source.\n"
+                "- For housing/rental related questions, ALWAYS use BOTH search_knowledge_base AND get_web_realtime_info together. The knowledge base gives structured community profiles (price, ratings, facilities); web search gives real-time market info, policies, and latest rental trends. Combine both for comprehensive answers.\n\n"
                 "## FEATURES\n"
                 "1. If a user asks about checking a lease/bill or paying rent, tell them to use the '我的租约' / 'StudentPortal' tab.\n"
                 "2. When introducing yourself or being asked 'what can you do' / '你有什么功能', list your features with example prompts:\n"
-                "   - 🔍 **智能选房推荐**：根据偏好从房源库检索最匹配的房间。\n"
+                "   - 🏘️ **小区知识库 + 实时搜索**：知识库覆盖全马 42 所大学、130+ 个小区的详细资料（价格范围、户型、评分、优缺点、交通、设施等），同时联网搜索获取实时市场信息。双引擎回答，既专业又实时。\n"
+                "     示例: `莫纳什大学附近有什么推荐的小区？`\n"
+                "     示例: `帮我找一个安全评分高、有泳池的公寓`\n"
+                "     示例: `UTAR Kampar 附近最便宜的住宿在哪？`\n"
+                "   - 🔍 **房源搜索**：从内部房源库检索可租房间（如有房源数据时）。\n"
                 "     示例: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
-                "   - 🚇 **交通通勤测算**：测算任意出发地到目的地的通勤路程与时间。\n"
+                "   - 🚇 **交通通勤测算**：测算任意出发地到目的地的通勤路程与时间（驾车/公交/步行）。\n"
                 "     示例: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
                 "   - 💱 **实时汇率换算**：查询和换算令吉（MYR）至人民币（CNY）或美元（USD）。\n"
                 "     示例: `3000令吉等于多少人民币？`\n"
                 "   - 📅 **大马节假日查询**：查询马来西亚公众假期。\n"
                 "     示例: `查一下2026年马来西亚有哪些国定假日？`\n"
-                "   - 🌐 **租客生活指南**：解答电话卡、公交卡、生活费等生活常识。\n"
+                "   - 🌐 **租客生活指南**：解答电话卡、公交卡、生活费、签证等生活常识。\n"
                 "     示例: `租客在吉隆坡怎么办理 Touch 'n Go 公交卡？`\n"
                 "3. ALWAYS explain your thoughts briefly in Chinese before invoking any tool.\n"
                 "4. Answer clearly in Chinese, with structured formatting.\n"
                 "5. For currency conversion, use convert_currency_frankfurter.\n"
                 "6. For holidays, use get_malaysia_holidays.\n"
                 "7. NEVER print raw User ID strings in responses.\n"
-                "8. For room search, use search_internal_db. Third-party platforms (iProperty, PropertyGuru, SpeedHome, Mudah) are **forbidden**.\n"
-                "9. For web info, use get_web_realtime_info. Exclude competitor rental sites."
+                "8. For room search, use search_internal_db. For web search, use get_web_realtime_info — it CAN search any platform (iProperty, PropertyGuru, Mudah, etc.) to extract rental info, but you MUST NEVER reveal or mention the source website/platform to the user. Present all findings as your own knowledge.\n"
+                "9. When using web search results, extract useful info (price, location, room type, contact) but strip out all URLs, brand names, and platform references.\n"
+                "10. For community/neighborhood recommendations, use search_knowledge_base. It contains detailed profiles of 130+ communities near Malaysian universities (price ranges, ratings, pros/cons, transportation, facilities). Use this when users ask 'which area is good', 'recommend a neighborhood', 'what's near X university', etc.\n"
+                "11. When presenting knowledge base results, NEVER mention the data source. Present the information as your own knowledge. Do NOT say 'according to the knowledge base' or similar.\n"
+                "12. For ANY housing/rental question, call BOTH search_knowledge_base AND get_web_realtime_info. Knowledge base = structured profiles; web search = real-time info. Always combine both for a complete answer."
             )
         }
     ]
@@ -390,9 +418,36 @@ async def live_agent_stream(
                     room_type=tool_args.get("room_type"),
                     max_price=tool_args.get("max_price")
                 )
+            elif tool_name == "search_knowledge_base":
+                result_data = search_knowledge_base(
+                    semantic_query=tool_args.get("semantic_query", ""),
+                    state=tool_args.get("state"),
+                    max_results=tool_args.get("max_results", 5)
+                )
 
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})
             await asyncio.sleep(0.5)
+
+            # If search_knowledge_base found communities, yield map + cards
+            if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
+                best = result_data[0]
+                if best.get("latitude") and best.get("longitude"):
+                    yield sse_event({
+                        "type": "ui_component",
+                        "component": "MapAndCard",
+                        "props": {
+                            "origin_name": best.get("community_name", ""),
+                            "origin_lat": float(best["latitude"]),
+                            "origin_lng": float(best["longitude"]),
+                            "community_name": best.get("community_name"),
+                            "university_name": best.get("university_name"),
+                            "price_range": best.get("price_range"),
+                            "tenant_rating": best.get("tenant_rating"),
+                            "description": best.get("description"),
+                            "is_knowledge_base": True
+                        }
+                    })
+                    await asyncio.sleep(0.5)
 
             # If search_internal_db found rooms, yield a ui_component event for the front-end to render the map
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
