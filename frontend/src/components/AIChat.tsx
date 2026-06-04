@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, Sparkles, Terminal, ChevronDown, ChevronUp, Loader } from 'lucide-react';
+import { Send, Bot, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -268,88 +268,105 @@ export default function AIChat() {
                 <div className={`chat-bubble ${m.role}`}>
                   {m.role === 'assistant' && hasThoughts && (
                     <div style={{
-                      background: '#1E1E2E',
-                      borderRadius: 10,
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--glass-bg)',
+                      backdropFilter: 'blur(12px)',
+                      borderRadius: 12,
+                      border: '1px solid var(--glass-border)',
                       overflow: 'hidden',
                       marginBottom: 12,
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
                     }}>
-                      {/* MacOS Title Bar */}
+                      {/* Header */}
                       <div onClick={() => toggleThoughts(m.id)} style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 8,
                         padding: '10px 14px',
-                        background: '#181825',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
                         cursor: 'pointer',
                         userSelect: 'none'
                       }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F87171' }} />
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FBBF24' }} />
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399' }} />
-                        </div>
-                        <span style={{ fontSize: '0.72rem', color: '#A6ADC8', fontFamily: 'monospace', fontWeight: 600, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Terminal size={12} /> {t('chatThoughtTrace')}
+                        <div style={{
+                          width: 6, height: 6, borderRadius: '50%',
+                          background: 'var(--primary)',
+                          boxShadow: '0 0 6px var(--primary-glow)',
+                          animation: 'led-breath 2s ease-in-out infinite alternate'
+                        }} />
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Sparkles size={13} style={{ color: 'var(--primary)' }} /> {t('chatThoughtTrace')}
                         </span>
-                        {open ? <ChevronUp size={13} style={{ marginLeft: 'auto', color: '#CDD6F4' }} /> : <ChevronDown size={13} style={{ marginLeft: 'auto', color: '#CDD6F4' }} />}
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: 4 }}>
+                          {m.thoughts?.length || 0} steps{m.toolCalls?.length ? ` · ${m.toolCalls.length} tools` : ''}
+                        </span>
+                        {open ? <ChevronUp size={14} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} /> : <ChevronDown size={14} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} />}
                       </div>
                       {open && (
                         <div style={{
-                          padding: '12px 14px',
-                          fontFamily: 'Consolas, Monaco, monospace',
-                          fontSize: '0.78rem',
-                          color: '#CDD6F4',
+                          padding: '0 14px 12px',
+                          fontSize: '0.8rem',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: 8,
-                          maxHeight: 240,
+                          gap: 6,
+                          maxHeight: 260,
                           overflowY: 'auto'
                         }}>
                           {m.thoughts?.map((th, i) => (
-                            <div key={i} style={{ color: '#BAC2DE', lineHeight: 1.4 }}>
-                              <span style={{ color: '#F5E0DC', marginRight: 6 }}>›</span> {th}
+                            <div key={i} style={{ display: 'flex', gap: 8, lineHeight: 1.5 }}>
+                              <span style={{
+                                flexShrink: 0,
+                                width: 18, height: 18,
+                                borderRadius: '50%',
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                marginTop: 1
+                              }}>{i + 1}</span>
+                              <span style={{ color: 'var(--text-body)' }}>{th}</span>
                             </div>
                           ))}
                           {m.toolCalls?.map((tc, i) => {
-                            const isSearch = tc.name.includes('db') || tc.name.includes('search');
+                            const isSearch = tc.name.includes('db') || tc.name.includes('search') || tc.name.includes('knowledge');
                             const isCommute = tc.name.includes('commute');
                             const isWeb = tc.name.includes('web');
-                            const badgeColor = isSearch ? '#89B4FA' : isCommute ? '#A6E3A1' : isWeb ? '#F9E2AF' : '#F5C2E7';
+                            const icon = isSearch ? '🔍' : isCommute ? '🚇' : isWeb ? '🌐' : '💱';
+                            const done = !!tc.result;
                             return (
                               <div key={i} style={{
                                 padding: '8px 10px',
-                                borderRadius: 6,
-                                background: '#11111B',
-                                border: '1px solid rgba(255,255,255,0.05)'
+                                borderRadius: 8,
+                                background: 'var(--bg-hover)',
+                                border: '1px solid var(--border)',
+                                display: 'flex', flexDirection: 'column', gap: 4
                               }}>
                                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                  <span style={{ fontSize: '0.85rem' }}>{icon}</span>
                                   <span style={{
-                                    fontSize: '0.68rem',
-                                    padding: '2px 6px',
-                                    borderRadius: 4,
-                                    background: badgeColor + '1F',
-                                    color: badgeColor,
+                                    fontSize: '0.7rem',
+                                    padding: '2px 7px',
+                                    borderRadius: 6,
+                                    background: done ? 'var(--success-light)' : 'var(--primary-light)',
+                                    color: done ? 'var(--success)' : 'var(--primary)',
                                     fontWeight: 700,
-                                    fontFamily: 'monospace'
                                   }}>{tc.name}</span>
-                                  <span style={{ color: '#A6ADC8', fontSize: '0.72rem' }}>({Object.keys(tc.args).map(k => `${k}: ${tc.args[k]}`).join(', ')})</span>
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                                    {Object.keys(tc.args).map(k => `${k}: ${tc.args[k]}`).join(', ')}
+                                  </span>
+                                  {done && <span style={{ marginLeft: 'auto', color: 'var(--success)', fontSize: '0.7rem' }}>✓</span>}
                                 </div>
                                 {tc.result && (
                                   <div style={{
-                                    color: '#89DCEB',
-                                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                                    paddingTop: 6,
-                                    marginTop: 6,
-                                    maxHeight: 100,
+                                    color: 'var(--text-muted)',
+                                    borderTop: '1px solid var(--border)',
+                                    paddingTop: 5,
+                                    marginTop: 3,
+                                    maxHeight: 80,
                                     overflowY: 'auto',
                                     fontSize: '0.72rem',
                                     whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-all'
+                                    wordBreak: 'break-word',
+                                    lineHeight: 1.4
                                   }}>
-                                    <span style={{ color: '#F38BA8' }}>→</span> {JSON.stringify(tc.result).slice(0, 400)}
+                                    {JSON.stringify(tc.result).slice(0, 300)}
                                   </div>
                                 )}
                               </div>
@@ -375,9 +392,13 @@ export default function AIChat() {
             );
           })}
           {isGenerating && (
-            <div style={{ display: 'flex', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem', padding: '8px 12px', alignItems: 'center' }}>
-              <Loader className="animate-spin" size={15} />
-              <span>{t('chatThinking')}</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <span className="thinking-dot" style={{ animationDelay: '0s' }} />
+                <span className="thinking-dot" style={{ animationDelay: '0.15s' }} />
+                <span className="thinking-dot" style={{ animationDelay: '0.3s' }} />
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{t('chatThinking')}</span>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -448,6 +469,17 @@ export default function AIChat() {
           transform: translateY(-2px) scale(1.02);
           border-color: var(--primary) !important;
           background: var(--primary-light) !important;
+        }
+        .thinking-dot {
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: var(--primary);
+          opacity: 0.4;
+          animation: dotPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1.2); }
         }
       `}</style>
     </div>
