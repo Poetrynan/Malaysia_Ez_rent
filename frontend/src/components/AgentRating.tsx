@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Star, Send, X, Check, Loader2 } from 'lucide-react';
+import { Star, Send, X, Check, Loader2, AlertCircle, Info } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -22,6 +22,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
   const [hasRated, setHasRated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; key: number } | null>(null);
+  const [showTip, setShowTip] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const starsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -120,6 +121,30 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
             <Star size={15} fill="var(--primary)" color="var(--primary)" />
           </span>
           {lang === 'zh' ? '评价中介' : 'Rate Agent'}
+          {/* 温馨提示 tooltip */}
+          <span style={{ position: 'relative', display: 'inline-flex' }}
+            onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+            <Info size={15} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
+            {showTip && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, marginTop: 8,
+                width: 280, padding: '14px 16px', borderRadius: 'var(--radius-md)',
+                background: 'var(--glass-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid var(--glass-border)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.1)',
+                fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.6,
+                zIndex: 20, animation: 'fadeInUp 0.2s ease-out',
+              }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-h)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertCircle size={14} style={{ color: 'var(--warning)' }} />
+                  {lang === 'zh' ? '温馨提示' : 'Friendly Reminder'}
+                </div>
+                {lang === 'zh'
+                  ? '请根据您的真实体验实事求是地评价中介，您的反馈将帮助中介改进服务，更好地为您和广大租客服务。平台严禁恶意差评，如发现不实评价，平台有权维护中介合法权益并采取相应措施。'
+                  : 'Please rate your agent honestly based on your real experience. Your feedback helps agents improve their service for you and all tenants. The platform prohibits malicious reviews. The platform reserves the right to protect agents\' legitimate interests and take appropriate action against false reviews.'}
+              </div>
+            )}
+          </span>
         </h4>
         {onClose && (
           <button onClick={onClose} aria-label={lang === 'zh' ? '关闭' : 'Close'} className="ctrl-btn" style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -176,17 +201,20 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           : (<><Send size={15} />{lang === 'zh' ? '提交评价' : 'Submit Rating'}</>)}
       </button>
 
-      {/* Toast */}
+      {/* Toast — glassmorphism style matching project */}
       {toast && (
         <div key={toast.key} style={{
           position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%) translateY(100%)',
-          background: 'var(--danger)', color: '#fff',
-          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-          fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          animation: 'toastIn 0.25s ease-out',
-          zIndex: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 18px', borderRadius: 12,
+          background: 'var(--glass-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(239, 68, 68, 0.45)',
+          boxShadow: '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 1px rgba(255,255,255,0.1)',
+          fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap',
+          animation: 'toastIn 0.3s cubic-bezier(0.16,1,0.3,1)',
+          zIndex: 20, pointerEvents: 'none',
         }}>
+          <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
           {toast.msg}
         </div>
       )}

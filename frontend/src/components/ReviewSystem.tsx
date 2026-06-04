@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Star, Send, Trash2, X, ChevronDown, Loader2, MessageSquare } from 'lucide-react';
+import { Star, Send, Trash2, X, ChevronDown, Loader2, MessageSquare, AlertCircle, Info } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -23,6 +23,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
   const [canReview, setCanReview] = useState(false);
   const [checking, setChecking] = useState(true);
   const [toast, setToast] = useState<{ msg: string; key: number } | null>(null);
+  const [showTip, setShowTip] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const starsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -123,8 +124,31 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
       {showForm && (
         <div className="glass-card" style={{ padding: 20, animation: 'fadeInUp 0.25s ease-out', position: 'relative' }}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 10, fontWeight: 500, letterSpacing: '0.04em' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 10, fontWeight: 500, letterSpacing: '0.04em' }}>
               {lang === 'zh' ? '请选择评分' : 'Select your rating'}
+              <span style={{ position: 'relative', display: 'inline-flex' }}
+                onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+                <Info size={14} style={{ color: 'var(--text-muted)', cursor: 'help' }} />
+                {showTip && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, marginTop: 8,
+                    width: 280, padding: '14px 16px', borderRadius: 'var(--radius-md)',
+                    background: 'var(--glass-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.1)',
+                    fontSize: '0.78rem', color: 'var(--text-body)', lineHeight: 1.6,
+                    zIndex: 20, animation: 'fadeInUp 0.2s ease-out',
+                  }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-h)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <AlertCircle size={14} style={{ color: 'var(--warning)' }} />
+                      {lang === 'zh' ? '温馨提示' : 'Friendly Reminder'}
+                    </div>
+                    {lang === 'zh'
+                      ? '请根据您的真实体验实事求是地评价，您的反馈将帮助改善服务质量。平台严禁恶意评价，如发现不实内容，平台有权采取相应措施。'
+                      : 'Please rate honestly based on your real experience. Your feedback helps improve service quality. The platform prohibits malicious reviews and reserves the right to take action against false content.'}
+                  </div>
+                )}
+              </span>
             </label>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} role="radiogroup" aria-label={lang === 'zh' ? '评分选择' : 'Rating selection'}>
               {[1, 2, 3, 4, 5].map(star => {
@@ -170,17 +194,20 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
             </button>
           </div>
 
-          {/* Toast */}
+          {/* Toast — glassmorphism style */}
           {toast && (
             <div key={toast.key} style={{
               position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%) translateY(100%)',
-              background: 'var(--danger)', color: '#fff',
-              padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-              fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              animation: 'toastIn 0.25s ease-out',
-              zIndex: 10,
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', borderRadius: 12,
+              background: 'var(--glass-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(239, 68, 68, 0.45)',
+              boxShadow: '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 1px rgba(255,255,255,0.1)',
+              fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap',
+              animation: 'toastIn 0.3s cubic-bezier(0.16,1,0.3,1)',
+              zIndex: 20, pointerEvents: 'none',
             }}>
+              <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
               {toast.msg}
             </div>
           )}
