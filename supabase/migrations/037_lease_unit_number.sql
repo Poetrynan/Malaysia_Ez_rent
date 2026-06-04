@@ -1,4 +1,4 @@
--- Migration 032: Add unit_number to leases table + auto-expiry + clear unit_number on lease end
+-- Migration 037: Add unit_number to leases table + auto-expiry + clear unit_number on lease end
 
 ALTER TABLE leases ADD COLUMN IF NOT EXISTS unit_number VARCHAR(100);
 

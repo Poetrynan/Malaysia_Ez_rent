@@ -23,7 +23,7 @@ const AMENITIES = [
 ];
 
 interface Community { id: string; name: string; address: string; lat: number; lng: number; amenities?: string[]; }
-interface Unit { id: string; community_id: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
+interface Unit { id: string; community_id: string; room_type: string; rent: number; status: string; description: string; max_occupants?: number; media_urls?: string[]; video_url?: string | null; bedrooms?: number; bathrooms?: number; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; available_from?: string | null; }
 interface Lease { id: string; unit_id: string; lease_group_id?: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: number; deposit_amount: number; security_deposit_months?: number; utility_deposit_months?: number; status: string; admin_notes?: string; unit_number?: string; }
 interface LeaseForm { unit_id: string; tenant_id: string; start_date: string; end_date: string; monthly_rent: string; security_deposit_months: string; utility_deposit_months: string; unit_number: string; }
 interface Payment { id: string; lease_id: string; billing_month: string; paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string; }
@@ -127,7 +127,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [communitySearch, setCommunitySearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
-  const [unitForm, setUnitForm] = useState({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+  const [unitForm, setUnitForm] = useState({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '', available_from: '' });
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [isCopyDraft, setIsCopyDraft] = useState(false);
   const [copySourceId, setCopySourceId] = useState('');
@@ -1638,15 +1638,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
     showToast(t('validationSaved'), 'success');
 
-    const unitPayload: any = { 
-      community_id: unitForm.community_id, 
-      room_type: unitForm.room_type, 
-      rent: nonNegativeNumber(unitForm.rent), 
-      description: unitForm.description, 
+    const unitPayload: any = {
+      community_id: unitForm.community_id,
+      room_type: unitForm.room_type,
+      rent: nonNegativeNumber(unitForm.rent),
+      description: unitForm.description,
       max_occupants: Math.max(1, nonNegativeNumber(unitForm.max_occupants, 1)),
       bedrooms: nonNegativeNumber(unitForm.bedrooms, 1),
       bathrooms: nonNegativeNumber(unitForm.bathrooms, 1),
       landlord_bank_info: unitForm.landlord_bank_info || null,
+      available_from: unitForm.available_from || null,
       embedding: null
     };
 
@@ -1782,7 +1783,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       }
     }
 
-    setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+    setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '', available_from: '' });
     setMediaImages([]); setMediaVideo(null); setEditingUnitId(null);
     setIsCopyDraft(false);
     setCopySourceId('');
@@ -1815,6 +1816,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       bathrooms: String(u.bathrooms || 1),
       landlord_qr_code: u.landlord_qr_code || '',
       landlord_bank_info: u.landlord_bank_info || '',
+      available_from: u.available_from || '',
     });
     setMediaImages([]);
     setMediaVideo(null);
@@ -1838,7 +1840,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       bedrooms: String(u.bedrooms || 1),
       bathrooms: String(u.bathrooms || 1),
       landlord_qr_code: u.landlord_qr_code || '',
-      landlord_bank_info: u.landlord_bank_info || ''
+      landlord_bank_info: u.landlord_bank_info || '',
+      available_from: u.available_from || ''
     });
 
     const unitImages = u.media_urls && u.media_urls.length > 0
@@ -2946,6 +2949,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <div className="form-group"><label>{t('bedroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: nonNegativeInputValue(e.target.value) }))} /></div>
               <div className="form-group"><label>{t('bathroomsLabel')}</label><input type="number" min={0} max={10} className="form-input" value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: nonNegativeInputValue(e.target.value) }))} /></div>
             </div>
+            <div className="form-group">
+              <label>{lang === 'zh' ? '可入住日期' : 'Available From'}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={unitForm.available_from}
+                onChange={e => setUnitForm(f => ({ ...f, available_from: e.target.value }))}
+                placeholder={lang === 'zh' ? '选择可入住日期' : 'Select move-in date'}
+              />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                {lang === 'zh' ? '该房源从哪天开始可以入住' : 'When is this unit available for move-in'}
+              </span>
+            </div>
 
             {/* ── Section: Payment Info ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 10px', paddingBottom: 6, borderBottom: '1px solid var(--glass-border)' }}>
@@ -3101,7 +3117,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   setEditingUnitId(null);
                   setIsCopyDraft(false);
                   setCopySourceId('');
-                  setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '' });
+                  setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '', available_from: '' });
                   setMediaImages([]); setMediaVideo(null);
                 }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', color: 'var(--text-body)' }}>
                   {lang === 'zh' ? '取消编辑' : 'Cancel'}

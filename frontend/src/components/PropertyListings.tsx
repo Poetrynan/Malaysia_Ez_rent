@@ -24,6 +24,8 @@ const AMENITY_DETAILS: Record<string, { icon: React.ReactNode; zh: string; en: s
 };
 
 import MapAndCard from './MapAndCard';
+import FavoritesManager from './FavoritesManager';
+import ReviewSystem from './ReviewSystem';
 import { useApp } from '@/lib/ThemeProvider';
 import { nonNegativeInputValue } from '@/lib/numberInput';
 
@@ -33,6 +35,7 @@ interface Unit {
   video_url?: string | null;
   bedrooms?: number; bathrooms?: number;
   agent_id?: string | null;
+  available_from?: string | null;
 }
 interface Community {
   id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
@@ -1067,7 +1070,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
         viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
             {filtered.map(u => (
-              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} />
+              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} />
             ))}
           </div>
         ) : (
@@ -1167,16 +1170,17 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
               <div>
                 <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{t('detailProperty')}</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-                   {[
+                   {([
                     [t('detailType'), selected.room_type],
                     [t('detailRent'), `RM ${selected.rent.toLocaleString()}/mo`],
                     [t('detailBedrooms'), `${selected.bedrooms || 1} ${t('bedroomsUnit')}`],
                     [t('detailBathrooms'), `${selected.bathrooms || 1} ${t('bathroomsUnit')}`],
                     [t('detailCommunity'), selected.community?.name || '—'],
                     [t('detailStatus'), selected.status === 'available' ? t('available') : t('rented')],
+                    selected.available_from ? [lang === 'zh' ? '可入住日期' : 'Available From', new Date(selected.available_from).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })] : null,
                     [t('detailAddress'), selected.community?.address || '—'],
                     [t('detailCoords'), selected.community ? `${selected.community.lat.toFixed(4)}, ${selected.community.lng.toFixed(4)}` : '—'],
-                  ].map(([label, val], i) => (
+                  ] as [string, string][]).filter((item): item is [string, string] => item !== null).map(([label, val], i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
                       <CheckCircle2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
                       <div>
@@ -1531,6 +1535,14 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                   </div>
                 </div>
               )}
+
+              {/* Reviews section */}
+              <div style={{ marginTop: 20 }}>
+                <h3 style={{ fontSize: '1rem', marginBottom: 12, color: 'var(--text-h)' }}>
+                  {lang === 'zh' ? '租客评价' : 'Tenant Reviews'}
+                </h3>
+                <ReviewSystem unitId={selected.id} userId={authUserId} />
+              </div>
 
               {/* Assigned agent */}
               {(() => {
@@ -2442,7 +2454,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 }
 
 /* ── Compact Property Card ── */
-function PropertyCard({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string }) {
+function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string; userId?: string | null; lang?: string }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -2474,6 +2486,10 @@ function PropertyCard({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommuni
           style={{ position: 'absolute', top: 12, right: 12 }}>
           {unit.status === 'available' ? t('available') : t('rented')}
         </span>
+        {/* Favorites button */}
+        <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}>
+          <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} />
+        </div>
         {/* Room type tag */}
         <span style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.65)', color: 'white', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>
           {unit.room_type}
@@ -2500,6 +2516,12 @@ function PropertyCard({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommuni
             <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
               <User size={12} style={{ flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agentLabel}</span>
+            </div>
+          )}
+          {unit.available_from && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--success)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Calendar size={11} />
+              <span>{lang === 'zh' ? '可入住' : 'Available'}: {new Date(unit.available_from).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
           )}
         </div>

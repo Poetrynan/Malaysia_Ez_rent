@@ -19,7 +19,7 @@ interface Payment {
   id: string; lease_id: string; billing_month: string;
   paid: boolean; paid_date?: string | null; evidence_url?: string | null; status?: string; admin_notes?: string;
 }
-interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; }
+interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; available_from?: string | null; }
 interface Community { id: string; name: string; }
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {

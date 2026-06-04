@@ -1,21 +1,21 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-06-01 (UTC+8)
+Last updated: 2026-06-04 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
 ## 1) System Overview
 
-The project is a full-stack rental platform for Malaysian student housing with:
+The project is a full-stack rental platform for Malaysian international housing with:
 
-- Next.js frontend (`frontend`) for student/admin UI
+- Next.js frontend (`frontend`) for tenant/admin UI
 - FastAPI backend (`backend`) as AI orchestration service (SSE streaming)
 - Supabase (`supabase`) for Auth + Postgres + Storage + Realtime
 
 High-level flow:
 
 1. User logs in via Supabase (Google OAuth or Magic Link)
-2. Frontend resolves role from `admin_users` and renders student/admin experience
+2. Frontend resolves role from `admin_users` and renders tenant/admin experience
 3. AI chat requests stream from frontend -> backend `/api/chat` -> tool calls -> SSE back to UI
 4. Rental operations persist to Supabase tables; media persists to Storage bucket `unit-media`
 
@@ -30,12 +30,15 @@ Malaysia_Ez_rent/
 │   │   ├── auth/callback/route.ts      # code->session exchange
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
-│   │   ├── PropertyListings.tsx
-│   │   ├── AIChat.tsx
-│   │   ├── StudentPortal.tsx
-│   │   ├── LeaseLedgerCard.tsx
-│   │   ├── Dashboard.tsx
-│   │   └── AdminPanel.tsx
+│   │   ├── PropertyListings.tsx        # 房源列表 + 详情 + 收藏 + 评价
+│   │   ├── AIChat.tsx                  # AI 对话界面
+│   │   ├── TenantPortal.tsx            # 租客门户（租约 + 报修 + 个人资料）
+│   │   ├── LeaseLedgerCard.tsx         # 缴租台账
+│   │   ├── Dashboard.tsx               # 数据看板（折线图 + 饼图）
+│   │   ├── AdminPanel.tsx              # 管理后台
+│   │   ├── Inbox.tsx                   # 消息收件箱
+│   │   ├── FavoritesManager.tsx        # 收藏夹组件
+│   │   └── ReviewSystem.tsx            # 评价系统组件
 │   ├── src/lib/supabase.ts             # real/mock switch + mock impl
 │   ├── src/lib/numberInput.ts          # nonNegativeInputValue / nonNegativeNumber for type=number fields
 │   ├── src/lib/i18n.ts                 # zh/en; payment: bank transfer / WeChat / Alipay

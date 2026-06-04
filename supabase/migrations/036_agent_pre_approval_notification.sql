@@ -1,4 +1,4 @@
--- Migration 031: Add pre-registration agent approval notification trigger
+-- Migration 036: Add pre-registration agent approval notification trigger
 -- Description: Automatically inserts an approval notification when a pre-approved agent registers
 
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
