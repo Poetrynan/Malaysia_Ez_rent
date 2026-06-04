@@ -74,6 +74,9 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
   const submitReview = async () => {
     if (!userId) return;
     if (rating === 0) { showToast(lang === 'zh' ? '请先选择评分星星' : 'Please select a star rating'); return; }
+    // Check if user already reviewed this unit
+    const existingReview = reviews.find(r => r.user_id === userId);
+    if (existingReview) { showToast(lang === 'zh' ? '您已经评价过此房源，每份合约只能评价一次' : 'You have already reviewed this property. One review per lease.'); return; }
     setSubmitting(true);
     const r: any = { user_id: userId, unit_id: unitId, rating, comment: comment.trim(), created_at: new Date().toISOString() };
     if (isMockDatabase) { const all = JSON.parse(localStorage.getItem('ez_reviews') || '[]'); r.id = `review-${Date.now()}`; all.push(r); localStorage.setItem('ez_reviews', JSON.stringify(all)); }
@@ -94,6 +97,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
   };
 
   const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const hasReviewed = userId ? reviews.some(r => r.user_id === userId) : false;
   const display = hoverRating || rating;
   const starColor = display >= 4 ? 'var(--success)' : display >= 3 ? 'var(--warning)' : display >= 1 ? 'var(--danger)' : 'var(--text-muted)';
   const labels = lang === 'zh' ? ['', '很差', '较差', '一般', '不错', '很好'] : ['', 'Poor', 'Fair', 'Okay', 'Good', 'Great'];
@@ -121,7 +125,11 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
         </div>
 
         {/* ── Write button (inside card) ── */}
-        {userId && !checking && (canReview ? (
+        {userId && !checking && (hasReviewed ? (
+          <div className="mode-banner" style={{ background: 'var(--success-light)', borderColor: 'var(--success)', color: 'var(--success)' }}>
+            <Star size={14} strokeWidth={1.5} />{lang === 'zh' ? '您已经评价过此房源' : 'You have already reviewed this property'}
+          </div>
+        ) : canReview ? (
           <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn btn-secondary' : 'btn btn-primary'} style={{ width: '100%' }}>
             <Star size={15} />{showForm ? (lang === 'zh' ? '取消' : 'Cancel') : (lang === 'zh' ? '发表评价' : 'Write a Review')}
           </button>
