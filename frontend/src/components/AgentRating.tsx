@@ -15,6 +15,7 @@ interface AgentRatingProps {
 export default function AgentRating({ agentId, leaseId, tenantId, onClose }: AgentRatingProps) {
   const { lang } = useApp();
   const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [hasRated, setHasRated] = useState(false);
@@ -130,13 +131,23 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           {[1, 2, 3, 4, 5].map(star => (
             <button
               key={star}
-              onClick={() => setRating(star)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+              onClick={() => setRating(rating === star ? 0 : star)}
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 2,
+                transform: (hoverRating === star || rating === star) ? 'scale(1.15)' : 'scale(1)',
+                transition: 'transform 0.15s ease',
+              }}
             >
               <Star
                 size={28}
-                fill={star <= rating ? '#f59e0b' : 'none'}
-                color={star <= rating ? '#f59e0b' : 'var(--text-muted)'}
+                fill={(hoverRating >= star || rating >= star) ? '#f59e0b' : 'none'}
+                color={(hoverRating >= star || rating >= star) ? '#f59e0b' : 'var(--text-muted)'}
+                style={{ transition: 'all 0.15s ease' }}
               />
             </button>
           ))}
