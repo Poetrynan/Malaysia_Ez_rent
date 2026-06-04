@@ -89,7 +89,19 @@ export default function AIChat() {
     resolveUser();
   }, []);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    // Scroll so the input area is roughly in the lower-center of the viewport
+    setTimeout(() => {
+      const el = messagesEndRef.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        // If already visible in lower half, don't scroll
+        if (rect.top > viewportH * 0.55) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }, [messages]);
 
   // Load chat history from localStorage
   useEffect(() => {
