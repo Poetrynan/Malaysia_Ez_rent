@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Home, MapPin, Compass, Car, Footprints, Bus } from 'lucide-react';
+import { Home, MapPin, Compass, Car, Footprints, Bus, Star, Shield, Sparkles, Wallet } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 
 interface MapAndCardProps {
@@ -14,6 +14,14 @@ interface MapAndCardProps {
   rent?: number;
   room_type?: string;
   unit_id?: string;
+  // Knowledge base mode props
+  is_knowledge_base?: boolean;
+  community_name?: string;
+  university_name?: string;
+  price_range?: { min: number; max: number; currency: string; unit: string };
+  tenant_rating?: { overall: number; safety: number; cleanliness: number; value_for_money: number };
+  description?: string;
+  property_type?: string;
 }
 
 const MOCK_PLACES = [
@@ -28,13 +36,16 @@ const MOCK_PLACES = [
 export default function MapAndCard({
   origin_name, origin_lat, origin_lng,
   destination_name, destination_lat, destination_lng,
-  rent, room_type
+  rent, room_type,
+  is_knowledge_base, community_name, university_name,
+  price_range, tenant_rating, description, property_type
 }: MapAndCardProps) {
   const { t, lang } = useApp();
   const [commuteMode, setCommuteMode] = useState<'driving' | 'walking' | 'transit'>('driving');
 
   // If destination props are provided (commute case), show route directly
   const isCommuteMode = !!(destination_name && destination_lat && destination_lng);
+  const isKBMode = !!is_knowledge_base;
   // Room listing mode: map only loads on user click (saves API quota)
   const [roomMapLoaded, setRoomMapLoaded] = useState(false);
 
@@ -127,7 +138,7 @@ export default function MapAndCard({
 
   return (
     <div className="map-card-wrapper" style={{ animation: 'slideUp 0.35s ease-out' }}>
-      {/* Header: commute mode shows origin → destination, room mode shows property */}
+      {/* Header: commute mode shows origin → destination, KB mode shows community profile, room mode shows property */}
       {isCommuteMode ? (
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--glass-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -138,6 +149,54 @@ export default function MapAndCard({
             <Home size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{destination_name}</span>
           </div>
+        </div>
+      ) : isKBMode ? (
+        /* Knowledge Base Community Card */
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Sparkles size={22} color="white" />
+            </div>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-h)' }}>{community_name || origin_name}</div>
+              {university_name && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>📍 {university_name} 附近</div>
+              )}
+              {property_type && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 1 }}>{property_type}</div>
+              )}
+            </div>
+          </div>
+          {/* Price range + ratings row */}
+          <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+            {price_range && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34, 197, 94, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                <Wallet size={12} style={{ color: '#22C55E' }} />
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#22C55E' }}>
+                  RM {price_range.min} - {price_range.max}{t('perMonth')}
+                </span>
+              </div>
+            )}
+            {tenant_rating?.overall && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(234, 179, 8, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                <Star size={12} style={{ color: '#EAB308', fill: '#EAB308' }} />
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#EAB308' }}>{tenant_rating.overall}</span>
+              </div>
+            )}
+            {tenant_rating?.safety && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(59, 130, 246, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                <Shield size={12} style={{ color: '#3B82F6' }} />
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#3B82F6' }}>
+                  {lang === 'zh' ? '安全 ' : 'Safe '}{tenant_rating.safety}
+                </span>
+              </div>
+            )}
+          </div>
+          {description && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {description}
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'center', borderBottom: '1px solid var(--glass-border)' }}>
@@ -207,6 +266,13 @@ export default function MapAndCard({
             <strong style={{ color: 'var(--text-h)' }}>{origin_name}</strong>
             {lang === 'zh' ? ' → ' : ' → '}
             <strong style={{ color: 'var(--text-h)' }}>{destination_name}</strong>
+          </span>
+        </div>
+      ) : isKBMode ? (
+        <div style={{ padding: '8px 16px', background: 'rgba(139, 92, 246, 0.05)', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--glass-border)' }}>
+          <Compass size={14} style={{ color: '#8B5CF6', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+            {lang === 'zh' ? '🏘️ 小区位置 · 在上方输入出发地可计算通勤路线' : '🏘️ Community location · Enter starting point above to calculate commute'}
           </span>
         </div>
       ) : !activeStart ? (

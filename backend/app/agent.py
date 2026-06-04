@@ -9,6 +9,7 @@ from app.tools import (
     get_malaysia_holidays,
     search_internal_db,
     search_knowledge_base,
+    search_external_listings,
     openai_client
 )
 
@@ -277,6 +278,22 @@ async def live_agent_stream(
                     "required": ["semantic_query"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_external_listings",
+                "description": "Search external rental platforms for actual available rooms/listings. Returns structured listing data with prices, room types, and locations. Use this when users ask for specific available rooms, current prices, or want to find a room to rent NOW. Always combine with search_knowledge_base for context.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string", "description": "Area name, community name, or university name, e.g. 'Sunway Geo Residences', 'Nilai', 'near Monash University'."},
+                        "room_type": {"type": "string", "description": "Optional room type filter, e.g. 'master room', 'studio', 'medium room'."},
+                        "max_price": {"type": "number", "description": "Optional maximum monthly rent in MYR."}
+                    },
+                    "required": ["location"]
+                }
+            }
         }
     ]
 
@@ -304,7 +321,10 @@ async def live_agent_stream(
                 "     示例: `莫纳什大学附近有什么推荐的小区？`\n"
                 "     示例: `帮我找一个安全评分高、有泳池的公寓`\n"
                 "     示例: `UTAR Kampar 附近最便宜的住宿在哪？`\n"
-                "   - 🔍 **房源搜索**：从内部房源库检索可租房间（如有房源数据时）。\n"
+                "   - 🔍 **外部房源搜索**：从各大租房平台搜索真实在租房源，提取价格、户型、位置等信息（不暴露来源）。\n"
+                "     示例: `Sunway Geo 附近有没有 master room 在出租？`\n"
+                "     示例: `帮我找 Nilai 2000 以下的 studio`\n"
+                "   - 🏠 **内部房源库**：从内部房源库检索可租房间（如有房源数据时）。\n"
                 "     示例: `我想找一间离 Monash 开车几分钟的中房，价格在 2000 左右`\n"
                 "   - 🚇 **交通通勤测算**：测算任意出发地到目的地的通勤路程与时间（驾车/公交/步行）。\n"
                 "     示例: `帮我计算一下从 Sunway Geo Residences 到莫纳什大学要多久？`\n"
@@ -320,10 +340,11 @@ async def live_agent_stream(
                 "6. For holidays, use get_malaysia_holidays.\n"
                 "7. NEVER print raw User ID strings in responses.\n"
                 "8. For room search, use search_internal_db. For web search, use get_web_realtime_info — it CAN search any platform (iProperty, PropertyGuru, Mudah, etc.) to extract rental info, but you MUST NEVER reveal or mention the source website/platform to the user. Present all findings as your own knowledge.\n"
-                "9. When using web search results, extract useful info (price, location, room type, contact) but strip out all URLs, brand names, and platform references.\n"
-                "10. For community/neighborhood recommendations, use search_knowledge_base. It contains detailed profiles of 130+ communities near Malaysian universities (price ranges, ratings, pros/cons, transportation, facilities). Use this when users ask 'which area is good', 'recommend a neighborhood', 'what's near X university', etc.\n"
-                "11. When presenting knowledge base results, NEVER mention the data source. Present the information as your own knowledge. Do NOT say 'according to the knowledge base' or similar.\n"
-                "12. For ANY housing/rental question, call BOTH search_knowledge_base AND get_web_realtime_info. Knowledge base = structured profiles; web search = real-time info. Always combine both for a complete answer."
+                "9. When users ask for specific available rooms or current rental prices, use search_external_listings to find real listings. ALWAYS pair with search_knowledge_base for neighborhood context.\n"
+                "10. When presenting external listing results, extract: price, room type, location, facilities. STRIP all URLs, platform names (iProperty, PropertyGuru, Mudah, etc.), and brand references. Present as your own knowledge.\n"
+                "11. For community/neighborhood recommendations, use search_knowledge_base. It contains detailed profiles of 130+ communities near Malaysian universities (price ranges, ratings, pros/cons, transportation, facilities). Use this when users ask 'which area is good', 'recommend a neighborhood', 'what's near X university', etc.\n"
+                "12. When presenting knowledge base results, NEVER mention the data source. Present the information as your own knowledge. Do NOT say 'according to the knowledge base' or similar.\n"
+                "13. For ANY housing/rental question, call BOTH search_knowledge_base AND search_external_listings (or get_web_realtime_info). Knowledge base = structured profiles; external search = real-time listings. Always combine both for a complete answer."
             )
         }
     ]
@@ -423,6 +444,12 @@ async def live_agent_stream(
                     semantic_query=tool_args.get("semantic_query", ""),
                     state=tool_args.get("state"),
                     max_results=tool_args.get("max_results", 5)
+                )
+            elif tool_name == "search_external_listings":
+                result_data = search_external_listings(
+                    location=tool_args.get("location", ""),
+                    room_type=tool_args.get("room_type"),
+                    max_price=tool_args.get("max_price")
                 )
 
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})

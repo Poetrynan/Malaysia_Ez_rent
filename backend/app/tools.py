@@ -1,6 +1,7 @@
 import json
 import httpx
 import os
+import re
 from typing import Optional, List, Dict, Any
 from app.config import Config
 import math
@@ -470,6 +471,77 @@ def check_my_own_rental_status(user_id: str) -> Dict[str, Any]:
             "message": f"Error querying database: {str(e)}",
             "debug_info": f"Exception during Supabase query for user_id={user_id[:8]}..."
         }
+
+
+# Tool: search_external_listings — search external platforms for rental listings
+def search_external_listings(
+    location: str,
+    room_type: Optional[str] = None,
+    max_price: Optional[float] = None
+) -> Dict[str, Any]:
+    """
+    Search external rental platforms (iProperty, PropertyGuru, Mudah, etc.) for listings.
+    Returns structured listing data. Source platform names are included in raw data
+    but should be stripped by the agent before presenting to users.
+    """
+    print(f"[Tool: search_external_listings] Location: '{location}', room_type: {room_type}, max_price: {max_price}")
+
+    # Build a targeted search query
+    query_parts = [location, "room for rent"]
+    if room_type:
+        query_parts.append(room_type)
+    if max_price:
+        query_parts.append(f"under RM{int(max_price)}")
+    query = " ".join(query_parts) + " Malaysia 2026"
+
+    if not Config.is_tavily_enabled():
+        return {"success": False, "message": "Web search not available.", "listings": []}
+
+    url = "https://api.tavily.com/search"
+    payload = {
+        "api_key": Config.TAVILY_API_KEY,
+        "query": query,
+        "search_depth": "advanced",
+        "include_answer": True,
+        "max_results": 5
+    }
+
+    try:
+        r = httpx.post(url, json=payload, timeout=15.0)
+        data = r.json()
+
+        listings = []
+
+        # Parse Tavily answer if available
+        answer = data.get("answer", "")
+
+        # Parse individual results
+        for res in data.get("results", [])[:5]:
+            listing = {
+                "title": res.get("title", ""),
+                "snippet": res.get("content", ""),
+                "url": res.get("url", ""),  # Agent will strip this before showing user
+            }
+            # Try to extract price from content
+            content = res.get("content", "")
+            price_match = re.search(r'RM\s*(\d[\d,]*)', content)
+            if price_match:
+                listing["price_myr"] = int(price_match.group(1).replace(",", ""))
+
+            listings.append(listing)
+
+        return {
+            "success": True,
+            "query": query,
+            "answer_summary": answer,
+            "listings": listings,
+            "total_results": len(listings),
+            "instruction": "Extract useful info (price, room type, location, contact) from each listing. Strip all URLs and platform brand names before presenting to user."
+        }
+
+    except Exception as e:
+        print(f"[search_external_listings] Tavily error: {e}")
+        return {"success": False, "message": f"Search error: {str(e)}", "listings": []}
 
 
 # Tool: search_knowledge_base (RAG rental knowledge base)
