@@ -176,6 +176,9 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
   }
 
   const displayRating = hoverRating || rating;
+  const starColor = displayRating >= 4 ? '#22c55e' : displayRating >= 3 ? '#f59e0b' : displayRating >= 1 ? '#ef4444' : 'var(--text-muted)';
+  const starGlow = displayRating >= 4 ? 'rgba(34, 197, 94, 0.5)' : displayRating >= 3 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+  const focusRingColor = displayRating >= 4 ? 'rgba(34, 197, 94, 0.4)' : displayRating >= 3 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(239, 68, 68, 0.4)';
 
   const ratingLabels = lang === 'zh'
     ? ['', '很差', '较差', '一般', '不错', '很好']
@@ -270,7 +273,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
                   outline: 'none',
                 }}
                 onFocus={e => {
-                  e.currentTarget.style.boxShadow = '0 0 0 2px rgba(245, 158, 11, 0.4)';
+                  e.currentTarget.style.boxShadow = `0 0 0 2px ${focusRingColor}`;
                 }}
                 onBlur={e => {
                   e.currentTarget.style.boxShadow = 'none';
@@ -278,12 +281,12 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
               >
                 <Star
                   size={32}
-                  fill={isActive ? '#f59e0b' : 'none'}
-                  color={isActive ? '#f59e0b' : 'var(--text-muted)'}
+                  fill={isActive ? starColor : 'none'}
+                  color={isActive ? starColor : 'var(--text-muted)'}
                   strokeWidth={isActive ? 0 : 1.5}
                   style={{
                     transition: 'all 0.2s ease',
-                    filter: isHovered ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.5))' : 'none',
+                    filter: isHovered ? `drop-shadow(0 0 8px ${starGlow})` : 'none',
                   }}
                 />
               </button>
@@ -296,7 +299,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           minHeight: 20,
           fontSize: '0.82rem',
           fontWeight: 600,
-          color: displayRating > 0 ? '#f59e0b' : 'transparent',
+          color: displayRating > 0 ? starColor : 'transparent',
           transition: 'all 0.2s ease',
         }}>
           {displayRating > 0 && `${displayRating}/5 · ${ratingLabels[displayRating]}`}
