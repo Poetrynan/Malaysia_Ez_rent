@@ -343,6 +343,7 @@ async def live_agent_stream(
     messages.append({"role": "user", "content": f"User ID: {user_id}\nQuery: {query}"})
 
     # ReAct Loop
+    pending_ui_components = []  # Collect map data, emit AFTER text is done
     for loop_idx in range(5):
         yield sse_event({"type": "thinking", "step": f"Thinking (Step {loop_idx + 1}): Analyzing conversation state..."})
         await asyncio.sleep(0.5)
@@ -368,6 +369,10 @@ async def live_agent_stream(
             for char in content:
                 yield sse_event({"type": "text", "delta": char})
                 await asyncio.sleep(0.01)
+            # Text done — now emit all pending UI components (maps, cards, etc.)
+            for comp in pending_ui_components:
+                yield sse_event(comp)
+                await asyncio.sleep(0.3)
             break
 
         # Append assistant's message with tool calls
@@ -437,11 +442,11 @@ async def live_agent_stream(
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})
             await asyncio.sleep(0.5)
 
-            # If search_knowledge_base found communities, yield map + cards
+            # Collect UI components — will be emitted AFTER text is done
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
                 best = result_data[0]
                 if best.get("latitude") and best.get("longitude"):
-                    yield sse_event({
+                    pending_ui_components.append({
                         "type": "ui_component",
                         "component": "MapAndCard",
                         "props": {
@@ -456,12 +461,10 @@ async def live_agent_stream(
                             "is_knowledge_base": True
                         }
                     })
-                    await asyncio.sleep(0.5)
 
-            # If search_internal_db found rooms, yield a ui_component event for the front-end to render the map
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
-                yield sse_event({
+                pending_ui_components.append({
                     "type": "ui_component",
                     "component": "MapAndCard",
                     "props": {
@@ -476,11 +479,9 @@ async def live_agent_stream(
                         "unit_id": best_match.get("id")
                     }
                 })
-                await asyncio.sleep(0.5)
 
-            # If calculate_commute is run, yield a MapAndCard event showing the commute route!
             elif tool_name == "calculate_commute" and isinstance(result_data, dict):
-                yield sse_event({
+                pending_ui_components.append({
                     "type": "ui_component",
                     "component": "MapAndCard",
                     "props": {
@@ -492,7 +493,6 @@ async def live_agent_stream(
                         "destination_lng": float(result_data.get("destination_lng") or 101.6000)
                     }
                 })
-                await asyncio.sleep(0.5)
 
             # Append tool result to messages
             messages.append({
