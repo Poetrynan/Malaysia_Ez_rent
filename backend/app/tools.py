@@ -572,7 +572,7 @@ def search_knowledge_base(
     try:
         result = supabase_service_client.rpc("match_knowledge_base", {
             "query_embedding": query_vec,
-            "match_threshold": 0.15,
+            "match_threshold": 0.5,
             "match_count": max_results,
             "filter_state": state
         }).execute()
