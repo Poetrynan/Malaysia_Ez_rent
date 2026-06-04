@@ -28,6 +28,7 @@ export default function AIChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});
+  const [resultsPanel, setResultsPanel] = useState<{ component: string; props: any }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [userId, setUserId] = useState<string>(() => {
@@ -237,13 +238,14 @@ export default function AIChat() {
       const thoughts = [...(m.thoughts || [])];
       const toolCalls = [...(m.toolCalls || [])];
       let content = m.content;
-      let uiComponent = m.uiComponent;
       if (ev.type === 'thinking') thoughts.push(ev.step);
       else if (ev.type === 'tool_call') toolCalls.push({ name: ev.tool_name, args: ev.args });
       else if (ev.type === 'tool_result' && toolCalls.length) toolCalls[toolCalls.length - 1].result = ev.result;
       else if (ev.type === 'text') content += ev.delta;
-      else if (ev.type === 'ui_component') uiComponent = { component: ev.component, props: ev.props };
-      return { ...m, content, thoughts, toolCalls, uiComponent };
+      else if (ev.type === 'ui_component') {
+        setResultsPanel(prev => [...prev, { component: ev.component, props: ev.props }]);
+      }
+      return { ...m, content, thoughts, toolCalls };
     }));
   };
 
@@ -376,14 +378,6 @@ export default function AIChat() {
                   <div className="markdown-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {renderMarkdown(m.content)}
                   </div>
-                  {m.role === 'assistant' && m.uiComponent && (
-                    <div className="ui-component-wrapper">
-                      {m.uiComponent.component === 'MapAndCard' && <MapAndCard {...m.uiComponent.props} />}
-                      {m.uiComponent.component === 'LeaseLedgerCard' && (
-                        <LeaseLedgerCard {...m.uiComponent.props} onPaymentUpdated={() => {}} />
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -405,6 +399,27 @@ export default function AIChat() {
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder={t('chatPlaceholder')} className="chat-input" disabled={isGenerating} />
           <button type="submit" className="send-button" disabled={isGenerating}><Send size={16} /></button>
         </form>
+      </div>
+
+      {/* Results panel (right side) */}
+      <div className="results-panel">
+        {resultsPanel.length === 0 ? (
+          <div className="results-empty">
+            <Bot size={48} style={{ color: 'var(--border)', opacity: 0.5 }} />
+            <span style={{ fontSize: '0.9rem' }}>{t('chatWelcome')}</span>
+          </div>
+        ) : (
+          <div className="results-content">
+            {resultsPanel.map((item, i) => (
+              <div key={i} className="ui-component-wrapper">
+                {item.component === 'MapAndCard' && <MapAndCard {...item.props} />}
+                {item.component === 'LeaseLedgerCard' && (
+                  <LeaseLedgerCard {...item.props} onPaymentUpdated={() => {}} />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <style>{`
