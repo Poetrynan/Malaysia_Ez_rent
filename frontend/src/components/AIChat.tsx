@@ -268,14 +268,21 @@ export default function AIChat() {
             <h2>{t('chatAgentName')}</h2>
             <p>{t('chatWelcome')}</p>
             <div className="quick-prompts">
-              {[
+              {(lang === 'zh' ? [
                 { icon: '🚇', text: '从 Sunway Geo 到 Monash 大学要多久？' },
                 { icon: '💱', text: '3000 令吉等于多少人民币？' },
                 { icon: '🏘️', text: 'NILAI 附近有什么推荐的小区？' },
                 { icon: '📅', text: '2026 年马来西亚有哪些公共假期？' },
                 { icon: '🌐', text: '吉隆坡留学生怎么办理手机卡？' },
                 { icon: '🔍', text: '帮我找便宜又安全的租房' },
-              ].map((item, i) => (
+              ] : [
+                { icon: '🚇', text: 'How long from Sunway Geo to Monash University?' },
+                { icon: '💱', text: 'How much is 3000 MYR in CNY?' },
+                { icon: '🏘️', text: 'Any recommended communities near NILAI?' },
+                { icon: '📅', text: 'What are the public holidays in Malaysia 2026?' },
+                { icon: '🌐', text: 'How to get a SIM card in Kuala Lumpur?' },
+                { icon: '🔍', text: 'Help me find affordable and safe housing' },
+              ]).map((item, i) => (
                 <div key={i} className="quick-prompt-card" onClick={() => setQuery(item.text)}>
                   <span className="quick-prompt-icon">{item.icon}</span>
                   <span className="quick-prompt-text">{item.text}</span>
