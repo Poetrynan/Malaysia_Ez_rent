@@ -78,12 +78,13 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
   const { t, lang } = useApp();
-  const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'profile'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
   const [editorSubTab, setEditorSubTab] = useState<'community' | 'unit'>('community');
   const [leasesView, setLeasesView] = useState<'interests' | 'overview' | 'payment' | 'review' | 'ledger' | 'settle'>('interests');
+  const [reviewsSubTab, setReviewsSubTab] = useState<'property' | 'agent'>('property');
 
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(propAdminRole);
   const [isLive, setIsLive] = useState(false);
@@ -770,7 +771,17 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbackReply, setFeedbackReply] = useState<Record<string, string>>({});
 
-  // ── Agent Ratings Management (super_admin only) ──
+  // ── Reviews Management Tab (super_admin only) ──
+  interface PropertyReviewItem {
+    id: string;
+    user_id: string;
+    unit_id: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+    user_name?: string;
+    unit_info?: string;
+  }
   interface AgentRatingItem {
     id: string;
     tenant_id: string;
@@ -782,50 +793,102 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     tenant_name?: string;
     agent_name?: string;
   }
+  const [allPropertyReviews, setAllPropertyReviews] = useState<PropertyReviewItem[]>([]);
   const [allAgentRatings, setAllAgentRatings] = useState<AgentRatingItem[]>([]);
-  const [ratingsLoading, setRatingsLoading] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
+  const [reviewDeleteConfirm, setReviewDeleteConfirm] = useState<string | null>(null);
 
-  const fetchAllAgentRatings = async () => {
-    setRatingsLoading(true);
+  const fetchAllReviews = async () => {
+    setReviewsLoading(true);
     if (isMockDatabase) {
-      const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
+      // Property reviews
+      const reviews = JSON.parse(localStorage.getItem('ez_reviews') || '[]');
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
+      const communities = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+      const enrichedReviews = reviews.map((r: any) => {
+        const u = users.find((x: any) => x.id === r.user_id);
+        const unit = units.find((un: any) => un.id === r.unit_id);
+        const comm = unit ? communities.find((c: any) => c.id === unit.community_id) : null;
+        const parts = [comm?.name, unit?.room_type, unit?.unit_number].filter(Boolean);
+        return { ...r, user_name: u?.name || r.user_id?.slice(0, 8), unit_info: parts.join(' · ') || r.unit_id?.slice(0, 8) };
+      });
+      setAllPropertyReviews(enrichedReviews.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+
+      // Agent ratings
+      const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      const enriched = ratings.map((r: any) => ({
+      const enrichedRatings = ratings.map((r: any) => ({
         ...r,
         tenant_name: users.find((u: any) => u.id === r.tenant_id)?.name || r.tenant_id?.slice(0, 8),
         agent_name: admins.find((a: any) => a.id === r.agent_id)?.full_name || r.agent_id?.slice(0, 8),
       }));
-      setAllAgentRatings(enriched.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      setAllAgentRatings(enrichedRatings.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     } else {
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
-        const { data } = await supabase
-          .from('agent_ratings')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (data) {
-          // Enrich with names
-          const tenantIds = [...new Set(data.map((r: any) => r.tenant_id))];
-          const agentIds = [...new Set(data.map((r: any) => r.agent_id))];
+
+        // Property reviews
+        const { data: reviewsData } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+        if (reviewsData) {
+          const userIds = [...new Set(reviewsData.map((r: any) => r.user_id))];
+          const unitIds = [...new Set(reviewsData.map((r: any) => r.unit_id))];
+          const [userRes, unitRes, commRes] = await Promise.all([
+            supabase.from('users').select('id, name').in('id', userIds),
+            supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds),
+            supabase.from('communities').select('id, name'),
+          ]);
+          const userMap = new Map((userRes.data || []).map((u: any) => [u.id, u.name]));
+          const unitMap = new Map((unitRes.data || []).map((u: any) => [u.id, u]));
+          const commMap = new Map((commRes.data || []).map((c: any) => [c.id, c.name]));
+          setAllPropertyReviews(reviewsData.map((r: any) => {
+            const unit = unitMap.get(r.unit_id);
+            const parts = [unit ? commMap.get(unit.community_id) : null, unit?.room_type, unit?.unit_number].filter(Boolean);
+            return { ...r, user_name: userMap.get(r.user_id) || r.user_id?.slice(0, 8), unit_info: parts.join(' · ') || r.unit_id?.slice(0, 8) };
+          }));
+        }
+
+        // Agent ratings
+        const { data: ratingsData } = await supabase.from('agent_ratings').select('*').order('created_at', { ascending: false });
+        if (ratingsData) {
+          const tenantIds = [...new Set(ratingsData.map((r: any) => r.tenant_id))];
+          const agentIds = [...new Set(ratingsData.map((r: any) => r.agent_id))];
           const [tenantRes, agentRes] = await Promise.all([
             supabase.from('users').select('id, name').in('id', tenantIds),
             supabase.from('admin_users').select('id, full_name').in('id', agentIds),
           ]);
           const tenantMap = new Map((tenantRes.data || []).map((u: any) => [u.id, u.name]));
           const agentMap = new Map((agentRes.data || []).map((a: any) => [a.id, a.full_name]));
-          setAllAgentRatings(data.map((r: any) => ({
+          setAllAgentRatings(ratingsData.map((r: any) => ({
             ...r,
             tenant_name: tenantMap.get(r.tenant_id) || r.tenant_id?.slice(0, 8),
             agent_name: agentMap.get(r.agent_id) || r.agent_id?.slice(0, 8),
           })));
         }
       } catch (e) {
-        console.error('Fetch agent ratings error:', e);
+        console.error('Fetch reviews error:', e);
       }
     }
-    setRatingsLoading(false);
+    setReviewsLoading(false);
+    setReviewsLoaded(true);
+  };
+
+  const deletePropertyReview = async (reviewId: string) => {
+    if (isMockDatabase) {
+      const reviews = JSON.parse(localStorage.getItem('ez_reviews') || '[]');
+      localStorage.setItem('ez_reviews', JSON.stringify(reviews.filter((r: any) => r.id !== reviewId)));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        await supabase.from('reviews').delete().eq('id', reviewId);
+      } catch (e) {
+        console.error('Delete review error:', e);
+      }
+    }
+    setAllPropertyReviews(prev => prev.filter(r => r.id !== reviewId));
   };
 
   const deleteAgentRating = async (ratingId: string) => {
@@ -2646,6 +2709,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 <span style={{ marginLeft: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', verticalAlign: 'middle' }} />
               )}
             </button>
+            {adminRole === 'super_admin' && (
+              <button style={tabStyle(tab === 'reviews')} onClick={() => { setTab('reviews'); if (!reviewsLoaded) fetchAllReviews(); }}>
+                <Star size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '评论管理' : 'Reviews'}
+              </button>
+            )}
             <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>
               <Edit3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '个人设置' : 'Profile'}
             </button>
@@ -4288,105 +4356,248 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </div>
             )}
           </div>
+        </div>
+      )}
 
-          {/* ── AGENT RATINGS MANAGEMENT (super_admin only) ── */}
-          {adminRole === 'super_admin' && (
-            <div className="glass-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                  <Star size={16} style={{ color: '#f59e0b' }} fill="#f59e0b" />
-                  {lang === 'zh' ? '中介评分管理' : 'Agent Ratings Management'}
-                  {allAgentRatings.length > 0 && (
-                    <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 700 }}>
-                      {allAgentRatings.length}
+      {/* ── REVIEWS MANAGEMENT TAB (super_admin only) ── */}
+      {tab === 'reviews' && adminRole === 'super_admin' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Sub-tabs */}
+          <div style={{
+            display: 'flex',
+            gap: 4,
+            padding: 4,
+            borderRadius: 12,
+            background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)',
+          }}>
+            {([
+              { key: 'property' as const, icon: <Home size={15} />, label: lang === 'zh' ? '房源评价' : 'Property Reviews', count: allPropertyReviews.length },
+              { key: 'agent' as const, icon: <Star size={15} />, label: lang === 'zh' ? '中介评分' : 'Agent Ratings', count: allAgentRatings.length },
+            ]).map(st => (
+              <button
+                key={st.key}
+                onClick={() => setReviewsSubTab(st.key)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: reviewsSubTab === st.key ? 'var(--primary)' : 'transparent',
+                  color: reviewsSubTab === st.key ? '#fff' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {st.icon}
+                {st.label}
+                {st.count > 0 && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    padding: '1px 7px',
+                    borderRadius: 10,
+                    background: reviewsSubTab === st.key ? 'rgba(255,255,255,0.2)' : 'var(--glass-border)',
+                    color: reviewsSubTab === st.key ? '#fff' : 'var(--text-muted)',
+                  }}>
+                    {st.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          {reviewsLoading ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: 60, gap: 12, color: 'var(--text-muted)',
+            }}>
+              <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '0.88rem' }}>{lang === 'zh' ? '加载评论数据...' : 'Loading reviews...'}</span>
+            </div>
+          ) : (
+            <>
+              {/* Property Reviews Sub-tab */}
+              {reviewsSubTab === 'property' && (
+                <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Home size={16} style={{ color: 'var(--primary)' }} />
+                      {lang === 'zh' ? '房源评价列表' : 'Property Review List'}
+                    </h3>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {allPropertyReviews.length} {lang === 'zh' ? '条' : 'items'}
                     </span>
-                  )}
-                </h3>
-                <button
-                  onClick={fetchAllAgentRatings}
-                  style={{
-                    padding: '6px 12px', borderRadius: 8,
-                    border: '1px solid var(--glass-border)',
-                    background: 'transparent',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer', fontSize: '0.78rem',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}
-                >
-                  {lang === 'zh' ? '加载评分' : 'Load Ratings'}
-                </button>
-              </div>
-
-              {allAgentRatings.length === 0 && !ratingsLoading ? (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24, fontSize: '0.85rem' }}>
-                  {lang === 'zh' ? '点击「加载评分」查看所有中介评分' : 'Click "Load Ratings" to view all agent ratings'}
-                </p>
-              ) : ratingsLoading ? (
-                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', marginBottom: 4 }} />
-                  <div>{lang === 'zh' ? '加载中...' : 'Loading...'}</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {allAgentRatings.map(r => (
-                    <div key={r.id} style={{
-                      padding: 14,
-                      borderRadius: 10,
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid var(--glass-border)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 12,
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                          {/* Stars */}
-                          <div style={{ display: 'flex', gap: 1 }}>
-                            {[1, 2, 3, 4, 5].map(s => (
-                              <Star key={s} size={13} fill={s <= r.rating ? '#f59e0b' : 'none'} color={s <= r.rating ? '#f59e0b' : 'var(--text-muted)'} strokeWidth={s <= r.rating ? 0 : 1.5} />
-                            ))}
-                          </div>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>{r.rating}/5</span>
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                            {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', marginBottom: 4 }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '租客' : 'Tenant'}:</span> {r.tenant_name}
-                          <span style={{ margin: '0 6px', color: 'var(--glass-border)' }}>→</span>
-                          <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '中介' : 'Agent'}:</span> {r.agent_name}
-                        </div>
-                        {r.comment && (
-                          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.4, fontStyle: 'italic' }}>
-                            "{r.comment}"
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (confirm(lang === 'zh' ? '确定删除此条评分？此操作不可撤销。' : 'Delete this rating? This cannot be undone.')) {
-                            deleteAgentRating(r.id);
-                          }
-                        }}
-                        aria-label={lang === 'zh' ? '删除评分' : 'Delete rating'}
-                        style={{
-                          background: 'none', border: 'none',
-                          cursor: 'pointer', color: 'var(--text-muted)',
-                          padding: 6, borderRadius: 6,
-                          display: 'flex', flexShrink: 0,
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                  </div>
+                  {allPropertyReviews.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                      <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+                      <div style={{ fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无房源评价' : 'No property reviews yet'}</div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="data-table-container" style={{ maxHeight: 520, overflow: 'auto' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 50 }}>{lang === 'zh' ? '评分' : 'Rating'}</th>
+                            <th>{lang === 'zh' ? '租客' : 'Tenant'}</th>
+                            <th>{lang === 'zh' ? '房源' : 'Property'}</th>
+                            <th>{lang === 'zh' ? '评价内容' : 'Comment'}</th>
+                            <th>{lang === 'zh' ? '日期' : 'Date'}</th>
+                            <th style={{ width: 60, textAlign: 'center' }}>{lang === 'zh' ? '操作' : 'Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allPropertyReviews.map(r => (
+                            <tr key={r.id} style={{ transition: 'background 0.1s' }}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Star size={12} fill="#f59e0b" color="#f59e0b" strokeWidth={0} />
+                                  <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{r.rating}</span>
+                                </div>
+                              </td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{r.user_name}</td>
+                              <td style={{ color: 'var(--text-body)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{r.unit_info}</td>
+                              <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem', color: 'var(--text-body)' }}>
+                                {r.comment || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
+                              </td>
+                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {reviewDeleteConfirm === r.id ? (
+                                  <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                    <button
+                                      onClick={() => { deletePropertyReview(r.id); setReviewDeleteConfirm(null); }}
+                                      style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                      {lang === 'zh' ? '确认' : 'OK'}
+                                    </button>
+                                    <button
+                                      onClick={() => setReviewDeleteConfirm(null)}
+                                      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}
+                                    >
+                                      {lang === 'zh' ? '取消' : 'Cancel'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setReviewDeleteConfirm(r.id)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 4, display: 'inline-flex', transition: 'color 0.15s' }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+
+              {/* Agent Ratings Sub-tab */}
+              {reviewsSubTab === 'agent' && (
+                <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Star size={16} style={{ color: '#f59e0b' }} fill="#f59e0b" />
+                      {lang === 'zh' ? '中介评分列表' : 'Agent Rating List'}
+                    </h3>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {allAgentRatings.length} {lang === 'zh' ? '条' : 'items'}
+                    </span>
+                  </div>
+                  {allAgentRatings.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                      <Star size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+                      <div style={{ fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无中介评分' : 'No agent ratings yet'}</div>
+                    </div>
+                  ) : (
+                    <div className="data-table-container" style={{ maxHeight: 520, overflow: 'auto' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 50 }}>{lang === 'zh' ? '评分' : 'Rating'}</th>
+                            <th>{lang === 'zh' ? '租客' : 'Tenant'}</th>
+                            <th>{lang === 'zh' ? '中介' : 'Agent'}</th>
+                            <th>{lang === 'zh' ? '评价内容' : 'Comment'}</th>
+                            <th>{lang === 'zh' ? '日期' : 'Date'}</th>
+                            <th style={{ width: 60, textAlign: 'center' }}>{lang === 'zh' ? '操作' : 'Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allAgentRatings.map(r => (
+                            <tr key={r.id} style={{ transition: 'background 0.1s' }}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Star size={12} fill="#f59e0b" color="#f59e0b" strokeWidth={0} />
+                                  <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{r.rating}</span>
+                                </div>
+                              </td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{r.tenant_name}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{r.agent_name}</td>
+                              <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem', color: 'var(--text-body)' }}>
+                                {r.comment || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
+                              </td>
+                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {reviewDeleteConfirm === r.id ? (
+                                  <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                    <button
+                                      onClick={() => { deleteAgentRating(r.id); setReviewDeleteConfirm(null); }}
+                                      style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                      {lang === 'zh' ? '确认' : 'OK'}
+                                    </button>
+                                    <button
+                                      onClick={() => setReviewDeleteConfirm(null)}
+                                      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}
+                                    >
+                                      {lang === 'zh' ? '取消' : 'Cancel'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setReviewDeleteConfirm(r.id)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 4, display: 'inline-flex', transition: 'color 0.15s' }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
