@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, ChevronUp } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -278,35 +278,24 @@ export default function AIChat() {
                 <div className={`chat-bubble ${m.role}`}>
                   {m.role === 'assistant' && hasThoughts && (
                     <div style={{
-                      background: 'var(--glass-bg)',
-                      backdropFilter: 'blur(12px)',
-                      borderRadius: 12,
-                      border: '1px solid var(--glass-border)',
+                      background: 'var(--bg-hover)',
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
                       overflow: 'hidden',
-                      marginBottom: 12,
+                      marginBottom: 10,
                     }}>
-                      {/* Header */}
                       <div onClick={() => toggleThoughts(m.id)} style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        padding: '10px 14px',
+                        padding: '8px 12px',
                         cursor: 'pointer',
                         userSelect: 'none'
                       }}>
-                        <div style={{
-                          width: 6, height: 6, borderRadius: '50%',
-                          background: 'var(--primary)',
-                          boxShadow: '0 0 6px var(--primary-glow)',
-                          animation: 'led-breath 2s ease-in-out infinite alternate'
-                        }} />
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Sparkles size={13} style={{ color: 'var(--primary)' }} /> {t('chatThoughtTrace')}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          {m.thoughts?.length || 0} 步推理{m.toolCalls?.length ? ` · ${m.toolCalls.length} 工具` : ''}
                         </span>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: 4 }}>
-                          {m.thoughts?.length || 0} steps{m.toolCalls?.length ? ` · ${m.toolCalls.length} tools` : ''}
-                        </span>
-                        {open ? <ChevronUp size={14} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} /> : <ChevronDown size={14} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} />}
+                        {open ? <ChevronUp size={13} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} /> : <ChevronDown size={13} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} />}
                       </div>
                       {open && (
                         <div style={{
@@ -415,7 +404,6 @@ export default function AIChat() {
         </div>
 
         <form onSubmit={handleSend} className="chat-input-wrapper">
-          <Sparkles size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder={t('chatPlaceholder')} className="chat-input" disabled={isGenerating} />
           <button type="submit" className="send-button" disabled={isGenerating}><Send size={16} /></button>
         </form>
