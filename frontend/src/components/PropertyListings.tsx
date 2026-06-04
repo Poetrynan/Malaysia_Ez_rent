@@ -388,6 +388,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   const [expandedAdmin, setExpandedAdmin] = useState<number | null>(null);
   const [interests, setInterests] = useState<TenantInterest[]>([]);
   const [authUserId, setAuthUserId] = useState<string | null>(isMockDatabase ? 'tenant-123' : null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'editor' | null>(null);
   const [myInterest, setMyInterest] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -648,7 +649,12 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   }, [loadListings, loadAdmins, loadFavorites]);
 
   useEffect(() => {
-    if (isMockDatabase) return;
+    if (isMockDatabase) {
+      // Mock: check role from localStorage
+      const mockRole = localStorage.getItem('ez_user_role');
+      setUserRole(mockRole === 'admin' ? 'super_admin' : null);
+      return;
+    }
     let mounted = true;
     let unsubscribe: (() => void) | undefined;
 
@@ -656,7 +662,16 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (mounted && user) setAuthUserId(user.id);
+      if (mounted && user) {
+        setAuthUserId(user.id);
+        // Check if user is admin
+        const { data: adminData } = await supabase
+          .from('admin_users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (mounted && adminData) setUserRole(adminData.role as 'super_admin' | 'editor');
+      }
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (mounted) setAuthUserId(session?.user?.id ?? null);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
@@ -1564,7 +1579,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                 <h3 style={{ fontSize: '1rem', marginBottom: 12, color: 'var(--text-h)' }}>
                   {lang === 'zh' ? '租客评价' : 'Tenant Reviews'}
                 </h3>
-                <ReviewSystem unitId={selected.id} userId={authUserId} />
+                <ReviewSystem unitId={selected.id} userId={authUserId} canDeleteAll={userRole === 'super_admin'} />
               </div>
 
               {/* Assigned agent */}

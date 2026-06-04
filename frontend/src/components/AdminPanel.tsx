@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone, Loader2, Star } from 'lucide-react';
 import Dashboard from './Dashboard';
 import AgentRatingSummary from './AgentRatingSummary';
 import { useApp } from '@/lib/ThemeProvider';
@@ -769,6 +769,80 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   }
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbackReply, setFeedbackReply] = useState<Record<string, string>>({});
+
+  // ── Agent Ratings Management (super_admin only) ──
+  interface AgentRatingItem {
+    id: string;
+    tenant_id: string;
+    agent_id: string;
+    lease_id: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+    tenant_name?: string;
+    agent_name?: string;
+  }
+  const [allAgentRatings, setAllAgentRatings] = useState<AgentRatingItem[]>([]);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
+
+  const fetchAllAgentRatings = async () => {
+    setRatingsLoading(true);
+    if (isMockDatabase) {
+      const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
+      const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+      const enriched = ratings.map((r: any) => ({
+        ...r,
+        tenant_name: users.find((u: any) => u.id === r.tenant_id)?.name || r.tenant_id?.slice(0, 8),
+        agent_name: admins.find((a: any) => a.id === r.agent_id)?.full_name || r.agent_id?.slice(0, 8),
+      }));
+      setAllAgentRatings(enriched.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('agent_ratings')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (data) {
+          // Enrich with names
+          const tenantIds = [...new Set(data.map((r: any) => r.tenant_id))];
+          const agentIds = [...new Set(data.map((r: any) => r.agent_id))];
+          const [tenantRes, agentRes] = await Promise.all([
+            supabase.from('users').select('id, name').in('id', tenantIds),
+            supabase.from('admin_users').select('id, full_name').in('id', agentIds),
+          ]);
+          const tenantMap = new Map((tenantRes.data || []).map((u: any) => [u.id, u.name]));
+          const agentMap = new Map((agentRes.data || []).map((a: any) => [a.id, a.full_name]));
+          setAllAgentRatings(data.map((r: any) => ({
+            ...r,
+            tenant_name: tenantMap.get(r.tenant_id) || r.tenant_id?.slice(0, 8),
+            agent_name: agentMap.get(r.agent_id) || r.agent_id?.slice(0, 8),
+          })));
+        }
+      } catch (e) {
+        console.error('Fetch agent ratings error:', e);
+      }
+    }
+    setRatingsLoading(false);
+  };
+
+  const deleteAgentRating = async (ratingId: string) => {
+    if (isMockDatabase) {
+      const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
+      localStorage.setItem('ez_agent_ratings', JSON.stringify(ratings.filter((r: any) => r.id !== ratingId)));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        await supabase.from('agent_ratings').delete().eq('id', ratingId);
+      } catch (e) {
+        console.error('Delete agent rating error:', e);
+      }
+    }
+    setAllAgentRatings(prev => prev.filter(r => r.id !== ratingId));
+  };
 
   const fetchFeedbacks = async (liveOverride?: boolean) => {
     const useLive = liveOverride !== undefined ? liveOverride : isLive;
@@ -4214,6 +4288,106 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </div>
             )}
           </div>
+
+          {/* ── AGENT RATINGS MANAGEMENT (super_admin only) ── */}
+          {adminRole === 'super_admin' && (
+            <div className="glass-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                  <Star size={16} style={{ color: '#f59e0b' }} fill="#f59e0b" />
+                  {lang === 'zh' ? '中介评分管理' : 'Agent Ratings Management'}
+                  {allAgentRatings.length > 0 && (
+                    <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 700 }}>
+                      {allAgentRatings.length}
+                    </span>
+                  )}
+                </h3>
+                <button
+                  onClick={fetchAllAgentRatings}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8,
+                    border: '1px solid var(--glass-border)',
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer', fontSize: '0.78rem',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  {lang === 'zh' ? '加载评分' : 'Load Ratings'}
+                </button>
+              </div>
+
+              {allAgentRatings.length === 0 && !ratingsLoading ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24, fontSize: '0.85rem' }}>
+                  {lang === 'zh' ? '点击「加载评分」查看所有中介评分' : 'Click "Load Ratings" to view all agent ratings'}
+                </p>
+              ) : ratingsLoading ? (
+                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', marginBottom: 4 }} />
+                  <div>{lang === 'zh' ? '加载中...' : 'Loading...'}</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {allAgentRatings.map(r => (
+                    <div key={r.id} style={{
+                      padding: 14,
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--glass-border)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                          {/* Stars */}
+                          <div style={{ display: 'flex', gap: 1 }}>
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} size={13} fill={s <= r.rating ? '#f59e0b' : 'none'} color={s <= r.rating ? '#f59e0b' : 'var(--text-muted)'} strokeWidth={s <= r.rating ? 0 : 1.5} />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>{r.rating}/5</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                            {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', marginBottom: 4 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '租客' : 'Tenant'}:</span> {r.tenant_name}
+                          <span style={{ margin: '0 6px', color: 'var(--glass-border)' }}>→</span>
+                          <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '中介' : 'Agent'}:</span> {r.agent_name}
+                        </div>
+                        {r.comment && (
+                          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.4, fontStyle: 'italic' }}>
+                            "{r.comment}"
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm(lang === 'zh' ? '确定删除此条评分？此操作不可撤销。' : 'Delete this rating? This cannot be undone.')) {
+                            deleteAgentRating(r.id);
+                          }
+                        }}
+                        aria-label={lang === 'zh' ? '删除评分' : 'Delete rating'}
+                        style={{
+                          background: 'none', border: 'none',
+                          cursor: 'pointer', color: 'var(--text-muted)',
+                          padding: 6, borderRadius: 6,
+                          display: 'flex', flexShrink: 0,
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

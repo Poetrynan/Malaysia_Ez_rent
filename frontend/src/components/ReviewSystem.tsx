@@ -18,11 +18,13 @@ interface Review {
 interface ReviewSystemProps {
   unitId: string;
   userId: string | null;
+  /** When true, show delete button on ALL reviews (super admin) */
+  canDeleteAll?: boolean;
 }
 
 const MAX_VISIBLE_REVIEWS = 3;
 
-export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
+export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: ReviewSystemProps) {
   const { lang } = useApp();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -517,6 +519,7 @@ export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
               onDelete={deleteReview}
               lang={lang}
               index={i}
+              canDeleteAll={canDeleteAll}
             />
           ))}
           {reviews.length > MAX_VISIBLE_REVIEWS && (
@@ -627,6 +630,7 @@ export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
                     onDelete={deleteReview}
                     lang={lang}
                     index={i}
+                    canDeleteAll={canDeleteAll}
                   />
                 ))}
               </div>
@@ -672,14 +676,18 @@ function ReviewCard({
   onDelete,
   lang,
   index = 0,
+  canDeleteAll = false,
 }: {
   review: Review;
   userId: string | null;
   onDelete: (id: string) => void;
   lang: string;
   index?: number;
+  canDeleteAll?: boolean;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const isOwner = userId === review.user_id;
+  const showDelete = isOwner || canDeleteAll;
 
   return (
     <div style={{
@@ -691,7 +699,7 @@ function ReviewCard({
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
-          <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 4 }}>
             {[1, 2, 3, 4, 5].map(star => (
               <Star
                 key={star}
@@ -702,6 +710,18 @@ function ReviewCard({
                 style={{ opacity: star <= review.rating ? 1 : 0.3 }}
               />
             ))}
+            {canDeleteAll && !isOwner && (
+              <span style={{
+                fontSize: '0.65rem',
+                color: 'var(--text-muted)',
+                marginLeft: 4,
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: 'var(--glass-border)',
+              }}>
+                ID: {review.user_id?.slice(0, 8)}...
+              </span>
+            )}
           </div>
           <div style={{
             fontSize: '0.72rem',
@@ -711,11 +731,11 @@ function ReviewCard({
             {new Date(review.created_at).toLocaleDateString()}
           </div>
         </div>
-        {userId === review.user_id && (
+        {showDelete && (
           confirmDelete ? (
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               <button
-                onClick={() => onDelete(review.id)}
+                onClick={() => { onDelete(review.id); setConfirmDelete(false); }}
                 style={{
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -728,7 +748,7 @@ function ReviewCard({
                   transition: 'all 0.15s ease',
                 }}
               >
-                {lang === 'zh' ? '确认' : 'Confirm'}
+                {lang === 'zh' ? '确认删除' : 'Confirm'}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
@@ -748,6 +768,7 @@ function ReviewCard({
             <button
               onClick={() => setConfirmDelete(true)}
               aria-label={lang === 'zh' ? '删除评价' : 'Delete review'}
+              title={canDeleteAll && !isOwner ? (lang === 'zh' ? '管理员删除' : 'Admin delete') : undefined}
               style={{
                 background: 'none',
                 border: 'none',
