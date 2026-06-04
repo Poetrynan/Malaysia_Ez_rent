@@ -4,82 +4,45 @@ import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
-interface AgentRatingBadgeProps {
-  agentId: string;
-  size?: 'small' | 'medium';
-}
+interface Props { agentId: string; size?: 'small' | 'medium'; }
 
-export default function AgentRatingBadge({ agentId, size = 'small' }: AgentRatingBadgeProps) {
-  const [averageRating, setAverageRating] = useState(0);
-  const [totalRatings, setTotalRatings] = useState(0);
+export default function AgentRatingBadge({ agentId, size = 'small' }: Props) {
+  const [avg, setAvg] = useState(0);
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadRating = async () => {
+    const load = async () => {
       if (isMockDatabase) {
         const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
         const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
         const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
-        const agentRatings = ratings.filter((r: any) => {
-          const lease = leases.find((l: any) => l.id === r.lease_id);
-          if (!lease) return false;
-          const unit = units.find((u: any) => u.id === lease.unit_id);
-          return unit?.agent_id === agentId;
-        });
-        if (agentRatings.length > 0) {
-          const avg = agentRatings.reduce((sum: number, r: any) => sum + r.rating, 0) / agentRatings.length;
-          setAverageRating(Math.round(avg * 10) / 10);
-          setTotalRatings(agentRatings.length);
-        }
+        const ar = ratings.filter((r: any) => { const l = leases.find((x: any) => x.id === r.lease_id); if (!l) return false; return units.find((u: any) => u.id === l.unit_id)?.agent_id === agentId; });
+        if (ar.length > 0) { setAvg(Math.round(ar.reduce((s: number, r: any) => s + r.rating, 0) / ar.length * 10) / 10); setCount(ar.length); }
       } else {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { data } = await supabase.rpc('get_agent_average_rating', { p_agent_id: agentId });
-          if (data && data.length > 0) {
-            setAverageRating(data[0].average_rating || 0);
-            setTotalRatings(data[0].total_ratings || 0);
-          }
-        } catch (e) {
-          console.error('Load agent rating error:', e);
-        }
+        try { const { createClient } = await import('@/utils/supabase/client'); const { data } = await (await createClient()).rpc('get_agent_average_rating', { p_agent_id: agentId }); if (data?.length > 0) { setAvg(data[0].average_rating || 0); setCount(data[0].total_ratings || 0); } } catch (e) { console.error(e); }
       }
       setLoading(false);
     };
-    loadRating();
+    load();
   }, [agentId]);
 
-  if (loading || totalRatings === 0) return null;
+  if (loading || count === 0) return null;
 
-  const isSmall = size === 'small';
-  const iconSize = isSmall ? 11 : 14;
-  const fontSize = isSmall ? '0.68rem' : '0.78rem';
+  const sm = size === 'small';
 
   return (
     <span
       style={{
-        display: 'inline-flex', alignItems: 'center',
-        gap: isSmall ? 3 : 5,
-        padding: isSmall ? '2px 6px' : '3px 8px',
-        borderRadius: isSmall ? 6 : 8,
-        background: 'var(--primary-light)',
-        border: '1px solid var(--primary)',
+        display: 'inline-flex', alignItems: 'center', gap: sm ? 3 : 5,
+        padding: sm ? '2px 6px' : '3px 8px', borderRadius: sm ? 6 : 'var(--radius-sm)',
+        background: 'var(--primary-light)', border: '1px solid var(--primary)',
       }}
-      title={`${averageRating.toFixed(1)}/5 · ${totalRatings} ${totalRatings === 1 ? 'rating' : 'ratings'}`}
+      title={`${avg.toFixed(1)}/5 · ${count} ${count === 1 ? 'rating' : 'ratings'}`}
     >
-      <Star size={iconSize} fill="var(--warning)" color="var(--warning)" strokeWidth={0} />
-      <span style={{
-        fontSize, fontWeight: 700, color: 'var(--primary)',
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-      }}>
-        {averageRating.toFixed(1)}
-      </span>
-      <span style={{
-        fontSize: isSmall ? '0.6rem' : '0.7rem',
-        color: 'var(--text-muted)', lineHeight: 1,
-      }}>
-        ({totalRatings})
-      </span>
+      <Star size={sm ? 11 : 14} fill="var(--warning)" color="var(--warning)" strokeWidth={0} />
+      <span style={{ fontSize: sm ? '0.68rem' : '0.78rem', fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{avg.toFixed(1)}</span>
+      <span style={{ fontSize: sm ? '0.6rem' : '0.7rem', color: 'var(--text-muted)', lineHeight: 1 }}>({count})</span>
     </span>
   );
 }
