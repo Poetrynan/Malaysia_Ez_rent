@@ -26,6 +26,7 @@ const AMENITY_DETAILS: Record<string, { icon: React.ReactNode; zh: string; en: s
 import MapAndCard from './MapAndCard';
 import FavoritesManager from './FavoritesManager';
 import ReviewSystem from './ReviewSystem';
+import AgentRatingBadge from './AgentRatingBadge';
 import { useApp } from '@/lib/ThemeProvider';
 import { nonNegativeInputValue } from '@/lib/numberInput';
 
@@ -1092,7 +1093,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
         viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
             {filtered.map(u => (
-              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} />
+              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} />
             ))}
           </div>
         ) : (
@@ -1597,8 +1598,11 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                         onError={(e: any) => { e.target.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick'; }}
                       />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)' }}>
-                          {agent.display_name || 'Nick Chan'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)' }}>
+                            {agent.display_name || 'Nick Chan'}
+                          </span>
+                          {agent.id && <AgentRatingBadge agentId={agent.id} size="medium" />}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
                           {agent.job_title || 'Real Estate Negotiator'}
@@ -2476,7 +2480,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 }
 
 /* ── Compact Property Card ── */
-function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string; userId?: string | null; lang?: string }) {
+function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteToggle }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string; userId?: string | null; lang?: string; onFavoriteToggle?: () => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -2510,7 +2514,7 @@ function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang }: { unit: U
         </span>
         {/* Favorites button */}
         <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}>
-          <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} />
+          <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} onToggle={onFavoriteToggle} />
         </div>
         {/* Room type tag */}
         <span style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.65)', color: 'white', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>
@@ -2538,6 +2542,7 @@ function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang }: { unit: U
             <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
               <User size={12} style={{ flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agentLabel}</span>
+              {unit.agent_id && <AgentRatingBadge agentId={unit.agent_id} size="small" />}
             </div>
           )}
           {unit.available_from && (

@@ -2155,19 +2155,26 @@ export default function TenantPortal({
                     <div onClick={() => setExpandedHistoryId(isExpanded ? null : h.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', cursor: 'pointer', background: isExpanded ? 'var(--primary-light)' : 'var(--glass-bg)', transition: 'background 0.2s' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* 社区名称 + 房型 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                           <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.9rem' }}>
-                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                            {h.units?.communities?.name || (lang === 'zh' ? '未知小区' : 'Unknown Community')}
                           </span>
                           <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: cfg.bg, color: cfg.color, fontWeight: 600, border: `1px solid ${cfg.border}` }}>
                             {lang === 'zh' ? cfg.labelZh : cfg.label}
                           </span>
                         </div>
-                        {/* Unit info: community name, room type, unit number */}
+                        {/* 房型 */}
                         <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 3 }}>
-                          {h.units?.communities?.name || ''}
-                          {h.units?.room_type ? ` · ${h.units.room_type}` : ''}
+                          {h.units?.room_type || ''}
                         </div>
+                        {/* 价格 */}
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-h)' }}>
+                            RM {h.monthly_rent?.toLocaleString()}{lang === 'zh' ? '/月' : '/mo'}
+                          </span>
+                        </div>
+                        {/* Unit Number + 日期 */}
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                           {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number} · ` : ''}
                           {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
