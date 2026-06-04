@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -66,6 +66,9 @@ export default function AIChat() {
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<{ id: string; title: string; date: string; messages: Message[] }[]>([]);
+  const currentSessionId = useRef<string>(`session-${Date.now()}`);
   const [userId, setUserId] = useState<string>(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('ez_tenant_id') || 'tenant-123';
     return 'tenant-123';
@@ -87,6 +90,52 @@ export default function AIChat() {
   }, []);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Load chat history from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ez_chat_history');
+      if (saved) setChatHistory(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  // Save to history when session ends or messages update
+  const saveToHistory = () => {
+    if (messages.length < 2) return;
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    const title = firstUserMsg ? firstUserMsg.content.slice(0, 40) : '新对话';
+    const session = {
+      id: currentSessionId.current,
+      title,
+      date: new Date().toLocaleDateString('zh-CN'),
+      messages: messages.map(m => ({ ...m })),
+    };
+    setChatHistory(prev => {
+      const updated = [session, ...prev.filter(h => h.id !== session.id)].slice(0, 20);
+      localStorage.setItem('ez_chat_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deleteHistory = (id: string) => {
+    setChatHistory(prev => {
+      const updated = prev.filter(h => h.id !== id);
+      localStorage.setItem('ez_chat_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const loadHistory = (session: typeof chatHistory[0]) => {
+    setMessages(session.messages);
+    setHistoryOpen(false);
+  };
+
+  const newChat = () => {
+    saveToHistory();
+    setMessages([]);
+    currentSessionId.current = `session-${Date.now()}`;
+    setHistoryOpen(false);
+  };
 
   const toggleTool = (id: string) => setExpandedTools(prev => {
     const next = new Set(prev);
@@ -179,12 +228,26 @@ export default function AIChat() {
       setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: errorMsg, contentStarted: true } : m));
     } finally {
       setIsGenerating(false);
+      saveToHistory();
     }
   };
 
   /* ── Render ── */
   return (
     <div className="manus-layout">
+      {/* Title bar */}
+      <div className="manus-title-bar">
+        <div className="manus-title-center">
+          <Bot size={26} style={{ color: 'var(--primary)' }} />
+          <span className="manus-title-text">{t('chatAgentName')}</span>
+          <span className={`manus-status-dot ${backendStatus}`} />
+        </div>
+        <button className="manus-history-btn" onClick={() => setHistoryOpen(true)}>
+          <Clock size={14} /> 历史
+        </button>
+      </div>
+
+      {/* Chat area */}
       <div className="manus-scroll">
         {/* Welcome */}
         {messages.length === 0 && (
@@ -305,6 +368,41 @@ export default function AIChat() {
           <Send size={16} />
         </button>
       </form>
+
+      {/* History overlay */}
+      <div className={`manus-history-overlay ${historyOpen ? 'open' : ''}`} onClick={() => setHistoryOpen(false)} />
+      <div className={`manus-history-panel ${historyOpen ? 'open' : ''}`}>
+        <div className="manus-history-header">
+          <h3>聊天记录</h3>
+          <button className="manus-history-close" onClick={() => setHistoryOpen(false)}>
+            <XCircle size={18} />
+          </button>
+        </div>
+        <div style={{ padding: '8px 12px' }}>
+          <button onClick={newChat} style={{
+            width: '100%', padding: '8px', borderRadius: 8,
+            border: '1px solid var(--primary)', background: 'var(--primary-light)',
+            color: 'var(--primary)', fontWeight: 600, fontSize: '0.82rem',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}>+ 新对话</button>
+        </div>
+        <div className="manus-history-list">
+          {chatHistory.length === 0 && (
+            <div className="manus-history-empty">暂无聊天记录</div>
+          )}
+          {chatHistory.map(h => (
+            <div key={h.id} className="manus-history-item" onClick={() => loadHistory(h)}>
+              <div className="manus-history-item-content">
+                <div className="manus-history-item-title">{h.title}</div>
+                <div className="manus-history-item-date">{h.date}</div>
+              </div>
+              <button className="manus-history-delete" onClick={(e) => { e.stopPropagation(); deleteHistory(h.id); }} aria-label="Delete">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

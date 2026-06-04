@@ -373,10 +373,11 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100% - 80px);
+  height: calc(100% - 100px);
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
+  position: relative;
 }
 .manus-scroll {
   flex: 1;
@@ -603,10 +604,173 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   padding: 10px 16px;
   background: var(--bg-surface-solid);
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .manus-input-bar:focus-within {
   border-top-color: var(--primary);
   box-shadow: inset 0 2px 0 0 var(--primary);
+}
+
+/* Title bar */
+.manus-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+.manus-title-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.manus-title-text {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+.manus-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.manus-status-dot.online {
+  background-color: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  animation: led-breath 2s ease-in-out infinite alternate;
+}
+.manus-status-dot.offline {
+  background-color: #F59E0B;
+  box-shadow: 0 0 6px #F59E0B;
+  animation: led-blink 1s ease-in-out infinite;
+}
+
+/* History button */
+.manus-history-btn {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.manus-history-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* History panel (slide from right) */
+.manus-history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+}
+.manus-history-overlay.open { display: block; }
+.manus-history-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 340px;
+  max-width: 85vw;
+  background: var(--bg-surface-solid);
+  border-left: 1px solid var(--border);
+  z-index: 101;
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
+}
+.manus-history-panel.open { transform: translateX(0); }
+.manus-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.manus-history-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+.manus-history-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+.manus-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.manus-history-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 8px;
+}
+.manus-history-item:hover { background: var(--bg-hover); }
+.manus-history-item-content {
+  flex: 1;
+  min-width: 0;
+}
+.manus-history-item-title {
+  font-size: 0.82rem;
+  color: var(--text-h);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manus-history-item-date {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.manus-history-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.manus-history-item:hover .manus-history-delete { opacity: 1; }
+.manus-history-delete:hover { color: var(--danger); }
+.manus-history-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+@keyframes led-breath {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+@keyframes led-blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 .manus-input {
   flex: 1;
