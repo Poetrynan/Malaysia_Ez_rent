@@ -285,7 +285,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* Scrollable content below topbar — listings/admin tabs scroll here, not the whole page */
 .main-content {
-  flex: 1; min-height: 0; padding: 24px 28px 12px;
+  flex: 1; min-height: 0; padding: 24px 28px 20px;
   overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; gap: 20px;
 }
@@ -370,7 +370,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* ── AI CHAT ── */
-.chat-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; flex: 1; min-height: 0; height: 100%; max-width: 1200px; margin: 0 auto; width: 100%; }
+.chat-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; flex: 1; min-height: 0; height: calc(100% - 12px); max-width: 1200px; margin: 0 auto; width: 100%; }
 .chat-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .chat-messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 4px 4px 4px 0; margin-bottom: 12px; }
 

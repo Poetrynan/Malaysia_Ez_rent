@@ -256,10 +256,10 @@ export default function AIChat() {
       {/* Chat pane */}
       <div className="chat-panel">
         {/* Title */}
-        <div style={{ textAlign: 'center', padding: '8px 0 6px', flexShrink: 0 }}>
+        <div style={{ textAlign: 'center', padding: '2px 0 4px', flexShrink: 0 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <Bot size={28} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-h)', letterSpacing: '-0.01em' }}>{t('chatAgentName')}</span>
+            <Bot size={32} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)', letterSpacing: '-0.01em' }}>{t('chatAgentName')}</span>
           </div>
         </div>
         <div className="chat-messages">
