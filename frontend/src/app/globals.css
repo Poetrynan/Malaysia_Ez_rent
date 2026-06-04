@@ -285,7 +285,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* Scrollable content below topbar — listings/admin tabs scroll here, not the whole page */
 .main-content {
-  flex: 1; min-height: 0; padding: 24px 28px 8px;
+  flex: 1; min-height: 0; padding: 24px 28px 0;
   overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; gap: 20px;
 }
@@ -373,7 +373,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100% - 100px);
+  height: calc(100% - 60px);
   max-width: 1100px;
   margin: 0 auto;
   width: 100%;
