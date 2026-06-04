@@ -161,7 +161,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
 
       {/* Submit */}
       <button onClick={submitRating} disabled={rating === 0 || submitting}
-        className={rating > 0 ? 'btn-primary' : 'btn-secondary'}
+        className={rating > 0 ? 'btn btn-primary' : 'btn btn-secondary'}
         style={{ width: '100%', opacity: rating > 0 ? 1 : 0.5, cursor: rating > 0 && !submitting ? 'pointer' : 'not-allowed', transform: submitting ? 'scale(0.98)' : 'none' }}>
         {submitting ? (<><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />{lang === 'zh' ? '提交中...' : 'Submitting...'}</>)
           : (<><Send size={15} />{lang === 'zh' ? '提交评价' : 'Submit Rating'}</>)}

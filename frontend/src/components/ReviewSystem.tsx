@@ -99,7 +99,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
 
       {/* ── Write button ── */}
       {userId && !checking && (canReview ? (
-        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary' : 'btn-primary'} style={{ alignSelf: 'flex-start' }}>
+        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn btn-secondary' : 'btn btn-primary'} style={{ alignSelf: 'flex-start' }}>
           <Star size={15} />{showForm ? (lang === 'zh' ? '取消' : 'Cancel') : (lang === 'zh' ? '发表评价' : 'Write a Review')}
         </button>
       ) : (
@@ -150,10 +150,10 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
           </div>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => { setShowForm(false); setRating(0); setComment(''); }} className="btn-secondary">
+            <button onClick={() => { setShowForm(false); setRating(0); setComment(''); }} className="btn btn-secondary">
               {lang === 'zh' ? '取消' : 'Cancel'}
             </button>
-            <button onClick={submitReview} disabled={rating === 0 || submitting} className="btn-primary"
+            <button onClick={submitReview} disabled={rating === 0 || submitting} className="btn btn-primary"
               style={{ opacity: rating > 0 ? 1 : 0.5, cursor: rating > 0 && !submitting ? 'pointer' : 'not-allowed' }}>
               {submitting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{lang === 'zh' ? '提交中...' : 'Submitting...'}</> : <><Send size={14} />{lang === 'zh' ? '提交' : 'Submit'}</>}
             </button>
@@ -180,7 +180,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {reviews.slice(0, MAX_VISIBLE).map((r, i) => <ReviewCard key={r.id} review={r} userId={userId} onDelete={deleteReview} lang={lang} index={i} canDeleteAll={canDeleteAll} />)}
           {reviews.length > MAX_VISIBLE && (
-            <button onClick={() => setShowAll(true)} className="btn-secondary" style={{ gap: 6 }}
+            <button onClick={() => setShowAll(true)} className="btn btn-secondary" style={{ gap: 6 }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.borderColor = ''; e.currentTarget.style.color = ''; }}>
               {lang === 'zh' ? `查看全部 ${reviews.length} 条评价` : `View all ${reviews.length} reviews`}<ChevronDown size={16} />
