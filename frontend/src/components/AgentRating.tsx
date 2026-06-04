@@ -101,31 +101,47 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
     }
   };
 
+  // Color-coded by rating value
+  const displayRating = hoverRating || rating;
+  const starColor = displayRating >= 4 ? 'var(--success)' : displayRating >= 3 ? 'var(--warning)' : displayRating >= 1 ? 'var(--danger)' : 'var(--text-muted)';
+  const starGlow = displayRating >= 4 ? 'var(--success-light)' : displayRating >= 3 ? 'var(--warning-light)' : 'var(--danger-light)';
+
+  const ratingLabels = lang === 'zh'
+    ? ['', '很差', '较差', '一般', '不错', '很好']
+    : ['', 'Poor', 'Fair', 'Okay', 'Good', 'Great'];
+
+  // Loading skeleton
   if (loading) {
     return (
       <div style={{
-        padding: 24,
-        textAlign: 'center',
-        color: 'var(--text-muted)',
-        fontSize: '0.85rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
+        padding: 20,
+        borderRadius: 14,
+        border: '1px solid var(--glass-border)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(12px)',
       }}>
-        <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-        {lang === 'zh' ? '加载中...' : 'Loading...'}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--glass-border)', animation: 'shimmer 1.5s ease-in-out infinite' }} />
+          <div style={{ width: 80, height: 14, borderRadius: 6, background: 'var(--glass-border)', animation: 'shimmer 1.5s ease-in-out infinite 0.1s' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--glass-border)', animation: `shimmer 1.5s ease-in-out infinite ${i * 0.06}s` }} />
+          ))}
+        </div>
+        <div style={{ width: '100%', height: 80, borderRadius: 10, background: 'var(--glass-border)', animation: 'shimmer 1.5s ease-in-out infinite 0.4s' }} />
       </div>
     );
   }
 
+  // Already rated
   if (hasRated) {
     return (
       <div style={{
         padding: 20,
         borderRadius: 14,
-        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.03))',
-        border: '1px solid rgba(16, 185, 129, 0.2)',
+        background: 'var(--success-light)',
+        border: '1px solid var(--success)',
         textAlign: 'center',
         display: 'flex',
         alignItems: 'center',
@@ -134,8 +150,9 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: '50%',
-          background: 'rgba(16, 185, 129, 0.15)',
+          background: 'var(--success-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '1px solid var(--success)',
         }}>
           <Check size={16} color="var(--success)" strokeWidth={2.5} />
         </div>
@@ -146,21 +163,23 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
     );
   }
 
+  // Submit success
   if (submitted) {
     return (
       <div style={{
         padding: 24,
         borderRadius: 14,
-        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.03))',
-        border: '1px solid rgba(16, 185, 129, 0.2)',
+        background: 'var(--success-light)',
+        border: '1px solid var(--success)',
         textAlign: 'center',
         animation: 'fadeInUp 0.3s ease-out',
       }}>
         <div style={{
           width: 48, height: 48, borderRadius: '50%',
-          background: 'rgba(16, 185, 129, 0.12)',
+          background: 'var(--success-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 12px',
+          border: '1px solid var(--success)',
           animation: 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}>
           <Check size={24} color="var(--success)" strokeWidth={2.5} />
@@ -174,15 +193,6 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
       </div>
     );
   }
-
-  const displayRating = hoverRating || rating;
-  const starColor = displayRating >= 4 ? '#22c55e' : displayRating >= 3 ? '#f59e0b' : displayRating >= 1 ? '#ef4444' : 'var(--text-muted)';
-  const starGlow = displayRating >= 4 ? 'rgba(34, 197, 94, 0.5)' : displayRating >= 3 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(239, 68, 68, 0.5)';
-  const focusRingColor = displayRating >= 4 ? 'rgba(34, 197, 94, 0.4)' : displayRating >= 3 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(239, 68, 68, 0.4)';
-
-  const ratingLabels = lang === 'zh'
-    ? ['', '很差', '较差', '一般', '不错', '很好']
-    : ['', 'Poor', 'Fair', 'Okay', 'Good', 'Great'];
 
   return (
     <div style={{
@@ -204,7 +214,13 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           alignItems: 'center',
           gap: 8,
         }}>
-          <Star size={18} fill="#f59e0b" color="#f59e0b" />
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'var(--primary-light)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Star size={16} fill="var(--primary)" color="var(--primary)" />
+          </div>
           {lang === 'zh' ? '评价中介' : 'Rate Agent'}
         </h4>
         {onClose && (
@@ -221,10 +237,10 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'background 0.15s ease',
+              transition: 'all 0.15s ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--glass-border)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-border)'; e.currentTarget.style.color = 'var(--text-h)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}
           >
             <X size={18} />
           </button>
@@ -233,14 +249,15 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
 
       {/* Stars */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{
+        <label style={{
+          display: 'block',
           fontSize: '0.82rem',
           color: 'var(--text-muted)',
           marginBottom: 10,
           fontWeight: 500,
         }}>
           {lang === 'zh' ? '请选择评分' : 'Select your rating'}
-        </div>
+        </label>
         <div
           style={{ display: 'flex', gap: 6, alignItems: 'center' }}
           role="radiogroup"
@@ -273,7 +290,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
                   outline: 'none',
                 }}
                 onFocus={e => {
-                  e.currentTarget.style.boxShadow = `0 0 0 2px ${focusRingColor}`;
+                  e.currentTarget.style.boxShadow = `0 0 0 2px var(--primary-glow)`;
                 }}
                 onBlur={e => {
                   e.currentTarget.style.boxShadow = 'none';
@@ -343,7 +360,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           }}
           onFocus={e => {
             e.currentTarget.style.borderColor = 'var(--primary)';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-rgb, 99, 102, 241), 0.1)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-glow)';
           }}
           onBlur={e => {
             e.currentTarget.style.borderColor = 'var(--glass-border)';
@@ -372,10 +389,8 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
           padding: '12px 16px',
           borderRadius: 10,
           border: 'none',
-          background: rating > 0
-            ? submitting ? 'var(--primary-muted, #818cf8)' : 'var(--primary)'
-            : 'var(--glass-border)',
-          color: 'white',
+          background: rating > 0 ? 'var(--primary)' : 'var(--glass-border)',
+          color: rating > 0 ? '#fff' : 'var(--text-muted)',
           cursor: rating > 0 && !submitting ? 'pointer' : 'not-allowed',
           fontWeight: 600,
           fontSize: '0.88rem',
@@ -404,6 +419,10 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
       <style jsx>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
         }
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(8px); }

@@ -26,7 +26,6 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
           const unit = units.find((u: any) => u.id === lease.unit_id);
           return unit?.agent_id === agentId;
         });
-
         if (agentRatings.length > 0) {
           const avg = agentRatings.reduce((sum: number, r: any) => sum + r.rating, 0) / agentRatings.length;
           setAverageRating(Math.round(avg * 10) / 10);
@@ -53,39 +52,16 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
   if (loading) {
     return (
       <div style={{
-        padding: 16,
-        borderRadius: 14,
-        background: 'var(--glass-bg)',
-        border: '1px solid var(--glass-border)',
-        marginBottom: 20,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
+        padding: 16, borderRadius: 14,
+        background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+        marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: 'var(--glass-border)',
-          animation: 'shimmer 1.5s ease-in-out infinite',
-        }} />
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--glass-border)', animation: 'shimmer 1.5s ease-in-out infinite' }} />
         <div style={{ flex: 1 }}>
-          <div style={{
-            width: 80, height: 12, borderRadius: 6,
-            background: 'var(--glass-border)',
-            marginBottom: 6,
-            animation: 'shimmer 1.5s ease-in-out infinite 0.1s',
-          }} />
-          <div style={{
-            width: 120, height: 10, borderRadius: 5,
-            background: 'var(--glass-border)',
-            animation: 'shimmer 1.5s ease-in-out infinite 0.2s',
-          }} />
+          <div style={{ width: 70, height: 14, borderRadius: 6, background: 'var(--glass-border)', marginBottom: 6, animation: 'shimmer 1.5s ease-in-out infinite 0.1s' }} />
+          <div style={{ width: 110, height: 10, borderRadius: 5, background: 'var(--glass-border)', animation: 'shimmer 1.5s ease-in-out infinite 0.2s' }} />
         </div>
-        <style jsx>{`
-          @keyframes shimmer {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
-          }
-        `}</style>
+        <style jsx>{`@keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
       </div>
     );
   }
@@ -93,36 +69,22 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
   if (totalRatings === 0) {
     return (
       <div style={{
-        padding: '16px 20px',
-        borderRadius: 14,
-        background: 'var(--glass-bg)',
-        border: '1px solid var(--glass-border)',
-        marginBottom: 20,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
+        padding: '16px 20px', borderRadius: 14,
+        background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+        marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{
           width: 40, height: 40, borderRadius: 10,
-          background: 'rgba(245, 158, 11, 0.08)',
+          background: 'var(--primary-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <Star size={20} style={{ color: 'var(--text-muted)' }} strokeWidth={1.5} />
         </div>
         <div>
-          <div style={{
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            color: 'var(--text-h)',
-            marginBottom: 2,
-          }}>
+          <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-h)', marginBottom: 2 }}>
             {lang === 'zh' ? '租客评分' : 'Tenant Ratings'}
           </div>
-          <p style={{
-            fontSize: '0.78rem',
-            color: 'var(--text-muted)',
-            margin: 0,
-          }}>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
             {lang === 'zh' ? '暂无租客评价' : 'No tenant ratings yet'}
           </p>
         </div>
@@ -135,59 +97,39 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
 
   return (
     <div style={{
-      padding: '18px 20px',
-      borderRadius: 14,
-      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02))',
-      border: '1px solid rgba(245, 158, 11, 0.18)',
-      marginBottom: 20,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 16,
+      padding: '18px 20px', borderRadius: 14,
+      background: 'var(--primary-light)',
+      border: '1px solid var(--primary)',
+      marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16,
     }}>
-      {/* Score circle */}
       <div style={{
         width: 52, height: 52, borderRadius: 14,
-        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.06))',
+        background: 'var(--primary-light)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
+        flexShrink: 0, border: '1px solid var(--primary)',
       }}>
         <span style={{
-          fontSize: '1.3rem',
-          fontWeight: 800,
-          color: '#f59e0b',
+          fontSize: '1.3rem', fontWeight: 800, color: 'var(--primary)',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {averageRating.toFixed(1)}
         </span>
       </div>
-
-      {/* Stars + count */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
           {[1, 2, 3, 4, 5].map(star => (
             <Star
-              key={star}
-              size={16}
-              fill={star <= fullStars ? '#f59e0b' : (star === fullStars + 1 && hasHalf ? '#f59e0b' : 'none')}
-              color={star <= fullStars || (star === fullStars + 1 && hasHalf) ? '#f59e0b' : 'var(--text-muted)'}
+              key={star} size={16}
+              fill={star <= fullStars ? 'var(--warning)' : (star === fullStars + 1 && hasHalf ? 'var(--warning)' : 'none')}
+              color={star <= fullStars || (star === fullStars + 1 && hasHalf) ? 'var(--warning)' : 'var(--text-muted)'}
               strokeWidth={star <= fullStars ? 0 : 1.5}
-              style={{
-                opacity: star <= fullStars || (star === fullStars + 1 && hasHalf) ? 1 : 0.3,
-              }}
+              style={{ opacity: star <= fullStars || (star === fullStars + 1 && hasHalf) ? 1 : 0.3 }}
             />
           ))}
         </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: '0.78rem',
-          color: 'var(--text-muted)',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           <Users size={12} strokeWidth={2} />
-          <span>
-            {totalRatings} {lang === 'zh' ? '条评价' : 'ratings'}
-          </span>
+          <span>{totalRatings} {lang === 'zh' ? '条评价' : 'ratings'}</span>
         </div>
       </div>
     </div>

@@ -20,14 +20,12 @@ export default function AgentRatingBadge({ agentId, size = 'small' }: AgentRatin
         const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
         const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
         const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
-
         const agentRatings = ratings.filter((r: any) => {
           const lease = leases.find((l: any) => l.id === r.lease_id);
           if (!lease) return false;
           const unit = units.find((u: any) => u.id === lease.unit_id);
           return unit?.agent_id === agentId;
         });
-
         if (agentRatings.length > 0) {
           const avg = agentRatings.reduce((sum: number, r: any) => sum + r.rating, 0) / agentRatings.length;
           setAverageRating(Math.round(avg * 10) / 10);
@@ -60,30 +58,25 @@ export default function AgentRatingBadge({ agentId, size = 'small' }: AgentRatin
   return (
     <span
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
+        display: 'inline-flex', alignItems: 'center',
         gap: isSmall ? 3 : 5,
         padding: isSmall ? '2px 6px' : '3px 8px',
         borderRadius: isSmall ? 6 : 8,
-        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04))',
-        border: '1px solid rgba(245, 158, 11, 0.15)',
+        background: 'var(--primary-light)',
+        border: '1px solid var(--primary)',
       }}
       title={`${averageRating.toFixed(1)}/5 · ${totalRatings} ${totalRatings === 1 ? 'rating' : 'ratings'}`}
     >
-      <Star size={iconSize} fill="#f59e0b" color="#f59e0b" strokeWidth={0} />
+      <Star size={iconSize} fill="var(--warning)" color="var(--warning)" strokeWidth={0} />
       <span style={{
-        fontSize,
-        fontWeight: 700,
-        color: '#f59e0b',
-        fontVariantNumeric: 'tabular-nums',
-        lineHeight: 1,
+        fontSize, fontWeight: 700, color: 'var(--primary)',
+        fontVariantNumeric: 'tabular-nums', lineHeight: 1,
       }}>
         {averageRating.toFixed(1)}
       </span>
       <span style={{
         fontSize: isSmall ? '0.6rem' : '0.7rem',
-        color: 'var(--text-muted)',
-        lineHeight: 1,
+        color: 'var(--text-muted)', lineHeight: 1,
       }}>
         ({totalRatings})
       </span>
