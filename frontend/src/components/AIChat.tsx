@@ -397,7 +397,7 @@ export default function AIChat() {
 
         <form onSubmit={handleSend} className="chat-input-wrapper">
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder={t('chatPlaceholder')} className="chat-input" disabled={isGenerating} />
-          <button type="submit" className="send-button" disabled={isGenerating}><Send size={16} /></button>
+          <button type="submit" className="send-button" disabled={isGenerating} aria-label="Send"><Send size={16} /></button>
         </form>
       </div>
 
