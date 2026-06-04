@@ -368,7 +368,8 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [maxRent, setMaxRent] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'available'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'favorites'>('all');
+  const [favoriteUnitIds, setFavoriteUnitIds] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selected, setSelected] = useState<UnitWithCommunity | null>(null);
@@ -580,6 +581,25 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
     }
   }, []);
 
+  // 加载收藏列表
+  const loadFavorites = useCallback(async () => {
+    if (!authUserId) return;
+    if (isMockDatabase) {
+      const favorites = JSON.parse(localStorage.getItem('ez_favorites') || '[]');
+      const ids = favorites.filter((f: any) => f.user_id === authUserId).map((f: any) => f.unit_id);
+      setFavoriteUnitIds(new Set(ids));
+    } else {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data } = await supabase.from('favorites').select('unit_id').eq('user_id', authUserId);
+        setFavoriteUnitIds(new Set((data || []).map((f: any) => f.unit_id)));
+      } catch (e) {
+        console.error('Load favorites error:', e);
+      }
+    }
+  }, [authUserId]);
+
   const loadAdmins = useCallback(async () => {
     if (isMockDatabase) {
       const storedAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
@@ -623,7 +643,8 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   useEffect(() => {
     loadListings();
     loadAdmins();
-  }, [loadListings, loadAdmins]);
+    loadFavorites();
+  }, [loadListings, loadAdmins, loadFavorites]);
 
   useEffect(() => {
     if (isMockDatabase) return;
@@ -927,6 +948,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
     if (typeFilter) res = res.filter(u => u.room_type === typeFilter);
     if (maxRent) res = res.filter(u => u.rent <= parseFloat(maxRent));
     if (statusFilter === 'available') res = res.filter(u => u.status === 'available');
+    if (statusFilter === 'favorites') res = res.filter(u => favoriteUnitIds.has(u.id));
     res.sort((a, b) => sort === 'asc' ? a.rent - b.rent : b.rent - a.rent);
     return res;
   }, [units, search, typeFilter, maxRent, statusFilter, sort]);
@@ -994,10 +1016,10 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 
           {/* Status toggle */}
           <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-            {(['all', 'available'] as const).map(s => (
+            {(['all', 'available', 'favorites'] as const).map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
                 style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: statusFilter === s ? 'var(--primary)' : 'transparent', color: statusFilter === s ? 'white' : 'var(--text-muted)' }}>
-                {s === 'all' ? t('filterAll') : t('filterAvailable')}
+                {s === 'all' ? t('filterAll') : s === 'available' ? t('filterAvailable') : (lang === 'zh' ? '我的收藏' : 'Favorites')}
               </button>
             ))}
           </div>

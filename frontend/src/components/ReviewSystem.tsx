@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, Send, Trash2 } from 'lucide-react';
+import { Star, Send, Trash2, X, ChevronDown } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -20,6 +20,8 @@ interface ReviewSystemProps {
   userId: string | null;
 }
 
+const MAX_VISIBLE_REVIEWS = 3;
+
 export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
   const { lang } = useApp();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -28,6 +30,7 @@ export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);
 
@@ -311,55 +314,126 @@ export default function ReviewSystem({ unitId, userId }: ReviewSystemProps) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {reviews.map(review => (
-            <div
-              key={review.id}
+          {reviews.slice(0, MAX_VISIBLE_REVIEWS).map(review => (
+            <ReviewCard key={review.id} review={review} userId={userId} onDelete={deleteReview} />
+          ))}
+          {reviews.length > MAX_VISIBLE_REVIEWS && (
+            <button
+              onClick={() => setShowAllReviews(true)}
               style={{
-                padding: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '10px 16px',
                 borderRadius: 8,
                 border: '1px solid var(--glass-border)',
-                background: 'var(--glass-bg)',
+                background: 'transparent',
+                color: 'var(--primary)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div>
-                  <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <Star
-                        key={star}
-                        size={14}
-                        fill={star <= review.rating ? '#f59e0b' : 'none'}
-                        color={star <= review.rating ? '#f59e0b' : 'var(--text-muted)'}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {new Date(review.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                {userId === review.user_id && (
-                  <button
-                    onClick={() => deleteReview(review.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      padding: 4,
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-              {review.comment && (
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-body)' }}>
-                  {review.comment}
-                </p>
-              )}
-            </div>
-          ))}
+              {lang === 'zh' ? `查看全部 ${reviews.length} 条评价` : `View all ${reviews.length} reviews`}
+              <ChevronDown size={16} />
+            </button>
+          )}
         </div>
+      )}
+
+      {/* 全部评价 Modal */}
+      {showAllReviews && (
+        <div
+          onClick={() => setShowAllReviews(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-surface)', border: '1px solid var(--glass-border)',
+              borderRadius: 16, width: '100%', maxWidth: 500, maxHeight: '80vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: 0 }}>
+                {lang === 'zh' ? `全部评价 (${reviews.length})` : `All Reviews (${reviews.length})`}
+              </h3>
+              <button
+                onClick={() => setShowAllReviews(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {/* Modal Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {reviews.map(review => (
+                  <ReviewCard key={review.id} review={review} userId={userId} onDelete={deleteReview} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 评价卡片组件
+function ReviewCard({ review, userId, onDelete }: { review: Review; userId: string | null; onDelete: (id: string) => void }) {
+  return (
+    <div style={{
+      padding: 12,
+      borderRadius: 8,
+      border: '1px solid var(--glass-border)',
+      background: 'var(--glass-bg)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div>
+          <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <Star
+                key={star}
+                size={14}
+                fill={star <= review.rating ? '#f59e0b' : 'none'}
+                color={star <= review.rating ? '#f59e0b' : 'var(--text-muted)'}
+              />
+            ))}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {new Date(review.created_at).toLocaleDateString()}
+          </div>
+        </div>
+        {userId === review.user_id && (
+          <button
+            onClick={() => onDelete(review.id)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: 4,
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+      {review.comment && (
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-body)' }}>
+          {review.comment}
+        </p>
       )}
     </div>
   );

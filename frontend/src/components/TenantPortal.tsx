@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
+import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -14,6 +15,7 @@ interface Lease {
   status: string;
   admin_notes?: string;
   unit_number?: string;
+  units?: { room_type?: string; community_id?: string; communities?: { name?: string } } | null;
 }
 interface Payment {
   id: string; lease_id: string; billing_month: string;
@@ -695,7 +697,7 @@ export default function TenantPortal({
             .maybeSingle(),
           supabase
             .from('leases')
-            .select('*')
+            .select('*, units!inner(room_type, community_id, communities!inner(name))')
             .eq('tenant_id', user.id)
             .neq('status', 'active')
             .order('end_date', { ascending: false }),
@@ -2161,10 +2163,13 @@ export default function TenantPortal({
                             {lang === 'zh' ? cfg.labelZh : cfg.label}
                           </span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                          {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
+                        {/* Unit info: community name, room type, unit number */}
+                        <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 3 }}>
+                          {h.units?.communities?.name || ''}
+                          {h.units?.room_type ? ` · ${h.units.room_type}` : ''}
                         </div>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number} · ` : ''}
                           {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
                         </div>
                         {/* Termination reason */}
@@ -2514,6 +2519,20 @@ export default function TenantPortal({
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>{t('depositNote')}</p>
           </div>
+
+          {/* Agent Rating - only show for completed/expired/terminated leases */}
+          {unit?.agent_id && ['completed', 'expired', 'terminated'].includes(lease.status) && (
+            <div className="glass-card">
+              <h4 style={{ fontSize: '0.9rem', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Star size={16} style={{ color: 'var(--primary)' }} /> {lang === 'zh' ? '评价中介' : 'Rate Agent'}
+              </h4>
+              <AgentRating
+                agentId={unit.agent_id}
+                leaseId={lease.id}
+                tenantId={lease.tenant_id}
+              />
+            </div>
+          )}
           </div>
           )}
 

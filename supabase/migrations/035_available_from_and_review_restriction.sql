@@ -1,4 +1,4 @@
--- Migration 035: 添加可入住时间字段 + 评价权限限制
+-- Migration 035: 添加可入住时间字段 + 评价权限限制（幂等版本，可重复运行）
 
 -- 1. 添加 available_from 字段到 units 表
 ALTER TABLE units ADD COLUMN IF NOT EXISTS available_from DATE;

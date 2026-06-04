@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone } from 'lucide-react';
 import Dashboard from './Dashboard';
+import AgentRatingSummary from './AgentRatingSummary';
 import { useApp } from '@/lib/ThemeProvider';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
@@ -4503,9 +4504,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <Edit3 size={18} style={{ color: 'var(--primary)' }} />
               {lang === 'zh' ? '中介个人主页与联系设置' : 'Agent Profile & Contact Settings'}
             </h3>
+
+            {/* Agent Rating Summary */}
+            {currentUserId && (
+              <AgentRatingSummary agentId={currentUserId} lang={lang} />
+            )}
+
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
-              {lang === 'zh' 
-                ? '此处填写的个人与中介信息（资质证书、从业经验、擅长区域等）将在租客端以专业中介主页形式展示，提升信任感。' 
+              {lang === 'zh'
+                ? '此处填写的个人与中介信息（资质证书、从业经验、擅长区域等）将在租客端以专业中介主页形式展示，提升信任感。'
                 : 'The personal and agency information you enter here will be shown to tenants on your professional agent profile page.'}
             </p>
 
