@@ -80,33 +80,35 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Overview card ── */}
       <div className="glass-card" style={{
-        padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 18px',
         background: reviews.length > 0 ? 'var(--primary-light)' : undefined,
         borderColor: reviews.length > 0 ? 'var(--primary)' : undefined,
       }}>
-        <span style={{ fontSize: '1.8rem', fontWeight: 800, color: reviews.length > 0 ? 'var(--primary)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-          {avg.toFixed(1)}
-        </span>
-        <div>
-          <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
-            {[1, 2, 3, 4, 5].map(s => <Star key={s} size={15} fill={s <= avg ? 'var(--warning)' : 'none'} color={s <= avg ? 'var(--warning)' : 'var(--text-muted)'} strokeWidth={s <= avg ? 0 : 1.5} style={{ opacity: s <= avg ? 1 : 0.3 }} />)}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MessageSquare size={11} strokeWidth={2} />{reviews.length} {lang === 'zh' ? '条评价' : 'reviews'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: userId && !checking ? 14 : 0 }}>
+          <span style={{ fontSize: '1.8rem', fontWeight: 800, color: reviews.length > 0 ? 'var(--primary)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            {avg.toFixed(1)}
+          </span>
+          <div>
+            <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+              {[1, 2, 3, 4, 5].map(s => <Star key={s} size={15} fill={s <= avg ? 'var(--warning)' : 'none'} color={s <= avg ? 'var(--warning)' : 'var(--text-muted)'} strokeWidth={s <= avg ? 0 : 1.5} style={{ opacity: s <= avg ? 1 : 0.3 }} />)}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MessageSquare size={11} strokeWidth={2} />{reviews.length} {lang === 'zh' ? '条评价' : 'reviews'}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Write button ── */}
-      {userId && !checking && (canReview ? (
-        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn btn-secondary' : 'btn btn-primary'} style={{ alignSelf: 'flex-start' }}>
-          <Star size={15} />{showForm ? (lang === 'zh' ? '取消' : 'Cancel') : (lang === 'zh' ? '发表评价' : 'Write a Review')}
-        </button>
-      ) : (
-        <div className="mode-banner" style={{ background: 'var(--warning-light)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
-          <Star size={14} strokeWidth={1.5} />{lang === 'zh' ? '只有完成租约的租客才能发表评价' : 'Only tenants with completed leases can leave reviews'}
-        </div>
-      ))}
+        {/* ── Write button (inside card) ── */}
+        {userId && !checking && (canReview ? (
+          <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn btn-secondary' : 'btn btn-primary'} style={{ width: '100%' }}>
+            <Star size={15} />{showForm ? (lang === 'zh' ? '取消' : 'Cancel') : (lang === 'zh' ? '发表评价' : 'Write a Review')}
+          </button>
+        ) : (
+          <div className="mode-banner" style={{ background: 'var(--warning-light)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
+            <Star size={14} strokeWidth={1.5} />{lang === 'zh' ? '只有完成租约的租客才能发表评价' : 'Only tenants with completed leases can leave reviews'}
+          </div>
+        ))}
+      </div>
 
       {/* ── Form ── */}
       {showForm && (
