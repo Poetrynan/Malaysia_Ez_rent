@@ -382,7 +382,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 16px;
+  padding: 20px 16px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
