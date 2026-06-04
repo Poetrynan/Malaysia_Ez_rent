@@ -54,7 +54,7 @@ Malaysia_Ez_rent/
 │   ├── app/
 │   │   ├── main.py       # FastAPI 入口，CORS，SSE /api/chat 端点
 │   │   ├── agent.py      # ReAct Agent（真实流式 API + Mock 模拟器）
-│   │   ├── tools.py      # Agent 工具集（Live 4 工具：通勤、Tavily 常识、汇率、假期；**禁止 iProperty 外部搜房**）
+│   │   ├── tools.py      # Agent 工具集（Live 6 工具：通勤、Tavily 常识、汇率、假期、知识库搜索、外部房源搜索）
 │   │   ├── config.py     # 环境变量读取
 │   │   └── mock_data.py  # 离线 Mock 数据
 │   ├── .env              # 后端环境变量（从 frontend/.env.local 同步）
@@ -119,7 +119,7 @@ Malaysia_Ez_rent/
 |------|------|------|
 | `main.py` | ✅ 完成 | FastAPI + CORS，SSE `/api/chat` 端点 |
 | `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；System Prompt 加入规则限制，禁止对用户念出或复述 ID。 |
-| `tools.py` | ✅ 完成 | Live Agent **4 工具**：通勤、Tavily 常识（**排除** iProperty/PropertyGuru 等）、汇率、假期；`search_internal_db` 仅 Mock/遗留，**禁止** `search_iproperty_listings` |
+| `tools.py` | ✅ 完成 | Live Agent **6 工具**：通勤、Tavily 常识、汇率、假期、`search_knowledge_base`（RAG 知识库 130+ 小区）、`search_external_listings`（外部房源搜索）；`search_internal_db` 仅 Mock/遗留 |
 | `config.py` | ✅ 完成 | 环境变量统一管理 |
 | `run.py` | ✅ 完成 | uvicorn 热重载启动，监听 `127.0.0.1:8000` |
 
@@ -189,8 +189,8 @@ Malaysia_Ez_rent/
 | 54 | 保存 Whole Unit 房型报 `units_room_type_check` | 数据库 CHECK 缺 `Whole Unit`；执行 `008_whole_unit_room_type.sql` 扩展约束 |
 | 55 | 房源缩略图无法点开大图 | 详情抽屉仅切换预览；新增 **Lightbox 全屏**（点击大图/缩略图，←/→/Esc） |
 | 56 | 看房视频未压缩且 Live 模式未上云 | 新增 `compressVideo.ts` + `units.video_url`（**009 迁移**）+ Storage 上传 |
-| 57 | AI 找房返回 Mock 演示房源 Sunway Geo | `search_internal_db` 在 Supabase 已连接时不再回退 Mock；**Live Agent 不再搜房**，引导用户用「房源列表」Tab |
-| 61 | 误接入 Tavily→iProperty 外部搜房 | **已禁止**；删除 `search_iproperty_listings`；Tavily 仅用于政策/交通常识，且排除竞品租房站 |
+| 57 | AI 找房返回 Mock 演示房源 Sunway Geo | `search_internal_db` 在 Supabase 已连接时不再回退 Mock；现通过 `search_knowledge_base` + `search_external_listings` 实现真实找房 |
+| 61 | 误接入 Tavily→iProperty 外部搜房 | 已放开外部搜索限制，新增 `search_external_listings` 工具，Agent 可搜但不暴露来源 |
 | 58 | 支付界面自动兜底显示中介二维码 | 移除第二个月后的中介 QR 兜底，增加房东信息缺失的显性警告提示框。 |
 | 59 | 删除凭证/图片只清 DB 不清 Storage | `clearEvidence` / `removeQR` / 编辑房源删图 / `deleteUnit` 现同步 `storage.remove()` |
 | 60 | 缴租文案写死 Maybank/DuitNow | 改为 **银行转账 / 微信 / 支付宝** 均可（`i18n.ts`） |
@@ -213,7 +213,11 @@ Malaysia_Ez_rent/
 | 76 | 学生登录后房源列表空白 | `loadListings`/`loadAdmins` 抽离 + 错误重试；`middleware` anon key 回退；`SIGNED_IN` 时重新拉取 |
 | 77 | 旧房源无 `agent_id` 中介主页不显示 | 管理端 **编辑 → 保存** 同一条记录即可写入当前用户 `agent_id`（UPDATE，非新建） |
 | 78 | 租客/中介注销账号时其在 `admin_users` 记录残留 | 原因是 `deleteAccountAction` 中使用常规 RLS 受限客户端。现已修改为提权 Service Role 的 `adminClient` 强制安全级联清理。 |
-| 79 | 免登录提交中介申请的用户在通过审核后没有收件箱消息 | 原因是免登录状态申请时无 `auth_user_id`。现已通过更新 `handle_new_auth_user` 触发器，在用户随后的首次注册/登录（`on_auth_user_created` 触发）期间，自动从 `admin_users` 匹配其邮箱并补发“中介申请已通过”的欢迎通知。 |
+| 79 | 免登录提交中介申请的用户在通过审核后没有收件箱消息 | 原因是免登录状态申请时无 `auth_user_id`。现已通过更新 `handle_new_auth_user` 触发器，在用户随后的首次注册/登录（`on_auth_user_created` 触发）期间，自动从 `admin_users` 匹配其邮箱并补发”中介申请已通过”的欢迎通知。 |
+| 80 | Embedding 维度不匹配（schema 1536 vs 模型 1024） | 模型升级为 `BAAI/bge-m3`（1024 维），schema/migration/代码统一改为 VECTOR(1024)，创建 039 号 migration |
+| 81 | 无 RAG 知识库，Agent 无法推荐小区 | 创建 `rental_knowledge_base` 表（42 大学 / 132 小区），新增 `search_knowledge_base` 工具，创建 040 号 migration |
+| 82 | Tavily 硬编码排除外部租房平台 | 放开限制，新增 `search_external_listings` 工具搜外部房源，Agent 不暴露来源 |
+| 83 | 知识库结果无前端展示组件 | MapAndCard 组件新增知识库模式（价格范围、评分、描述、地图标注） |
 
 ---
 
@@ -240,7 +244,7 @@ Malaysia_Ez_rent/
 
 - [x] **Supabase 配置**：URL/Key 已填入 `.env.local`，Google OAuth Provider 已开启
 - [x] **运行 schema.sql**：建表 + 触发器 + RLS 策略已执行
-- [ ] **pgvector 向量化**：用 `BAAI/bge-large-zh-v1.5` 对房源描述生成 1024 维向量
+- [x] **pgvector 向量化**：用 `BAAI/bge-m3` 对房源描述生成 1024 维向量（已升级模型，已修复维度不匹配）
 - [ ] **手机号 OTP 登录**：接入 Vonage 或 Twilio
 - [ ] **Google Maps Places API**：替换 AdminPanel 中的 Mock Places 搜索
 
@@ -278,7 +282,7 @@ Malaysia_Ez_rent/
 | `OPENAI_API_KEY` | 已配置（SiliconFlow） | 后台 AI 对话驱动大模型的密钥 |
 | `OPENAI_API_BASE` | `https://api.siliconflow.cn/v1` | 兼容 OpenAI 格式的第三方接口端点 |
 | `NEXT_PUBLIC_AGENT_MODEL` | `deepseek-ai/DeepSeek-V3` | 推理大脑模型名称 |
-| `AI_EMBEDDING_MODEL` | `BAAI/bge-large-zh-v1.5` | 房源描述语义检索使用的向量模型 |
+| `AI_EMBEDDING_MODEL` | `BAAI/bge-m3` | 房源描述语义检索使用的向量模型（多语言，1024 维） |
 | `TAVILY_API_KEY` | 已配置 | Tavily 联网搜索 API Key（Agent 实时检索校车/政策用） |
 
 ---
@@ -516,7 +520,7 @@ NEXT_PUBLIC_AGENT_MODEL=glm-4-plus
 
 ### ⚠️ 注意事项：Tool Calling 兼容性
 
-本项目的 AI Agent 依赖 **Function Calling / Tool Use** 能力。Live 模式当前暴露 **4 个工具**（通勤计算、网页常识、汇率换算、假期查询）。**找房/查账单不在 AI 范围内**，须引导用户使用页面 Tab。切换模型前务必确认新模型支持 `tools` 参数。
+本项目的 AI Agent 依赖 **Function Calling / Tool Use** 能力。Live 模式当前暴露 **6 个工具**（通勤计算、网页常识、汇率换算、假期查询、知识库搜索、外部房源搜索）。**找房通过知识库 + 外部搜索三引擎联动**。查账单仍须引导用户使用页面 Tab。切换模型前务必确认新模型支持 `tools` 参数。
 
 | ✅ 确认支持 Tool Calling 的模型 | ❌ 不支持的模型 |
 |------|------|
@@ -608,18 +612,19 @@ RPC submit_mobile_payment_evidence → status = pending_review
 
 ### 找房用什么？
 
-**AI 不找房。** 用户问「帮我找 Studio / 附近有什么房」时，Live Agent 直接引导去 **「房源列表」** Tab（管理员录入的平台库存）。
+**AI 三引擎找房。** 用户问「帮我找 Studio / 附近有什么房」时，Agent 同时调用知识库 + 外部搜索 + 通用搜索，综合回答。
 
 | 用户问题类型 | Agent 行为 | 数据来源 |
 |-------------|-----------|---------|
-| 「帮我找 Monash 附近的 Studio」 | ❌ **不调用任何搜房工具** → 引导打开「房源列表」 | 仅 `PropertyListings.tsx` 展示 Supabase `units` |
+| 「Sunway 附近有什么小区」「推荐公寓」 | `search_knowledge_base` + `get_web_realtime_info` | RAG 知识库（130+ 小区资料）+ Tavily 实时搜索 |
+| 「帮我找 Nilai 2000 以下的 Studio」 | `search_knowledge_base` + `search_external_listings` | 知识库（小区背景）+ Tavily 外部房源搜索（实时在租） |
 | 「我的租约/账单怎么样了」 | ❌ **不查库** → 引导打开「我的租约」 | `StudentPortal` / `LeaseLedgerCard` |
-| 「马来西亚押金怎么退」「Sunway 有 shuttle 吗」 | `get_web_realtime_info` | Tavily 常识搜索（**排除** iProperty/PropertyGuru 等竞品站） |
+| 「马来西亚押金怎么退」「Sunway 有 shuttle 吗」 | `get_web_realtime_info` | Tavily 常识搜索 |
 | 「RM 1350 等于多少人民币」 | `convert_currency_frankfurter` | Frankfurter API |
 | 「从 XX 到莫纳什要多久」 | `calculate_commute` | Google Maps / 几何估算 |
 | 「2026 年马来西亚公共假期」 | `get_malaysia_holidays` | Nager.Date API |
 
-**硬性禁止：** 不得通过 Tavily 或任何方式搜索/推荐 **iProperty、PropertyGuru、SpeedHome** 等外部租房平台链接。`get_web_realtime_info` 的 query 已带 `-site:iproperty.com.my` 等排除项。
+**外部搜索策略：** Tavily 可搜索任意平台（iProperty、PropertyGuru、Mudah 等）提取房源信息，但 Agent **不得向用户暴露来源链接或平台名称**，所有信息以自身知识形式呈现。
 
 ### Storage 删除生命周期（Live 模式）
 
@@ -819,7 +824,7 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 为了让 AI 助手真正具备智能找房和推荐的能力，打通了 Supabase pgvector 向量检索与 AI Agent 系统的实战功能：
 1. **自动同步与重置 Embedding（On-Demand Sync）**：
    * **保存时重置**：当管理员在后台 `AdminPanel.tsx` 中创建房源（`insert`）或更新房源信息（`update`）时，前端会自动将 `embedding` 列显式置为 `null`。这确保了只要房源描述、房型、租金等信息发生变化，旧有的失效向量就会被自动清空。
-   * **查询时生成**：当用户在 AI Chat 中提出找房或推荐偏好时，后端 `search_internal_db` 会自动扫描数据库中所有 `embedding` 为 `null` 的可用房源，提取其 `小区名 + 房型 + 描述文本` 调用 `AI_EMBEDDING_MODEL`（如 `BAAI/bge-large-zh-v1.5`）生成全新向量，并由免 RLS 校验的 `supabase_service_client` 自动更新写回。
+   * **查询时生成**：当用户在 AI Chat 中提出找房或推荐偏好时，后端 `search_internal_db` 会自动扫描数据库中所有 `embedding` 为 `null` 的可用房源，提取其 `小区名 + 房型 + 描述文本` 调用 `AI_EMBEDDING_MODEL`（`BAAI/bge-m3`）生成全新向量，并由免 RLS 校验的 `supabase_service_client` 自动更新写回。
 2. **位置坐标与媒体图片补全 (Data Enrichment)**：
    * Supabase 的 RPC 函数 `match_units` 检索相似房源后，后端会自动联查该房源的真实**小区 GPS 经纬度 (`lat`/`lng`)** 以及关联的**媒体图片列表 (`media_urls`)**。
 3. **工具激活与系统提示更新**：
