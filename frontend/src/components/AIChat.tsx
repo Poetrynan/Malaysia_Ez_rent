@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, Sparkles, Terminal, ChevronDown, ChevronUp, Loader, Menu, X } from 'lucide-react';
+import { Send, Bot, Sparkles, Terminal, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -28,7 +28,6 @@ export default function AIChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [collapsedThoughts, setCollapsedThoughts] = useState<{ [key: string]: boolean }>({});
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [userId, setUserId] = useState<string>(() => {
@@ -256,15 +255,6 @@ export default function AIChat() {
     <div className="chat-layout">
       {/* Chat pane */}
       <div className="chat-panel">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Bot size={18} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-h)' }}>{t('chatAgentName')}</span>
-          </div>
-          <button className="mobile-sidebar-toggle" onClick={() => setSidePanelOpen(true)} aria-label="Open panel">
-            <Menu size={18} />
-          </button>
-        </div>
         <div className="chat-messages">
           {messages.map(m => {
             const hasThoughts = m.thoughts && m.thoughts.length > 0;
@@ -400,7 +390,7 @@ export default function AIChat() {
         </form>
       </div>
 
-      {/* Side panel — desktop */}
+      {/* Side panel */}
       <div className="side-context-panel">
         <div className="glass-card">
           <h3 style={{ fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -422,32 +412,6 @@ export default function AIChat() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Mobile sidebar drawer */}
-      <div className={`mobile-sidebar-overlay ${sidePanelOpen ? 'open' : ''}`} onClick={() => setSidePanelOpen(false)} />
-      <div className={`mobile-sidebar-drawer ${sidePanelOpen ? 'open' : ''}`}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={15} style={{ color: 'var(--primary)' }} /> {t('agentStatus')}
-          </h3>
-          <button onClick={() => setSidePanelOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
-            <X size={20} />
-          </button>
-        </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: 14 }}>{t('agentDesc')}</p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', marginBottom: 20 }}>
-          <span style={{ color: 'var(--text-muted)' }}>Status</span>
-          <span className={`led-dot ${backendStatus}`} />
-        </div>
-        <h4 style={{ fontSize: '0.88rem', marginBottom: 12 }}>{t('quickPromptsTitle')}</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {prompts.map((p, i) => (
-            <div key={i} className="prompt-pill" onClick={() => { setQuery(p); setSidePanelOpen(false); }}>
-              {p}
-            </div>
-          ))}
         </div>
       </div>
 
