@@ -4361,22 +4361,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         </div>
       )}
 
-      {/* ── REVIEWS MANAGEMENT TAB (super_admin only, UI/UX Pro Max styled) ── */}
+      {/* ── REVIEWS MANAGEMENT TAB (super_admin only) ── */}
       {tab === 'reviews' && adminRole === 'super_admin' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Sub-tabs — pill toggle with glow accent */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Sub-tabs */}
           <div style={{
             display: 'inline-flex',
-            gap: 2,
-            padding: 3,
+            gap: 4,
+            padding: 4,
             borderRadius: 12,
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid #334155',
+            background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)',
             alignSelf: 'flex-start',
           }}>
             {([
-              { key: 'property' as const, icon: <Home size={14} />, label: lang === 'zh' ? '房源评价' : 'Property Reviews', count: allPropertyReviews.length },
-              { key: 'agent' as const, icon: <Star size={14} />, label: lang === 'zh' ? '中介评分' : 'Agent Ratings', count: allAgentRatings.length },
+              { key: 'property' as const, icon: <Home size={15} />, label: lang === 'zh' ? '房源评价' : 'Property Reviews', count: allPropertyReviews.length },
+              { key: 'agent' as const, icon: <Star size={15} />, label: lang === 'zh' ? '中介评分' : 'Agent Ratings', count: allAgentRatings.length },
             ]).map(st => {
               const active = reviewsSubTab === st.key;
               return (
@@ -4386,21 +4386,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 7,
+                    gap: 8,
                     padding: '8px 18px',
                     borderRadius: 10,
                     border: 'none',
-                    background: active ? '#1E293B' : 'transparent',
-                    color: active ? '#F8FAFC' : '#64748B',
+                    background: active ? 'var(--primary)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-muted)',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.82rem',
-                    transition: 'all 0.2s ease-out',
-                    boxShadow: active ? '0 0 12px rgba(34, 197, 94, 0.12), inset 0 1px 0 rgba(255,255,255,0.05)' : 'none',
-                    position: 'relative',
+                    transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = '#94A3B8'; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = '#64748B'; }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'var(--text-h)'; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--text-muted)'; }}
                 >
                   {st.icon}
                   {st.label}
@@ -4409,69 +4407,32 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                     fontWeight: 700,
                     padding: '1px 7px',
                     borderRadius: 8,
-                    background: active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                    color: active ? '#22C55E' : '#64748B',
+                    background: active ? 'rgba(255,255,255,0.2)' : 'var(--glass-border)',
+                    color: active ? '#fff' : 'var(--text-muted)',
                     fontVariantNumeric: 'tabular-nums',
                     minWidth: 18,
                     textAlign: 'center',
                   }}>
                     {st.count}
                   </span>
-                  {active && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: -1,
-                      left: '20%',
-                      right: '20%',
-                      height: 2,
-                      borderRadius: 1,
-                      background: '#22C55E',
-                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.4)',
-                    }} />
-                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Content area */}
+          {/* Content */}
           {reviewsLoading ? (
-            /* Skeleton shimmer loading */
-            <div style={{
-              borderRadius: 14,
-              border: '1px solid #334155',
-              background: 'rgba(15, 23, 42, 0.4)',
-              overflow: 'hidden',
-            }}>
-              {/* Table header skeleton */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '60px 1fr 1fr 2fr 100px 60px',
-                gap: 16, padding: '14px 20px',
-                borderBottom: '1px solid #334155',
-              }}>
-                {[60, 80, 80, 120, 80, 40].map((w, i) => (
-                  <div key={i} style={{
-                    width: w, height: 12, borderRadius: 6,
-                    background: 'linear-gradient(90deg, #1E293B 25%, #334155 50%, #1E293B 75%)',
-                    backgroundSize: '200% 100%',
-                    animation: `shimmer 1.5s ease-in-out infinite ${i * 0.08}s`,
-                  }} />
-                ))}
-              </div>
-              {/* Row skeletons */}
+            <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
               {[1, 2, 3, 4, 5].map(row => (
                 <div key={row} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '60px 1fr 1fr 2fr 100px 60px',
-                  gap: 16, padding: '16px 20px',
-                  borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
+                  display: 'grid', gridTemplateColumns: '70px 1fr 1fr 2fr 100px 60px',
+                  gap: 16, padding: '14px 20px',
+                  borderBottom: '1px solid var(--glass-border)',
                 }}>
-                  {[40, 90, 110, 180, 70, 28].map((w, i) => (
+                  {[40, 80, 100, 160, 70, 28].map((w, i) => (
                     <div key={i} style={{
                       width: w, height: 10, borderRadius: 5,
-                      background: 'linear-gradient(90deg, #1E293B 25%, #334155 50%, #1E293B 75%)',
-                      backgroundSize: '200% 100%',
+                      background: 'var(--glass-border)',
                       animation: `shimmer 1.5s ease-in-out infinite ${row * 0.06 + i * 0.08}s`,
                     }} />
                   ))}
@@ -4480,163 +4441,75 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </div>
           ) : (
             <>
-              {/* ── Property Reviews Sub-tab ── */}
+              {/* ── Property Reviews ── */}
               {reviewsSubTab === 'property' && (
-                <div style={{
-                  borderRadius: 14,
-                  border: '1px solid #334155',
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  overflow: 'hidden',
-                }}>
-                  {/* Header */}
+                <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div style={{
                     padding: '14px 20px',
-                    borderBottom: '1px solid #334155',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(30, 41, 59, 0.3)',
                   }}>
-                    <h3 style={{
-                      fontSize: '0.92rem', fontWeight: 700, color: '#F8FAFC', margin: 0,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 8,
-                        background: 'rgba(34, 197, 94, 0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Home size={14} style={{ color: '#22C55E' }} />
-                      </div>
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Home size={16} style={{ color: 'var(--primary)' }} />
                       {lang === 'zh' ? '房源评价' : 'Property Reviews'}
                     </h3>
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 600, color: '#64748B',
-                      padding: '3px 10px', borderRadius: 8,
-                      background: 'rgba(100, 116, 139, 0.1)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>
-                      {allPropertyReviews.length} {lang === 'zh' ? '条记录' : 'records'}
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      {allPropertyReviews.length} {lang === 'zh' ? '条' : 'items'}
                     </span>
                   </div>
-
                   {allPropertyReviews.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center', padding: '56px 24px', color: '#64748B',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                    }}>
-                      <div style={{
-                        width: 56, height: 56, borderRadius: 16,
-                        background: 'rgba(100, 116, 139, 0.08)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <MessageSquare size={24} style={{ opacity: 0.3 }} />
-                      </div>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 500 }}>
-                        {lang === 'zh' ? '暂无房源评价' : 'No property reviews yet'}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#475569' }}>
-                        {lang === 'zh' ? '租客完成租约后可对房源进行评价' : 'Tenants can review properties after completing leases'}
-                      </div>
+                    <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                      <MessageSquare size={28} style={{ marginBottom: 8, opacity: 0.3 }} />
+                      <div style={{ fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无房源评价' : 'No property reviews yet'}</div>
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{
-                        width: '100%', borderCollapse: 'collapse',
-                        fontSize: '0.82rem', color: '#CBD5E1',
-                      }}>
+                      <table className="data-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid #334155' }}>
-                            {[
-                              { label: lang === 'zh' ? '评分' : 'Rating', w: 70 },
-                              { label: lang === 'zh' ? '租客' : 'Tenant', w: 110 },
-                              { label: lang === 'zh' ? '房源' : 'Property', w: 180 },
-                              { label: lang === 'zh' ? '评价内容' : 'Comment', w: 'auto' },
-                              { label: lang === 'zh' ? '日期' : 'Date', w: 100 },
-                              { label: '', w: 60 },
-                            ].map((col, i) => (
-                              <th key={i} style={{
-                                padding: '12px 16px', textAlign: 'left',
-                                fontWeight: 600, fontSize: '0.75rem', color: '#64748B',
-                                textTransform: 'uppercase', letterSpacing: '0.05em',
-                                whiteSpace: 'nowrap', width: col.w === 'auto' ? undefined : col.w,
-                              }}>
-                                {col.label}
-                              </th>
-                            ))}
+                          <tr>
+                            <th style={{ width: 70 }}>{lang === 'zh' ? '评分' : 'Rating'}</th>
+                            <th>{lang === 'zh' ? '租客' : 'Tenant'}</th>
+                            <th>{lang === 'zh' ? '房源' : 'Property'}</th>
+                            <th>{lang === 'zh' ? '评价内容' : 'Comment'}</th>
+                            <th>{lang === 'zh' ? '日期' : 'Date'}</th>
+                            <th style={{ width: 60, textAlign: 'center' }}>{lang === 'zh' ? '操作' : 'Action'}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {allPropertyReviews.map((r, idx) => (
-                            <tr key={r.id} style={{
-                              borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
-                              background: idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.2)',
-                              transition: 'background 0.15s ease-out',
-                            }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(30, 41, 59, 0.5)'}
-                              onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.2)'}
-                            >
-                              {/* Rating pill */}
-                              <td style={{ padding: '14px 16px' }}>
+                          {allPropertyReviews.map(r => (
+                            <tr key={r.id}>
+                              <td>
                                 <span style={{
                                   display: 'inline-flex', alignItems: 'center', gap: 4,
                                   padding: '3px 10px', borderRadius: 8,
                                   background: r.rating >= 4 ? 'rgba(34, 197, 94, 0.12)' : r.rating >= 3 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                  color: r.rating >= 4 ? '#22C55E' : r.rating >= 3 ? '#f59e0b' : '#ef4444',
-                                  fontWeight: 700, fontSize: '0.78rem',
-                                  fontVariantNumeric: 'tabular-nums',
+                                  color: r.rating >= 4 ? '#22c55e' : r.rating >= 3 ? '#f59e0b' : '#ef4444',
+                                  fontWeight: 700, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums',
                                 }}>
                                   <Star size={11} fill="currentColor" strokeWidth={0} />
                                   {r.rating}
                                 </span>
                               </td>
-                              <td style={{ padding: '14px 16px', fontWeight: 600, color: '#F8FAFC', whiteSpace: 'nowrap' }}>{r.user_name}</td>
-                              <td style={{ padding: '14px 16px', color: '#94A3B8', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.unit_info}</td>
-                              <td style={{ padding: '14px 16px', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#CBD5E1' }}>
-                                {r.comment || <span style={{ color: '#475569', fontStyle: 'italic' }}>—</span>}
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap' }}>{r.user_name}</td>
+                              <td style={{ color: 'var(--text-body)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{r.unit_info}</td>
+                              <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-body)' }}>
+                                {r.comment || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
                               </td>
-                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#64748B', fontVariantNumeric: 'tabular-nums' }}>
+                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                                 {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </td>
-                              <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                              <td style={{ textAlign: 'center' }}>
                                 {reviewDeleteConfirm === r.id ? (
                                   <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                    <button
-                                      onClick={() => { deletePropertyReview(r.id); setReviewDeleteConfirm(null); }}
-                                      style={{
-                                        padding: '4px 10px', borderRadius: 6,
-                                        border: 'none', background: '#EF4444', color: '#fff',
-                                        fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
-                                        boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
-                                        transition: 'all 0.15s ease-out',
-                                      }}
-                                    >
-                                      {lang === 'zh' ? '确认删除' : 'Delete'}
+                                    <button onClick={() => { deletePropertyReview(r.id); setReviewDeleteConfirm(null); }} style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
+                                      {lang === 'zh' ? '确认' : 'OK'}
                                     </button>
-                                    <button
-                                      onClick={() => setReviewDeleteConfirm(null)}
-                                      style={{
-                                        padding: '4px 8px', borderRadius: 6,
-                                        border: '1px solid #334155', background: 'transparent',
-                                        color: '#64748B', fontSize: '0.7rem', cursor: 'pointer',
-                                        transition: 'all 0.15s ease-out',
-                                      }}
-                                    >
+                                    <button onClick={() => setReviewDeleteConfirm(null)} style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}>
                                       {lang === 'zh' ? '取消' : 'Cancel'}
                                     </button>
                                   </div>
                                 ) : (
-                                  <button
-                                    onClick={() => setReviewDeleteConfirm(r.id)}
-                                    aria-label={lang === 'zh' ? '删除评价' : 'Delete review'}
-                                    style={{
-                                      background: 'none', border: 'none',
-                                      cursor: 'pointer', color: '#475569',
-                                      padding: 6, borderRadius: 6,
-                                      display: 'inline-flex',
-                                      transition: 'all 0.15s ease-out',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'none'; }}
-                                  >
+                                  <button onClick={() => setReviewDeleteConfirm(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 4, display: 'inline-flex', transition: 'color 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}>
                                     <Trash2 size={14} />
                                   </button>
                                 )}
@@ -4650,163 +4523,75 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 </div>
               )}
 
-              {/* ── Agent Ratings Sub-tab ── */}
+              {/* ── Agent Ratings ── */}
               {reviewsSubTab === 'agent' && (
-                <div style={{
-                  borderRadius: 14,
-                  border: '1px solid #334155',
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  overflow: 'hidden',
-                }}>
-                  {/* Header */}
+                <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div style={{
                     padding: '14px 20px',
-                    borderBottom: '1px solid #334155',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(30, 41, 59, 0.3)',
                   }}>
-                    <h3 style={{
-                      fontSize: '0.92rem', fontWeight: 700, color: '#F8FAFC', margin: 0,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 8,
-                        background: 'rgba(245, 158, 11, 0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Star size={14} style={{ color: '#f59e0b' }} fill="#f59e0b" />
-                      </div>
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Star size={16} style={{ color: '#f59e0b' }} fill="#f59e0b" />
                       {lang === 'zh' ? '中介评分' : 'Agent Ratings'}
                     </h3>
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 600, color: '#64748B',
-                      padding: '3px 10px', borderRadius: 8,
-                      background: 'rgba(100, 116, 139, 0.1)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>
-                      {allAgentRatings.length} {lang === 'zh' ? '条记录' : 'records'}
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      {allAgentRatings.length} {lang === 'zh' ? '条' : 'items'}
                     </span>
                   </div>
-
                   {allAgentRatings.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center', padding: '56px 24px', color: '#64748B',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                    }}>
-                      <div style={{
-                        width: 56, height: 56, borderRadius: 16,
-                        background: 'rgba(100, 116, 139, 0.08)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Star size={24} style={{ opacity: 0.3 }} />
-                      </div>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 500 }}>
-                        {lang === 'zh' ? '暂无中介评分' : 'No agent ratings yet'}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#475569' }}>
-                        {lang === 'zh' ? '租客完成租约后可对中介进行评分' : 'Tenants can rate agents after completing leases'}
-                      </div>
+                    <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                      <Star size={28} style={{ marginBottom: 8, opacity: 0.3 }} />
+                      <div style={{ fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无中介评分' : 'No agent ratings yet'}</div>
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{
-                        width: '100%', borderCollapse: 'collapse',
-                        fontSize: '0.82rem', color: '#CBD5E1',
-                      }}>
+                      <table className="data-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid #334155' }}>
-                            {[
-                              { label: lang === 'zh' ? '评分' : 'Rating', w: 70 },
-                              { label: lang === 'zh' ? '租客' : 'Tenant', w: 110 },
-                              { label: lang === 'zh' ? '中介' : 'Agent', w: 120 },
-                              { label: lang === 'zh' ? '评价内容' : 'Comment', w: 'auto' },
-                              { label: lang === 'zh' ? '日期' : 'Date', w: 100 },
-                              { label: '', w: 60 },
-                            ].map((col, i) => (
-                              <th key={i} style={{
-                                padding: '12px 16px', textAlign: 'left',
-                                fontWeight: 600, fontSize: '0.75rem', color: '#64748B',
-                                textTransform: 'uppercase', letterSpacing: '0.05em',
-                                whiteSpace: 'nowrap', width: col.w === 'auto' ? undefined : col.w,
-                              }}>
-                                {col.label}
-                              </th>
-                            ))}
+                          <tr>
+                            <th style={{ width: 70 }}>{lang === 'zh' ? '评分' : 'Rating'}</th>
+                            <th>{lang === 'zh' ? '租客' : 'Tenant'}</th>
+                            <th>{lang === 'zh' ? '中介' : 'Agent'}</th>
+                            <th>{lang === 'zh' ? '评价内容' : 'Comment'}</th>
+                            <th>{lang === 'zh' ? '日期' : 'Date'}</th>
+                            <th style={{ width: 60, textAlign: 'center' }}>{lang === 'zh' ? '操作' : 'Action'}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {allAgentRatings.map((r, idx) => (
-                            <tr key={r.id} style={{
-                              borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
-                              background: idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.2)',
-                              transition: 'background 0.15s ease-out',
-                            }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(30, 41, 59, 0.5)'}
-                              onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.2)'}
-                            >
-                              {/* Rating pill */}
-                              <td style={{ padding: '14px 16px' }}>
+                          {allAgentRatings.map(r => (
+                            <tr key={r.id}>
+                              <td>
                                 <span style={{
                                   display: 'inline-flex', alignItems: 'center', gap: 4,
                                   padding: '3px 10px', borderRadius: 8,
                                   background: r.rating >= 4 ? 'rgba(34, 197, 94, 0.12)' : r.rating >= 3 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                  color: r.rating >= 4 ? '#22C55E' : r.rating >= 3 ? '#f59e0b' : '#ef4444',
-                                  fontWeight: 700, fontSize: '0.78rem',
-                                  fontVariantNumeric: 'tabular-nums',
+                                  color: r.rating >= 4 ? '#22c55e' : r.rating >= 3 ? '#f59e0b' : '#ef4444',
+                                  fontWeight: 700, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums',
                                 }}>
                                   <Star size={11} fill="currentColor" strokeWidth={0} />
                                   {r.rating}
                                 </span>
                               </td>
-                              <td style={{ padding: '14px 16px', fontWeight: 600, color: '#F8FAFC', whiteSpace: 'nowrap' }}>{r.tenant_name}</td>
-                              <td style={{ padding: '14px 16px', fontWeight: 600, color: '#F8FAFC', whiteSpace: 'nowrap' }}>{r.agent_name}</td>
-                              <td style={{ padding: '14px 16px', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#CBD5E1' }}>
-                                {r.comment || <span style={{ color: '#475569', fontStyle: 'italic' }}>—</span>}
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap' }}>{r.tenant_name}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-h)', whiteSpace: 'nowrap' }}>{r.agent_name}</td>
+                              <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-body)' }}>
+                                {r.comment || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
                               </td>
-                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#64748B', fontVariantNumeric: 'tabular-nums' }}>
+                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                                 {new Date(r.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </td>
-                              <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                              <td style={{ textAlign: 'center' }}>
                                 {reviewDeleteConfirm === r.id ? (
                                   <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                    <button
-                                      onClick={() => { deleteAgentRating(r.id); setReviewDeleteConfirm(null); }}
-                                      style={{
-                                        padding: '4px 10px', borderRadius: 6,
-                                        border: 'none', background: '#EF4444', color: '#fff',
-                                        fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
-                                        boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
-                                        transition: 'all 0.15s ease-out',
-                                      }}
-                                    >
-                                      {lang === 'zh' ? '确认删除' : 'Delete'}
+                                    <button onClick={() => { deleteAgentRating(r.id); setReviewDeleteConfirm(null); }} style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
+                                      {lang === 'zh' ? '确认' : 'OK'}
                                     </button>
-                                    <button
-                                      onClick={() => setReviewDeleteConfirm(null)}
-                                      style={{
-                                        padding: '4px 8px', borderRadius: 6,
-                                        border: '1px solid #334155', background: 'transparent',
-                                        color: '#64748B', fontSize: '0.7rem', cursor: 'pointer',
-                                        transition: 'all 0.15s ease-out',
-                                      }}
-                                    >
+                                    <button onClick={() => setReviewDeleteConfirm(null)} style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}>
                                       {lang === 'zh' ? '取消' : 'Cancel'}
                                     </button>
                                   </div>
                                 ) : (
-                                  <button
-                                    onClick={() => setReviewDeleteConfirm(r.id)}
-                                    aria-label={lang === 'zh' ? '删除评分' : 'Delete rating'}
-                                    style={{
-                                      background: 'none', border: 'none',
-                                      cursor: 'pointer', color: '#475569',
-                                      padding: 6, borderRadius: 6,
-                                      display: 'inline-flex',
-                                      transition: 'all 0.15s ease-out',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'none'; }}
-                                  >
+                                  <button onClick={() => setReviewDeleteConfirm(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 4, display: 'inline-flex', transition: 'color 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}>
                                     <Trash2 size={14} />
                                   </button>
                                 )}
