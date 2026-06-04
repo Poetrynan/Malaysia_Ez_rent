@@ -22,6 +22,8 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
   const [showAll, setShowAll] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; key: number } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const starsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
@@ -50,8 +52,15 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
     setLoading(false);
   };
 
+  const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, key: Date.now() });
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  };
+
   const submitReview = async () => {
-    if (!userId || rating === 0) return;
+    if (!userId) return;
+    if (rating === 0) { showToast(lang === 'zh' ? '请先选择评分星星' : 'Please select a star rating'); return; }
     setSubmitting(true);
     const r: any = { user_id: userId, unit_id: unitId, rating, comment: comment.trim(), created_at: new Date().toISOString() };
     if (isMockDatabase) { const all = JSON.parse(localStorage.getItem('ez_reviews') || '[]'); r.id = `review-${Date.now()}`; all.push(r); localStorage.setItem('ez_reviews', JSON.stringify(all)); }
@@ -112,7 +121,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
 
       {/* ── Form ── */}
       {showForm && (
-        <div className="glass-card" style={{ padding: 20, animation: 'fadeInUp 0.25s ease-out' }}>
+        <div className="glass-card" style={{ padding: 20, animation: 'fadeInUp 0.25s ease-out', position: 'relative' }}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 10, fontWeight: 500, letterSpacing: '0.04em' }}>
               {lang === 'zh' ? '请选择评分' : 'Select your rating'}
@@ -155,11 +164,26 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
             <button onClick={() => { setShowForm(false); setRating(0); setComment(''); }} className="btn btn-secondary">
               {lang === 'zh' ? '取消' : 'Cancel'}
             </button>
-            <button onClick={submitReview} disabled={rating === 0 || submitting} className="btn btn-primary"
-              style={{ opacity: rating > 0 ? 1 : 0.5, cursor: rating > 0 && !submitting ? 'pointer' : 'not-allowed' }}>
+            <button onClick={submitReview} disabled={submitting} className="btn btn-primary"
+              style={{ cursor: submitting ? 'not-allowed' : 'pointer' }}>
               {submitting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />{lang === 'zh' ? '提交中...' : 'Submitting...'}</> : <><Send size={14} />{lang === 'zh' ? '提交' : 'Submit'}</>}
             </button>
           </div>
+
+          {/* Toast */}
+          {toast && (
+            <div key={toast.key} style={{
+              position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%) translateY(100%)',
+              background: 'var(--danger)', color: '#fff',
+              padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+              fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              animation: 'toastIn 0.25s ease-out',
+              zIndex: 10,
+            }}>
+              {toast.msg}
+            </div>
+          )}
         </div>
       )}
 
@@ -218,6 +242,7 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(100%) scale(0.9); } to { opacity: 1; transform: translateX(-50%) translateY(100%) scale(1); } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
       `}</style>
     </div>

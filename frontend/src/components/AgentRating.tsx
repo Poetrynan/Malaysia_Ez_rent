@@ -21,6 +21,8 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
   const [submitted, setSubmitted] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; key: number } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const starsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
@@ -41,8 +43,15 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
     checkRating();
   }, [tenantId, leaseId]);
 
+  const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, key: Date.now() });
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  };
+
   const submitRating = async () => {
-    if (rating === 0 || submitting) return;
+    if (rating === 0) { showToast(lang === 'zh' ? '请先选择评分星星' : 'Please select a star rating'); return; }
+    if (submitting) return;
     setSubmitting(true);
     const newRating: any = { tenant_id: tenantId, agent_id: agentId, lease_id: leaseId, rating, comment: comment.trim(), created_at: new Date().toISOString() };
     if (isMockDatabase) {
@@ -103,7 +112,7 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
 
   // ── Main form ──
   return (
-    <div className="glass-card" style={{ padding: 20, animation: 'fadeInUp 0.25s ease-out' }}>
+    <div className="glass-card" style={{ padding: 20, animation: 'fadeInUp 0.25s ease-out', position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -160,18 +169,34 @@ export default function AgentRating({ agentId, leaseId, tenantId, onClose }: Age
       </div>
 
       {/* Submit */}
-      <button onClick={submitRating} disabled={rating === 0 || submitting}
-        className={rating > 0 ? 'btn btn-primary' : 'btn btn-secondary'}
-        style={{ width: '100%', opacity: rating > 0 ? 1 : 0.5, cursor: rating > 0 && !submitting ? 'pointer' : 'not-allowed', transform: submitting ? 'scale(0.98)' : 'none' }}>
+      <button onClick={submitRating} disabled={submitting}
+        className="btn btn-primary"
+        style={{ width: '100%', cursor: submitting ? 'not-allowed' : 'pointer', transform: submitting ? 'scale(0.98)' : 'none' }}>
         {submitting ? (<><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />{lang === 'zh' ? '提交中...' : 'Submitting...'}</>)
           : (<><Send size={15} />{lang === 'zh' ? '提交评价' : 'Submit Rating'}</>)}
       </button>
+
+      {/* Toast */}
+      {toast && (
+        <div key={toast.key} style={{
+          position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%) translateY(100%)',
+          background: 'var(--danger)', color: '#fff',
+          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+          fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'toastIn 0.25s ease-out',
+          zIndex: 10,
+        }}>
+          {toast.msg}
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(100%) scale(0.9); } to { opacity: 1; transform: translateX(-50%) translateY(100%) scale(1); } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
       `}</style>
     </div>
