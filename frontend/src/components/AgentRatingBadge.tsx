@@ -53,16 +53,38 @@ export default function AgentRatingBadge({ agentId, size = 'small' }: AgentRatin
 
   if (loading || totalRatings === 0) return null;
 
-  const iconSize = size === 'small' ? 10 : 14;
-  const fontSize = size === 'small' ? '0.65rem' : '0.78rem';
+  const isSmall = size === 'small';
+  const iconSize = isSmall ? 11 : 14;
+  const fontSize = isSmall ? '0.68rem' : '0.78rem';
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-      <Star size={iconSize} fill="#f59e0b" color="#f59e0b" />
-      <span style={{ fontSize, fontWeight: 600, color: '#f59e0b' }}>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: isSmall ? 3 : 5,
+        padding: isSmall ? '2px 6px' : '3px 8px',
+        borderRadius: isSmall ? 6 : 8,
+        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04))',
+        border: '1px solid rgba(245, 158, 11, 0.15)',
+      }}
+      title={`${averageRating.toFixed(1)}/5 · ${totalRatings} ${totalRatings === 1 ? 'rating' : 'ratings'}`}
+    >
+      <Star size={iconSize} fill="#f59e0b" color="#f59e0b" strokeWidth={0} />
+      <span style={{
+        fontSize,
+        fontWeight: 700,
+        color: '#f59e0b',
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1,
+      }}>
         {averageRating.toFixed(1)}
       </span>
-      <span style={{ fontSize, color: 'var(--text-muted)' }}>
+      <span style={{
+        fontSize: isSmall ? '0.6rem' : '0.7rem',
+        color: 'var(--text-muted)',
+        lineHeight: 1,
+      }}>
         ({totalRatings})
       </span>
     </span>

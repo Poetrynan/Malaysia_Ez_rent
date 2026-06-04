@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
+import { Star, Users } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
 interface AgentRatingSummaryProps {
@@ -18,9 +18,7 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
     const loadRatings = async () => {
       if (isMockDatabase) {
         const ratings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
-        // 获取该中介的所有评价
         const agentRatings = ratings.filter((r: any) => {
-          // 需要通过 lease 找到 agent_id
           const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
           const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
           const lease = leases.find((l: any) => l.id === r.lease_id);
@@ -54,8 +52,40 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
 
   if (loading) {
     return (
-      <div style={{ padding: '12px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-        {lang === 'zh' ? '加载评分...' : 'Loading ratings...'}
+      <div style={{
+        padding: 16,
+        borderRadius: 14,
+        background: 'var(--glass-bg)',
+        border: '1px solid var(--glass-border)',
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: 'var(--glass-border)',
+          animation: 'shimmer 1.5s ease-in-out infinite',
+        }} />
+        <div style={{ flex: 1 }}>
+          <div style={{
+            width: 80, height: 12, borderRadius: 6,
+            background: 'var(--glass-border)',
+            marginBottom: 6,
+            animation: 'shimmer 1.5s ease-in-out infinite 0.1s',
+          }} />
+          <div style={{
+            width: 120, height: 10, borderRadius: 5,
+            background: 'var(--glass-border)',
+            animation: 'shimmer 1.5s ease-in-out infinite 0.2s',
+          }} />
+        </div>
+        <style jsx>{`
+          @keyframes shimmer {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -63,56 +93,102 @@ export default function AgentRatingSummary({ agentId, lang }: AgentRatingSummary
   if (totalRatings === 0) {
     return (
       <div style={{
-        padding: '16px',
-        borderRadius: 12,
+        padding: '16px 20px',
+        borderRadius: 14,
         background: 'var(--glass-bg)',
         border: '1px solid var(--glass-border)',
         marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <Star size={20} style={{ color: 'var(--text-muted)' }} />
-          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-h)' }}>
-            {lang === 'zh' ? '租客评分' : 'Tenant Ratings'}
-          </span>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Star size={20} style={{ color: 'var(--text-muted)' }} strokeWidth={1.5} />
         </div>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-          {lang === 'zh' ? '暂无租客评价' : 'No tenant ratings yet'}
-        </p>
+        <div>
+          <div style={{
+            fontSize: '0.88rem',
+            fontWeight: 600,
+            color: 'var(--text-h)',
+            marginBottom: 2,
+          }}>
+            {lang === 'zh' ? '租客评分' : 'Tenant Ratings'}
+          </div>
+          <p style={{
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+            margin: 0,
+          }}>
+            {lang === 'zh' ? '暂无租客评价' : 'No tenant ratings yet'}
+          </p>
+        </div>
       </div>
     );
   }
 
+  const fullStars = Math.floor(averageRating);
+  const hasHalf = averageRating - fullStars >= 0.3;
+
   return (
     <div style={{
-      padding: '16px',
-      borderRadius: 12,
+      padding: '18px 20px',
+      borderRadius: 14,
       background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02))',
-      border: '1px solid rgba(245, 158, 11, 0.2)',
+      border: '1px solid rgba(245, 158, 11, 0.18)',
       marginBottom: 20,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Star size={20} style={{ color: '#f59e0b' }} fill="#f59e0b" />
-        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-h)' }}>
-          {lang === 'zh' ? '租客评分' : 'Tenant Ratings'}
-        </span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span style={{ fontSize: '2rem', fontWeight: 800, color: '#f59e0b' }}>
+      {/* Score circle */}
+      <div style={{
+        width: 52, height: 52, borderRadius: 14,
+        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.06))',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <span style={{
+          fontSize: '1.3rem',
+          fontWeight: 800,
+          color: '#f59e0b',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
           {averageRating.toFixed(1)}
         </span>
-        <div style={{ display: 'flex', gap: 2 }}>
+      </div>
+
+      {/* Stars + count */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
           {[1, 2, 3, 4, 5].map(star => (
             <Star
               key={star}
               size={16}
-              fill={star <= averageRating ? '#f59e0b' : 'none'}
-              color={star <= averageRating ? '#f59e0b' : 'var(--text-muted)'}
+              fill={star <= fullStars ? '#f59e0b' : (star === fullStars + 1 && hasHalf ? '#f59e0b' : 'none')}
+              color={star <= fullStars || (star === fullStars + 1 && hasHalf) ? '#f59e0b' : 'var(--text-muted)'}
+              strokeWidth={star <= fullStars ? 0 : 1.5}
+              style={{
+                opacity: star <= fullStars || (star === fullStars + 1 && hasHalf) ? 1 : 0.3,
+              }}
             />
           ))}
         </div>
-        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          ({totalRatings} {lang === 'zh' ? '条评价' : 'ratings'})
-        </span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: '0.78rem',
+          color: 'var(--text-muted)',
+        }}>
+          <Users size={12} strokeWidth={2} />
+          <span>
+            {totalRatings} {lang === 'zh' ? '条评价' : 'ratings'}
+          </span>
+        </div>
       </div>
     </div>
   );
