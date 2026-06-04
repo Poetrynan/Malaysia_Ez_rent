@@ -48,7 +48,19 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
     if (isMockDatabase) {
       setReviews(JSON.parse(localStorage.getItem('ez_reviews') || '[]').filter((r: any) => r.unit_id === unitId));
     } else {
-      try { const { createClient } = await import('@/utils/supabase/client'); const { data } = await (await createClient()).from('reviews').select('*').eq('unit_id', unitId).order('created_at', { ascending: false }); setReviews(data || []); } catch (e) { console.error('Load reviews error:', e); }
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const sb = await createClient();
+        const { data } = await sb.from('reviews').select('*').eq('unit_id', unitId).order('created_at', { ascending: false });
+        // Fetch user names for each review
+        const reviewsWithNames = await Promise.all((data || []).map(async (r: any) => {
+          try {
+            const { data: userData } = await sb.from('users').select('full_name').eq('id', r.user_id).single();
+            return { ...r, user_name: userData?.full_name || null };
+          } catch { return { ...r, user_name: null }; }
+        }));
+        setReviews(reviewsWithNames);
+      } catch (e) { console.error('Load reviews error:', e); }
     }
     setLoading(false);
   };
@@ -288,7 +300,7 @@ function ReviewCard({ review, userId, onDelete, lang, index = 0, canDeleteAll = 
         <div>
           <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 4 }}>
             {[1, 2, 3, 4, 5].map(s => <Star key={s} size={13} fill={s <= review.rating ? color : 'none'} color={s <= review.rating ? color : 'var(--text-muted)'} strokeWidth={s <= review.rating ? 0 : 1.5} style={{ opacity: s <= review.rating ? 1 : 0.3 }} />)}
-            {canDeleteAll && !isOwner && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: 4, padding: '1px 5px', borderRadius: 'var(--radius-full)', background: 'var(--glass-border)' }}>ID: {review.user_id?.slice(0, 8)}...</span>}
+            {canDeleteAll && !isOwner && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: 4, padding: '1px 5px', borderRadius: 'var(--radius-full)', background: 'var(--glass-border)' }}>{review.user_name || `ID: ${review.user_id?.slice(0, 8)}...`}</span>}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{new Date(review.created_at).toLocaleDateString()}</div>
         </div>

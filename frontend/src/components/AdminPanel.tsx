@@ -838,11 +838,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           const userIds = [...new Set(reviewsData.map((r: any) => r.user_id))];
           const unitIds = [...new Set(reviewsData.map((r: any) => r.unit_id))];
           const [userRes, unitRes, commRes] = await Promise.all([
-            supabase.from('users').select('id, name').in('id', userIds),
+            supabase.from('users').select('id, full_name').in('id', userIds),
             supabase.from('units').select('id, room_type, unit_number, community_id').in('id', unitIds),
             supabase.from('communities').select('id, name'),
           ]);
-          const userMap = new Map((userRes.data || []).map((u: any) => [u.id, u.name]));
+          const userMap = new Map((userRes.data || []).map((u: any) => [u.id, u.full_name]));
           const unitMap = new Map((unitRes.data || []).map((u: any) => [u.id, u]));
           const commMap = new Map((commRes.data || []).map((c: any) => [c.id, c.name]));
           setAllPropertyReviews(reviewsData.map((r: any) => {
