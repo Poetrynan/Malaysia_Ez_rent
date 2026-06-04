@@ -15,7 +15,7 @@ interface Lease {
   status: string;
   admin_notes?: string;
   unit_number?: string;
-  units?: { room_type?: string; community_id?: string; communities?: { name?: string } } | null;
+  units?: { room_type?: string; community_id?: string; agent_id?: string; communities?: { name?: string } } | null;
 }
 interface Payment {
   id: string; lease_id: string; billing_month: string;
@@ -697,7 +697,7 @@ export default function TenantPortal({
             .maybeSingle(),
           supabase
             .from('leases')
-            .select('*, units!inner(room_type, community_id, communities!inner(name))')
+            .select('*, units!inner(room_type, community_id, agent_id, communities!inner(name))')
             .eq('tenant_id', user.id)
             .neq('status', 'active')
             .order('end_date', { ascending: false }),
@@ -2211,6 +2211,17 @@ export default function TenantPortal({
                           {lang === 'zh' ? '📋 收租核查表' : '📋 Rent Collection Audit'}
                         </div>
                         <HistoryPaymentGrid leaseId={h.id} startDate={h.start_date} endDate={h.end_date} lang={lang} />
+
+                        {/* 评价中介 */}
+                        {h.units?.agent_id && (
+                          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${cfg.border}` }}>
+                            <AgentRating
+                              agentId={h.units.agent_id}
+                              leaseId={h.id}
+                              tenantId={h.tenant_id}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
