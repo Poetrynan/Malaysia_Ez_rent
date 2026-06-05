@@ -19,20 +19,6 @@ const STEPS = [
   { icon: KeyRound, num: '03', zh: '签约入住', en: 'Sign & Move In', descZh: '中介确认后在线签约，安全便捷完成入住', descEn: 'Agent confirms, sign online, move in securely' },
 ];
 
-function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <div className="glass-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ padding: '32px 24px', textAlign: 'center', borderRadius: 16, transform: hover ? 'translateY(-4px)' : 'translateY(0)', transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease', boxShadow: hover ? '0 12px 32px rgba(14,116,144,0.12)' : undefined }}>
-      <div style={{ width: 60, height: 60, borderRadius: 16, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-        <Icon size={28} style={{ color: 'var(--primary)' }} />
-      </div>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>{title}</h3>
-      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.65 }}>{desc}</p>
-    </div>
-  );
-}
-
 function CtaButton({ children, large }: { children: React.ReactNode; large?: boolean }) {
   const [hover, setHover] = useState(false);
   return (
@@ -59,10 +45,23 @@ export default function GuestPage() {
         <div style={{ position: 'absolute', top: -120, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -100, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
-          <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)', animation: 'guestLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+          <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)', animation: 'guestLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: 250, height: 250, objectFit: 'contain', mixBlendMode: 'multiply' }} />
           </div>
-          <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 16px', fontFamily: 'var(--font-display)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+          {/* Artistic brand name */}
+          <div style={{
+            fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800,
+            fontFamily: 'var(--font-display)', letterSpacing: '-0.03em',
+            background: 'linear-gradient(135deg, var(--primary) 0%, #14b8a6 50%, var(--primary) 100%)',
+            backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            margin: '0 0 8px', lineHeight: 1.1,
+          }}>
+            Malaysia Ez Rent
+          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
+            {lang === 'zh' ? '大马留学生 AI 智能租房系统' : 'AI-Powered Rental System for Malaysia'}
+          </div>
+          <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 14px', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>
             {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
           </h1>
           <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 560, lineHeight: 1.7 }}>
@@ -74,36 +73,20 @@ export default function GuestPage() {
         </div>
       </section>
 
-      {/* ═══════════ FEATURES ═══════════ */}
+      {/* ═══════════ FEATURES + STEPS (2×3 grid) ═══════════ */}
       <section style={{ padding: '64px 24px', maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
-          {FEATURES.map((f, i) => (
-            <FeatureCard key={i} icon={f.icon} title={lang === 'zh' ? f.zh : f.en} desc={lang === 'zh' ? f.descZh : f.descEn} />
-          ))}
-        </div>
-      </section>
-
-      {/* ═══════════ 3-STEP PROCESS ═══════════ */}
-      <section style={{ padding: '0 24px 64px', maxWidth: 900, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 40px' }}>
-          {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 32 }}>
-          {STEPS.map((s, i) => (
-            <div key={i} style={{ textAlign: 'center', position: 'relative' }}>
-              {/* Step number */}
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary)', opacity: 0.12, position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--font-display)' }}>
-                {s.num}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {[
+            ...FEATURES.map(f => ({ icon: f.icon, title: lang === 'zh' ? f.zh : f.en, desc: lang === 'zh' ? f.descZh : f.descEn, num: '' })),
+            ...STEPS.map(s => ({ icon: s.icon, title: lang === 'zh' ? s.zh : s.en, desc: lang === 'zh' ? s.descZh : s.descEn, num: s.num })),
+          ].map((item, i) => (
+            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14, position: 'relative' }}>
+              {item.num && <div style={{ position: 'absolute', top: 8, right: 12, fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', opacity: 0.5 }}>{item.num}</div>}
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <item.icon size={24} style={{ color: 'var(--primary)' }} />
               </div>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', position: 'relative' }}>
-                <s.icon size={22} style={{ color: 'var(--primary)' }} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px', position: 'relative' }}>
-                {lang === 'zh' ? s.zh : s.en}
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6, position: 'relative' }}>
-                {lang === 'zh' ? s.descZh : s.descEn}
-              </p>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{item.title}</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{item.desc}</p>
             </div>
           ))}
         </div>
