@@ -701,7 +701,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 /* Input bar */
 .manus-input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   padding: 8px 12px 8px 16px;
   background: var(--bg-surface-solid);
@@ -709,7 +709,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   border-radius: 14px;
   flex-shrink: 0;
   max-width: 640px;
-  margin: 0 auto 8px;
+  margin: 0 auto 16px;
   width: 100%;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
@@ -888,6 +888,10 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   font-family: inherit;
   font-size: 0.92rem;
   padding: 8px 0;
+  resize: none;
+  max-height: 160px;
+  overflow-y: auto;
+  line-height: 1.5;
 }
 .manus-input::placeholder { color: var(--text-muted); }
 .manus-send {

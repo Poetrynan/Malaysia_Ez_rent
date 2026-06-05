@@ -465,10 +465,23 @@ export default function AIChat() {
 
       {/* Input */}
       <form onSubmit={handleSend} className="manus-input-bar">
-        <input
-          type="text" value={query} onChange={e => setQuery(e.target.value)}
+        <textarea
+          value={query}
+          onChange={e => {
+            setQuery(e.target.value);
+            // Auto-resize textarea
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend(e);
+            }
+          }}
           placeholder={isGenerating ? 'AI 思考中，点击右侧按钮停止...' : t('chatPlaceholder')}
           className="manus-input"
+          rows={1}
         />
         <button type="submit" className={`manus-send ${isGenerating ? 'stop-mode' : ''}`} aria-label={isGenerating ? 'Stop' : 'Send'}>
           {isGenerating ? <StopCircle size={18} /> : <Send size={16} />}
