@@ -356,7 +356,78 @@
 
 ---
 
+### ✅ 29. 登录认证回调修复（Magic Link + OAuth）
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- `auth/callback/route.ts` 同时处理 `code`（OAuth/PKCE）和 `token_hash` + `type`（邮箱 Magic Link）
+- Supabase 客户端 cookie 操作绑定到 `NextResponse.redirect()`，确保 session cookie 在重定向前写入
+- 增加 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 回退，避免 key 配置不一致
+
+**已知风险：** 首次 Magic Link 登录若 cookie 尚未就绪，`AuthContext` 可能短暂读到 `role=null`，`/listings` 会误判未登录并跳转 `/guest`（需第二次登录）。若复现，优先检查 callback cookie 写入与 `listings/page.tsx` 的 auth 等待逻辑。
+
+---
+
+### ✅ 30. Guest / Login 页面 UI 美化
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- **Guest 页**：CSS 国旗字 `flag-wordmark`（红白条纹 + 蓝区渐变 + 新月/十四角星 SVG data URI）、响应式 `.guest-grid` / `.guest-grid-4`、滚动 reveal 动画、信任 pill、底部 CTA
+- **Guest 滚动动画可逆化**：`.reveal` 进入视口淡入上滑，离开视口反向淡出；`.from-above` 区分从上方/下方离开的方向
+- **Login 页**：桌面分屏（品牌面板 + 登录卡）、极光渐变背景、柔和 blob、多语言「你好」漂浮、院校条、信任 pill；Logo 置于 wordmark 正上方
+
+---
+
+### ✅ 31. 登录后 UI 美化（侧边栏 + 二级 Tab + 租客端）
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- **一级导航（侧边栏）**：激活项渐变背景 + 左侧发光条 + 悬停微移/图标放大
+- **二级 Tab（`.seg-tabs`）**：激活态品牌渐变 + 投影；未激活悬停反馈
+- **中介「新增房间」表单**：`maxWidth: 720`；小区与房型同一行；可入住日期限宽；`.form-row` 手机端单列
+- **租客端**：统一 `.empty-state`（无租约引导 +「去找房源」CTA）；租约 stat-chip 药丸；个人资料 `.grid-2` 响应式；消息中心/房源筛选渐变 pill；房源数量胶囊徽标
+
+---
+
+### ✅ 32. 单元号 `#` 前缀 Bug 修复
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- `AdminPanel.formatLeasePropertyLabel()` 不再在 `unit_number` 前加 `#`
+- 收租核查表归档区、付款审核弹窗、租客端历史租约等全局统一为 `A-12-3` 格式（马来西亚惯例：栋-楼-号，非美式 `#` 前缀）
+- 涉及：`AdminPanel.tsx`、`TenantPortal.tsx`
+
+---
+
+### ✅ 33. Google OAuth 登录后误跳 Guest 页修复
+
+**完成时间：** 2026-06-06
+
+**问题：** Google 登录 `redirectTo` 使用 `next=/`，中间件将 `/` 无条件重定向到 `/guest`，导致已登录用户落在 Guest 页（无侧边栏）。
+
+**修复：** `login/page.tsx` 中 Google OAuth 与 Magic Link 统一为 `next=/listings`。
+
+**跳转链（修复后）：** 登录 → `/auth/callback` → `/listings` → 租客看列表 / 中介自动 `/admin/dashboard`。
+
+---
+
 ## 待完成功能
+
+---
+
+## 已知问题与潜在风险（2026-06-06）
+
+| 问题 | 原因 | 现状 / 建议 |
+|------|------|-------------|
+| Magic Link / Google 首次登录回到 `/login?error=auth_failed` 或需登两次 | PKCE cookie 时序、callback 只处理 `code` 未处理 `token_hash`、cookie 未写入 redirect 响应、**且 `AuthContext` 只在挂载时 `getUser()` 检查一次、role=null 即被 `/listings` 踢回 `/guest`** | callback 已修复双路径 + cookie 绑定；**`AuthContext` 已改为订阅 `onAuthStateChange`（`INITIAL_SESSION`/`SIGNED_IN`），session 注水前不会锁定 role=null，竞态已消除**；若仍复现，检查 Supabase Site URL、邮件链接域名与 Vercel 环境一致 |
+| 登录成功却落在 `/guest`（无侧边栏） | Google OAuth 曾用 `next=/` → 中间件 `/` → `/guest` | **已修复**：OAuth 改为 `next=/listings` |
+| `/listings` 闪一下再跳 Guest | `AuthContext` 加载中 `role=null`，`listings/page.tsx` 误判未登录 `router.replace('/guest')` | **已修复**：`AuthContext` 在 `onAuthStateChange` 解析出 session 前保持 `loading=true`，`/listings` 期间显示进度条而非误跳；未登录时 `return null` 避免闪烁 |
+| 根路径 `/` 永远进 Guest | `middleware.ts` 无条件 `pathname === '/'` → `/guest` | 设计如此（公开入口）；**勿**把 OAuth/Magic Link 的 `next` 设为 `/` |
+| 美化改动影响业务逻辑 | 纯 CSS/布局 | 新增行为：无租约空状态「去找房源」按钮（`router.push('/listings')`）；其余为显示层 |
 
 ---
 

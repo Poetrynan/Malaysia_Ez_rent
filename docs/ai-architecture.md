@@ -25,7 +25,7 @@ High-level flow:
 Malaysia_Ez_rent/
 ├── frontend/
 │   ├── src/app/
-│   │   ├── page.tsx                    # root → redirect('/listings')
+│   │   ├── page.tsx                    # root (middleware intercepts → /guest before this runs)
 │   │   ├── layout.tsx                  # root layout (ThemeProvider, Google Fonts, Maps Script)
 │   │   ├── (app)/                      # route group (not in URL)
 │   │   │   ├── layout.tsx              # app shell: AuthProvider + PendingCountsProvider + sidebar + topbar
@@ -49,7 +49,7 @@ Malaysia_Ez_rent/
 │   │   │       ├── profile/page.tsx    # /admin/profile
 │   │   │       └── inbox/page.tsx      # /admin/inbox
 │   │   ├── login/page.tsx              # Google + Magic Link
-│   │   ├── auth/callback/route.ts      # code->session exchange
+│   │   ├── auth/callback/route.ts      # OAuth code + Magic Link token_hash → session + redirect
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
 │   │   ├── AppSidebar.tsx              # sidebar (useRouter navigation, usePathname active state)
@@ -73,7 +73,7 @@ Malaysia_Ez_rent/
 │   │   └── ThemeProvider.tsx            # theme/language context
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
 │   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
-│   └── src/middleware.ts                # route guard; /listings public; / → /listings redirect
+│   └── src/middleware.ts                # / → /guest; /guest public; live mode auth on other routes
 ├── backend/
 │   └── app/
 │       ├── main.py                      # FastAPI + SSE endpoints
@@ -90,10 +90,11 @@ Malaysia_Ez_rent/
 
 ### Core
 
-- `frontend/src/app/page.tsx` — **Now just `redirect('/listings')`**. All functionality moved to route pages.
+- `frontend/src/app/page.tsx` — `redirect('/listings')` in code, but **middleware intercepts `/` first** and sends all visitors to `/guest`. Treat `/guest` as the real public entry.
 
 - `frontend/src/lib/AuthContext.tsx`
   - Shared authentication state provider. Exposes `role`, `adminRole`, `userEmail`, `agentRegStatus`, `loading`, `setRole`, `logout`, `deleteAccount`.
+  - **Live mode** subscribes to `supabase.auth.onAuthStateChange` (not a one-shot `getUser()`): `INITIAL_SESSION` resolves the persisted session from storage (no network), `SIGNED_IN` catches a fresh login, `SIGNED_OUT` clears state. `loading` stays `true` until a session is resolved, so downstream guards (e.g. `/listings`) never treat a still-hydrating session as logged-out. Role lookup is deferred via `setTimeout(0)` to avoid Supabase auth-callback re-entrancy.
   - Handles both mock mode (localStorage) and live mode (Supabase `getUser()`).
   - Does NOT redirect on unauthenticated — that's handled by middleware or per-page guards.
 
@@ -349,11 +350,18 @@ Notes:
   - if user exists in `admin_users` -> admin
   - else -> student
 - Frontend middleware:
-  - `/` redirects to `/guest` (not logged in) or `/listings` (logged in)
-  - `/guest` is public (no auth required) — hero + property browsing + trust signals
-  - `/listings` requires auth — redirects guests to `/guest`
+  - `/` **always** redirects to `/guest` (mock + live; public landing for all visitors)
+  - `/guest` is public (no auth) — hero + read-only property browsing + trust signals
   - `/login`, `/auth/*`, `/calculator`, `/register-agent`, `/mobile-upload/*` — always allowed
-  - All other routes require authentication (Supabase SSR check in live mode)
+  - **Live mode**: all other routes require Supabase SSR auth; unauthenticated → `/login`
+  - **Mock mode**: client-side `AuthContext` handles role; middleware passes through (except `/` → `/guest`)
+- **`/listings` client guard** (`listings/page.tsx`): after `AuthContext` loads, `!role` → `/guest`, `admin` → `/admin/dashboard`. Uses `return null` while redirecting to avoid progress-bar flash. **Do not** set OAuth/Magic Link `next=/` — middleware would send users to `/guest` instead of the app shell.
+- **Auth callback** (`auth/callback/route.ts`):
+  - `code` → `exchangeCodeForSession` (Google OAuth / PKCE)
+  - `token_hash` + `type` → `verifyOtp` (email Magic Link)
+  - Session cookies attached to `NextResponse.redirect(origin + next)` before return
+  - Default `next` is `/` (avoid in login flows; use `/listings`)
+  - Failure → `/login?error=auth_failed`
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
 - **Agent registration flow**: user logs in → `/register-agent` → fills REN/phone/agency info → `agent_registrations` table (pending) → super admin reviews in admin panel → approve creates `admin_users` record → next login gets admin role.
 - **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to delete tenant data (users, tenant_interests, maintenance_requests, agent_registrations, admin_users, auth.users) while preserving leases and payment_records for agent's financial records.
@@ -593,6 +601,7 @@ User: "从公司到um要多久"
 
 - Role-based entry: user chooses "I'm a Student" or "I'm an Agent" first.
 - Both paths lead to the same auth flow (Google OAuth / Magic Link).
+- **Post-login redirect**: both Google and Magic Link use `redirectTo` / `emailRedirectTo` → `/auth/callback?next=/listings` (never `next=/`).
 - Agent page has prominent "Apply as Agent" button at bottom.
 - In-app browser detection (WeChat/QQ/Feishu) shows warning to open in external browser.
 - Design: ui-ux-pro-max skill — Trust & Authority style, Plus Jakarta Sans typography, Lucide icons, no emojis.
@@ -1048,17 +1057,20 @@ The original architecture had a single `page.tsx` (643 lines) that served as a m
 - Back/forward buttons didn't work
 - Refreshing the page lost the current tab state
 - Google could only index one page
-- Unauthenticated users couldn't browse listings
+- Unauthenticated users couldn't browse listings → **now `/guest`** (public read-only)
 
 ### Solution
 
 Refactored to Next.js App Router with a `(app)` route group:
 
 ```
-/app/page.tsx → redirect('/listings')
+middleware: / → /guest (always)
+
+/app/page.tsx → redirect('/listings')  # rarely reached; middleware wins on /
 
 /(app)/layout.tsx → AuthProvider + PendingCountsProvider + AppSidebar + AppTopbar
-  ├── /listings    (public, read-only for unauthenticated)
+  ├── /guest       (public — read-only listings, no sidebar)
+  ├── /listings    (auth required in live mode; client redirects !role → /guest)
   ├── /chat        (auth required)
   ├── /my-lease    (auth required)
   ├── /profile     (auth required)
@@ -1087,9 +1099,12 @@ Refactored to Next.js App Router with a `(app)` route group:
 | `AppTopbar` | Extracted topbar (theme/lang toggles, logout). |
 | `AdminPageWrapper` | Thin wrapper that maps route → AdminPanel `defaultTab` prop. |
 
-### Unauthenticated Browsing
+### Public vs Authenticated Browsing
 
-`/listings` is publicly accessible. Middleware allows it through without auth. The page renders `PropertyListings readOnly` with a login prompt banner for unauthenticated users. This enables organic discovery — users can see listings before committing to registration.
+- **`/guest`**: unauthenticated entry. Renders `PropertyListings` in read-only mode inside a marketing shell (no sidebar/topbar). Logged-in users can still visit `/guest` and use「进入系统」→ `/listings`.
+- **`/listings`**: authenticated app route. Live middleware blocks unauthenticated access (`→ /login`); client-side also sends `!role` users to `/guest` after `AuthContext` finishes loading.
+
+Do not document `/listings` as publicly accessible — that was the pre-Guest-page model.
 
 ### State Preservation
 
@@ -1107,6 +1122,24 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 - **Layout**：`isGuest = pathname === '/guest'`，只看路径不看登录状态
 - **侧边栏/顶栏**：`isGuest` 为 true 时完全隐藏
 - **CTA 按钮**：未登录显示"立即开始"→ `/login`；已登录显示"进入系统"→ `/listings`
+- **滚动 reveal**：`.reveal` / `.reveal.from-above` — IntersectionObserver 双向动画（进入淡入上滑，离开反向淡出）
+
+### 单元号显示约定（2026-06-06）
+
+- 马来西亚格式：`栋-楼-号`（如 `A-12-3`），**不加** `#` 前缀
+- 统一函数：`AdminPanel.formatLeasePropertyLabel()` → `社区 · 单元号 · (房型)`
+- 涉及：收租核查表、归档租约、付款审核、租客端历史租约
+
+### 登录后 UI 工具类（`globals.css`）
+
+| 类名 | 用途 |
+|------|------|
+| `.seg-tabs` | 二级 Tab 渐变激活态（AdminPanel / TenantPortal） |
+| `.empty-state` / `.empty-state-icon` | 空列表引导卡片 |
+| `.grid-2` | 个人资料等两列响应式表单（560px 以下单列） |
+| `.stat-chip` | 租约统计药丸卡片 |
+| `.nav-item` | 侧边栏一级导航（激活渐变 + 左侧光条） |
+| `.reveal` | Guest 页滚动进入/离开动画 |
 
 ### 分页策略
 
@@ -1117,3 +1150,14 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 | 列表 | 8 | 单列 |
 
 分页对所有用户生效，切换视图模式自动重置页码。
+
+## 20) Known Auth & Routing Risks (2026-06-06)
+
+| Issue | Cause | Mitigation / status |
+|-------|-------|---------------------|
+| Magic Link / Google first login → `auth_failed` or double login | PKCE/cookie timing; callback previously code-only; `AuthContext` checked `getUser()` once and locked role=null before cookies hydrated | **Fixed**: callback handles `token_hash`; cookies on redirect response; `AuthContext` now subscribes to `onAuthStateChange` (`INITIAL_SESSION`/`SIGNED_IN`) and keeps `loading=true` until session resolves. If it ever recurs, verify Supabase Site URL matches deployment domain |
+| Logged-in user lands on `/guest` | OAuth used `next=/` → middleware `/` → `/guest` | **Fixed**: login page uses `next=/listings` |
+| `/listings` flash then Guest | `role=null` while `AuthContext` loading | **Fixed**: `AuthContext` keeps `loading=true` until `onAuthStateChange` resolves the session, so `/listings` shows the progress bar instead of bouncing to `/guest` |
+| Any auth flow with `next=/` | Middleware always sends `/` to `/guest` | **Never** use `next=/` in `redirectTo` / `emailRedirectTo` |
+
+Full checklist: `docs/FUTURE_IMPROVEMENTS.md` →「已知问题与潜在风险」.

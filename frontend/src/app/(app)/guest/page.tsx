@@ -42,10 +42,14 @@ const HELLO_WORDS = [
   { word: 'Habari', x: '95%', y: '55%', rotate: 5, size: '1.1rem', font: 'sans-serif', delay: 1.95 },
 ];
 
-// Reveals children with a subtle slide-up the first time they scroll into view
+// Reversible scroll-reveal: slides in when entering the viewport, and reverses
+// back out when scrolling away. The hidden offset direction is symmetric —
+// elements below slide up to enter (and back down to leave), elements above
+// slide down to enter (and back up to leave).
 function Reveal({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [fromAbove, setFromAbove] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -53,7 +57,10 @@ function Reveal({ children, delay = 0, style }: { children: React.ReactNode; del
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true);
-          io.disconnect();
+        } else {
+          // Remember which edge it left through so it reverses the same way.
+          setFromAbove(entry.boundingClientRect.top < 0);
+          setVisible(false);
         }
       },
       { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
@@ -62,7 +69,11 @@ function Reveal({ children, delay = 0, style }: { children: React.ReactNode; del
     return () => io.disconnect();
   }, []);
   return (
-    <div ref={ref} className={`reveal${visible ? ' is-visible' : ''}`} style={{ transitionDelay: `${delay}ms`, ...style }}>
+    <div
+      ref={ref}
+      className={`reveal${visible ? ' is-visible' : fromAbove ? ' from-above' : ''}`}
+      style={{ transitionDelay: `${delay}ms`, ...style }}
+    >
       {children}
     </div>
   );

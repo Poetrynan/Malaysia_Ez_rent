@@ -58,16 +58,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
     } else {
-      const checkSession = async () => {
+      let active = true;
+      let unsubscribe: (() => void) | null = null;
+
+      // Resolve the app role for a given authenticated user (or clear when null).
+      // Driven by onAuthStateChange so we never lock in role=null before the
+      // session cookie has hydrated (the cause of "must log in twice").
+      const resolveRole = async (user: { id: string; email?: string | null } | null) => {
+        if (!active) return;
+        if (!user) {
+          setRoleState(null);
+          setAdminRole(null);
+          setUserEmail('');
+          setAgentRegStatus(null);
+          setLoading(false);
+          return;
+        }
         try {
           const { createClient } = await import('@/utils/supabase/client');
           const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) {
-            setLoading(false);
-            return;
-          }
-          let adminRecord = null;
+
+          let adminRecord: { id: string; role: string; email?: string } | null = null;
           if (user.email) {
             const { data: record } = await supabase
               .from('admin_users')
@@ -93,10 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             adminRecord = record;
           }
 
+          if (!active) return;
+
           const activeRole = adminRecord ? 'admin' : 'student';
-          if (adminRecord) {
-            setAdminRole(adminRecord.role as 'super_admin' | 'editor');
-          }
+          setAdminRole(adminRecord ? (adminRecord.role as 'super_admin' | 'editor') : null);
           setRoleState(activeRole);
           setUserEmail(user.email || '');
           localStorage.setItem('ez_tenant_id', user.id);
@@ -115,15 +126,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .select('verification_status')
                 .eq('auth_user_id', user.id)
                 .maybeSingle();
-              if (byId) setAgentRegStatus(byId.verification_status);
+              if (byId && active) setAgentRegStatus(byId.verification_status);
             }
           }
         } catch (e) {
-          console.error('[AuthContext] checkSession error:', e);
+          console.error('[AuthContext] resolveRole error:', e);
         }
-        setLoading(false);
+        if (active) setLoading(false);
       };
-      checkSession();
+
+      const init = async () => {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+
+        // onAuthStateChange fires INITIAL_SESSION immediately from persisted
+        // storage (no network) and SIGNED_IN once a fresh login completes, so
+        // the session is always reflected even if cookies arrive slightly late.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_OUT') {
+            resolveRole(null);
+            return;
+          }
+          // Defer out of the callback to avoid Supabase auth lock re-entrancy.
+          setTimeout(() => resolveRole(session?.user ?? null), 0);
+        });
+        unsubscribe = () => subscription.unsubscribe();
+      };
+      init();
+
+      return () => {
+        active = false;
+        if (unsubscribe) unsubscribe();
+      };
     }
   }, []);
 

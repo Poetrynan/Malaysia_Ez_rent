@@ -1409,12 +1409,17 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* ═══════════ GUEST LANDING — polish ═══════════ */
 
-/* Scroll-reveal: elements slide up the first time they enter the viewport */
+/* Reversible scroll-reveal: slides in on enter, reverses out on leave.
+   Default hidden offset is below (+Y); .from-above flips it to above (-Y)
+   so elements reverse through the same edge they left. */
 .reveal {
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
+}
+.reveal.from-above {
+  transform: translateY(-28px);
 }
 .reveal.is-visible {
   opacity: 1;
@@ -1612,7 +1617,9 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .reveal,
+  .reveal.from-above,
+  .reveal.is-visible {
     opacity: 1;
     transform: none;
     transition: none;

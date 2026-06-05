@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-06-05 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · **租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复**
+> 最后更新：2026-06-06 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · **租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal**
 
 
 
@@ -243,6 +243,12 @@ Malaysia_Ez_rent/
 | 81 | 无 RAG 知识库，Agent 无法推荐小区 | 创建 `rental_knowledge_base` 表（42 大学 / 132 小区），新增 `search_knowledge_base` 工具，创建 040 号 migration |
 | 82 | Tavily 硬编码排除外部租房平台 | 放开限制，新增 `search_external_listings` 工具搜外部房源，Agent 不暴露来源 |
 | 83 | 知识库结果无前端展示组件 | MapAndCard 组件新增知识库模式（价格范围、评分、描述、地图标注） |
+| 84 | 归档租约/付款审核单元号前多显示 `#`（如 `#A-12-3`） | `formatLeasePropertyLabel()` 及租客端/审核弹窗全局去掉 `#` 前缀，统一 `A-12-3` 格式 |
+| 85 | Google OAuth 登录后落在 `/guest`（无侧边栏） | OAuth `redirectTo` 曾用 `next=/` → 中间件 `/` → `/guest`；改为与 Magic Link 一致 `next=/listings` |
+| 86 | Magic Link / OAuth 首次登录 `auth_failed` 或需登两次 | `auth/callback` 同时处理 `code` + `token_hash`；cookie 绑定 `NextResponse.redirect()`；Magic Link 时序 race 仍可能偶发（见 FUTURE_IMPROVEMENTS 已知风险） |
+| 87 | Guest 页登录用户仍显示侧边栏/顶栏 | `isGuest = pathname === '/guest'`；中间件 `/` 一律 → `/guest` |
+| 88 | 未登录访问 `/listings` 进度条闪一下才跳 Guest | `listings/page.tsx` 在 `!loading && !role` 时 `return null`，减少 UI 闪烁 |
+| 89 | 首次登录（Google/邮箱）需登两次或被踢回 Guest | `AuthContext` 原本只在挂载时 `getUser()` 检查一次，session cookie 未注水时 `role=null` 即被 `/listings` 重定向；改为订阅 `onAuthStateChange`（`INITIAL_SESSION`/`SIGNED_IN`/`SIGNED_OUT`），session 解析前保持 `loading=true`，竞态消除 |
 
 ---
 
@@ -2378,3 +2384,44 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 登录后 → 点击"进入系统"→ /listings（带侧边栏的完整界面）
 未登录访问 /listings → 进度条不闪，直接跳转 /guest
 ```
+
+---
+
+## 五十九、登录认证 + 登录后 UI 抛光（2026-06-06）
+
+**目标：** 修复登录回调与 OAuth 误跳 Guest；统一单元号显示；美化登录后导航与租客端界面。
+
+### 认证修复
+
+| 文件 | 改动 |
+|------|------|
+| `auth/callback/route.ts` | 双路径：`code`（OAuth/PKCE）+ `token_hash`+`type`（Magic Link）；session cookie 写入 redirect 响应 |
+| `login/page.tsx` | Google OAuth 与 Magic Link 统一 `next=/listings`（**勿**用 `next=/`，中间件会进 Guest） |
+
+**跳转链（修复后）：** 登录 → `/auth/callback?next=/listings` → `/listings` → 租客留列表 / 中介 → `/admin/dashboard`
+
+### 显示修复
+
+- `AdminPanel.formatLeasePropertyLabel()`、`TenantPortal`、付款审核弹窗：单元号不再加 `#`，格式 `栋-楼-号`（如 `A-12-3`）
+
+### UI 抛光（`globals.css` + 组件）
+
+| 区域 | 改动 |
+|------|------|
+| 侧边栏 `.nav-item` | 激活渐变 + 左侧发光条 + 悬停微移 |
+| 二级 Tab `.seg-tabs` | 品牌渐变激活态（AdminPanel / TenantPortal） |
+| 租客空状态 `.empty-state` | 无租约引导 +「去找房源」CTA（`router.push('/listings')`） |
+| 租约 stat-chip / 个人资料 `.grid-2` | 药丸统计 + 响应式两列表单 |
+| 消息/房源筛选 pill | 激活渐变；房源数量胶囊徽标 |
+| Guest `.reveal` | 滚动进入淡入、离开反向淡出（`.from-above` 区分方向） |
+| 中介「新增房间」 | `maxWidth: 720`；小区+房型同行；`.form-row` 手机单列 |
+
+### 已知风险（未完全消除）
+
+| 风险 | 说明 |
+|------|------|
+| Magic Link 首次登录 race | cookie/role 未就绪时 `/listings` 可能误判 `role=null` → `/guest` 或 `/login?error=auth_failed` |
+| `/listings` 客户端守卫 | `loading=false` 且 session 存在但 role 查询慢时，仍可能误跳 Guest |
+| 根路径设计 | `/` 永远 → `/guest`；所有 auth `next` 参数应指向 `/listings` 或具体业务页 |
+
+详见 `docs/FUTURE_IMPROVEMENTS.md` →「已知问题与潜在风险」。
