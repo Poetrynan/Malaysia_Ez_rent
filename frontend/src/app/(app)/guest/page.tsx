@@ -85,7 +85,7 @@ export default function GuestPage() {
             position: 'absolute', left: h.x, top: h.y,
             transform: `rotate(${h.rotate}deg)`,
             fontSize: h.size, fontWeight: 300, fontFamily: h.font,
-            color: 'var(--primary)', opacity: heroVisible ? 0.25 : 0,
+            color: 'var(--primary)', opacity: heroVisible ? 0.45 : 0,
             animation: heroVisible ? `helloFloatIn 1s ${h.delay}s cubic-bezier(0.16, 1, 0.3, 1) both` : 'none',
             pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '0.02em',
           }}>
