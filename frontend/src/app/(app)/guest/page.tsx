@@ -75,18 +75,34 @@ export default function GuestPage() {
 
       {/* ═══════════ FEATURES + STEPS (2×3 grid) ═══════════ */}
       <section style={{ padding: '64px 24px', maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-          {[
-            ...FEATURES.map(f => ({ icon: f.icon, title: lang === 'zh' ? f.zh : f.en, desc: lang === 'zh' ? f.descZh : f.descEn, num: '' })),
-            ...STEPS.map(s => ({ icon: s.icon, title: lang === 'zh' ? s.zh : s.en, desc: lang === 'zh' ? s.descZh : s.descEn, num: s.num })),
-          ].map((item, i) => (
-            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14, position: 'relative' }}>
-              {item.num && <div style={{ position: 'absolute', top: 8, right: 12, fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', opacity: 0.5 }}>{item.num}</div>}
+        {/* Row 1: Features */}
+        <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
+          {lang === 'zh' ? '平台特色' : 'Why Choose Us'}
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 40 }}>
+          {FEATURES.map((f, i) => (
+            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14 }}>
               <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                <item.icon size={24} style={{ color: 'var(--primary)' }} />
+                <f.icon size={24} style={{ color: 'var(--primary)' }} />
               </div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{item.title}</h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{item.desc}</p>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? f.zh : f.en}</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? f.descZh : f.descEn}</p>
+            </div>
+          ))}
+        </div>
+        {/* Row 2: Steps */}
+        <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
+          {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {STEPS.map((s, i) => (
+            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 8, right: 12, fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', opacity: 0.5 }}>{s.num}</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <s.icon size={24} style={{ color: 'var(--primary)' }} />
+              </div>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? s.zh : s.en}</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? s.descZh : s.descEn}</p>
             </div>
           ))}
         </div>
