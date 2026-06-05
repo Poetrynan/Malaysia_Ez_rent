@@ -273,7 +273,8 @@ async def live_agent_stream(
                     "properties": {
                         "semantic_query": {"type": "string", "description": "Natural language query, e.g. 'affordable condo near Sunway University', 'safe apartment with gym in Nilai'."},
                         "state": {"type": "string", "description": "Optional Malaysian state filter, e.g. 'Selangor', 'Kuala Lumpur', 'Perak'."},
-                        "max_results": {"type": "integer", "default": 5, "description": "Max number of results to return (default 5)."}
+                        "max_results": {"type": "integer", "default": 5, "description": "Max number of results to return (default 5)."},
+                        "show_map": {"type": "boolean", "default": False, "description": "Set to true ONLY when the user is asking about housing, properties, neighborhoods, or accommodation. Set to false for general questions (phone cards, visa, food, transport, etc.)."}
                     },
                     "required": ["semantic_query"]
                 }
@@ -308,7 +309,8 @@ async def live_agent_stream(
                 "- User mentions ANY name/keyword (YOLO, Sunway Geo, D28, Monash, etc.) → call search_knowledge_base IMMEDIATELY\n"
                 "- User asks about prices/recommendations/neighborhoods → call search_knowledge_base + search_external_listings TOGETHER\n"
                 "- Only ask for clarification AFTER searching and finding nothing relevant\n"
-                "- NEVER say 'I don't have information about that' without searching first\n\n"
+                "- NEVER say 'I don't have information about that' without searching first\n"
+                "- IMPORTANT: Only set show_map=true when the query is about housing/properties/neighborhoods. For general questions (phone cards, visa, food, etc.), set show_map=false.\n\n"
                 "## HOW TO ANSWER HOUSING QUESTIONS\n"
                 "When presenting community info, ALWAYS structure your answer like this:\n"
                 "1. **Community name + location** (one line)\n"
@@ -493,23 +495,25 @@ async def live_agent_stream(
 
             # Collect UI components — will be emitted AFTER text is done
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
-                best = result_data[0]
-                if best.get("latitude") and best.get("longitude"):
-                    pending_ui_components.append({
-                        "type": "ui_component",
-                        "component": "MapAndCard",
-                        "props": {
-                            "origin_name": best.get("community_name", ""),
-                            "origin_lat": float(best["latitude"]),
-                            "origin_lng": float(best["longitude"]),
-                            "community_name": best.get("community_name"),
-                            "university_name": best.get("university_name"),
-                            "price_range": best.get("price_range"),
-                            "tenant_rating": best.get("tenant_rating"),
-                            "description": best.get("description"),
-                            "is_knowledge_base": True
-                        }
-                    })
+                show_map = tool_args.get("show_map", False)
+                if show_map:
+                    best = result_data[0]
+                    if best.get("latitude") and best.get("longitude"):
+                        pending_ui_components.append({
+                            "type": "ui_component",
+                            "component": "MapAndCard",
+                            "props": {
+                                "origin_name": best.get("community_name", ""),
+                                "origin_lat": float(best["latitude"]),
+                                "origin_lng": float(best["longitude"]),
+                                "community_name": best.get("community_name"),
+                                "university_name": best.get("university_name"),
+                                "price_range": best.get("price_range"),
+                                "tenant_rating": best.get("tenant_rating"),
+                                "description": best.get("description"),
+                                "is_knowledge_base": True
+                            }
+                        })
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
