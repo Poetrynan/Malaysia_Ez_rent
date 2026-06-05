@@ -373,7 +373,8 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-page {
   display: flex;
   flex-direction: column;
-  height: calc(100% - 60px);
+  flex: 1;
+  min-height: 0;
   width: 100%;
 }
 .manus-layout {
