@@ -5,7 +5,7 @@ import PropertyListings from '@/components/PropertyListings';
 import LegalContent from '@/components/LegalContent';
 import { useApp } from '@/lib/ThemeProvider';
 import Link from 'next/link';
-import { LogIn, Brain, Shield, Sparkles, ChevronRight, Search, FileText, KeyRound } from 'lucide-react';
+import { LogIn, Brain, Shield, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe } from 'lucide-react';
 
 const FEATURES = [
   { icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', descZh: '告诉 AI 你的需求，智能推荐最适合的房源和小区', descEn: 'Tell AI your needs, get smart recommendations for the best properties' },
@@ -17,6 +17,20 @@ const STEPS = [
   { icon: Search, num: '01', zh: '搜索房源', en: 'Search Properties', descZh: '按位置、房型、预算筛选，或让 AI 帮你推荐', descEn: 'Filter by location, type, budget, or let AI recommend' },
   { icon: FileText, num: '02', zh: '表达意向', en: 'Express Interest', descZh: '登录后收藏心仪房源，一键表达租房意向', descEn: 'Login to save favorites and express your interest' },
   { icon: KeyRound, num: '03', zh: '签约入住', en: 'Sign & Move In', descZh: '中介确认后在线签约，安全便捷完成入住', descEn: 'Agent confirms, sign online, move in securely' },
+];
+
+// Multilingual "hello" words with artistic styling
+const HELLO_WORDS = [
+  { word: 'こんにちは', x: '8%', y: '15%', rotate: -12, size: '1.4rem', font: 'serif', delay: 1.0 },
+  { word: '你好', x: '5%', y: '55%', rotate: 8, size: '1.8rem', font: 'var(--font-display)', delay: 1.4 },
+  { word: 'Hola', x: '85%', y: '20%', rotate: -6, size: '1.6rem', font: 'italic', delay: 1.2 },
+  { word: '안녕하세요', x: '82%', y: '60%', rotate: 10, size: '1.2rem', font: 'sans-serif', delay: 1.6 },
+  { word: 'Bonjour', x: '10%', y: '78%', rotate: -4, size: '1.3rem', font: 'italic', delay: 1.8 },
+  { word: 'مرحبا', x: '88%', y: '40%', rotate: 5, size: '1.5rem', font: 'serif', delay: 1.1 },
+  { word: 'नमस्ते', x: '3%', y: '38%', rotate: -8, size: '1.1rem', font: 'sans-serif', delay: 1.5 },
+  { word: 'Selamat Datang', x: '78%', y: '80%', rotate: -3, size: '1rem', font: 'var(--font-display)', delay: 2.0 },
+  { word: 'สวัสดี', x: '90%', y: '10%', rotate: 7, size: '1.3rem', font: 'sans-serif', delay: 1.3 },
+  { word: 'Ciao', x: '12%', y: '92%', rotate: -10, size: '1.5rem', font: 'italic', delay: 1.7 },
 ];
 
 function CtaButton({ children, large }: { children: React.ReactNode; large?: boolean }) {
@@ -37,24 +51,49 @@ function FooterLink({ href, onClick, children }: { href?: string; onClick?: () =
 }
 
 export default function GuestPage() {
-  const { lang } = useApp();
+  const { lang, setLang } = useApp();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  const [heroVisible, setHeroVisible] = useState(false);
 
   useEffect(() => {
     document.title = `${lang === 'zh' ? '房源浏览' : 'Browse Properties'} | Malaysia Ez Rent`;
+    // Trigger hero slide-up after a short delay
+    const t = setTimeout(() => setHeroVisible(true), 100);
+    return () => clearTimeout(t);
   }, [lang]);
 
   return (
     <div className="guest-mode" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ═══════════ HERO ═══════════ */}
-      <section style={{ position: 'relative', padding: '80px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)' }}>
-        {/* Decorative blobs — pointer-events none, no overflow hidden */}
+      <section style={{ position: 'relative', padding: '80px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)', overflow: 'hidden' }}>
+        {/* Decorative blobs */}
         <div style={{ position: 'absolute', top: -120, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -100, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
-          {/* Logo — circular badge */}
-          <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)', animation: 'guestLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+
+        {/* Floating multilingual "hello" words */}
+        {HELLO_WORDS.map((h, i) => (
+          <div key={i} style={{
+            position: 'absolute', left: h.x, top: h.y,
+            transform: `rotate(${h.rotate}deg)`,
+            fontSize: h.size, fontWeight: 300, fontFamily: h.font,
+            color: 'var(--primary)', opacity: heroVisible ? 0.12 : 0,
+            animation: heroVisible ? `helloFloatIn 1s ${h.delay}s cubic-bezier(0.16, 1, 0.3, 1) both` : 'none',
+            pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '0.02em',
+          }}>
+            {h.word}
+          </div>
+        ))}
+
+        {/* Hero content — slides up from bottom */}
+        <div style={{
+          position: 'relative', maxWidth: 800, margin: '0 auto',
+          opacity: heroVisible ? 1 : 0,
+          transform: heroVisible ? 'translateY(0)' : 'translateY(60px)',
+          transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
+          {/* Logo */}
+          <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
           {/* Artistic brand name */}
@@ -70,9 +109,16 @@ export default function GuestPage() {
           <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 560, lineHeight: 1.7 }}>
             {lang === 'zh' ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验' : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
           </p>
-          <CtaButton large>
-            <LogIn size={18} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={16} />
-          </CtaButton>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <CtaButton large>
+              <LogIn size={18} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={16} />
+            </CtaButton>
+            {/* Language toggle */}
+            <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '14px 20px', borderRadius: 12, border: '2px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(8px)', transition: 'all 0.2s ease' }}>
+              <Globe size={16} />{lang === 'zh' ? 'EN' : '中文'}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -109,7 +155,7 @@ export default function GuestPage() {
         </div>
       </section>
 
-      {/* ═══════════ LISTINGS (paginated, 8 per page) ═══════════ */}
+      {/* ═══════════ LISTINGS ═══════════ */}
       <section style={{ padding: '0 24px 64px', maxWidth: 1200, margin: '0 auto', flex: 1 }}>
         <PropertyListings guestMode />
       </section>

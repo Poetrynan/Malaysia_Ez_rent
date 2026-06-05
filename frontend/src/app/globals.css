@@ -1350,3 +1350,15 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Guest hero slide up from bottom */
+@keyframes heroSlideUp {
+  0% { opacity: 0; transform: translateY(60px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Guest floating hello words fade in from bottom */
+@keyframes helloFloatIn {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 0.12; transform: translateY(0); }
+}
+
