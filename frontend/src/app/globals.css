@@ -469,6 +469,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   gap: 10px;
   max-width: 75%;
   align-self: flex-end;
+  flex-direction: row-reverse;
 }
 .manus-user-text {
   background: var(--primary);
