@@ -273,6 +273,23 @@
 
 ---
 
+### ✅ 23. 多页面路由架构重构 + 未登录浏览房源
+
+**完成时间：** 2026-06-05
+
+**改动内容：**
+- 将单页面标签切换重构为 Next.js App Router 多页面路由
+- 每个功能有独立 URL（/listings、/chat、/my-lease、/admin/* 等）
+- 浏览器地址栏随页面变化，后退/前进按钮正常工作
+- 提取 AuthContext 和 PendingCountsContext 实现跨路由状态共享
+- 提取 AppSidebar 和 AppTopbar 为独立组件
+- `/listings` 页面公开可访问，未登录用户可浏览房源（只读模式 + 登录引导）
+- 页面顶部蓝色横幅引导未登录用户登录
+- page.tsx 从 643 行巨石变为 3 行 redirect
+- 新建 19 个文件，修改 3 个文件
+
+---
+
 ## 待完成功能
 
 ---

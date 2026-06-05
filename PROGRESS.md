@@ -11,29 +11,54 @@
 
 ```
 Malaysia_Ez_rent/
-├── frontend/          # Next.js 16.2 (App Router) — 学生端 + 管理端 SPA
+├── frontend/          # Next.js 16.2 (App Router) — 多页面路由架构
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx          # 主入口，tab 路由切换，角色判断（admin_users 表），登出，侧边栏 Logo
+│   │   │   ├── page.tsx          # 根入口 → redirect('/listings')
 │   │   │   ├── layout.tsx        # SEO metadata + favicon（/logo.png），Google Fonts，Google Maps Script
 │   │   │   ├── globals.css       # 全局 CSS 变量、动画、组件样式（含 Logo / Toast 动画）
+│   │   │   ├── (app)/            # 应用路由组（不出现 URL 中）
+│   │   │   │   ├── layout.tsx    # 应用主布局：AuthProvider + PendingCountsProvider + 侧边栏 + 顶栏
+│   │   │   │   ├── listings/     # 房源浏览（公开，未登录只读）
+│   │   │   │   ├── chat/         # AI 助手
+│   │   │   │   ├── my-lease/     # 我的租约
+│   │   │   │   ├── profile/      # 个人设置
+│   │   │   │   ├── maintenance/  # 反馈维修
+│   │   │   │   ├── inbox/        # 消息公告
+│   │   │   │   └── admin/        # 管理后台
+│   │   │   │       ├── layout.tsx    # 管理员权限守卫
+│   │   │   │       ├── dashboard/    # 数据看板
+│   │   │   │       ├── properties/   # 房源管理
+│   │   │   │       ├── leases/       # 租约 & 财务台账
+│   │   │   │       ├── listings/     # 房源浏览（只读）
+│   │   │   │       ├── admins/       # 中介与管理员（超管）
+│   │   │   │       ├── feedback/     # 反馈管理
+│   │   │   │       ├── agent-reviews/# 中介审核（超管）
+│   │   │   │       ├── reviews/      # 评论管理（超管）
+│   │   │   │       ├── profile/      # 个人设置
+│   │   │   │       └── inbox/        # 消息公告
 │   │   │   ├── login/
-│   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录（图标 Logo + 产品名）
+│   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录
 │   │   │   ├── mobile-upload/
-│   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证（匿名 RPC + 图片压缩）
+│   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证
 │   │   │   └── auth/
 │   │   │       └── callback/
 │   │   │           └── route.ts  # Supabase OAuth 回调处理器
 │   │   ├── components/
-│   │   │   ├── PropertyListings.tsx # 房源卡片列表（iProperty 风格）+ 详情抽屉
-│   │   │   ├── AIChat.tsx        # AI 对话界面（SSE 流式 + 离线模拟器）
+│   │   │   ├── AppSidebar.tsx    # 侧边栏组件（独立，useRouter 导航）
+│   │   │   ├── AppTopbar.tsx     # 顶栏组件（独立）
+│   │   │   ├── AdminPageWrapper.tsx # Admin 页面通用包装器
+│   │   │   ├── PropertyListings.tsx # 房源卡片列表 + 详情抽屉
+│   │   │   ├── AIChat.tsx        # AI 对话界面（SSE 流式）
 │   │   │   ├── MapAndCard.tsx    # 房源卡片 + SVG 通勤路线地图
-│   │   │   ├── LeaseLedgerCard.tsx  # 租约台账 + 银行转账/收款码支付弹窗（首月→中介，后续→房东）
-│   │   │   ├── StudentPortal.tsx # 学生门户（圆形倒计时环 + 台账）
-│   │   │   └── AdminPanel.tsx    # 管理后台（房源/租约二级 Tab、收租核查表显示单元、小区删除、表单校验与 Toast）
+│   │   │   ├── LeaseLedgerCard.tsx  # 租约台账 + 支付弹窗
+│   │   │   ├── TenantPortal.tsx  # 租客门户（租约 + 报修 + 个人资料）
+│   │   │   └── AdminPanel.tsx    # 管理后台（房源/租约二级 Tab）
 │   │   └── lib/
-│   │       ├── supabase.ts       # Supabase 客户端（含完整 LocalStorage Mock）
-│   │       ├── numberInput.ts    # 数字输入非负校验（AdminPanel / PropertyListings）
+│   │       ├── AuthContext.tsx    # 认证状态 Context（role, adminRole, logout）
+│   │       ├── PendingCountsContext.tsx # 待处理计数 Context（徽章同步）
+│   │       ├── supabase.ts       # Supabase 客户端（含 LocalStorage Mock）
+│   │       ├── numberInput.ts    # 数字输入非负校验
 │   │       ├── ThemeProvider.tsx  # 主题/语言 Context Provider
 │   │       └── i18n.ts           # 中英双语翻译字典
 │   │   ├── utils/
@@ -2117,4 +2142,97 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 | `backend/app/agent.py` | `assess_reasoning_effort`、`compact_tool_result`、强制收尾合成、`kb_map_candidate` 延后、`final_text_emitted`、名称匹配合并、MAX_LOOPS 6、max_completion_tokens 3072、决策题 prompt |
 | `docs/ai-agent-ui-ux-flow.md` | ReAct 循环文档更新、Bug 5–8 记录 |
 | `docs/ai-architecture.md` | §4 工具数修正为 7、§24 智能修复专节 |
+
+---
+
+## 五十三、多页面路由架构重构（2026-06-05）
+
+**目标：** 将单页面标签切换（SPA tab switching）重构为 Next.js App Router 多页面路由，每个功能有独立 URL，浏览器地址栏随页面变化。
+
+### 问题
+
+原架构所有功能（房源列表、AI助手、我的租约、管理后台等）都挤在一个 `page.tsx`（643 行）里，通过 CSS `display: none/block` 切换标签。导致：
+- 浏览器地址栏永远是 `/`，不会变化
+- 后退/前进按钮失效
+- 刷新页面丢失当前标签状态
+- Google 只能索引到一个页面，SEO 差
+- 未登录用户连房源都看不到
+
+### 解决方案
+
+将 `page.tsx` 巨石文件拆分为：
+- **AuthContext** — 共享认证状态（role, adminRole, logout 等）
+- **PendingCountsContext** — 共享待处理计数（徽章数字跨路由同步）
+- **AppSidebar** — 侧边栏独立组件，使用 `useRouter().push()` 导航
+- **AppTopbar** — 顶栏独立组件
+- **(app)/layout.tsx** — 应用主布局（侧边栏 + 顶栏 + 内容区）
+- **16 个独立页面文件** — 每个功能一个 `page.tsx`
+
+### 路由结构
+
+| URL | 页面 | 权限 |
+|-----|------|------|
+| `/listings` | 房源浏览 | 公开（未登录只读） |
+| `/chat` | AI 助手 | 需登录 |
+| `/my-lease` | 我的租约 | 需登录 |
+| `/profile` | 个人设置 | 需登录 |
+| `/maintenance` | 反馈维修 | 需登录 |
+| `/inbox` | 消息公告 | 需登录 |
+| `/admin/dashboard` | 数据看板 | 管理员 |
+| `/admin/properties` | 房源管理 | 管理员 |
+| `/admin/leases` | 租约 & 财务台账 | 管理员 |
+| `/admin/listings` | 房源浏览（只读） | 管理员 |
+| `/admin/admins` | 中介与管理员 | 超级管理员 |
+| `/admin/feedback` | 反馈管理 | 管理员 |
+| `/admin/agent-reviews` | 中介审核 | 超级管理员 |
+| `/admin/reviews` | 评论管理 | 超级管理员 |
+| `/admin/profile` | 个人设置 | 管理员 |
+| `/admin/inbox` | 消息公告 | 管理员 |
+
+### 关键设计决策
+
+1. **(app) 路由组** — 不出现在 URL 中，`(app)/listings/page.tsx` 对应 `/listings`
+2. **AdminPanel 不改动** — 继续通过 `defaultTab` prop 控制子标签，AdminPageWrapper 包装每个路由
+3. **未登录可浏览** — `/listings` 公开访问，只读模式 + 登录引导横幅
+4. **组件不改动** — PropertyListings、TenantPortal、AIChat、Inbox 内部逻辑零修改
+5. **状态跨路由共享** — AuthContext + PendingCountsContext 确保侧边栏徽章在路由切换时保持同步
+
+### 文件变更清单
+
+**新建 19 个文件：**
+
+| 文件 | 说明 |
+|------|------|
+| `lib/AuthContext.tsx` | 认证状态 Context Provider |
+| `lib/PendingCountsContext.tsx` | 待处理计数 Context Provider |
+| `components/AppSidebar.tsx` | 侧边栏组件（从 page.tsx 提取） |
+| `components/AppTopbar.tsx` | 顶栏组件（从 page.tsx 提取） |
+| `components/AdminPageWrapper.tsx` | Admin 页面通用包装器 |
+| `app/(app)/layout.tsx` | 应用主布局 |
+| `app/(app)/listings/page.tsx` | 房源浏览（公开） |
+| `app/(app)/chat/page.tsx` | AI 助手 |
+| `app/(app)/my-lease/page.tsx` | 我的租约 |
+| `app/(app)/profile/page.tsx` | 个人设置 |
+| `app/(app)/maintenance/page.tsx` | 反馈维修 |
+| `app/(app)/inbox/page.tsx` | 消息公告 |
+| `app/(app)/admin/layout.tsx` | 管理员权限守卫 |
+| `app/(app)/admin/dashboard~inbox/` | 10 个管理后台页面 |
+
+**修改 3 个文件：**
+
+| 文件 | 改动 |
+|------|------|
+| `app/page.tsx` | 从 643 行巨石 → 3 行 `redirect('/listings')` |
+| `middleware.ts` | 支持新路由，`/` → `/listings`，`/listings` 公开访问 |
+| `login/page.tsx` | 登录后跳转 `/listings`（学生）或 `/admin/properties`（中介） |
+
+### 效果
+
+- 🌐 地址栏随页面变化：`/listings`、`/chat`、`/admin/leases` 等
+- 🔙 浏览器后退/前进按钮正常工作
+- 🔓 未登录也能浏览房源（只读模式 + 登录引导）
+- 📌 每个页面有独立标题（浏览器标签页标题动态变化）
+- 🔗 可以直接分享任意页面的链接
+- 📊 Google 可以索引每个页面，SEO 大幅提升
+- 🧩 每个页面 10-30 行，改一处不影响其他功能
 | `PROGRESS.md` | 本节（五十二） |

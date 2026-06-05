@@ -25,11 +25,35 @@ High-level flow:
 Malaysia_Ez_rent/
 ├── frontend/
 │   ├── src/app/
-│   │   ├── page.tsx                    # root shell, role-gated tabs
+│   │   ├── page.tsx                    # root → redirect('/listings')
+│   │   ├── layout.tsx                  # root layout (ThemeProvider, Google Fonts, Maps Script)
+│   │   ├── (app)/                      # route group (not in URL)
+│   │   │   ├── layout.tsx              # app shell: AuthProvider + PendingCountsProvider + sidebar + topbar
+│   │   │   ├── listings/page.tsx       # /listings — public, read-only for unauthenticated
+│   │   │   ├── chat/page.tsx           # /chat — AI assistant (auth required)
+│   │   │   ├── my-lease/page.tsx       # /my-lease — tenant lease management
+│   │   │   ├── profile/page.tsx        # /profile — user profile
+│   │   │   ├── maintenance/page.tsx    # /maintenance — feedback/maintenance
+│   │   │   ├── inbox/page.tsx          # /inbox — messages
+│   │   │   └── admin/
+│   │   │       ├── layout.tsx          # admin role guard
+│   │   │       ├── dashboard/page.tsx  # /admin/dashboard
+│   │   │       ├── properties/page.tsx # /admin/properties
+│   │   │       ├── leases/page.tsx     # /admin/leases
+│   │   │       ├── listings/page.tsx   # /admin/listings (read-only)
+│   │   │       ├── admins/page.tsx     # /admin/admins (super_admin only)
+│   │   │       ├── feedback/page.tsx   # /admin/feedback
+│   │   │       ├── agent-reviews/      # /admin/agent-reviews (super_admin only)
+│   │   │       ├── reviews/page.tsx    # /admin/reviews (super_admin only)
+│   │   │       ├── profile/page.tsx    # /admin/profile
+│   │   │       └── inbox/page.tsx      # /admin/inbox
 │   │   ├── login/page.tsx              # Google + Magic Link
 │   │   ├── auth/callback/route.ts      # code->session exchange
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
+│   │   ├── AppSidebar.tsx              # sidebar (useRouter navigation, usePathname active state)
+│   │   ├── AppTopbar.tsx               # topbar (theme/lang toggles, logout)
+│   │   ├── AdminPageWrapper.tsx        # admin page wrapper (defaultTab → AdminPanel)
 │   │   ├── PropertyListings.tsx        # 房源列表 + 详情 + 收藏 + 评价
 │   │   ├── AIChat.tsx                  # AI 对话界面
 │   │   ├── TenantPortal.tsx            # 租客门户（租约 + 报修 + 个人资料）
@@ -39,12 +63,16 @@ Malaysia_Ez_rent/
 │   │   ├── Inbox.tsx                   # 消息收件箱
 │   │   ├── FavoritesManager.tsx        # 收藏夹组件
 │   │   └── ReviewSystem.tsx            # 评价系统组件
-│   ├── src/lib/supabase.ts             # real/mock switch + mock impl
-│   ├── src/lib/numberInput.ts          # nonNegativeInputValue / nonNegativeNumber for type=number fields
-│   ├── src/lib/i18n.ts                 # zh/en; payment: bank transfer / WeChat / Alipay
+│   ├── src/lib/
+│   │   ├── AuthContext.tsx              # auth state provider (role, adminRole, logout, deleteAccount)
+│   │   ├── PendingCountsContext.tsx     # pending counts provider (badges sync across routes)
+│   │   ├── supabase.ts                 # real/mock switch + mock impl
+│   │   ├── numberInput.ts              # nonNegativeInputValue / nonNegativeNumber
+│   │   ├── i18n.ts                     # zh/en; payment: bank transfer / WeChat / Alipay
+│   │   └── ThemeProvider.tsx            # theme/language context
 │   ├── src/utils/compressImage.ts       # client-side image compression presets
 │   ├── src/utils/compressVideo.ts       # walkthrough video compression (WebM)
-│   └── src/middleware.ts                # route guard; anon key fallback PUBLISHABLE_KEY || ANON_KEY
+│   └── src/middleware.ts                # route guard; /listings public; / → /listings redirect
 ├── backend/
 │   └── app/
 │       ├── main.py                      # FastAPI + SSE endpoints
@@ -61,11 +89,30 @@ Malaysia_Ez_rent/
 
 ### Core
 
-- `frontend/src/app/page.tsx`
-  - Main app shell with sidebar tabs. Displays dynamic red notification badges on admin tabs by listening to `onPendingCountsChange` from `AdminPanel`. Displays unread feedback count badges on the student's sidebar navigation by listening to `onUnreadFeedbackCountChange` from `StudentPortal`.
-  - Determines `role` (`student` or `admin`) by checking `admin_users`.
-  - Mounts all views, toggles visibility for smoother UI state.
-  - **Integrates the new top-level Maintenance & Feedback tab (`maintenance`) with a unified Wrench icon.**
+- `frontend/src/app/page.tsx` — **Now just `redirect('/listings')`**. All functionality moved to route pages.
+
+- `frontend/src/lib/AuthContext.tsx`
+  - Shared authentication state provider. Exposes `role`, `adminRole`, `userEmail`, `agentRegStatus`, `loading`, `setRole`, `logout`, `deleteAccount`.
+  - Handles both mock mode (localStorage) and live mode (Supabase `getUser()`).
+  - Does NOT redirect on unauthenticated — that's handled by middleware or per-page guards.
+
+- `frontend/src/lib/PendingCountsContext.tsx`
+  - Shared pending counts (`leases`, `feedback`, `agentReviews`, `unreadInbox`).
+  - AdminPanel updates counts via `onPendingCountsChange`; sidebar reads from context to render badges.
+  - Persists across route changes because the layout (with sidebar) stays mounted.
+
+- `frontend/src/app/(app)/layout.tsx`
+  - App shell layout: `AuthProvider` → `PendingCountsProvider` → sidebar + topbar + `{children}`.
+  - Shows loading spinner while auth is initializing.
+  - Renders agent registration status banners (pending/approved/rejected) for student role.
+
+- `frontend/src/components/AppSidebar.tsx`
+  - Extracted from old `page.tsx`. Uses `useRouter().push('/...')` for navigation, `usePathname()` for active state.
+  - Reads from `useAuth()` and `usePendingCounts()` for role/counts.
+
+- `frontend/src/app/(app)/listings/page.tsx`
+  - **Public page** — accessible without login. Unauthenticated users see `PropertyListings readOnly` with a login prompt banner.
+  - Authenticated students see full `PropertyListings`. Admins see read-only.
 
 - `frontend/src/lib/supabase.ts`
   - Auto-detects real vs mock mode by env presence.
@@ -300,11 +347,11 @@ Notes:
 - Login is Supabase Auth; app role is app-level lookup:
   - if user exists in `admin_users` -> admin
   - else -> student
-- Frontend middleware allows:
-  - `/login`
-  - `/auth/*`
-  - `/register-agent` (agent application page)
-  - `/mobile-upload/*` (anonymous upload flow)
+- Frontend middleware:
+  - `/` redirects to `/listings`
+  - `/listings` is public (no auth required) — unauthenticated users see read-only mode
+  - `/login`, `/auth/*`, `/calculator`, `/register-agent`, `/mobile-upload/*` — always allowed
+  - All other routes require authentication (Supabase SSR check in live mode)
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
 - **Agent registration flow**: user logs in → `/register-agent` → fills REN/phone/agency info → `agent_registrations` table (pending) → super admin reviews in admin panel → approve creates `admin_users` record → next login gets admin role.
 - **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to delete tenant data (users, tenant_interests, maintenance_requests, agent_registrations, admin_users, auth.users) while preserving leases and payment_records for agent's financial records.
@@ -987,3 +1034,65 @@ Safety cap: 3500 chars after compaction. **UI MapAndCard still uses full `result
 | Context window | 131,072 tokens |
 | Practical limit (free tier) | **8K TPM** — drives compaction and loop cap |
 | Upgrade path | Groq paid tier → higher TPM, less truncation needed |
+
+---
+
+## 25. Multi-Page Routing Architecture (2026-06-05)
+
+### Problem
+
+The original architecture had a single `page.tsx` (643 lines) that served as a monolithic SPA shell. All tabs (listings, chat, my-lease, admin panel, etc.) were rendered simultaneously and toggled via CSS `display: none/block`. This meant:
+- Browser URL was always `/` regardless of which tab was active
+- Back/forward buttons didn't work
+- Refreshing the page lost the current tab state
+- Google could only index one page
+- Unauthenticated users couldn't browse listings
+
+### Solution
+
+Refactored to Next.js App Router with a `(app)` route group:
+
+```
+/app/page.tsx → redirect('/listings')
+
+/(app)/layout.tsx → AuthProvider + PendingCountsProvider + AppSidebar + AppTopbar
+  ├── /listings    (public, read-only for unauthenticated)
+  ├── /chat        (auth required)
+  ├── /my-lease    (auth required)
+  ├── /profile     (auth required)
+  ├── /maintenance (auth required)
+  ├── /inbox       (auth required)
+  └── /admin/layout.tsx (admin guard)
+      ├── /admin/dashboard
+      ├── /admin/properties
+      ├── /admin/leases
+      ├── /admin/listings (read-only)
+      ├── /admin/admins (super_admin only)
+      ├── /admin/feedback
+      ├── /admin/agent-reviews (super_admin only)
+      ├── /admin/reviews (super_admin only)
+      ├── /admin/profile
+      └── /admin/inbox
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `AuthContext` | Shared auth state (role, adminRole, logout). Replaces per-page auth checks. |
+| `PendingCountsContext` | Shared badge counts (leases, feedback, agentReviews, unreadInbox). Syncs sidebar badges across routes. |
+| `AppSidebar` | Extracted sidebar. Uses `useRouter().push()` and `usePathname()` for navigation. |
+| `AppTopbar` | Extracted topbar (theme/lang toggles, logout). |
+| `AdminPageWrapper` | Thin wrapper that maps route → AdminPanel `defaultTab` prop. |
+
+### Unauthenticated Browsing
+
+`/listings` is publicly accessible. Middleware allows it through without auth. The page renders `PropertyListings readOnly` with a login prompt banner for unauthenticated users. This enables organic discovery — users can see listings before committing to registration.
+
+### State Preservation
+
+Unlike the old SPA where all components stayed mounted, with routing components unmount/remount on navigation. This is acceptable because:
+- Most pages load data on mount from Supabase or localStorage (fast)
+- AIChat saves chat history to localStorage
+- AdminPanel initializes from `defaultTab` prop
+- Sidebar + topbar stay mounted in the layout (persistent across routes)

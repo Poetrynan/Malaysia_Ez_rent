@@ -1365,3 +1365,62 @@ feedbacks.filter(f => {
 ---
 
 *文档更新：2026-06-05 · AI Agent 地图卡片 Bug 修复、SSE 解析修复、URL 策略优化、UI 优化*
+
+---
+
+### Q: 为什么网站的地址栏以前不会变，现在会变了？
+
+**A:** 以前所有功能都挤在一个 `page.tsx` 文件里，用 CSS `display: none/block` 切换标签，浏览器不知道你切换了页面，所以地址栏一直是 `/`。
+
+现在改成了 Next.js 的多页面路由，每个功能有独立的 URL：
+
+| 功能 | URL |
+|------|-----|
+| 房源浏览 | `/listings` |
+| AI 助手 | `/chat` |
+| 我的租约 | `/my-lease` |
+| 管理后台 | `/admin/dashboard`、`/admin/properties` 等 |
+
+好处：浏览器后退/前进能用、刷新不丢页面、可以分享链接、Google 能搜到每个页面。
+
+### Q: 未登录也能看房源了吗？
+
+**A:** 是的。`/listings` 页面现在公开可访问，未登录用户可以浏览所有房源（只读模式），但不能收藏、不能表达意向。页面顶部有蓝色横幅引导登录："登录后即可收藏房源、表达租房意向，享受平台保障"。
+
+这是为了降低推广门槛——先让人看到房源，觉得好了再注册登录。
+
+### Q: 新的路由结构是什么样的？
+
+**A:** 使用 Next.js App Router 的路由组 `(app)`：
+
+```
+frontend/src/app/
+├── page.tsx                    → redirect('/listings')
+├── (app)/                      → 路由组（不出现 URL 中）
+│   ├── layout.tsx              → 主布局（侧边栏 + 顶栏）
+│   ├── listings/page.tsx       → /listings（公开）
+│   ├── chat/page.tsx           → /chat（需登录）
+│   ├── my-lease/page.tsx       → /my-lease（需登录）
+│   ├── profile/page.tsx        → /profile（需登录）
+│   ├── maintenance/page.tsx    → /maintenance（需登录）
+│   ├── inbox/page.tsx          → /inbox（需登录）
+│   └── admin/
+│       ├── layout.tsx          → 管理员权限守卫
+│       ├── dashboard/page.tsx  → /admin/dashboard
+│       ├── properties/page.tsx → /admin/properties
+│       └── ...（10 个管理页面）
+├── login/page.tsx              → /login（不变）
+└── calculator/page.tsx         → /calculator（不变）
+```
+
+### Q: 改了路由后，现有的组件（AdminPanel、PropertyListings 等）需要改吗？
+
+**A:** **不需要。** 所有现有组件内部逻辑零修改。路由重构只改了"壳"——每个页面文件只有 10-30 行，负责读取认证状态和渲染对应的组件。AdminPanel 继续通过 `defaultTab` prop 控制显示哪个子标签。
+
+### Q: 侧边栏的红点徽章（待审核数量）跨页面还能同步吗？
+
+**A:** 能。通过 `PendingCountsContext` 实现。AdminPanel 在 `/admin/leases` 页面加载时更新计数，侧边栏在 `(app)/layout.tsx` 中读取计数并显示徽章。因为 layout 在路由切换时不会卸载，所以徽章始终保持同步。
+
+---
+
+*文档更新：2026-06-05 · 多页面路由架构重构、未登录浏览房源*
