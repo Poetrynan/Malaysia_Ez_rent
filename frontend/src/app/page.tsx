@@ -164,12 +164,15 @@ export default function Home() {
   // Update browser tab title based on active tab
   useEffect(() => {
     const brand = 'Malaysia Ez Rent';
-    const tabTitles: Record<string, { zh: string; en: string }> = {
-      'listings': { zh: '房源列表', en: 'Browse Listings' },
-      'chat': { zh: 'AI 找房助手', en: 'AI Assistant' },
-      'student': { zh: '我的租约', en: 'My Lease' },
-      'profile': { zh: '个人设置', en: 'Profile Settings' },
-      'maintenance': { zh: '反馈', en: 'Feedback' },
+    // Use existing i18n keys where available; admin tabs use inline lang checks (no i18n keys)
+    const i18nTabs: Record<string, string> = {
+      'listings': t('navListings'),
+      'chat': t('navAI'),
+      'student': t('navPortal'),
+      'profile': t('myProfile'),
+      'maintenance': t('feedback'),
+    };
+    const adminTabs: Record<string, { zh: string; en: string }> = {
       'inbox': { zh: '消息与公告', en: 'Inbox & Alerts' },
       'admin-dashboard': { zh: '数据看板', en: 'Dashboard' },
       'admin-listings': { zh: '房源浏览', en: 'Browse Listings' },
@@ -182,10 +185,9 @@ export default function Home() {
       'admin-profile': { zh: '个人设置', en: 'Profile Settings' },
       'admin-inbox': { zh: '消息与公告', en: 'Inbox & Announcements' },
     };
-    const entry = tabTitles[activeTab];
-    const pageName = entry ? (lang === 'zh' ? entry.zh : entry.en) : '';
+    const pageName = i18nTabs[activeTab] ?? (adminTabs[activeTab] ? (lang === 'zh' ? adminTabs[activeTab].zh : adminTabs[activeTab].en) : '');
     document.title = pageName ? `${pageName} | ${brand}` : brand;
-  }, [activeTab, lang]);
+  }, [activeTab, lang, t]);
 
   const handleLogout = async () => {
     localStorage.removeItem('ez_logged_in');

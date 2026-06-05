@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [roleView, setRoleView] = useState<'choose' | 'student' | 'agent'>('choose');
 
-  React.useEffect(() => { document.title = 'Login | Malaysia Ez Rent'; }, []);
+  React.useEffect(() => { document.title = `${lang === 'zh' ? '登录' : 'Login'} | Malaysia Ez Rent`; }, [lang]);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
