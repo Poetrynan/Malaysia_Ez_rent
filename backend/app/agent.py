@@ -33,24 +33,61 @@ _EFFORT_LOW_KW = [
 
 import re as _re
 
+# TPM auto-retry: parse Groq "try again in 14.5s" / "3m10s", cap wait to avoid hanging
+_MAX_TPM_WAIT_SEC = 90.0
+_TPM_RETRIES_PER_MODEL = 1
+
+
+def _parse_retry_seconds(err_str: str) -> Optional[float]:
+    m = _re.search(r"try again in ([\dhms\. ]+)", err_str, _re.IGNORECASE)
+    if not m:
+        return None
+    total = 0.0
+    for part in _re.finditer(r"(\d+(?:\.\d+)?)([smh])", m.group(1).strip().lower()):
+        val, unit = float(part.group(1)), part.group(2)
+        if unit == "s":
+            total += val
+        elif unit == "m":
+            total += val * 60
+        elif unit == "h":
+            total += val * 3600
+    return total if total > 0 else None
+
+
+def _retry_hint(err_str: str) -> str:
+    wait_sec = _parse_retry_seconds(err_str)
+    if not wait_sec:
+        return ""
+    if wait_sec >= 60:
+        mins, secs = int(wait_sec // 60), int(wait_sec % 60)
+        return f"（约 {mins} 分{secs} 秒后恢复）" if secs else f"（约 {mins} 分钟后恢复）"
+    return f"（约 {int(max(1, wait_sec))} 秒后恢复）"
+
+
+def _is_tpd_error(err_str: str) -> bool:
+    low = err_str.lower()
+    return "per day" in low or "tpd" in err_str
+
+
+def _is_tpm_error(err_str: str) -> bool:
+    low = err_str.lower()
+    return "per minute" in low or "tpm" in err_str
+
 
 def _rate_limit_message(err_str: str) -> str:
-    """Build an honest, specific rate-limit message, including retry time if present.
-
-    Distinguishes per-day (TPD) exhaustion from short per-minute (TPM) throttling so the
-    user knows whether to wait minutes or wait for the daily reset.
-    """
-    retry_hint = ""
-    m = _re.search(r"try again in ([\dhms\. ]+)", err_str, _re.IGNORECASE)
-    if m:
-        retry_hint = f"（约 {m.group(1).strip()} 后恢复）"
-    is_daily = "per day" in err_str.lower() or "TPD" in err_str
-    if is_daily:
+    """Build an honest, specific rate-limit message, including retry time if present."""
+    hint = _retry_hint(err_str)
+    if _is_tpd_error(err_str):
         return (
-            "🙏 抱歉，AI 助手今日的免费额度已经用完了" + retry_hint + "。"
+            "🙏 抱歉，AI 助手今日的免费额度已经用完了" + hint + "。"
             "可以稍后再试，或联系管理员升级服务额度。今天先用「房源列表」「我的租约」等页面功能吧～"
         )
-    return "⏳ 当前请求有点密集，触发了限流" + retry_hint + "。请稍等几秒后重试。"
+    if _is_tpm_error(err_str):
+        return (
+            "⏳ 当前每分钟请求量已达上限" + hint + "。"
+            "已自动等待重试并尝试过备用模型，请稍等片刻后再发一次消息。"
+        )
+    return "⏳ 当前请求有点密集，触发了限流" + hint + "。请稍等几秒后重试。"
 
 
 def _is_rate_limit_error(err_str: str) -> bool:
@@ -108,74 +145,84 @@ def _iter_llm_stream(
     models = _model_chain(start_model)
 
     for mi, model_name in enumerate(models):
-        content_text = ""
-        reasoning_text = ""
-        tool_calls_acc: Dict[int, dict] = {}
-        try:
-            extra_body = _groq_extra_body(model_name, reasoning_effort, with_tools=bool(tools))
-            kwargs: Dict[str, Any] = {
-                "model": model_name,
-                "messages": messages,
-                "timeout": 90.0,
-                "max_completion_tokens": max_completion_tokens,
-                "stream": True,
-            }
-            if tools is not None:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = tool_choice
-            if extra_body:
-                kwargs["extra_body"] = extra_body
+        if mi > 0:
+            yield ("model_switch", model_name)
 
-            if mi > 0:
-                yield ("model_switch", model_name)
+        tpm_retries = _TPM_RETRIES_PER_MODEL
+        while True:
+            content_text = ""
+            reasoning_text = ""
+            tool_calls_acc: Dict[int, dict] = {}
+            try:
+                extra_body = _groq_extra_body(model_name, reasoning_effort, with_tools=bool(tools))
+                kwargs: Dict[str, Any] = {
+                    "model": model_name,
+                    "messages": messages,
+                    "timeout": 90.0,
+                    "max_completion_tokens": max_completion_tokens,
+                    "stream": True,
+                }
+                if tools is not None:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = tool_choice
+                if extra_body:
+                    kwargs["extra_body"] = extra_body
 
-            stream = openai_client.chat.completions.create(**kwargs)
-            for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta
-                r = getattr(delta, "reasoning", None)
-                if r:
-                    reasoning_text += r
-                if getattr(delta, "content", None):
-                    content_text += delta.content
-                    yield ("text_delta", delta.content)
-                for tc in (getattr(delta, "tool_calls", None) or []):
-                    slot = tool_calls_acc.setdefault(
-                        tc.index, {"id": None, "name": "", "arguments": ""}
-                    )
-                    if tc.id:
-                        slot["id"] = tc.id
-                    if tc.function and tc.function.name:
-                        slot["name"] = tc.function.name
-                    if tc.function and tc.function.arguments:
-                        slot["arguments"] += tc.function.arguments
+                stream = openai_client.chat.completions.create(**kwargs)
+                for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta
+                    r = getattr(delta, "reasoning", None)
+                    if r:
+                        reasoning_text += r
+                    if getattr(delta, "content", None):
+                        content_text += delta.content
+                        yield ("text_delta", delta.content)
+                    for tc in (getattr(delta, "tool_calls", None) or []):
+                        slot = tool_calls_acc.setdefault(
+                            tc.index, {"id": None, "name": "", "arguments": ""}
+                        )
+                        if tc.id:
+                            slot["id"] = tc.id
+                        if tc.function and tc.function.name:
+                            slot["name"] = tc.function.name
+                        if tc.function and tc.function.arguments:
+                            slot["arguments"] += tc.function.arguments
 
-            yield ("complete", {
-                "content_text": content_text,
-                "reasoning_text": reasoning_text,
-                "tool_calls_acc": tool_calls_acc,
-                "used_model": model_name,
-                "all_rate_limited": False,
-                "error": None,
-            })
-            return
+                yield ("complete", {
+                    "content_text": content_text,
+                    "reasoning_text": reasoning_text,
+                    "tool_calls_acc": tool_calls_acc,
+                    "used_model": model_name,
+                    "all_rate_limited": False,
+                    "error": None,
+                })
+                return
 
-        except Exception as e:
-            last_err = e
-            err_str = str(e)
-            if _is_rate_limit_error(err_str) and mi < len(models) - 1:
-                print(f"[Agent] {model_name} rate limited, trying {models[mi + 1]}...")
-                continue
-            yield ("complete", {
-                "content_text": content_text,
-                "reasoning_text": reasoning_text,
-                "tool_calls_acc": tool_calls_acc,
-                "used_model": model_name,
-                "all_rate_limited": _is_rate_limit_error(err_str),
-                "error": e,
-            })
-            return
+            except Exception as e:
+                err_str = str(e)
+                if _is_rate_limit_error(err_str):
+                    # TPM: wait for the window to reset, then retry the same model once
+                    if _is_tpm_error(err_str) and tpm_retries > 0:
+                        wait = min((_parse_retry_seconds(err_str) or 8.0) + 1.0, _MAX_TPM_WAIT_SEC)
+                        tpm_retries -= 1
+                        print(f"[Agent] {model_name} TPM limited, retry in {wait:.0f}s...")
+                        yield ("retry_wait", {"seconds": wait, "model": model_name})
+                        continue
+                    # TPD or TPM retries exhausted → try fallback model
+                    if mi < len(models) - 1:
+                        print(f"[Agent] {model_name} rate limited, trying {models[mi + 1]}...")
+                        break
+                yield ("complete", {
+                    "content_text": content_text,
+                    "reasoning_text": reasoning_text,
+                    "tool_calls_acc": tool_calls_acc,
+                    "used_model": model_name,
+                    "all_rate_limited": _is_rate_limit_error(err_str),
+                    "error": e,
+                })
+                return
 
 
 def assess_reasoning_effort(query: str) -> str:
@@ -660,6 +707,10 @@ async def live_agent_stream(
             elif ev_type == "model_switch":
                 active_model = payload
                 yield sse_event({"type": "thinking", "step": "⚡ 主模型额度紧张，已切换备用模型继续回答..."})
+            elif ev_type == "retry_wait":
+                secs = max(1, int(round(payload["seconds"])))
+                yield sse_event({"type": "thinking", "step": f"⏳ 短时限流，{secs} 秒后自动重试..."})
+                await asyncio.sleep(payload["seconds"])
             elif ev_type == "complete":
                 content_text = payload["content_text"]
                 reasoning_text = payload["reasoning_text"]
@@ -969,6 +1020,10 @@ async def live_agent_stream(
             elif ev_type == "model_switch":
                 active_model = payload
                 yield sse_event({"type": "thinking", "step": "⚡ 主模型额度紧张，已切换备用模型继续综合分析..."})
+            elif ev_type == "retry_wait":
+                secs = max(1, int(round(payload["seconds"])))
+                yield sse_event({"type": "thinking", "step": f"⏳ 短时限流，{secs} 秒后自动重试..."})
+                await asyncio.sleep(payload["seconds"])
             elif ev_type == "complete":
                 active_model = payload["used_model"]
                 if not final_content:
@@ -979,6 +1034,7 @@ async def live_agent_stream(
                     print(f"[Agent Synthesis Error] {type(err).__name__}: {es[:300]}")
                     if payload.get("all_rate_limited"):
                         rate_limited = True
+                        yield sse_event({"type": "text", "delta": _rate_limit_message(es)})
         if final_content.strip():
             answer_text = final_content
             final_text_emitted = True
