@@ -112,9 +112,11 @@ export default function GuestPage() {
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
-          {/* Artistic brand name — Malaysian flag colors */}
-          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', background: 'repeating-linear-gradient(180deg, #CC0001 0%, #CC0001 7%, #FFFFFF 7%, #FFFFFF 14%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 8px', lineHeight: 1.1, filter: 'drop-shadow(0 2px 4px rgba(1,0,102,0.15))' }}>
-            Malaysia Ez Rent
+          {/* Artistic brand name — Malaysian flag: blue canton + red-white stripes + yellow star */}
+          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.1, position: 'relative', display: 'inline-block' }}>
+            <span style={{ background: 'linear-gradient(135deg, #010066 0%, #010066 25%, #CC0001 25%, #CC0001 45%, #FFFFFF 45%, #FFFFFF 55%, #CC0001 55%, #CC0001 75%, #FFFFFF 75%, #FFFFFF 85%, #CC0001 85%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Malaysia</span>
+            <span style={{ color: '#FFCD00', margin: '0 6px' }}>✦</span>
+            <span style={{ background: 'linear-gradient(90deg, #CC0001 0%, #FFFFFF 30%, #CC0001 50%, #FFFFFF 70%, #CC0001 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Ez Rent</span>
           </div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
             {lang === 'zh' ? '大马留学生 AI 智能租房系统' : 'AI-Powered Rental System for Malaysia'}
