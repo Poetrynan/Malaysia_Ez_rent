@@ -1359,6 +1359,6 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 /* Guest floating hello words fade in from bottom */
 @keyframes helloFloatIn {
   0% { opacity: 0; transform: translateY(30px); }
-  100% { opacity: 0.12; transform: translateY(0); }
+  100% { opacity: 0.18; transform: translateY(0); }
 }
 

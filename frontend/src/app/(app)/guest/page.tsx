@@ -66,7 +66,7 @@ export default function GuestPage() {
     <div className="guest-mode" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ═══════════ HERO ═══════════ */}
-      <section style={{ position: 'relative', padding: '80px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)', overflow: 'hidden' }}>
+      <section style={{ position: 'relative', padding: '120px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)', overflow: 'hidden' }}>
         {/* Decorative blobs */}
         <div style={{ position: 'absolute', top: -120, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -100, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -77,7 +77,7 @@ export default function GuestPage() {
             position: 'absolute', left: h.x, top: h.y,
             transform: `rotate(${h.rotate}deg)`,
             fontSize: h.size, fontWeight: 300, fontFamily: h.font,
-            color: 'var(--primary)', opacity: heroVisible ? 0.12 : 0,
+            color: 'var(--primary)', opacity: heroVisible ? 0.18 : 0,
             animation: heroVisible ? `helloFloatIn 1s ${h.delay}s cubic-bezier(0.16, 1, 0.3, 1) both` : 'none',
             pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '0.02em',
           }}>
