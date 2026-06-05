@@ -287,9 +287,14 @@ export default function AIChat() {
           <span className="manus-title-text">{t('chatAgentName')}</span>
           <span className={`manus-status-dot ${backendStatus}`} />
         </div>
-        <button className="manus-history-btn" onClick={() => setHistoryOpen(true)}>
-          <Clock size={14} /> 历史
-        </button>
+        <div style={{display: 'flex', gap: 6}}>
+          <button className="manus-history-btn" onClick={() => setHistoryOpen(true)}>
+            <Clock size={14} /> 历史
+          </button>
+          <button className="manus-history-btn" onClick={() => { if (messages.length > 0 && confirm('清空当前对话？')) { setMessages([]); saveToHistory(); } }}>
+            <Trash2 size={14} /> 清空
+          </button>
+        </div>
       </div>
 
       {/* Chat area */}
