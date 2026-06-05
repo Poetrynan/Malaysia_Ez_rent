@@ -1344,3 +1344,9 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   100% { transform: translateX(-100%); }
 }
 
+/* Guest page logo entrance animation */
+@keyframes guestLogoIn {
+  0% { opacity: 0; transform: scale(0.8) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
