@@ -587,12 +587,16 @@ async def live_agent_stream(
                     "props": commute_props
                 })
 
-            # Append tool result to messages
+            # Append tool result to messages (truncate to stay within token limits)
+            result_json = json.dumps(result_data, ensure_ascii=False)
+            MAX_RESULT_CHARS = 2000  # ~500 tokens, keeps total well under Groq 8K TPM
+            if len(result_json) > MAX_RESULT_CHARS:
+                result_json = result_json[:MAX_RESULT_CHARS] + "... (truncated)"
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "name": tool_name,
-                "content": json.dumps(result_data, ensure_ascii=False)
+                "content": result_json
             })
 
     # Fallback: loop ended without emitting text (all iterations had tool calls)

@@ -447,15 +447,15 @@ export default function AIChat() {
                         {!isLatestDone && (
                           <div className="manus-thought">
                             <span className="manus-thought-dot pulse" />
-                            <span style={{flex: 1}}>{latest.label}</span>
-                            {elapsed > 0 && <span style={{fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600}}>{elapsed}s</span>}
+                            <span style={{flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis'}}>{latest.label}</span>
+                            {elapsed > 0 && <span style={{fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600, flexShrink: 0}}>{elapsed}s</span>}
                           </div>
                         )}
                         {/* Latest step done — show ✅ */}
                         {isLatestDone && (
                           <div className="manus-thought" style={{opacity: 0.7}}>
                             <CheckCircle size={14} style={{color: '#22C55E', flexShrink: 0}} />
-                            <span>{latest.label}</span>
+                            <span style={{flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis'}}>{latest.label}</span>
                           </div>
                         )}
                       </div>
@@ -479,9 +479,11 @@ export default function AIChat() {
                       </div>
                       {/* Args */}
                       <div className="manus-tool-args">
-                        {Object.entries(tc.args).map(([k, v]) => (
-                          <span key={k} className="manus-tool-arg">{k}: <code>{String(v)}</code></span>
-                        ))}
+                        {Object.entries(tc.args).map(([k, v]) => {
+                          const str = String(v);
+                          const display = str.length > 40 ? str.slice(0, 40) + '…' : str;
+                          return <span key={k} className="manus-tool-arg">{k}: <code title={str}>{display}</code></span>;
+                        })}
                       </div>
                       {/* Expandable raw output */}
                       {expandedTools.has(tc.id) && tc.result && (

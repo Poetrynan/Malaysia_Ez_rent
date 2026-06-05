@@ -625,6 +625,12 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   background: var(--bg-hover);
   padding: 1px 5px;
   border-radius: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
   font-size: 0.7rem;
 }
 
