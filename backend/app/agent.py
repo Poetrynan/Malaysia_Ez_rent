@@ -358,7 +358,7 @@ async def live_agent_stream(
     pending_ui_components = []  # Collect map data, emit AFTER text is done
     has_commute = False  # Track if calculate_commute was called (skip duplicate map card)
     kb_community_info = None  # Store knowledge base result for merging into commute card
-    MAX_LOOPS = 3  # Reduce from 5 to 3 — NVIDIA free tier is slow (~70s/call)
+    MAX_LOOPS = 5  # Allow up to 5 rounds for complex multi-tool queries
     for loop_idx in range(MAX_LOOPS):
         step_labels = [
             "🔍 正在理解你的问题...",

@@ -141,14 +141,52 @@ export default function MapAndCard({
       {/* Header: commute mode shows origin → destination, KB mode shows community profile, room mode shows property */}
       {isCommuteMode ? (
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--glass-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <MapPin size={14} style={{ color: '#16A34A', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{origin_name}</span>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: isKBMode ? 'linear-gradient(135deg, #8B5CF6, #6366F1)' : 'rgba(22, 163, 74, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {isKBMode ? <Sparkles size={22} color="white" /> : <MapPin size={22} color="#16A34A" />}
+            </div>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-h)' }}>{community_name || origin_name}</div>
+              {university_name && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>📍 {university_name} 附近</div>
+              )}
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                {lang === 'zh' ? '→ ' : '→ '}<strong>{destination_name}</strong>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Home size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{destination_name}</span>
-          </div>
+          {/* Community info row — price, rating, safety */}
+          {isKBMode && (
+            <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              {price_range && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34, 197, 94, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                  <Wallet size={12} style={{ color: '#22C55E' }} />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#22C55E' }}>
+                    RM {price_range.min} - {price_range.max}{t('perMonth')}
+                  </span>
+                </div>
+              )}
+              {tenant_rating?.overall && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(234, 179, 8, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                  <Star size={12} style={{ color: '#EAB308', fill: '#EAB308' }} />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#EAB308' }}>{tenant_rating.overall}</span>
+                </div>
+              )}
+              {tenant_rating?.safety && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(59, 130, 246, 0.08)', padding: '4px 10px', borderRadius: 6 }}>
+                  <Shield size={12} style={{ color: '#3B82F6' }} />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#3B82F6' }}>
+                    {lang === 'zh' ? '安全 ' : 'Safe '}{tenant_rating.safety}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {isKBMode && description && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {description}
+            </div>
+          )}
         </div>
       ) : isKBMode ? (
         /* Knowledge Base Community Card */
