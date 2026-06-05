@@ -112,12 +112,42 @@ export default function GuestPage() {
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
-          {/* Artistic brand name — Malaysian flag: blue canton + red-white stripes + yellow star */}
-          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '0 0 8px', lineHeight: 1.1, position: 'relative', display: 'inline-block' }}>
-            <span style={{ background: 'linear-gradient(135deg, #010066 0%, #010066 25%, #CC0001 25%, #CC0001 45%, #FFFFFF 45%, #FFFFFF 55%, #CC0001 55%, #CC0001 75%, #FFFFFF 75%, #FFFFFF 85%, #CC0001 85%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Malaysia</span>
-            <span style={{ color: '#FFCD00', margin: '0 6px' }}>✦</span>
-            <span style={{ background: 'linear-gradient(90deg, #CC0001 0%, #FFFFFF 30%, #CC0001 50%, #FFFFFF 70%, #CC0001 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Ez Rent</span>
-          </div>
+          {/* Artistic brand name — Malaysian flag SVG */}
+          <svg viewBox="0 0 700 90" style={{ width: 'clamp(340px, 60vw, 580px)', height: 'auto', margin: '0 auto 8px', display: 'block', filter: 'drop-shadow(0 2px 6px rgba(1,0,102,0.2))' }}>
+            <defs>
+              <mask id="textMask">
+                <text x="350" y="62" dominantBaseline="middle" textAnchor="middle"
+                  style={{ fontSize: '76px', fontWeight: 800, fontFamily: 'Georgia, "Times New Roman", serif', letterSpacing: '-1px', fill: 'white' }}>
+                  Malaysia Ez Rent
+                </text>
+              </mask>
+            </defs>
+            {/* Flag background masked by text */}
+            <g mask="url(#textMask)">
+              {/* 14 red-white stripes */}
+              <rect x="0" y="0" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="6.43" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="12.86" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="19.29" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="25.71" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="32.14" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="38.57" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="45" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="51.43" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="57.86" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="64.29" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="70.71" width="700" height="6.43" fill="#FFFFFF" />
+              <rect x="0" y="77.14" width="700" height="6.43" fill="#CC0001" />
+              <rect x="0" y="83.57" width="700" height="6.43" fill="#FFFFFF" />
+              {/* Blue canton */}
+              <rect x="0" y="0" width="270" height="51.43" fill="#010066" />
+              {/* Yellow crescent */}
+              <circle cx="110" cy="25.7" r="16" fill="#FFCD00" />
+              <circle cx="118" cy="25.7" r="13" fill="#010066" />
+              {/* Yellow star (simplified 14-point) */}
+              <polygon points="165,12 169,22 179,22 171,28 174,38 165,32 156,38 159,28 151,22 161,22" fill="#FFCD00" />
+            </g>
+          </svg>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
             {lang === 'zh' ? '大马留学生 AI 智能租房系统' : 'AI-Powered Rental System for Malaysia'}
           </div>
