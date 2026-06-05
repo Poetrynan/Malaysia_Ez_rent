@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [roleView, setRoleView] = useState<'choose' | 'student' | 'agent'>('choose');
 
+  React.useEffect(() => { document.title = 'Login | Malaysia Ez Rent'; }, []);
+
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const ua = navigator.userAgent.toLowerCase();

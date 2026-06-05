@@ -161,6 +161,32 @@ export default function Home() {
     }
   }, []);
 
+  // Update browser tab title based on active tab
+  useEffect(() => {
+    const brand = 'Malaysia Ez Rent';
+    const tabTitles: Record<string, { zh: string; en: string }> = {
+      'listings': { zh: '房源列表', en: 'Browse Listings' },
+      'chat': { zh: 'AI 找房助手', en: 'AI Assistant' },
+      'student': { zh: '我的租约', en: 'My Lease' },
+      'profile': { zh: '个人设置', en: 'Profile Settings' },
+      'maintenance': { zh: '反馈', en: 'Feedback' },
+      'inbox': { zh: '消息与公告', en: 'Inbox & Alerts' },
+      'admin-dashboard': { zh: '数据看板', en: 'Dashboard' },
+      'admin-listings': { zh: '房源浏览', en: 'Browse Listings' },
+      'admin-properties': { zh: '房源管理', en: 'Properties' },
+      'admin-leases': { zh: '租约 & 财务台账', en: 'Leases & Finance' },
+      'admin-admins': { zh: '中介与管理员', en: 'Agents & Admins' },
+      'admin-feedback': { zh: '反馈管理', en: 'Feedback' },
+      'admin-agent-reviews': { zh: '中介审核', en: 'Agent Reviews' },
+      'admin-reviews': { zh: '评论管理', en: 'Reviews' },
+      'admin-profile': { zh: '个人设置', en: 'Profile Settings' },
+      'admin-inbox': { zh: '消息与公告', en: 'Inbox & Announcements' },
+    };
+    const entry = tabTitles[activeTab];
+    const pageName = entry ? (lang === 'zh' ? entry.zh : entry.en) : '';
+    document.title = pageName ? `${pageName} | ${brand}` : brand;
+  }, [activeTab, lang]);
+
   const handleLogout = async () => {
     localStorage.removeItem('ez_logged_in');
     localStorage.removeItem('ez_user_role');

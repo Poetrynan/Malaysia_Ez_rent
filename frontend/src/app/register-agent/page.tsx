@@ -30,6 +30,8 @@ export default function RegisterAgentPage() {
   const [realtimeBanner, setRealtimeBanner] = useState<{ type: 'approved' | 'rejected'; message: string } | null>(null);
   const channelRef = useRef<any>(null);
 
+  useEffect(() => { document.title = `${lang === 'zh' ? '中介注册' : 'Agent Registration'} | Malaysia Ez Rent`; }, [lang]);
+
   useEffect(() => {
     checkAuth();
     return () => {

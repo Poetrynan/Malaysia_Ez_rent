@@ -8,6 +8,7 @@ export default function CalculatorPage() {
   const { lang, setLang, theme, toggleTheme, t } = useApp();
 
   const [rent, setRent] = useState('');
+  React.useEffect(() => { document.title = `${t('calcTitle')} | Malaysia Ez Rent`; }, [t]);
   const [depositMonths, setDepositMonths] = useState('2');
   const [advanceMonths, setAdvanceMonths] = useState('0');
   const [coTenants, setCoTenants] = useState('1');
