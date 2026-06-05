@@ -1305,3 +1305,63 @@ feedbacks.filter(f => {
 ---
 
 *文档更新：2026-05-29 · 历史工单租约关联重构、未读提醒数字角标优化、025 迁移入册*
+
+---
+
+### Q: 为什么 AI 回答手机卡问题后还弹出公寓地图卡片？
+
+**A:** 后端 `search_knowledge_base` 工具执行后**无条件**生成 MapAndCard，只要搜索结果有经纬度就附加地图。系统 prompt 的 "SEARCH FIRST, NEVER GUESS" 规则过于激进，导致 LLM 连无关问题也调用了搜索工具。
+**修复：** 新增 `show_map: boolean` 参数（默认 false），只有租房/小区相关问题才设 true。详见 `agent.py`。
+
+---
+
+### Q: 为什么 AI 文字介绍的是 A 小区，但地图显示的是 B 小区？
+
+**A:** 后端始终取搜索结果的第一条（`result_data[0]`）生成地图，但 LLM 的文字回答可能重点介绍其他小区。
+**修复：** 新增 `map_community_name` 参数，LLM 指定地图展示哪个小区，后端按名字匹配（不区分大小写）。
+
+---
+
+### Q: 为什么第二个问题工具调用完成后不显示最终结果？
+
+**A:** 双重 Bug：(1) 前端 SSE 解析器在流结束时 `buf` 里残留的最后一个 SSE 事件没被处理；(2) 后端 `MAX_LOOPS` 循环如果 3 轮全用在 tool_calls 上，从未执行 `break`，text 和 UI component 都没发出去。
+**修复：** 前端流结束后 flush buffer；后端循环结束后补发 UI 组件 + 默认文字。
+
+---
+
+### Q: 为什么同时搜知识库和算通勤会出现两张地图卡片？
+
+**A:** `search_knowledge_base` 和 `calculate_commute` 各自独立生成 MapAndCard，互不感知。
+**修复：** 新增 `has_commute` 标志位，当通勤工具被调用时跳过知识库卡片，将小区信息（价格、评分、描述）合并到通勤卡片上。一张卡片 = 社区资料 + 通勤路线 + 地图，只调用一次 Google Maps API。
+
+---
+
+### Q: 为什么 AI 不能发外部 URL（如大学官网）？
+
+**A:** 系统 prompt 原规则 "NEVER reveal data sources, URLs, or platform names" 太宽泛，禁止了所有 URL。
+**修复：** 改为只禁止暴露内部数据源和租房平台链接，允许分享大学官网、政府网站等有用 URL。禁止分享房源挂牌页面、色情/暴力/政治/宗教网站。
+
+---
+
+### Q: 为什么 AI 在回答末尾提到 Mudah.my 等平台名称？
+
+**A:** 系统 prompt 的 "NEVER reveal data sources" 规则不够具体，LLM 仍会添加来源免责声明。
+**修复：** 增加明确禁令：禁止提及任何外部租房平台名称，禁止添加"以上房源均来自XX平台"类免责声明。
+
+---
+
+### Q: 聊天输入框为什么不在页面最底端？
+
+**A:** `.manus-page` 使用 `height: calc(100% - 60px)` 百分比高度，在多层 flex 嵌套中解析不稳定。
+**修复：** 改为 `flex: 1; min-height: 0`，通过 flex 链正确填充视口。
+
+---
+
+### Q: 为什么思考步骤和工具卡片标题会折行显示？
+
+**A:** CSS 缺少 `white-space: nowrap` 属性。
+**修复：** 为 `.manus-thought`、`.manus-thought-completed`、`.manus-tool-header` 添加 `white-space: nowrap`。
+
+---
+
+*文档更新：2026-06-05 · AI Agent 地图卡片 Bug 修复、SSE 解析修复、URL 策略优化、UI 优化*

@@ -852,3 +852,61 @@ Agent now shows friendly Chinese error messages instead of raw technical errors:
 - 401 (auth): config error, contact admin
 - Network: connection timeout, check network
 - Model changed from gemini-2.5-flash (20 req/day) to gemini-2.0-flash (1500 req/day)
+
+---
+
+## 23. Agent Bug Fixes & UI/UX Polish (2026-06-05)
+
+### 23.1 Map Card Conditional Rendering
+
+Previously, `search_knowledge_base` unconditionally generated a `MapAndCard` UI component whenever results had lat/lng coordinates — regardless of whether the user asked about housing.
+
+**Fix:** Added `show_map: boolean` parameter (default false). Only queries about housing/properties set `show_map=true`. The system prompt now explicitly instructs the LLM when to use this flag.
+
+### 23.2 Map Card Location Matching
+
+The map card always showed the first search result (`result_data[0]`), even when the LLM's text answer focused on a different community.
+
+**Fix:** Added `map_community_name: string` parameter. The LLM specifies which community the map should display. Backend matches by name (case-insensitive, partial match).
+
+### 23.3 Duplicate Map Card Elimination
+
+When both `search_knowledge_base` and `calculate_commute` were called, two map cards appeared — one showing a static community pin (requiring manual input), one showing the actual route.
+
+**Fix:** Added `has_commute` flag. When commute is calculated, the knowledge base map card is skipped. Community info (price, rating, description) is merged into the commute card props. Result: one card with route + community info, one Google Maps API call.
+
+### 23.4 SSE Buffer Flush
+
+The frontend SSE parser had a bug: when `reader.read()` returned `done=true`, remaining data in `buf` was never processed, causing the last SSE events (including final text) to be lost.
+
+**Fix:** After the read loop ends, flush remaining buffer with `processBuf(false)`.
+
+### 23.5 Backend Loop Fallback
+
+The ReAct loop (`MAX_LOOPS=5`) could exhaust all iterations on tool calls without ever emitting text or UI components.
+
+**Fix:** After the loop ends, emit `pending_ui_components` + a default fallback message.
+
+### 23.6 MAX_LOOPS Increase
+
+Increased from 3 to 5 to support complex multi-tool queries (knowledge base + external search + commute).
+
+### 23.7 Platform Name Sanitization
+
+All user-facing text now uses generic Chinese descriptions instead of internal platform names:
+- "Searching Tavily for..." → "正在搜索最新资讯..."
+- "using Google Maps database..." → "正在计算通勤路线和时间..."
+- System prompt rules use generic terms instead of specific platform names
+
+### 23.8 URL Sharing Policy
+
+- ✅ Allowed: university sites, government portals, official pages
+- ❌ Forbidden: rental listing pages, porn, violence, political, religious content
+- ❌ Forbidden: revealing internal data sources (Tavily, Supabase, Google Maps API)
+
+### 23.9 UI Polish
+
+- Chat avatars: 36px → 42px, icons 14 → 18
+- User avatar moved from right to left (same side as AI avatar)
+- Thinking steps and tool card titles: `white-space: nowrap` to prevent wrapping
+- Input bar: fixed to page bottom via flex layout (`flex: 1; min-height: 0`)
