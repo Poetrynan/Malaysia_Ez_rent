@@ -112,8 +112,8 @@ export default function GuestPage() {
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
-          {/* Artistic brand name */}
-          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, var(--primary) 0%, #14b8a6 50%, var(--primary) 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 8px', lineHeight: 1.1 }}>
+          {/* Artistic brand name — Malaysian flag colors */}
+          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', background: 'repeating-linear-gradient(180deg, #CC0001 0%, #CC0001 7%, #FFFFFF 7%, #FFFFFF 14%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 8px', lineHeight: 1.1, filter: 'drop-shadow(0 2px 4px rgba(1,0,102,0.15))' }}>
             Malaysia Ez Rent
           </div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
