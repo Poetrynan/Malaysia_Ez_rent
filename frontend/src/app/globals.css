@@ -1379,29 +1379,98 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* Login card entrance */
 .login-card-anim { animation: fadeReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-@media (prefers-reduced-motion: reduce) {
-  .login-card-anim { animation: none; }
+
+/* Login page — split layout + ambient background */
+.login-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  padding: 24px;
+  overflow: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+.login-split {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  width: 100%;
+  max-width: 1040px;
+}
+.login-brand-panel {
+  flex: 1 1 0;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.login-brand-anim { animation: fadeReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Ambient aurora + soft blobs (behind everything) */
+.login-aurora {
+  position: absolute;
+  inset: -25%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 48% at 22% 32%, var(--primary-glow), transparent 60%),
+    radial-gradient(40% 50% at 78% 68%, rgba(1, 0, 102, 0.16), transparent 62%),
+    radial-gradient(32% 42% at 62% 18%, rgba(255, 205, 0, 0.10), transparent 60%);
+  filter: blur(36px);
+  opacity: 0.75;
+  animation: auroraDrift 20s ease-in-out infinite alternate;
+}
+.login-blob {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.login-blob-1 { top: -140px; right: -90px; width: 420px; height: 420px; background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%); }
+.login-blob-2 { bottom: -120px; left: -70px; width: 340px; height: 340px; background: radial-gradient(circle, rgba(1, 0, 102, 0.14) 0%, transparent 70%); }
+
+@keyframes auroraDrift {
+  0%   { transform: translate3d(-3%, -2%, 0) scale(1); }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
 }
 
-/* Brand wordmark — Malaysian flag stripes filled into the text via CSS only */
+@media (max-width: 920px) {
+  .login-brand-panel { display: none; }
+  .login-split { gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-card-anim,
+  .login-brand-anim { animation: none; }
+  .login-aurora { animation: none; }
+}
+
+/* Brand wordmark — full Malaysian flag (Jalur Gemilang) painted into the text via CSS only.
+   Layered top→bottom: yellow crescent + 14-point star emblem, blue canton fading left→right,
+   then the 14 red/white stripes. All clipped to the glyphs with background-clip: text. */
 .flag-wordmark {
   display: inline-block;
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 800;
   letter-spacing: -1px;
-  background: repeating-linear-gradient(
-    180deg,
-    #CC0001 0,
-    #CC0001 7px,
-    #ffffff 7px,
-    #ffffff 14px
-  );
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cdefs%3E%3Cmask id='m'%3E%3Crect width='120' height='60' fill='black'/%3E%3Ccircle cx='34' cy='30' r='20' fill='white'/%3E%3Ccircle cx='46' cy='27' r='16' fill='black'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='120' height='60' fill='%23FFCD00' mask='url(%23m)'/%3E%3Cpolygon points='86,14 87.56,23.18 92.94,15.58 90.36,24.53 98.51,20.02 92.31,26.96 101.6,26.44 93,30 101.6,33.56 92.31,33.04 98.51,39.98 90.36,35.47 92.94,44.42 87.56,36.82 86,46 84.44,36.82 79.06,44.42 81.64,35.47 73.49,39.98 79.69,33.04 70.4,33.56 79,30 70.4,26.44 79.69,26.96 73.49,20.02 81.64,24.53 79.06,15.58 84.44,23.18' fill='%23FFCD00'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, #010066 0%, #010066 13%, rgba(1, 0, 102, 0.82) 23%, rgba(1, 0, 102, 0) 44%),
+    repeating-linear-gradient(180deg, #CC0001 0, #CC0001 7px, #ffffff 7px, #ffffff 14px);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-position: 0.12em 0.1em, left center, left center;
+  background-size: 1.55em auto, 100% 100%, 100% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  -webkit-text-stroke: 0.6px rgba(1, 0, 102, 0.6);
-  text-shadow: 0 2px 6px rgba(1, 0, 102, 0.18);
+  -webkit-text-stroke: 0.5px rgba(1, 0, 102, 0.5);
+  text-shadow: 0 2px 6px rgba(1, 0, 102, 0.2);
 }
 
 /* Horizontal card grids — stay in a row on desktop/tablet, stack only on phones */

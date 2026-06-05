@@ -3,9 +3,23 @@
 import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
-import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard, ShieldCheck, Camera, BadgeDollarSign } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard, ShieldCheck, Camera, BadgeDollarSign, Brain, Sparkles } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import LegalContent from '@/components/LegalContent';
+
+// Floating multilingual greetings for the ambient background (mirrors the landing page)
+const HELLO_WORDS = [
+  { word: 'こんにちは', x: '6%', y: '14%', rotate: -12, size: '1.5rem', delay: 0.5 },
+  { word: '你好', x: '4%', y: '60%', rotate: 8, size: '2rem', delay: 0.9 },
+  { word: 'Hola', x: '88%', y: '18%', rotate: -6, size: '1.6rem', delay: 0.7 },
+  { word: '안녕하세요', x: '85%', y: '66%', rotate: 10, size: '1.2rem', delay: 1.1 },
+  { word: 'Bonjour', x: '7%', y: '84%', rotate: -4, size: '1.3rem', delay: 1.3 },
+  { word: 'مرحبا', x: '90%', y: '42%', rotate: 5, size: '1.5rem', delay: 0.6 },
+  { word: 'नमस्ते', x: '13%', y: '32%', rotate: -8, size: '1.1rem', delay: 1.0 },
+  { word: 'Selamat Datang', x: '74%', y: '86%', rotate: -3, size: '1rem', delay: 1.4 },
+  { word: 'สวัสดี', x: '92%', y: '8%', rotate: 7, size: '1.3rem', delay: 0.8 },
+  { word: 'Ciao', x: '15%', y: '92%', rotate: -10, size: '1.4rem', delay: 1.2 },
+];
 
 export default function LoginPage() {
   const { lang, setLang, theme, toggleTheme } = useApp();
@@ -132,13 +146,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-base)', padding: 20, position: 'relative',
-      transition: 'background 0.3s ease, color 0.3s ease',
-    }}>
+    <div className="login-shell">
+      {/* ── AMBIENT BACKGROUND ── */}
+      <div className="login-aurora" aria-hidden="true" />
+      <div className="login-blob login-blob-1" aria-hidden="true" />
+      <div className="login-blob login-blob-2" aria-hidden="true" />
+      {HELLO_WORDS.map((h, i) => (
+        <div key={i} aria-hidden="true" style={{ position: 'absolute', left: h.x, top: h.y, transform: `rotate(${h.rotate}deg)`, fontSize: h.size, fontWeight: 300, color: 'var(--primary)', animation: `helloFloatIn 1s ${h.delay}s cubic-bezier(0.16, 1, 0.3, 1) both`, pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '0.02em', zIndex: 0 }}>
+          {h.word}
+        </div>
+      ))}
+
       {/* ── TOP BAR ── */}
-      <div className="topbar" style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'transparent', borderBottom: 'none', padding: '16px 24px' }}>
+      <div className="topbar" style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'transparent', borderBottom: 'none', padding: '16px 24px', zIndex: 10 }}>
         <div style={{ marginRight: 'auto' }} />
         <button className={`topbar-btn ${theme === 'light' ? 'active' : ''}`} onClick={toggleTheme} style={{ cursor: 'pointer' }}>
           {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
@@ -150,11 +170,52 @@ export default function LoginPage() {
         </button>
       </div>
 
+      <div className="login-split">
+        {/* ── BRAND PANEL (desktop only) ── */}
+        <div className="login-brand-panel login-brand-anim">
+          <div className="flag-wordmark" style={{ fontSize: 'clamp(2.2rem, 4vw, 3.2rem)', lineHeight: 1.1 }}>
+            Malaysia Ez Rent
+          </div>
+          <p style={{ fontSize: '1.05rem', color: 'var(--text-body)', lineHeight: 1.7, margin: 0, maxWidth: 380 }}>
+            {lang === 'zh'
+              ? '马来西亚留学生专属的 AI 智能租房平台——找房、签约、缴费、报修，一站式安全完成。'
+              : 'The AI-powered rental platform built for students in Malaysia — search, sign, pay and maintain, all in one secure place.'}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {[
+              { Icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', dzh: '告诉 AI 你的预算和位置，秒推合适房源', den: 'Tell AI your budget & location, get instant matches' },
+              { Icon: ShieldCheck, zh: '平台全程保障', en: 'Fully Protected', dzh: '实名认证中介、正规租约、资金可追溯', den: 'Verified agents, real leases, traceable payments' },
+              { Icon: Sparkles, zh: '一站式服务', en: 'All-in-One', dzh: '找房、签约、缴费、报修全部在线搞定', den: 'Search, sign, pay & maintain — all online' },
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <s.Icon size={20} style={{ color: '#fff' }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-h)' }}>{lang === 'zh' ? s.zh : s.en}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.5 }}>{lang === 'zh' ? s.dzh : s.den}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Schools strip */}
+          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 18 }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', marginBottom: 10 }}>
+              {lang === 'zh' ? '深受这些大学的留学生信赖' : 'Trusted by students from'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+              {['Monash', "Taylor's", 'Sunway', 'UPM', 'INTI', 'UCSI'].map((s) => (
+                <span key={s} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-body)', opacity: 0.7 }}>{s}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
       <div className="login-card-anim" style={cardStyle}>
         {/* ── LOGO ── */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src="/logo.png" alt="Malaysia Ez Rent"
-            style={{ width: 72, height: 72, objectFit: 'contain', display: 'inline-block', marginBottom: 12 }} />
+            style={{ width: 72, height: 72, objectFit: 'contain', display: 'block', margin: '0 auto 12px' }} />
           <div className="flag-wordmark" style={{ fontSize: '1.7rem', lineHeight: 1.15 }}>
             Malaysia Ez Rent
           </div>
@@ -428,6 +489,7 @@ export default function LoginPage() {
             {lang === 'zh' ? '隐私政策' : 'Privacy Policy'}
           </span>
         </p>
+      </div>
       </div>
 
       {/* ── MOCK ROLE MODAL ── */}
