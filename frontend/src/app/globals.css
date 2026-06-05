@@ -865,7 +865,11 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 }
 .manus-send:hover { background: var(--primary-hover); transform: scale(1.05); }
 .manus-send:active { transform: scale(0.95); }
-.manus-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.manus-send.stop-mode {
+  background: #EF4444;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.manus-send.stop-mode:hover { background: #DC2626; transform: scale(1.1); }
 
 /* Spinner */
 .tool-spinner {

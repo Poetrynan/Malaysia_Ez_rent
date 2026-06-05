@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Send, Bot, User, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Trash2, StopCircle } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -66,6 +66,9 @@ export default function AIChat() {
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ id: string; title: string; date: string; messages: Message[] }[]>([]);
   const currentSessionId = useRef<string>(`session-${Date.now()}`);
@@ -183,13 +186,33 @@ export default function AIChat() {
     }));
   };
 
+  /* ── Stop Generation ── */
+  const handleStop = () => {
+    abortRef.current?.abort();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsGenerating(false);
+    setElapsed(0);
+    saveToHistory();
+  };
+
   /* ── Send Message ── */
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || isGenerating) return;
+    // If currently generating, stop instead
+    if (isGenerating) { handleStop(); return; }
+    if (!query.trim()) return;
     const userText = query;
     setQuery('');
     setIsGenerating(true);
+    setElapsed(0);
+
+    // Start elapsed timer
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+
+    // Create abort controller
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const uid = `msg-u-${Date.now()}`;
     const aid = `msg-a-${Date.now()}`;
@@ -209,7 +232,7 @@ export default function AIChat() {
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
       const res = await fetch(`${apiUrl}/api/chat`, {
-        method: 'POST', headers,
+        method: 'POST', headers, signal: controller.signal,
         body: JSON.stringify({ query: userText, user_id: userId, history: messages.map(m => ({ role: m.role, content: m.content || m.thoughts.join(' ') })) })
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -233,13 +256,20 @@ export default function AIChat() {
         }
       }
     } catch (err: any) {
-      const detail = err?.message || String(err);
-      let errorMsg = '⚠️ AI 助手暂时无法响应，请稍后再试。';
-      if (detail.includes('429') || detail.includes('quota')) errorMsg = '🙏 抱歉，AI 助手今日请求已达上限，请稍后再试。';
-      else if (detail.includes('503')) errorMsg = '⏳ AI 助手当前繁忙，请稍等几秒后重试。';
-      setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: errorMsg, contentStarted: true } : m));
+      if (err.name === 'AbortError') {
+        // User stopped — keep what was already generated
+        setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: m.content || '（已停止）', contentStarted: true } : m));
+      } else {
+        const detail = err?.message || String(err);
+        let errorMsg = '⚠️ AI 助手暂时无法响应，请稍后再试。';
+        if (detail.includes('429') || detail.includes('quota')) errorMsg = '🙏 抱歉，AI 助手今日请求已达上限，请稍后再试。';
+        else if (detail.includes('503')) errorMsg = '⏳ AI 助手当前繁忙，请稍等几秒后重试。';
+        setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: errorMsg, contentStarted: true } : m));
+      }
     } finally {
+      if (timerRef.current) clearInterval(timerRef.current);
       setIsGenerating(false);
+      setElapsed(0);
       saveToHistory();
     }
   };
@@ -357,15 +387,15 @@ export default function AIChat() {
                   {isGenerating && !m.contentStarted && m.tools.length === 0 && m.thoughts.length === 0 && (
                     <div className="manus-thinking-indicator">
                       <span className="manus-thought-dot pulse" />
-                      <span>🤔 AI 正在思考，预计需要 30-90 秒...</span>
+                      <span>🤔 AI 正在思考... {elapsed > 0 && `(${elapsed}s)`}</span>
                     </div>
                   )}
 
-                  {/* Show elapsed time while waiting for first response */}
-                  {isGenerating && !m.contentStarted && m.tools.length === 0 && m.thoughts.length > 0 && (
+                  {/* Show elapsed time while tools are running */}
+                  {isGenerating && !m.contentStarted && m.tools.length > 0 && (
                     <div className="manus-thinking-indicator" style={{opacity: 0.7}}>
                       <span className="manus-thought-dot pulse" />
-                      <span>⏳ 等待 AI 回复中...</span>
+                      <span>⏳ 工具执行中... {elapsed > 0 && `(${elapsed}s)`}</span>
                     </div>
                   )}
 
@@ -405,11 +435,11 @@ export default function AIChat() {
       <form onSubmit={handleSend} className="manus-input-bar">
         <input
           type="text" value={query} onChange={e => setQuery(e.target.value)}
-          placeholder={t('chatPlaceholder')}
-          className="manus-input" disabled={isGenerating}
+          placeholder={isGenerating ? 'AI 思考中，点击右侧按钮停止...' : t('chatPlaceholder')}
+          className="manus-input"
         />
-        <button type="submit" className="manus-send" disabled={isGenerating} aria-label="Send">
-          <Send size={16} />
+        <button type="submit" className={`manus-send ${isGenerating ? 'stop-mode' : ''}`} aria-label={isGenerating ? 'Stop' : 'Send'}>
+          {isGenerating ? <StopCircle size={18} /> : <Send size={16} />}
         </button>
       </form>
 
