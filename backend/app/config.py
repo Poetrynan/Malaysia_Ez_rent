@@ -32,6 +32,7 @@ class Config:
         os.getenv("NEXT_PUBLIC_AGENT_MODEL", "").strip() or
         "gpt-4o-mini"
     )
+    AGENT_REASONING_EFFORT = os.getenv("AGENT_REASONING_EFFORT", "medium").strip()
     
     # Separated Embedding API configuration (defaults to OPENAI_API_KEY and OPENAI_API_BASE)
     EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
@@ -82,7 +83,7 @@ class Config:
         print("====== Malaysia Ez Rent Backend Config ======")
         print(f"Supabase URL configured: {bool(cls.SUPABASE_URL)}")
         print(f"Supabase Service Role configured: {bool(cls.SUPABASE_SERVICE_ROLE_KEY)}")
-        print(f"Agent API Key configured: {bool(cls.AGENT_API_KEY)} (Base: {cls.AGENT_API_BASE}, Model: {cls.AGENT_MODEL})")
+        print(f"Agent API Key configured: {bool(cls.AGENT_API_KEY)} (Base: {cls.AGENT_API_BASE}, Model: {cls.AGENT_MODEL}, Reasoning: {cls.AGENT_REASONING_EFFORT})")
         print(f"Embedding API Key configured: {bool(cls.EMBEDDING_API_KEY)} (Base: {cls.EMBEDDING_API_BASE})")
         print(f"Tavily API Key configured: {bool(cls.TAVILY_API_KEY)}")
         print(f"Google Maps API Key configured: {bool(cls.GOOGLE_MAPS_API_KEY)}")

@@ -363,12 +363,19 @@ async def live_agent_stream(
         await asyncio.sleep(0.3)
 
         try:
+            # Build extra kwargs for Groq reasoning support
+            extra_kwargs = {}
+            if Config.AGENT_REASONING_EFFORT:
+                extra_kwargs["reasoning_effort"] = Config.AGENT_REASONING_EFFORT
+                extra_kwargs["include_reasoning"] = True
+
             response = openai_client.chat.completions.create(
                 model=Config.AGENT_MODEL,
                 messages=messages,
                 tools=tools_definitions,
                 tool_choice="auto",
-                timeout=90.0  # 90s timeout per call
+                timeout=90.0,
+                **extra_kwargs
             )
         except Exception as e:
             err_str = str(e)
@@ -397,6 +404,12 @@ async def live_agent_stream(
 
         message = response.choices[0].message
         tool_calls = message.tool_calls
+
+        # Send Groq reasoning process to frontend (if available)
+        reasoning = getattr(message, 'reasoning', None)
+        if reasoning:
+            yield sse_event({"type": "thinking", "step": f"🧠 思考过程：{reasoning[:500]}{'...' if len(reasoning) > 500 else ''}"})
+            await asyncio.sleep(0.3)
 
         # If model chooses to write text (no tool calls)
         if not tool_calls:
