@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropertyListings from '@/components/PropertyListings';
 import LegalContent from '@/components/LegalContent';
 import { useApp } from '@/lib/ThemeProvider';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { LogIn, Brain, Shield, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe, ArrowRight } from 'lucide-react';
+import { LogIn, Brain, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe, ArrowRight, ShieldCheck, Camera, BadgeDollarSign, RefreshCw, Star, Quote } from 'lucide-react';
 
 const FEATURES = [
   { icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', descZh: '告诉 AI 你的需求，智能推荐最适合的房源和小区', descEn: 'Tell AI your needs, get smart recommendations for the best properties' },
-  { icon: Shield, zh: '平台保障', en: 'Secure Platform', descZh: '正规中介认证，租约合同保障，资金安全可追溯', descEn: 'Verified agents, lease contracts, traceable payments' },
+  { icon: ShieldCheck, zh: '平台保障', en: 'Secure Platform', descZh: '正规中介认证，租约合同保障，资金安全可追溯', descEn: 'Verified agents, lease contracts, traceable payments' },
   { icon: Sparkles, zh: '一站式服务', en: 'All-in-One Service', descZh: '找房、签约、缴费、报修，全部在线完成', descEn: 'Search, sign, pay, and maintain — all online' },
 ];
 
@@ -41,6 +41,52 @@ const HELLO_WORDS = [
   { word: 'Olá', x: '68%', y: '88%', rotate: -3, size: '1.5rem', font: 'italic', delay: 1.85 },
   { word: 'Habari', x: '95%', y: '55%', rotate: 5, size: '1.1rem', font: 'sans-serif', delay: 1.95 },
 ];
+
+// Builds an SVG path for an n-point star (default 14, the Malaysian "Bintang Persekutuan")
+function flagStar(cx: number, cy: number, outerR: number, innerR: number, points = 14) {
+  const step = Math.PI / points;
+  let d = '';
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = i * step - Math.PI / 2;
+    d += `${i === 0 ? 'M' : 'L'}${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)} `;
+  }
+  return d + 'Z';
+}
+
+// Reveals children with a subtle slide-up the first time they scroll into view
+function Reveal({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={`reveal${visible ? ' is-visible' : ''}`} style={{ transitionDelay: `${delay}ms`, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+      <span className="guest-eyebrow">{children}</span>
+    </div>
+  );
+}
 
 function CtaButton({ children, large }: { children: React.ReactNode; large?: boolean }) {
   const [hover, setHover] = useState(false);
@@ -112,40 +158,30 @@ export default function GuestPage() {
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
-          {/* Artistic brand name — Malaysian flag SVG */}
-          <svg viewBox="0 0 700 90" style={{ width: 'clamp(340px, 60vw, 580px)', height: 'auto', margin: '0 auto 8px', display: 'block', filter: 'drop-shadow(0 2px 6px rgba(1,0,102,0.2))' }}>
+          {/* Artistic brand name — letters filled with the Malaysian flag (Jalur Gemilang) */}
+          <svg viewBox="0 0 700 90" style={{ width: 'clamp(340px, 60vw, 580px)', height: 'auto', margin: '0 auto 8px', display: 'block', filter: 'drop-shadow(0 2px 5px rgba(1,0,102,0.35))' }}>
             <defs>
-              <mask id="textMask">
-                <text x="350" y="62" dominantBaseline="middle" textAnchor="middle"
-                  style={{ fontSize: '76px', fontWeight: 800, fontFamily: 'Georgia, "Times New Roman", serif', letterSpacing: '-1px', fill: 'white' }}>
+              <mask id="flagTextMask">
+                <rect x="0" y="0" width="700" height="90" fill="black" />
+                <text x="350" y="60" dominantBaseline="middle" textAnchor="middle"
+                  style={{ fontSize: '74px', fontWeight: 800, fontFamily: 'Georgia, "Times New Roman", serif', letterSpacing: '-1px', fill: 'white' }}>
                   Malaysia Ez Rent
                 </text>
               </mask>
             </defs>
-            {/* Flag background masked by text */}
-            <g mask="url(#textMask)">
-              {/* 14 red-white stripes */}
-              <rect x="0" y="0" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="6.43" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="12.86" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="19.29" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="25.71" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="32.14" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="38.57" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="45" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="51.43" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="57.86" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="64.29" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="70.71" width="700" height="6.43" fill="#FFFFFF" />
-              <rect x="0" y="77.14" width="700" height="6.43" fill="#CC0001" />
-              <rect x="0" y="83.57" width="700" height="6.43" fill="#FFFFFF" />
-              {/* Blue canton */}
-              <rect x="0" y="0" width="270" height="51.43" fill="#010066" />
-              {/* Yellow crescent */}
-              <circle cx="110" cy="25.7" r="16" fill="#FFCD00" />
-              <circle cx="118" cy="25.7" r="13" fill="#010066" />
-              {/* Yellow star (simplified 14-point) */}
-              <polygon points="165,12 169,22 179,22 171,28 174,38 165,32 156,38 159,28 151,22 161,22" fill="#FFCD00" />
+            {/* Flag, revealed only through the letter shapes */}
+            <g mask="url(#flagTextMask)">
+              {/* 14 alternating red/white stripes */}
+              {Array.from({ length: 14 }).map((_, i) => (
+                <rect key={i} x="0" y={i * (90 / 14)} width="700" height={90 / 14 + 0.3} fill={i % 2 === 0 ? '#CC0001' : '#FFFFFF'} />
+              ))}
+              {/* Blue canton — upper hoist, spans the top 7 stripes */}
+              <rect x="0" y="0" width="300" height="45" fill="#010066" />
+              {/* Yellow crescent (outer disc minus an offset disc) */}
+              <circle cx="105" cy="22.5" r="16.5" fill="#FFCD00" />
+              <circle cx="116" cy="20.5" r="13" fill="#010066" />
+              {/* Yellow 14-point federal star */}
+              <path d={flagStar(188, 23, 15, 6.2)} fill="#FFCD00" />
             </g>
           </svg>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
@@ -154,10 +190,23 @@ export default function GuestPage() {
           <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 14px', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>
             {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
           </h1>
-          <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 560, lineHeight: 1.7 }}>
+          <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)', margin: '0 auto 28px', maxWidth: 560, lineHeight: 1.7 }}>
             {lang === 'zh' ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验' : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Trust pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 36 }}>
+            {[
+              { Icon: ShieldCheck, zh: '实名认证中介', en: 'Verified Agents' },
+              { Icon: Camera, zh: '真实房源照片', en: 'Real Photos' },
+              { Icon: BadgeDollarSign, zh: '资金安全可追溯', en: 'Secure Payments' },
+            ].map((p, i) => (
+              <span key={i} className="guest-trust-pill">
+                <p.Icon size={14} style={{ color: 'var(--primary)' }} />
+                {lang === 'zh' ? p.zh : p.en}
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
             {role ? (
               <Link href={role === 'admin' ? '/admin/properties' : '/listings'}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 38px', borderRadius: 12, background: 'var(--primary)', color: 'white', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(14,116,144,0.2)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}>
@@ -168,80 +217,103 @@ export default function GuestPage() {
                 <LogIn size={18} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={16} />
               </CtaButton>
             )}
+            <a href="#listings" className="guest-ghost-btn">
+              <Search size={16} />{lang === 'zh' ? '浏览房源' : 'Browse Listings'}
+            </a>
           </div>
         </div>
       </section>
 
       {/* ═══════════ FEATURES ═══════════ */}
-      <section style={{ padding: '64px 24px', maxWidth: 1000, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
-          {lang === 'zh' ? '平台特色' : 'Why Choose Us'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 40 }}>
+      <section style={{ padding: '72px 24px', maxWidth: 1040, margin: '0 auto' }}>
+        <Reveal>
+          <Eyebrow>{lang === 'zh' ? '平台优势' : 'Features'}</Eyebrow>
+          <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 36px' }}>
+            {lang === 'zh' ? '为什么选择我们' : 'Why Choose Us'}
+          </h2>
+        </Reveal>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 64 }}>
           {FEATURES.map((f, i) => (
-            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                <f.icon size={24} style={{ color: 'var(--primary)' }} />
+            <Reveal key={i} delay={i * 90}>
+              <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, height: '100%' }}>
+                <div className="guest-feature-icon">
+                  <f.icon size={24} />
+                </div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>{lang === 'zh' ? f.zh : f.en}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? f.descZh : f.descEn}</p>
               </div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? f.zh : f.en}</h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? f.descZh : f.descEn}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
-        <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
-          {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <Reveal>
+          <Eyebrow>{lang === 'zh' ? '快速上手' : 'How It Works'}</Eyebrow>
+          <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 36px' }}>
+            {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
+          </h2>
+        </Reveal>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
           {STEPS.map((s, i) => (
-            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14, position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 8, right: 12, fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', opacity: 0.5 }}>{s.num}</div>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--primary-light, rgba(14,116,144,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                <s.icon size={24} style={{ color: 'var(--primary)' }} />
+            <Reveal key={i} delay={i * 90}>
+              <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, position: 'relative', height: '100%' }}>
+                <div style={{ position: 'absolute', top: 14, right: 16, fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)', opacity: 0.14, lineHeight: 1, fontFamily: 'var(--font-display)' }}>{s.num}</div>
+                <div className="guest-feature-icon">
+                  <s.icon size={24} />
+                </div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>{lang === 'zh' ? s.zh : s.en}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? s.descZh : s.descEn}</p>
               </div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? s.zh : s.en}</h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? s.descZh : s.descEn}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ═══════════ LISTINGS ═══════════ */}
-      <section style={{ padding: '0 24px 64px', maxWidth: 1200, margin: '0 auto', flex: 1 }}>
+      <section id="listings" style={{ padding: '0 24px 64px', maxWidth: 1200, margin: '0 auto', flex: 1, scrollMarginTop: 80 }}>
         <PropertyListings guestMode />
       </section>
 
       {/* ═══════════ TRUST ═══════════ */}
-      <section style={{ padding: '64px 24px', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.04)) 50%, var(--bg-base) 100%)' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>
-            {lang === 'zh' ? '告别假房源，每一套都真实' : 'No Fake Listings. Every Property is Verified.'}
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 600, lineHeight: 1.7 }}>
-            {lang === 'zh' ? '其他平台上 30%–40% 是重复或虚假的"幽灵房源"。我们从源头杜绝这个问题。' : 'Up to 30-40% of listings on other platforms are duplicate or ghost listings. We eliminate this from the source.'}
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+      <section style={{ padding: '72px 24px', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.04)) 50%, var(--bg-base) 100%)' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto', textAlign: 'center' }}>
+          <Reveal>
+            <Eyebrow>{lang === 'zh' ? '真实可信' : 'Trust & Safety'}</Eyebrow>
+            <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 10px' }}>
+              {lang === 'zh' ? '告别假房源，每一套都真实' : 'No Fake Listings. Every Property is Verified.'}
+            </h2>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', margin: '0 auto 44px', maxWidth: 600, lineHeight: 1.7 }}>
+              {lang === 'zh' ? '其他平台上 30%–40% 是重复或虚假的"幽灵房源"。我们从源头杜绝这个问题。' : 'Up to 30-40% of listings on other platforms are duplicate or ghost listings. We eliminate this from the source.'}
+            </p>
+          </Reveal>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20 }}>
             {[
-              { icon: '🔒', title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
-              { icon: '📸', title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
-              { icon: '💰', title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' } },
-              { icon: '🏠', title: { zh: '房源实时更新', en: 'Real-Time Listings' }, desc: { zh: '中介更新房源后即时反映，价格、状态始终最新', en: 'Listings update instantly when agents make changes — always current' } },
+              { Icon: ShieldCheck, title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
+              { Icon: Camera, title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
+              { Icon: BadgeDollarSign, title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' } },
+              { Icon: RefreshCw, title: { zh: '房源实时更新', en: 'Real-Time Listings' }, desc: { zh: '中介更新房源后即时反映，价格、状态始终最新', en: 'Listings update instantly when agents make changes — always current' } },
             ].map((item, i) => (
-              <div key={i} style={{ padding: '20px 16px', borderRadius: 14, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', marginBottom: 10 }}>{item.icon}</div>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? item.title.zh : item.title.en}</h3>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? item.desc.zh : item.desc.en}</p>
-              </div>
+              <Reveal key={i} delay={i * 80}>
+                <div className="glass-card" style={{ padding: '26px 18px', borderRadius: 16, textAlign: 'center', height: '100%' }}>
+                  <div className="guest-feature-icon" style={{ width: 46, height: 46 }}>
+                    <item.Icon size={22} />
+                  </div>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? item.title.zh : item.title.en}</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? item.desc.zh : item.desc.en}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section style={{ padding: '64px 24px', maxWidth: 1100, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 40px' }}>
-          {lang === 'zh' ? '他们已经找到了理想的家' : 'They Already Found Their Home'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+      <section style={{ padding: '72px 24px', maxWidth: 1100, margin: '0 auto' }}>
+        <Reveal>
+          <Eyebrow>{lang === 'zh' ? '用户口碑' : 'Testimonials'}</Eyebrow>
+          <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 40px' }}>
+            {lang === 'zh' ? '他们已经找到了理想的家' : 'They Already Found Their Home'}
+          </h2>
+        </Reveal>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           {[
             { quote: { zh: '从开始找房到签约只用了三天，整个流程比我想象中顺畅太多。', en: 'From searching to signing took only three days. The whole process was way smoother than I expected.' }, name: 'Li Wei', role: { zh: 'Monash 大学生', en: 'Monash University Student' }, img: 11 },
             { quote: { zh: '终于不用在 WhatsApp 群里翻中介消息了，所有东西都在一个平台上搞定。', en: "No more digging through WhatsApp messages from agents. Everything is on one platform." }, name: 'Sarah Tan', role: { zh: 'Taylor\'s 大学生', en: "Taylor's University Student" }, img: 5 },
@@ -250,42 +322,55 @@ export default function GuestPage() {
             { quote: { zh: '合租找室友太方便了，直接在平台上看到谁也在找同一个房子。', en: 'Finding roommates for co-renting is so easy. I could see who else was looking at the same place.' }, name: 'Priya Nair', role: { zh: 'INTI 大学生', en: 'INTI University Student' }, img: 16 },
             { quote: { zh: '作为一个新生，不用到马来西亚就能提前看好房子，省了太多时间。', en: "As a newcomer, being able to browse properties before arriving in Malaysia saved me so much time." }, name: 'Kim Joon-ho', role: { zh: 'UCSI 大学生', en: 'UCSI University Student' }, img: 7 },
           ].map((t, i) => (
-            <div key={i} className="glass-card" style={{ padding: '20px', borderRadius: 14 }}>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.65, margin: '0 0 16px', fontStyle: 'italic' }}>
-                &ldquo;{lang === 'zh' ? t.quote.zh : t.quote.en}&rdquo;
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <img src={`https://i.pravatar.cc/80?img=${t.img}`} alt={t.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? t.role.zh : t.role.en}</div>
+            <Reveal key={i} delay={(i % 3) * 90}>
+              <div className="glass-card" style={{ padding: '24px', borderRadius: 16, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <Quote size={32} style={{ color: 'var(--primary)', opacity: 0.16, position: 'absolute', top: 16, right: 18 }} />
+                <div style={{ display: 'flex', gap: 2, marginBottom: 12 }}>
+                  {Array.from({ length: 5 }).map((_, s) => (
+                    <Star key={s} size={14} style={{ color: 'var(--warning)', fill: 'var(--warning)' }} />
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.7, margin: '0 0 18px', flex: 1 }}>
+                  &ldquo;{lang === 'zh' ? t.quote.zh : t.quote.en}&rdquo;
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 14, borderTop: '1px solid var(--glass-border)' }}>
+                  <img src={`https://i.pravatar.cc/80?img=${t.img}`} alt={t.name} style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--glass-border)' }} />
+                  <div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? t.role.zh : t.role.en}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ═══════════ BOTTOM CTA ═══════════ */}
-      <section style={{ padding: '64px 24px', textAlign: 'center', background: 'linear-gradient(135deg, var(--primary-light, rgba(14,116,144,0.04)) 0%, var(--bg-base) 100%)' }}>
-        <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 12px' }}>
-          {role ? (lang === 'zh' ? '欢迎回来！' : 'Welcome Back!') : (lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?')}
-        </h2>
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: '0 auto 32px', maxWidth: 440, lineHeight: 1.7 }}>
-          {role
-            ? (lang === 'zh' ? '点击进入系统，继续管理您的租房事务' : 'Enter the system to continue managing your rental.')
-            : (lang === 'zh' ? '注册后即可收藏心仪房源、表达租房意向，享受平台全程保障' : 'Register to save favorites, express interest, and enjoy full platform protection.')}
-        </p>
-        {role ? (
-          <Link href={role === 'admin' ? '/admin/properties' : '/listings'}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 32px', borderRadius: 12, background: 'var(--primary)', color: 'white', fontSize: '0.92rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(14,116,144,0.2)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-            <ArrowRight size={16} />{lang === 'zh' ? '进入系统' : 'Enter System'}
-          </Link>
-        ) : (
-          <CtaButton>
-            <LogIn size={16} />{lang === 'zh' ? '免费注册' : 'Sign Up Free'}
-          </CtaButton>
-        )}
+      <section style={{ padding: '72px 24px 80px' }}>
+        <Reveal style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div className="guest-cta-card">
+            <Sparkles size={28} style={{ color: 'var(--primary)', marginBottom: 14 }} />
+            <h2 style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2rem)', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 12px' }}>
+              {role ? (lang === 'zh' ? '欢迎回来！' : 'Welcome Back!') : (lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?')}
+            </h2>
+            <p style={{ fontSize: '0.96rem', color: 'var(--text-muted)', margin: '0 auto 30px', maxWidth: 460, lineHeight: 1.7 }}>
+              {role
+                ? (lang === 'zh' ? '点击进入系统，继续管理您的租房事务' : 'Enter the system to continue managing your rental.')
+                : (lang === 'zh' ? '注册后即可收藏心仪房源、表达租房意向，享受平台全程保障' : 'Register to save favorites, express interest, and enjoy full platform protection.')}
+            </p>
+            {role ? (
+              <Link href={role === 'admin' ? '/admin/properties' : '/listings'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 38px', borderRadius: 12, background: 'var(--primary)', color: 'white', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 6px 20px var(--primary-glow)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                <ArrowRight size={18} />{lang === 'zh' ? '进入系统' : 'Enter System'}
+              </Link>
+            ) : (
+              <CtaButton large>
+                <LogIn size={18} />{lang === 'zh' ? '免费注册' : 'Sign Up Free'}<ChevronRight size={16} />
+              </CtaButton>
+            )}
+          </div>
+        </Reveal>
       </section>
 
       {/* ═══════════ FOOTER ═══════════ */}

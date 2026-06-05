@@ -99,7 +99,8 @@
 /* ── RESET & BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { color-scheme: dark light; }
+html { color-scheme: dark light; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 body {
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
@@ -1360,5 +1361,114 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 @keyframes helloFloatIn {
   0% { opacity: 0; transform: translateY(30px); }
   100% { opacity: 0.18; transform: translateY(0); }
+}
+
+/* ═══════════ GUEST LANDING — polish ═══════════ */
+
+/* Scroll-reveal: elements slide up the first time they enter the viewport */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Section kicker / eyebrow label */
+.guest-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--primary-glow);
+}
+
+/* Gradient icon chip used in feature / trust cards */
+.guest-feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px -8px var(--primary-glow);
+  transition: transform 0.25s ease;
+}
+.glass-card:hover .guest-feature-icon {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+/* Hero trust pills */
+.guest-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-body);
+  backdrop-filter: blur(8px);
+}
+
+/* Secondary "ghost" button in hero */
+.guest-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 30px;
+  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-h);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.guest-ghost-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/* Bottom CTA card */
+.guest-cta-card {
+  text-align: center;
+  padding: 56px 32px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, var(--primary-light) 0%, transparent 60%),
+    var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .glass-card:hover .guest-feature-icon {
+    transform: none;
+  }
 }
 
