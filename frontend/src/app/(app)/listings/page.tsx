@@ -4,68 +4,31 @@ import React, { useEffect } from 'react';
 import PropertyListings from '@/components/PropertyListings';
 import { useAuth } from '@/lib/AuthContext';
 import { useApp } from '@/lib/ThemeProvider';
-import Link from 'next/link';
-import { LogIn } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function ListingsPage() {
   const { role, loading } = useAuth();
-  const { t, lang } = useApp();
+  const { t } = useApp();
+  const router = useRouter();
 
   useEffect(() => {
     document.title = `${t('navListings')} | Malaysia Ez Rent`;
   }, [t]);
 
-  // Guest mode: show hero + clean listings (sidebar will be empty, we hide it via CSS)
-  if (!loading && !role) {
-    return (
-      <div className="guest-mode">
-        {/* Hero Section — centered logo */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          padding: '32px 16px 20px', textAlign: 'center',
-        }}>
-          <img
-            src="/image.png"
-            alt="Malaysia Ez Rent"
-            style={{
-              width: 180, height: 180, objectFit: 'contain',
-              marginBottom: 14, filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.1))',
-            }}
-          />
-          <h1 style={{
-            fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700,
-            color: 'var(--text-h)', margin: '0 0 6px',
-            fontFamily: 'var(--font-display)',
-          }}>
-            {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
-          </h1>
-          <p style={{
-            fontSize: '0.88rem', color: 'var(--text-muted)',
-            margin: '0 0 16px', maxWidth: 480, lineHeight: 1.6,
-          }}>
-            {lang === 'zh'
-              ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验'
-              : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
-          </p>
-          <Link href="/login" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 20px', borderRadius: 8,
-            background: 'var(--primary)', color: 'white',
-            fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
-          }}>
-            <LogIn size={15} />
-            {lang === 'zh' ? '登录后享受完整功能' : 'Login for Full Access'}
-          </Link>
-        </div>
+  // Redirect unauthenticated users to guest page
+  useEffect(() => {
+    if (!loading && !role) {
+      router.replace('/guest');
+    }
+  }, [loading, role, router]);
 
-        {/* Listings — guest mode */}
-        <PropertyListings guestMode />
-      </div>
-    );
+  if (loading || !role) return null;
+
+  // Admin: read-only mode
+  if (role === 'admin') {
+    return <PropertyListings readOnly />;
   }
 
-  // Authenticated: normal listings
-  if (loading) return null;
-
-  return <PropertyListings readOnly={role === 'admin'} />;
+  // Student: full access
+  return <PropertyListings />;
 }

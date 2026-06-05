@@ -30,15 +30,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Redirect root to /listings
+  // Redirect root to /guest (public browsing page)
   if (pathname === '/') {
     const url = request.nextUrl.clone();
-    url.pathname = '/listings';
+    url.pathname = '/guest';
     return NextResponse.redirect(url);
   }
 
-  // Allow /listings without auth (public browsing)
-  if (pathname.startsWith('/listings')) {
+  // Allow /guest without auth (public browsing)
+  if (pathname.startsWith('/guest')) {
     return NextResponse.next();
   }
 
