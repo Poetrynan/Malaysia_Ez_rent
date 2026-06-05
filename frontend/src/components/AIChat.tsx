@@ -356,7 +356,15 @@ export default function AIChat() {
                   {isGenerating && !m.contentStarted && m.tools.length === 0 && m.thoughts.length === 0 && (
                     <div className="manus-thinking-indicator">
                       <span className="manus-thought-dot pulse" />
-                      <span>分析中...</span>
+                      <span>🤔 AI 正在思考，预计需要 30-90 秒...</span>
+                    </div>
+                  )}
+
+                  {/* Show elapsed time while waiting for first response */}
+                  {isGenerating && !m.contentStarted && m.tools.length === 0 && m.thoughts.length > 0 && (
+                    <div className="manus-thinking-indicator" style={{opacity: 0.7}}>
+                      <span className="manus-thought-dot pulse" />
+                      <span>⏳ 等待 AI 回复中...</span>
                     </div>
                   )}
 

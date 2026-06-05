@@ -352,16 +352,23 @@ async def live_agent_stream(
 
     # ReAct Loop
     pending_ui_components = []  # Collect map data, emit AFTER text is done
-    for loop_idx in range(5):
-        yield sse_event({"type": "thinking", "step": f"Thinking (Step {loop_idx + 1}): Analyzing conversation state..."})
-        await asyncio.sleep(0.5)
+    MAX_LOOPS = 3  # Reduce from 5 to 3 — NVIDIA free tier is slow (~70s/call)
+    for loop_idx in range(MAX_LOOPS):
+        step_labels = [
+            "🔍 正在理解你的问题...",
+            "🛠️ 正在调用工具获取信息...",
+            "📝 正在组织回答..."
+        ]
+        yield sse_event({"type": "thinking", "step": step_labels[min(loop_idx, len(step_labels)-1)]})
+        await asyncio.sleep(0.3)
 
         try:
             response = openai_client.chat.completions.create(
                 model=Config.AGENT_MODEL,
                 messages=messages,
                 tools=tools_definitions,
-                tool_choice="auto"
+                tool_choice="auto",
+                timeout=90.0  # 90s timeout per call
             )
         except Exception as e:
             err_str = str(e)
