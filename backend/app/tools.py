@@ -32,8 +32,11 @@ agent_client = None
 if Config.AGENT_API_KEY:
     try:
         agent_client = OpenAI(api_key=Config.AGENT_API_KEY, base_url=Config.AGENT_API_BASE)
+        print(f"[OK] Agent client initialized: model={Config.AGENT_MODEL}, base={Config.AGENT_API_BASE}")
     except Exception as e:
         print(f"[Warning] Could not init agent client: {e}.")
+else:
+    print("[Warning] AGENT_API_KEY is empty! Agent will not work.")
 
 # Keep openai_client alias for compatibility
 openai_client = agent_client

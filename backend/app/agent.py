@@ -365,12 +365,13 @@ async def live_agent_stream(
             )
         except Exception as e:
             err_str = str(e)
+            print(f"[Agent Error] {type(e).__name__}: {err_str[:500]}")
             # Rate limit / quota exceeded
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                 yield sse_event({"type": "text", "delta": "🙏 抱歉，当前 AI 助手使用人数较多，请求已达今日上限。请稍后再试，或联系管理员升级服务额度。"})
-            # API key invalid
-            elif "401" in err_str or "invalid" in err_str.lower() and "key" in err_str.lower():
-                yield sse_event({"type": "text", "delta": "⚙️ AI 服务配置异常，请联系管理员检查 API Key 设置。"})
+            # API key invalid / forbidden
+            elif "401" in err_str or "403" in err_str or "invalid" in err_str.lower() or "forbidden" in err_str.lower() or "authorization" in err_str.lower():
+                yield sse_event({"type": "text", "delta": f"⚙️ AI 服务配置异常（{type(e).__name__}），请联系管理员检查 API Key 和模型设置。"})
             # Model overloaded
             elif "503" in err_str or "overloaded" in err_str.lower() or "high demand" in err_str.lower():
                 yield sse_event({"type": "text", "delta": "⏳ AI 助手当前繁忙，请稍等几秒后重试。"})
@@ -380,7 +381,6 @@ async def live_agent_stream(
             # Generic fallback
             else:
                 yield sse_event({"type": "text", "delta": f"❌ AI 助手遇到了问题，请稍后重试。如持续出现请联系管理员。"})
-                print(f"[Agent Error] {e}")
             return
 
         # Safety check for empty/malformed response
