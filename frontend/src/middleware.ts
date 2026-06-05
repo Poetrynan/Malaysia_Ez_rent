@@ -30,13 +30,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── MOCK MODE: check localStorage flag via cookie ──
+  // Redirect root to /listings
+  if (pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/listings';
+    return NextResponse.redirect(url);
+  }
+
+  // Allow /listings without auth (public browsing)
+  if (pathname.startsWith('/listings')) {
+    return NextResponse.next();
+  }
+
+  // ── MOCK MODE: pass through (client-side auth handles it) ──
   if (isMockMode) {
-    const loggedIn = request.cookies.get('ez_logged_in')?.value;
-    if (!loggedIn) {
-      // Rely on client-side check; pass through (login page handles it via localStorage)
-      return NextResponse.next();
-    }
     return NextResponse.next();
   }
 

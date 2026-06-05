@@ -52,7 +52,7 @@ export default function LoginPage() {
       setTimeout(() => {
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-        window.location.href = '/';
+        window.location.href = role === 'admin' ? '/admin/properties' : '/listings';
       }, 2000);
       return;
     }
@@ -60,7 +60,7 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/listings` },
     });
     setLoading(false);
     if (error) setErrorMsg(error.message); else setMagicLinkSent(true);
@@ -72,7 +72,7 @@ export default function LoginPage() {
     localStorage.setItem('ez_logged_in', '1');
     localStorage.setItem('ez_tenant_id', role === 'admin' ? 'admin-999' : 'tenant-123');
     document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-    window.location.href = '/';
+    window.location.href = role === 'admin' ? '/admin/properties' : '/listings';
   };
 
   const handleGoogleLogin = async () => {
@@ -86,7 +86,7 @@ export default function LoginPage() {
       localStorage.setItem('ez_tenant_id', tenantId);
       localStorage.setItem('ez_logged_in', '1');
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-      window.location.href = '/';
+      window.location.href = isAdmin ? '/admin/properties' : '/listings';
       return;
     }
     const supabase = createClient();
