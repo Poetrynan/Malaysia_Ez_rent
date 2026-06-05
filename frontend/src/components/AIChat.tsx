@@ -287,7 +287,7 @@ export default function AIChat() {
           <span className="manus-title-text">{t('chatAgentName')}</span>
           <span className={`manus-status-dot ${backendStatus}`} />
         </div>
-        <div style={{display: 'flex', gap: 6}}>
+        <div className="manus-btn-group">
           <button className="manus-history-btn" onClick={() => setHistoryOpen(true)}>
             <Clock size={14} /> 历史
           </button>

@@ -727,6 +727,12 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   flex-shrink: 0;
   position: relative;
 }
+.manus-title-bar .manus-btn-group {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
 .manus-title-center {
   display: flex;
   align-items: center;
@@ -755,8 +761,6 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* History button */
 .manus-history-btn {
-  position: absolute;
-  right: 16px;
   background: none;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -768,6 +772,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 .manus-history-btn:hover {
   border-color: var(--primary);
