@@ -641,7 +641,67 @@ setMessages(prev => [...prev,
 
 ---
 
-## 十一、文件清单
+## 十一、已知 Bug 与修复记录
+
+### Bug 1：无关问题也弹出地图卡片（2026-06-05 修复）
+
+**现象：** 用户问"吉隆坡留学生怎么办理手机卡？"，AI 回答完后底部出现了一张公寓地图卡片（Platinum Suites），和手机卡完全无关。
+
+**根因：** 后端 `search_knowledge_base` 工具执行后，**无条件**生成 `MapAndCard` UI 组件 — 只要搜索结果有经纬度就附加地图，不管用户问的是什么。系统 prompt 的 "SEARCH FIRST, NEVER GUESS" 规则过于激进，导致 LLM 连无关问题也调用了 `search_knowledge_base`。
+
+**修复：**
+- 给 `search_knowledge_base` 工具新增 `show_map: boolean` 参数（默认 false）
+- 系统 prompt 增加规则：只有租房/小区/住宿相关问题才设 `show_map=true`
+- 后端只在 `show_map=true` 时才生成 MapAndCard
+
+---
+
+### Bug 2：地图定位与文字回答不一致（2026-06-05 修复）
+
+**现象：** AI 文字回答重点介绍的是 A 小区，但地图卡片显示的是 B 小区的位置。
+
+**根因：** 后端始终取 `result_data[0]`（第一个搜索结果）生成地图卡片，但 LLM 的文字回答可能重点介绍的是搜索结果中的其他小区。
+
+**修复：**
+- 给 `search_knowledge_base` 新增 `map_community_name: string` 参数
+- LLM 指定地图该展示哪个小区（必须和搜索结果中的 `community_name` 匹配）
+- 后端按名字匹配（不区分大小写），匹配失败才 fallback 到第一个结果
+
+---
+
+### Bug 3：第二个问题工具调用完成后不显示最终结果（2026-06-05 修复）
+
+**现象：** 第二个问题的工具调用、推理都完成了，但最终文字回答不显示。
+
+**根因（双重 bug）：**
+
+1. **前端 SSE buffer 遗漏：** 流结束时 `reader.read()` 返回 `done=true`，但 `buf` 里可能还残留最后一个 SSE 事件（最后一包数据没以 `\n` 结尾）。原代码 `done → break` 直接跳出，残留数据丢失。
+2. **后端无兜底：** `MAX_LOOPS=3` 的循环中，如果 3 轮全是 tool_calls（LLM 一直在查工具），循环结束时从未执行 `break`，text 和 UI component 都没发出去。
+
+**修复：**
+- 前端：流结束后 flush 剩余 buffer（`if (buf.trim()) processBuf(false)`）
+- 后端：循环结束后补发 `pending_ui_components` + 默认兜底文字
+
+---
+
+### Bug 4：重复地图卡片，浪费 Google API 调用（2026-06-05 修复）
+
+**现象：** 用户问"从 Sunway Geo 到 UM 大学要多久？你推荐我住 GEO 吗？"，AI 回答后出现两张地图卡片：
+1. 知识库模式卡片：显示 Sunway Geo 位置，但要求用户手动输入出发地
+2. 通勤模式卡片：显示 UM → Geo 的实际路线
+
+**根因：** `search_knowledge_base` 和 `calculate_commute` 各自独立生成 MapAndCard，互不感知。第一张卡片的"输入出发地"功能在已有通勤结果时完全多余，且多调用了一次 Google Maps API。
+
+**修复：**
+- 新增 `has_commute` 标志位，跟踪本轮是否调用了 `calculate_commute`
+- 当 `has_commute=true` 时，跳过 `search_knowledge_base` 的 MapAndCard
+- 将知识库的小区信息（名称、价格、评分、描述）合并到通勤卡片的 props 中
+- 前端 MapAndCard 组件已有优先级逻辑：`isCommuteMode` > `isKBMode` > 房源模式
+- 最终效果：一张卡片同时展示通勤路线 + 小区信息，只调用一次 Google Maps API
+
+---
+
+## 十二、文件清单
 
 | 文件 | 职责 |
 |------|------|

@@ -356,6 +356,8 @@ async def live_agent_stream(
 
     # ReAct Loop
     pending_ui_components = []  # Collect map data, emit AFTER text is done
+    has_commute = False  # Track if calculate_commute was called (skip duplicate map card)
+    kb_community_info = None  # Store knowledge base result for merging into commute card
     MAX_LOOPS = 3  # Reduce from 5 to 3 — NVIDIA free tier is slow (~70s/call)
     for loop_idx in range(MAX_LOOPS):
         step_labels = [
@@ -457,6 +459,7 @@ async def live_agent_stream(
             # Invoke target tool
             result_data = None
             if tool_name == "calculate_commute":
+                has_commute = True
                 result_data = calculate_commute(
                     origin_address=tool_args.get("origin_address", ""),
                     destination_address=tool_args.get("destination_address", tool_args.get("university_name", ""))
@@ -498,37 +501,44 @@ async def live_agent_stream(
             # Collect UI components — will be emitted AFTER text is done
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
                 show_map = tool_args.get("show_map", False)
-                if show_map:
-                    # Find the community the LLM wants to show on the map
-                    target_name = tool_args.get("map_community_name", "")
-                    best = None
-                    if target_name:
-                        # Match by name (case-insensitive, partial match)
-                        target_lower = target_name.strip().lower()
-                        for item in result_data:
-                            item_name = (item.get("community_name") or "").strip().lower()
-                            if item_name and (item_name == target_lower or target_lower in item_name or item_name in target_lower):
-                                best = item
-                                break
-                    # Fallback to first result if no match found
-                    if not best:
-                        best = result_data[0]
-                    if best.get("latitude") and best.get("longitude"):
-                        pending_ui_components.append({
-                            "type": "ui_component",
-                            "component": "MapAndCard",
-                            "props": {
-                                "origin_name": best.get("community_name", ""),
-                                "origin_lat": float(best["latitude"]),
-                                "origin_lng": float(best["longitude"]),
-                                "community_name": best.get("community_name"),
-                                "university_name": best.get("university_name"),
-                                "price_range": best.get("price_range"),
-                                "tenant_rating": best.get("tenant_rating"),
-                                "description": best.get("description"),
-                                "is_knowledge_base": True
-                            }
-                        })
+                # Always find the best matching community for potential merging
+                target_name = tool_args.get("map_community_name", "")
+                best = None
+                if target_name:
+                    target_lower = target_name.strip().lower()
+                    for item in result_data:
+                        item_name = (item.get("community_name") or "").strip().lower()
+                        if item_name and (item_name == target_lower or target_lower in item_name or item_name in target_lower):
+                            best = item
+                            break
+                if not best:
+                    best = result_data[0]
+                # Store community info for merging into commute card later
+                if best.get("latitude") and best.get("longitude"):
+                    kb_community_info = {
+                        "community_name": best.get("community_name"),
+                        "university_name": best.get("university_name"),
+                        "price_range": best.get("price_range"),
+                        "tenant_rating": best.get("tenant_rating"),
+                        "description": best.get("description"),
+                    }
+                # Only create separate map card if no commute card will be shown
+                if show_map and not has_commute and best.get("latitude") and best.get("longitude"):
+                    pending_ui_components.append({
+                        "type": "ui_component",
+                        "component": "MapAndCard",
+                        "props": {
+                            "origin_name": best.get("community_name", ""),
+                            "origin_lat": float(best["latitude"]),
+                            "origin_lng": float(best["longitude"]),
+                            "community_name": best.get("community_name"),
+                            "university_name": best.get("university_name"),
+                            "price_range": best.get("price_range"),
+                            "tenant_rating": best.get("tenant_rating"),
+                            "description": best.get("description"),
+                            "is_knowledge_base": True
+                        }
+                    })
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
@@ -549,17 +559,28 @@ async def live_agent_stream(
                     })
 
             elif tool_name == "calculate_commute" and isinstance(result_data, dict):
+                commute_props = {
+                    "origin_name": result_data.get("origin_name") or "Sunway Geo Residences",
+                    "origin_lat": float(result_data.get("origin_lat") or 3.06341),
+                    "origin_lng": float(result_data.get("origin_lng") or 101.60977),
+                    "destination_name": result_data.get("destination_name") or result_data.get("university") or "Destination",
+                    "destination_lat": float(result_data.get("destination_lat") or 3.0645),
+                    "destination_lng": float(result_data.get("destination_lng") or 101.6000)
+                }
+                # Merge community info from knowledge base (avoid duplicate card)
+                if kb_community_info:
+                    commute_props.update({
+                        "community_name": kb_community_info.get("community_name"),
+                        "university_name": kb_community_info.get("university_name"),
+                        "price_range": kb_community_info.get("price_range"),
+                        "tenant_rating": kb_community_info.get("tenant_rating"),
+                        "description": kb_community_info.get("description"),
+                        "is_knowledge_base": True,
+                    })
                 pending_ui_components.append({
                     "type": "ui_component",
                     "component": "MapAndCard",
-                    "props": {
-                        "origin_name": result_data.get("origin_name") or "Sunway Geo Residences",
-                        "origin_lat": float(result_data.get("origin_lat") or 3.06341),
-                        "origin_lng": float(result_data.get("origin_lng") or 101.60977),
-                        "destination_name": result_data.get("destination_name") or result_data.get("university") or "Destination",
-                        "destination_lat": float(result_data.get("destination_lat") or 3.0645),
-                        "destination_lng": float(result_data.get("destination_lng") or 101.6000)
-                    }
+                    "props": commute_props
                 })
 
             # Append tool result to messages
