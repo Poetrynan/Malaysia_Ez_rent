@@ -137,14 +137,6 @@ export default function GuestPage() {
 
       {/* ═══════════ LISTINGS ═══════════ */}
       <section style={{ padding: '0 24px 64px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 4px' }}>
-            {lang === 'zh' ? '热门房源' : 'Featured Properties'}
-          </h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-            {lang === 'zh' ? '浏览所有可租房源，登录后可收藏和表达意向' : 'Browse all available properties. Login to save favorites and express interest.'}
-          </p>
-        </div>
         <PropertyListings guestMode />
       </section>
 
