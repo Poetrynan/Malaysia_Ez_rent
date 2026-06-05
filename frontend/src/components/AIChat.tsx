@@ -35,6 +35,82 @@ const toolIcon = (name: string) =>
   : name.includes('holiday') ? '📅'
   : '⚙️';
 
+/** Human-readable tool result — shown by default, no click required */
+const renderToolResult = (name: string, result: any): React.ReactNode => {
+  if (result == null) return null;
+
+  if (name === 'get_malaysia_holidays' && typeof result === 'object') {
+    const holidays = result.holidays || [];
+    const year = result.year || '';
+    return (
+      <div className="manus-tool-preview">
+        <div className="manus-tool-preview-title">{year} 年马来西亚公共假期 · 共 {holidays.length} 天</div>
+        <ul className="manus-tool-preview-list">
+          {holidays.slice(0, 12).map((h: any, i: number) => (
+            <li key={i}><span className="manus-tool-preview-date">{h.date}</span> {h.english_name || h.name}{h.local_name ? `（${h.local_name}）` : ''}</li>
+          ))}
+          {holidays.length > 12 && <li className="manus-tool-preview-more">… 另有 {holidays.length - 12} 个假日</li>}
+        </ul>
+      </div>
+    );
+  }
+
+  if (name === 'calculate_commute' && typeof result === 'object' && !result.error) {
+    return (
+      <div className="manus-tool-preview">
+        <div className="manus-tool-preview-title">{result.origin_name} → {result.destination_name}</div>
+        <div className="manus-tool-preview-row">🚗 驾车 {result.driving_duration}（{result.driving_distance}）</div>
+        <div className="manus-tool-preview-row">🚊 公交 {result.transit_duration}</div>
+        <div className="manus-tool-preview-row">🚶 步行 {result.walk_duration}</div>
+      </div>
+    );
+  }
+
+  if (name === 'convert_currency_frankfurter' && typeof result === 'object' && result.success) {
+    return (
+      <div className="manus-tool-preview">
+        <div className="manus-tool-preview-title">{result.amount} {result.base} = {result.converted_amount} {result.quote}</div>
+        <div className="manus-tool-preview-row">汇率 1 {result.base} = {result.rate} {result.quote}</div>
+      </div>
+    );
+  }
+
+  if (name === 'search_knowledge_base' && Array.isArray(result)) {
+    return (
+      <div className="manus-tool-preview">
+        <div className="manus-tool-preview-title">找到 {result.length} 个小区</div>
+        <ul className="manus-tool-preview-list">
+          {result.slice(0, 5).map((item: any, i: number) => (
+            <li key={i}>
+              <strong>{item.community || item.community_name}</strong>
+              {item.price ? ` · ${item.price}` : item.price_range ? ` · RM${item.price_range.min}-${item.price_range.max}` : ''}
+              {item.rating || item.tenant_rating?.overall ? ` · ⭐${item.rating || item.tenant_rating?.overall}` : ''}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  if (name === 'get_web_realtime_info' && typeof result === 'string') {
+    return <div className="manus-tool-preview"><p className="manus-tool-preview-text">{result.slice(0, 500)}{result.length > 500 ? '…' : ''}</p></div>;
+  }
+
+  if (typeof result === 'string') {
+    return <div className="manus-tool-preview"><p className="manus-tool-preview-text">{result.slice(0, 600)}{result.length > 600 ? '…' : ''}</p></div>;
+  }
+
+  if (Array.isArray(result)) {
+    return <div className="manus-tool-preview"><div className="manus-tool-preview-title">共 {result.length} 条结果</div></div>;
+  }
+
+  return (
+    <div className="manus-tool-preview">
+      <pre className="manus-tool-preview-raw">{JSON.stringify(result, null, 2).slice(0, 800)}{JSON.stringify(result).length > 800 ? '\n…' : ''}</pre>
+    </div>
+  );
+};
+
 const renderMarkdown = (text: string) => {
   if (!text) return null;
   const lines = text.split('\n');
@@ -473,7 +549,7 @@ export default function AIChat() {
                   {/* Tool cards */}
                   {m.tools.map(tc => (
                     <div key={tc.id} className={`manus-tool-card ${tc.status}`}>
-                      <div className="manus-tool-header" onClick={() => toggleTool(tc.id)}>
+                      <div className="manus-tool-header" onClick={() => tc.status === 'done' && toggleTool(tc.id)}>
                         <span className="manus-tool-icon">{toolIcon(tc.name)}</span>
                         <span className="manus-tool-name">{tc.name}</span>
                         <span className={`manus-tool-status ${tc.status}`}>
@@ -481,28 +557,28 @@ export default function AIChat() {
                           {tc.status === 'done' && <CheckCircle size={14} />}
                           {tc.status === 'error' && <XCircle size={14} />}
                         </span>
-                        <span className="manus-tool-toggle">
-                          {expandedTools.has(tc.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </span>
+                        {tc.status === 'done' && tc.result && (
+                          <span className="manus-tool-toggle" title="查看原始数据">
+                            {expandedTools.has(tc.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </span>
+                        )}
                       </div>
-                      {/* Args */}
                       <div className="manus-tool-args">
-                        {Object.entries(tc.args).map(([k, v]) => {
-                          const str = String(v);
-                          const display = str.length > 40 ? str.slice(0, 40) + '…' : str;
-                          return <span key={k} className="manus-tool-arg">{k}: <code title={str}>{display}</code></span>;
-                        })}
+                        {Object.entries(tc.args).map(([k, v]) => (
+                          <span key={k} className="manus-tool-arg" title={`${k}: ${v}`}>{k}: <code>{String(v)}</code></span>
+                        ))}
                       </div>
-                      {/* Expandable raw output */}
-                      {expandedTools.has(tc.id) && tc.result && (
-                        <div className="manus-tool-output">
-                          <pre>{typeof tc.result === 'object' ? JSON.stringify(tc.result, null, 2) : String(tc.result)}</pre>
+                      {/* Readable preview — always visible when done, no click needed */}
+                      {tc.status === 'done' && tc.result && (
+                        <div className="manus-tool-body">
+                          {renderToolResult(tc.name, tc.result)}
                         </div>
                       )}
-                      {/* Done summary */}
-                      {tc.status === 'done' && !expandedTools.has(tc.id) && tc.result && (
-                        <div className="manus-tool-summary">
-                          {Array.isArray(tc.result) ? `✓ ${tc.result.length} 条结果` : '✓ 完成'}
+                      {/* Optional: raw JSON for power users */}
+                      {expandedTools.has(tc.id) && tc.result && (
+                        <div className="manus-tool-output">
+                          <div className="manus-tool-output-label">原始数据</div>
+                          <pre>{typeof tc.result === 'object' ? JSON.stringify(tc.result, null, 2) : String(tc.result)}</pre>
                         </div>
                       )}
                     </div>

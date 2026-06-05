@@ -578,7 +578,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   animation: dotPulse 1.2s ease-in-out infinite;
 }
 
-/* Tool cards */
+/* Tool cards — width follows content, caps at bubble width */
 .manus-tool-card {
   background: var(--bg-surface-solid);
   border: 1px solid var(--border);
@@ -587,6 +587,9 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   animation: slideUp 0.25s ease-out;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   transition: box-shadow 0.2s;
+  width: fit-content;
+  max-width: 100%;
+  min-width: min(220px, 100%);
 }
 .manus-tool-card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -603,15 +606,19 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   cursor: pointer;
   user-select: none;
   transition: background 0.15s;
-  white-space: nowrap;
 }
 .manus-tool-header:hover { background: var(--bg-hover); }
-.manus-tool-icon { font-size: 0.95rem; }
+.manus-tool-icon { font-size: 0.95rem; flex-shrink: 0; }
 .manus-tool-name {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-h);
   font-family: 'SF Mono', 'Consolas', monospace;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .manus-tool-status {
   margin-left: auto;
@@ -621,50 +628,107 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-tool-status.running { color: var(--primary); }
 .manus-tool-status.done { color: var(--success); }
 .manus-tool-status.error { color: var(--danger); }
-.manus-tool-toggle { color: var(--text-muted); display: flex; }
+.manus-tool-toggle { color: var(--text-muted); display: flex; flex-shrink: 0; }
 
 .manus-tool-args {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
   padding: 0 12px 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .manus-tool-arg {
   font-size: 0.72rem;
   color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .manus-tool-arg code {
   background: var(--bg-hover);
   padding: 1px 5px;
   border-radius: 4px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  vertical-align: bottom;
   font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* Tool result body — always visible when done, width follows content */
+.manus-tool-body {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 100%;
+}
+.manus-tool-preview-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 8px;
+}
+.manus-tool-preview-row {
+  font-size: 0.78rem;
+  color: var(--text-body);
+  line-height: 1.6;
+  padding: 2px 0;
+}
+.manus-tool-preview-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 0.78rem;
+  color: var(--text-body);
+  line-height: 1.65;
+}
+.manus-tool-preview-list li { margin-bottom: 3px; }
+.manus-tool-preview-date {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+.manus-tool-preview-more {
+  color: var(--text-muted);
+  font-style: italic;
+  list-style: none;
+  margin-left: -18px;
+}
+.manus-tool-preview-text {
+  font-size: 0.78rem;
+  color: var(--text-body);
+  line-height: 1.6;
+  margin: 0;
+}
+.manus-tool-preview-raw {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Consolas', monospace;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0;
 }
 
 .manus-tool-output {
   border-top: 1px solid var(--border);
-  padding: 10px 12px;
-  max-height: 200px;
+  padding: 8px 12px 10px;
+  max-height: 280px;
   overflow-y: auto;
+  background: var(--bg-hover);
+}
+.manus-tool-output-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .manus-tool-output pre {
-  font-size: 0.72rem;
-  color: var(--text-body);
+  font-size: 0.68rem;
+  color: var(--text-muted);
   font-family: 'SF Mono', 'Consolas', monospace;
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
-}
-
-.manus-tool-summary {
-  font-size: 0.72rem;
-  color: var(--success);
-  padding: 4px 12px 8px;
 }
 
 /* Thinking indicator */
