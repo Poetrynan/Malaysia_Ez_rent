@@ -65,6 +65,7 @@ export default function AIChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [expandedThoughts, setExpandedThoughts] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -339,13 +340,29 @@ export default function AIChat() {
                 <div className="manus-avatar assistant"><Bot size={14} /></div>
                 <div className="manus-assistant-bubble">
                 <div className="manus-assistant-content">
-                  {/* Thinking steps */}
-                  {m.thoughts.map((th, i) => (
-                    <div key={`th-${i}`} className="manus-thought">
-                      <span className="manus-thought-dot" />
-                      <span>{th}</span>
-                    </div>
-                  ))}
+                  {/* Thinking steps — show only latest, click to expand history */}
+                  {m.thoughts.length > 0 && (() => {
+                    const latest = m.thoughts[m.thoughts.length - 1];
+                    const prev = m.thoughts.slice(0, -1);
+                    const isExpanded = expandedThoughts.has(m.id);
+                    return (
+                      <div className="manus-thought-group">
+                        <div className="manus-thought" onClick={() => {
+                          if (prev.length > 0) setExpandedThoughts(s => { const n = new Set(s); n.has(m.id) ? n.delete(m.id) : n.add(m.id); return n; });
+                        }} style={{ cursor: prev.length > 0 ? 'pointer' : 'default' }}>
+                          <span className="manus-thought-dot" />
+                          <span style={{flex: 1}}>{latest}{isGenerating && elapsed > 0 && ` (${elapsed}s)`}</span>
+                          {prev.length > 0 && <span style={{fontSize: '0.7rem', color: 'var(--text-muted)'}}>{isExpanded ? '▲' : '▼'} {prev.length}步</span>}
+                        </div>
+                        {isExpanded && prev.map((th, i) => (
+                          <div key={`th-${i}`} className="manus-thought" style={{opacity: 0.6, paddingLeft: 24}}>
+                            <span className="manus-thought-dot" style={{width: 4, height: 4}} />
+                            <span style={{fontSize: '0.78rem'}}>{th}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Tool cards */}
                   {m.tools.map(tc => (
@@ -382,22 +399,6 @@ export default function AIChat() {
                       )}
                     </div>
                   ))}
-
-                  {/* Thinking indicator (while generating, no content yet) */}
-                  {isGenerating && !m.contentStarted && m.tools.length === 0 && m.thoughts.length === 0 && (
-                    <div className="manus-thinking-indicator">
-                      <span className="manus-thought-dot pulse" />
-                      <span>🤔 AI 正在思考... {elapsed > 0 && `(${elapsed}s)`}</span>
-                    </div>
-                  )}
-
-                  {/* Show elapsed time while tools are running */}
-                  {isGenerating && !m.contentStarted && m.tools.length > 0 && (
-                    <div className="manus-thinking-indicator" style={{opacity: 0.7}}>
-                      <span className="manus-thought-dot pulse" />
-                      <span>⏳ 工具执行中... {elapsed > 0 && `(${elapsed}s)`}</span>
-                    </div>
-                  )}
 
                   {/* Final answer */}
                   {m.contentStarted && (

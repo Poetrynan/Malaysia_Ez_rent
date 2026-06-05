@@ -490,6 +490,11 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 }
 
 /* Thinking steps */
+.manus-thought-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .manus-thought {
   display: flex;
   align-items: center;
@@ -501,7 +506,9 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   border: 1px solid var(--border);
   border-radius: 8px;
   animation: slideUp 0.2s ease-out;
+  transition: opacity 0.2s;
 }
+.manus-thought:hover { opacity: 0.9; }
 .manus-thought-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
