@@ -3,1257 +3,6 @@
   "last_updated": "2026-06-05",
   "universities": [
     {
-      "university_name": "SEGi University Kota Damansara",
-      "state": "Selangor",
-      "latitude": 3.1481,
-      "longitude": 101.5772,
-      "nearby_communities": [
-        {
-          "community_name": "Cova Suites",
-          "address": "Jalan Teknologi, Kota Damansara, 47810 Petaling Jaya, Selangor",
-          "state": "Selangor",
-          "latitude": 3.1472,
-          "longitude": 101.5758,
-          "description": "位于SEGi大学正对面的成熟公寓，步行即可到达校园和MRT站，是学生的首选社区。",
-          "property_type": "Condominium",
-          "room_types_available": [
-            "Single Room",
-            "Medium Room",
-            "Master Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 600,
-            "max": 2500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.2,
-            "walking_minutes": 3,
-            "driving_minutes": 1,
-            "description": "过马路即达SEGi大学。"
-          },
-          "pros": [
-            "极近校园",
-            "交通便利（近MRT）",
-            "配套成熟"
-          ],
-          "cons": [
-            "建筑稍旧",
-            "学生密度大"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "Thomson Hospital",
-              "type": "hospital",
-              "distance_km": 0.3
-            },
-            {
-              "name": "MRT Kota Damansara",
-              "type": "transport",
-              "distance_km": 0.5
-            }
-          ],
-          "transportation": {
-            "nearest_lrt": null,
-            "nearest_brt": null,
-            "nearest_mrt": "Kota Damansara",
-            "bus_routes": [
-              "T801"
-            ]
-          },
-          "facilities": [
-            "Swimming Pool",
-            "Gymnasium",
-            "24-Hour Security",
-            "Mini Market"
-          ],
-          "building_details": {
-            "year_built": 2008,
-            "total_units": 386,
-            "floors": 23
-          },
-          "tenant_rating": {
-            "overall": 4.2,
-            "safety": 4.3,
-            "cleanliness": 3.8,
-            "value_for_money": 4.5
-          },
-          "target_tenants": [
-            "Students",
-            "Medical Staff"
-          ],
-          "lease_terms": {
-            "minimum_months": 12,
-            "deposit_months": 2.5,
-            "utilities_included": false
-          }
-        },
-        {
-          "community_name": "Cova Villa",
-          "address": "Jalan Teknologi, Kota Damansara, 47810 Petaling Jaya, Selangor",
-          "state": "Selangor",
-          "latitude": 3.1465,
-          "longitude": 101.575,
-          "description": "与Cova Suites相邻，同样以学生群体为主，提供高性价比的居住选择。",
-          "property_type": "Condominium",
-          "room_types_available": [
-            "Single Room",
-            "Medium Room",
-            "Master Room"
-          ],
-          "price_range": {
-            "min": 500,
-            "max": 2000,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.3,
-            "walking_minutes": 5,
-            "driving_minutes": 2,
-            "description": "步行5分钟内可达。"
-          },
-          "pros": [
-            "租金极具竞争力",
-            "靠近MRT",
-            "周边餐饮丰富"
-          ],
-          "cons": [
-            "设施维护一般",
-            "高峰期电梯拥挤"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "Cova Square",
-              "type": "shopping",
-              "distance_km": 0.1
-            }
-          ],
-          "transportation": {
-            "nearest_mrt": "Kota Damansara"
-          },
-          "facilities": [
-            "Swimming Pool",
-            "Gymnasium",
-            "Security"
-          ],
-          "tenant_rating": {
-            "overall": 3.9,
-            "safety": 4,
-            "cleanliness": 3.5,
-            "value_for_money": 4.7
-          }
-        },
-        {
-          "community_name": "Emporis Kota Damansara",
-          "address": "Persiaran Surian, Kota Damansara, 47810 Petaling Jaya, Selangor",
-          "state": "Selangor",
-          "latitude": 3.151,
-          "longitude": 101.572,
-          "description": "新兴的高端综合开发项目，楼下即是商场，生活极其便利，深受追求生活品质的学生喜爱。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "Duplex",
-            "2-Bedroom",
-            "3-Bedroom"
-          ],
-          "price_range": {
-            "min": 1500,
-            "max": 3500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 1.2,
-            "walking_minutes": 15,
-            "driving_minutes": 5,
-            "description": "建议搭乘公共交通或开车。"
-          },
-          "pros": [
-            "设施现代",
-            "楼下即商场",
-            "安全性高"
-          ],
-          "cons": [
-            "租金较高",
-            "距离大学稍远"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "Jaya Grocer",
-              "type": "supermarket",
-              "distance_km": 0.05
-            }
-          ],
-          "transportation": {
-            "nearest_mrt": "Kota Damansara"
-          },
-          "facilities": [
-            "Infinity Pool",
-            "Gymnasium",
-            "Tennis Court",
-            "Sky Garden"
-          ],
-          "tenant_rating": {
-            "overall": 4.5,
-            "safety": 4.7,
-            "cleanliness": 4.6,
-            "value_for_money": 3.8
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "HELP University Subang 2 Campus",
-      "state": "Selangor",
-      "latitude": 3.161,
-      "longitude": 101.531,
-      "nearby_communities": [
-        {
-          "community_name": "Subang Residences",
-          "address": "Subang Bestari, 40150 Shah Alam, Selangor",
-          "state": "Selangor",
-          "latitude": 3.1625,
-          "longitude": 101.5325,
-          "description": "HELP大学官方合作公寓，专为学生设计，管理规范，安全有保障。",
-          "property_type": "Apartment",
-          "room_types_available": [
-            "Single Room",
-            "Twin Sharing"
-          ],
-          "price_range": {
-            "min": 500,
-            "max": 1200,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.5,
-            "walking_minutes": 7,
-            "driving_minutes": 2,
-            "description": "步行可达。"
-          },
-          "pros": [
-            "学生社区氛围好",
-            "管理严格",
-            "包含基本家具"
-          ],
-          "cons": [
-            "房间空间有限",
-            "访客限制较多"
-          ],
-          "facilities": [
-            "24-Hour Security",
-            "Study Hall",
-            "Laundry"
-          ],
-          "tenant_rating": {
-            "overall": 4,
-            "safety": 4.5,
-            "cleanliness": 4.2,
-            "value_for_money": 4.1
-          }
-        },
-        {
-          "community_name": "Damai Apartment",
-          "address": "Jalan Tasik Raja Lumu U4/17, Subang Bestari, Selangor",
-          "state": "Selangor",
-          "latitude": 3.16,
-          "longitude": 101.53,
-          "description": "紧邻HELP大学的高性价比公寓，租金包含水电网，是许多国际留学生的选择。",
-          "property_type": "Apartment",
-          "room_types_available": [
-            "Single Room",
-            "Master Room"
-          ],
-          "price_range": {
-            "min": 450,
-            "max": 900,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.1,
-            "walking_minutes": 2,
-            "driving_minutes": 1,
-            "description": "紧邻校园。"
-          },
-          "pros": [
-            "极近校园",
-            "租金全包",
-            "生活配套便利"
-          ],
-          "cons": [
-            "建筑较旧",
-            "停车位有限"
-          ],
-          "facilities": [
-            "Security",
-            "Mini Market"
-          ],
-          "tenant_rating": {
-            "overall": 3.8,
-            "safety": 3.9,
-            "cleanliness": 3.4,
-            "value_for_money": 4.6
-          }
-        },
-        {
-          "community_name": "Nadayu 801",
-          "address": "Subang Bestari, 40150 Shah Alam, Selangor",
-          "state": "Selangor",
-          "latitude": 3.164,
-          "longitude": 101.535,
-          "description": "该区域最新的高端公寓项目，设施豪华，提供更高品质的居住体验。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom",
-            "3-Bedroom"
-          ],
-          "price_range": {
-            "min": 1200,
-            "max": 2800,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.8,
-            "walking_minutes": 10,
-            "driving_minutes": 3,
-            "description": "步行约10分钟。"
-          },
-          "pros": [
-            "设施全新",
-            "低密度",
-            "景观好"
-          ],
-          "cons": [
-            "租金较周边贵",
-            "入住率提升中"
-          ],
-          "facilities": [
-            "Swimming Pool",
-            "Gymnasium",
-            "Multipurpose Hall"
-          ],
-          "tenant_rating": {
-            "overall": 4.6,
-            "safety": 4.8,
-            "cleanliness": 4.8,
-            "value_for_money": 3.7
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "HELP University Damansara Heights Campus",
-      "state": "Kuala Lumpur",
-      "latitude": 3.151,
-      "longitude": 101.664,
-      "nearby_communities": [
-        {
-          "community_name": "D28 Damansara",
-          "address": "28 Jalan Medan Setia 2, Bukit Damansara, 50490 Kuala Lumpur",
-          "state": "Kuala Lumpur",
-          "latitude": 3.15,
-          "longitude": 101.663,
-          "description": "专门为学生和年轻专业人士设计的精品工作室公寓，位于高档社区，安全性极高。",
-          "property_type": "Studio Apartment",
-          "room_types_available": [
-            "Studio"
-          ],
-          "price_range": {
-            "min": 1300,
-            "max": 1800,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.2,
-            "walking_minutes": 3,
-            "driving_minutes": 1,
-            "description": "步行即可到达HELP大学。"
-          },
-          "pros": [
-            "极其靠近校园",
-            "独立空间",
-            "周边社区高档安全"
-          ],
-          "cons": [
-            "空间较小",
-            "租金相对较高"
-          ],
-          "facilities": [
-            "24-Hour Security",
-            "Gym",
-            "Lounge"
-          ],
-          "tenant_rating": {
-            "overall": 4.3,
-            "safety": 4.9,
-            "cleanliness": 4.5,
-            "value_for_money": 3.9
-          }
-        },
-        {
-          "community_name": "Twins @ Damansara Heights",
-          "address": "Jalan Johar, Bukit Damansara, 50490 Kuala Lumpur",
-          "state": "Kuala Lumpur",
-          "latitude": 3.153,
-          "longitude": 101.662,
-          "description": "高端公寓，适合预算充足的学生，步行可达MRT Pusat Bandar Damansara。",
-          "property_type": "Condominium",
-          "room_types_available": [
-            "Single Room",
-            "Medium Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 1200,
-            "max": 4500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.6,
-            "walking_minutes": 8,
-            "driving_minutes": 2,
-            "description": "步行约8分钟。"
-          },
-          "pros": [
-            "交通便利",
-            "设施豪华",
-            "高层视野开阔"
-          ],
-          "cons": [
-            "租金昂贵",
-            "管理费高"
-          ],
-          "facilities": [
-            "Swimming Pool",
-            "Gym",
-            "Library"
-          ],
-          "tenant_rating": {
-            "overall": 4.4,
-            "safety": 4.7,
-            "cleanliness": 4.6,
-            "value_for_money": 3.5
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "INTI International University Nilai",
-      "state": "Negeri Sembilan",
-      "latitude": 2.813,
-      "longitude": 101.761,
-      "nearby_communities": [
-        {
-          "community_name": "Starz Valley",
-          "address": "Persiaran Negeri Bbn, Nilai, 71800 Nilai, Negeri Sembilan",
-          "state": "Negeri Sembilan",
-          "latitude": 2.814,
-          "longitude": 101.762,
-          "description": "紧邻INTI大学的最成熟学生社区，生活配套齐全，是学生租房的首选。",
-          "property_type": "Condominium",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom",
-            "3-Bedroom"
-          ],
-          "price_range": {
-            "min": 400,
-            "max": 1500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.1,
-            "walking_minutes": 2,
-            "driving_minutes": 1,
-            "description": "紧邻INTI校园。"
-          },
-          "pros": [
-            "极近校园",
-            "餐饮丰富",
-            "租金适中"
-          ],
-          "cons": [
-            "维护状况参差不齐",
-            "学生群体嘈杂"
-          ],
-          "facilities": [
-            "Swimming Pool",
-            "Gym",
-            "Security"
-          ],
-          "tenant_rating": {
-            "overall": 4.1,
-            "safety": 3.8,
-            "cleanliness": 3.6,
-            "value_for_money": 4.6
-          }
-        },
-        {
-          "community_name": "MesaHill",
-          "address": "Persiaran Jaya, Bandar Baru Nilai, 71800 Nilai, Negeri Sembilan",
-          "state": "Negeri Sembilan",
-          "latitude": 2.818,
-          "longitude": 101.77,
-          "description": "楼下即是MesaMall购物中心，生活极其便利，设施较新，深受学生欢迎。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom"
-          ],
-          "price_range": {
-            "min": 800,
-            "max": 1800,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 1.5,
-            "walking_minutes": 20,
-            "driving_minutes": 5,
-            "description": "建议搭乘校车或开车。"
-          },
-          "pros": [
-            "楼下商场便利",
-            "设施现代",
-            "管理好"
-          ],
-          "cons": [
-            "步行稍远",
-            "租金较Starz Valley贵"
-          ],
-          "facilities": [
-            "Infinity Pool",
-            "Gym",
-            "Cinema nearby"
-          ],
-          "tenant_rating": {
-            "overall": 4.4,
-            "safety": 4.5,
-            "cleanliness": 4.4,
-            "value_for_money": 4.2
-          }
-        },
-        {
-          "community_name": "Youth City",
-          "address": "Bandar Baru Nilai, 71800 Nilai, Negeri Sembilan",
-          "state": "Negeri Sembilan",
-          "latitude": 2.822,
-          "longitude": 101.78,
-          "description": "汝来地区最新的网红社区，拥有顶楼无边泳池和现代化的共享空间，吸引大量年轻人入住。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom"
-          ],
-          "price_range": {
-            "min": 900,
-            "max": 2000,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 2.5,
-            "driving_minutes": 7,
-            "description": "适合有车一族。"
-          },
-          "pros": [
-            "设施顶级",
-            "网红设计",
-            "安全性极佳"
-          ],
-          "cons": [
-            "距离较远",
-            "周边尚在开发中"
-          ],
-          "facilities": [
-            "Rooftop Pool",
-            "Modern Gym",
-            "Co-working Space"
-          ],
-          "tenant_rating": {
-            "overall": 4.7,
-            "safety": 4.8,
-            "cleanliness": 4.9,
-            "value_for_money": 4
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "Xiamen University Malaysia (XMUM)",
-      "state": "Selangor",
-      "latitude": 2.8325,
-      "longitude": 101.7065,
-      "nearby_communities": [
-        {
-          "community_name": "Bell Suites",
-          "address": "Sunsuria City, 43900 Sepang, Selangor",
-          "state": "Selangor",
-          "latitude": 2.8315,
-          "longitude": 101.7075,
-          "description": "位于厦门大学正对面，专为厦大学生设计的小型公寓，步行即可上课。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom"
-          ],
-          "price_range": {
-            "min": 1000,
-            "max": 2200,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.1,
-            "walking_minutes": 2,
-            "driving_minutes": 1,
-            "description": "步行2分钟即达厦大。"
-          },
-          "pros": [
-            "极其靠近校园",
-            "设施现代",
-            "安全性高"
-          ],
-          "cons": [
-            "租金相对周边较高",
-            "周边配套尚在完善中"
-          ],
-          "facilities": [
-            "Swimming Pool",
-            "Gym",
-            "Study Area"
-          ],
-          "tenant_rating": {
-            "overall": 4.5,
-            "safety": 4.7,
-            "cleanliness": 4.6,
-            "value_for_money": 3.9
-          }
-        },
-        {
-          "community_name": "Horizon Suites",
-          "address": "Sunsuria City, 43900 Sepang, Selangor",
-          "state": "Selangor",
-          "latitude": 2.829,
-          "longitude": 101.705,
-          "description": "设施极其丰富的现代社区，提供多样化的房型选择，是厦大留学生的热门聚集地。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "1-Bedroom",
-            "2-Bedroom"
-          ],
-          "price_range": {
-            "min": 800,
-            "max": 1800,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.8,
-            "walking_minutes": 10,
-            "driving_minutes": 3,
-            "description": "步行约10分钟。"
-          },
-          "pros": [
-            "设施豪华",
-            "房型选择多",
-            "价格较Bell Suites亲民"
-          ],
-          "cons": [
-            "部分单位空间较小",
-            "入住率高"
-          ],
-          "facilities": [
-            "Large Swimming Pool",
-            "Gym",
-            "Jogging Track",
-            "BBQ Area"
-          ],
-          "tenant_rating": {
-            "overall": 4.4,
-            "safety": 4.5,
-            "cleanliness": 4.5,
-            "value_for_money": 4.3
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "UTAR Sungai Long Campus",
-      "state": "Selangor",
-      "latitude": 3.039,
-      "longitude": 101.794,
-      "nearby_communities": [
-        {
-          "community_name": "Flora Green",
-          "address": "Bandar Sungai Long, 43000 Kajang, Selangor",
-          "state": "Selangor",
-          "latitude": 3.04,
-          "longitude": 101.795,
-          "description": "UTAR学生最常选的公寓，地理位置优越，就在大学正对面。",
-          "property_type": "Condominium",
-          "room_types_available": [
-            "Single Room",
-            "Twin Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 350,
-            "max": 1500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 0.16,
-            "walking_minutes": 2,
-            "description": "步行2分钟即达。"
-          },
-          "pros": [
-            "位置绝佳",
-            "租金便宜",
-            "生活极其方便"
-          ],
-          "cons": [
-            "建筑陈旧",
-            "管理一般"
-          ],
-          "facilities": [
-            "Security",
-            "Swimming Pool"
-          ],
-          "tenant_rating": {
-            "overall": 4,
-            "safety": 3.7,
-            "cleanliness": 3.2,
-            "value_for_money": 4.8
-          }
-        },
-        {
-          "community_name": "Landmark Residence",
-          "address": "Bandar Sungai Long, 43000 Kajang, Selangor",
-          "state": "Selangor",
-          "latitude": 3.035,
-          "longitude": 101.775,
-          "description": "该区域较新的现代公寓，设施完善，提供更好的居住品质。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom",
-            "3-Bedroom"
-          ],
-          "price_range": {
-            "min": 1000,
-            "max": 2500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 2.6,
-            "driving_minutes": 7,
-            "description": "需开车或搭乘校车。"
-          },
-          "pros": [
-            "设施现代",
-            "安全性高",
-            "居住舒适度高"
-          ],
-          "cons": [
-            "距离大学较远",
-            "租金较高"
-          ],
-          "facilities": [
-            "Infinity Pool",
-            "Gym",
-            "Sky Lounge"
-          ],
-          "tenant_rating": {
-            "overall": 4.5,
-            "safety": 4.6,
-            "cleanliness": 4.7,
-            "value_for_money": 4
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "UTAR Kampar Campus",
-      "state": "Perak",
-      "latitude": 4.337,
-      "longitude": 101.141,
-      "nearby_communities": [
-        {
-          "community_name": "Westlake Homes (Danish House)",
-          "address": "Westlake, 31900 Kampar, Perak",
-          "state": "Perak",
-          "latitude": 4.335,
-          "longitude": 101.135,
-          "description": "金宝校区最成熟的学生社区，提供排屋式住宿，生活气息浓厚。",
-          "property_type": "Landed House",
-          "room_types_available": [
-            "Single Room",
-            "Master Room"
-          ],
-          "price_range": {
-            "min": 185,
-            "max": 400,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 1.6,
-            "walking_minutes": 20,
-            "driving_minutes": 5,
-            "description": "步行约20分钟，有校车接送。"
-          },
-          "pros": [
-            "租金极低",
-            "社区成熟",
-            "包含基本家具"
-          ],
-          "cons": [
-            "无公寓设施",
-            "安保相对较弱"
-          ],
-          "facilities": [
-            "Wifi",
-            "Laundry",
-            "Van Service"
-          ],
-          "tenant_rating": {
-            "overall": 4.2,
-            "safety": 3.5,
-            "cleanliness": 3.8,
-            "value_for_money": 4.9
-          }
-        },
-        {
-          "community_name": "Meadow Park",
-          "address": "Kampar, 31900 Perak",
-          "state": "Perak",
-          "latitude": 4.325,
-          "longitude": 101.15,
-          "description": "高端低密度学生社区，环境优美，设施齐全，是预算充足学生的理想选择。",
-          "property_type": "Townhouse/Condo",
-          "room_types_available": [
-            "Single Room",
-            "Master Room"
-          ],
-          "price_range": {
-            "min": 300,
-            "max": 600,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 4,
-            "driving_minutes": 10,
-            "description": "建议开车。"
-          },
-          "pros": [
-            "环境优美",
-            "设施齐全",
-            "安全性高"
-          ],
-          "cons": [
-            "距离较远",
-            "租金相对较高"
-          ],
-          "facilities": [
-            "Club House",
-            "Pool",
-            "Gym",
-            "Security"
-          ],
-          "tenant_rating": {
-            "overall": 4.6,
-            "safety": 4.8,
-            "cleanliness": 4.7,
-            "value_for_money": 4.1
-          }
-        },
-        {
-          "community_name": "The Meadow Park",
-          "address": "Jalan Kampar Barat 1, 31900 Kampar, Perak",
-          "state": "Perak",
-          "latitude": 4.3255,
-          "longitude": 101.1215,
-          "description": "位于金宝（Kampar）的高端低密度公寓，以其优美的环境和完善的设施著称，是UTAR学生的热门选择。",
-          "property_type": "Townhouse / Apartment",
-          "room_types_available": [
-            "Single Room",
-            "Medium Room",
-            "Master Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 350,
-            "max": 1500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 4,
-            "walking_minutes": null,
-            "driving_minutes": 10,
-            "description": "驾车约10分钟可达UTAR校区。"
-          },
-          "pros": [
-            "环境极其优美安静",
-            "设施完善（泳池、健身房、室内运动场）",
-            "安保严密"
-          ],
-          "cons": [
-            "距离大学较远，需依赖穿梭巴士或自驾",
-            "租金在金宝属于较高水平"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "UTAR Kampar",
-              "type": "university",
-              "distance_km": 4
-            },
-            {
-              "name": "Tesco Kampar",
-              "type": "shopping",
-              "distance_km": 3
-            },
-            {
-              "name": "Grand Kampar Hotel",
-              "type": "landmark",
-              "distance_km": 2.5
-            }
-          ],
-          "transportation": {
-            "nearest_lrt": null,
-            "nearest_brt": null,
-            "nearest_monorail": null,
-            "bus_routes": [
-              "UTAR Shuttle Bus"
-            ],
-            "parking": {
-              "available": true,
-              "monthly_fee": 50
-            }
-          },
-          "facilities": [
-            "Swimming Pool",
-            "Gymnasium",
-            "Badminton Court",
-            "Table Tennis",
-            "24-Hour Security"
-          ],
-          "building_details": {
-            "year_built": 2016,
-            "total_units": 426,
-            "floors": 3,
-            "developer": "Team Keris Berhad"
-          },
-          "tenant_rating": {
-            "overall": 4.5,
-            "safety": 4.7,
-            "cleanliness": 4.6,
-            "value_for_money": 4.2
-          },
-          "target_tenants": [
-            "UTAR Students",
-            "Families"
-          ],
-          "lease_terms": {
-            "minimum_months": 12,
-            "deposit_months": 2,
-            "utilities_included": false
-          }
-        },
-        {
-          "community_name": "Champs Elysees",
-          "address": "Bandar Agacia, 31900 Kampar, Perak",
-          "state": "Perak",
-          "latitude": 4.3185,
-          "longitude": 101.1285,
-          "description": "位于金宝Agacia城，以欧式建筑风格著称的网红公寓，主要提供单间公寓（Studio），深受追求个性的学生喜爱。",
-          "property_type": "Serviced Apartment",
-          "room_types_available": [
-            "Studio"
-          ],
-          "price_range": {
-            "min": 500,
-            "max": 800,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 3.5,
-            "walking_minutes": null,
-            "driving_minutes": 8,
-            "description": "驾车约8分钟可达UTAR校区。"
-          },
-          "pros": [
-            "建筑风格独特，非常出片",
-            "设施齐全（泳池、健身房）",
-            "租金包含基本家具"
-          ],
-          "cons": [
-            "周边商业还在开发中",
-            "单位面积较小，仅适合1-2人居住"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "Agacia Town",
-              "type": "landmark",
-              "distance_km": 0.1
-            },
-            {
-              "name": "UTAR Kampar",
-              "type": "university",
-              "distance_km": 3.5
-            },
-            {
-              "name": "Kampar KTM Station",
-              "type": "transport",
-              "distance_km": 4
-            }
-          ],
-          "transportation": {
-            "nearest_lrt": null,
-            "nearest_brt": null,
-            "nearest_monorail": null,
-            "bus_routes": [
-              "UTAR Shuttle Bus"
-            ],
-            "parking": {
-              "available": true,
-              "monthly_fee": 50
-            }
-          },
-          "facilities": [
-            "Swimming Pool",
-            "Gymnasium",
-            "24-Hour Security",
-            "Library"
-          ],
-          "building_details": {
-            "year_built": 2018,
-            "total_units": 600,
-            "floors": 24,
-            "developer": "Agacia Land"
-          },
-          "tenant_rating": {
-            "overall": 4.3,
-            "safety": 4.2,
-            "cleanliness": 4.5,
-            "value_for_money": 4.4
-          },
-          "target_tenants": [
-            "Individual Students",
-            "Couples"
-          ],
-          "lease_terms": {
-            "minimum_months": 12,
-            "deposit_months": 2,
-            "utilities_included": false
-          }
-        },
-        {
-          "community_name": "Residensi Akasa",
-          "address": "Jalan Balakong, 43300 Seri Kembangan, Selangor",
-          "state": "Selangor",
-          "latitude": 3.0285,
-          "longitude": 101.7515,
-          "description": "位于蕉赖南区（Cheras South）的高端公寓，以其人造沙滩泳池和豪华设施著称，适合在附近大学就读的学生。",
-          "property_type": "Serviced Apartment",
-          "room_types_available": [
-            "Single Room",
-            "Medium Room",
-            "Master Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 800,
-            "max": 3500,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 5.5,
-            "walking_minutes": null,
-            "driving_minutes": 12,
-            "description": "驾车约12分钟可达UCSI或UTAR附近校区。"
-          },
-          "pros": [
-            "设施极其豪华（含沙滩泳池）",
-            "安保严密",
-            "单位品质高"
-          ],
-          "cons": [
-            "距离大学较远，需依赖交通工具",
-            "周边交通有时拥堵"
-          ],
-          "nearby_amenities": [
-            {
-              "name": "AEON Mall Cheras Selatan",
-              "type": "shopping",
-              "distance_km": 1.5
-            },
-            {
-              "name": "Columbia Asia Hospital",
-              "type": "hospital",
-              "distance_km": 1.2
-            }
-          ],
-          "transportation": {
-            "nearest_lrt": null,
-            "nearest_brt": null,
-            "nearest_monorail": null,
-            "bus_routes": [
-              "Rapid KL"
-            ],
-            "parking": {
-              "available": true,
-              "monthly_fee": 150
-            }
-          },
-          "facilities": [
-            "Man-made Beach Pool",
-            "Gymnasium",
-            "Sky Lounge",
-            "Badminton Court",
-            "24-Hour Security"
-          ],
-          "building_details": {
-            "year_built": 2020,
-            "total_units": 998,
-            "floors": 35,
-            "developer": "Hap Seng Land"
-          },
-          "tenant_rating": {
-            "overall": 4.6,
-            "safety": 4.7,
-            "cleanliness": 4.7,
-            "value_for_money": 4.1
-          },
-          "target_tenants": [
-            "Students",
-            "Expats",
-            "Young Professionals"
-          ],
-          "lease_terms": {
-            "minimum_months": 12,
-            "deposit_months": 2.5,
-            "utilities_included": false
-          }
-        }
-      ]
-    },
-    {
-      "university_name": "KLCC / City Center (UTM KL / City U)",
-      "state": "Kuala Lumpur",
-      "latitude": 3.1579,
-      "longitude": 101.7123,
-      "nearby_communities": [
-        {
-          "community_name": "Platinum Suites (The Face)",
-          "address": "1020 Jalan Sultan Ismail, 50250 Kuala Lumpur",
-          "state": "Kuala Lumpur",
-          "latitude": 3.1585,
-          "longitude": 101.7035,
-          "description": "KLCC核心区的高端公寓，以顶楼无边泳池闻名，适合追求极致都市生活的学生或实习生。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Single Room",
-            "Master Room",
-            "Whole Unit"
-          ],
-          "price_range": {
-            "min": 1500,
-            "max": 6000,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 2,
-            "driving_minutes": 10,
-            "description": "近LRT/Monorail。"
-          },
-          "pros": [
-            "地段绝佳",
-            "设施顶级",
-            "景观震撼"
-          ],
-          "cons": [
-            "租金昂贵",
-            "游客较多"
-          ],
-          "facilities": [
-            "Infinity Pool",
-            "Gym",
-            "Sky Lounge"
-          ],
-          "tenant_rating": {
-            "overall": 4.6,
-            "safety": 4.8,
-            "cleanliness": 4.9,
-            "value_for_money": 3.2
-          }
-        },
-        {
-          "community_name": "Mercu Summer Suites",
-          "address": "Jalan Cendana, 50250 Kuala Lumpur",
-          "state": "Kuala Lumpur",
-          "latitude": 3.1595,
-          "longitude": 101.7045,
-          "description": "市中心高性价比的工作室公寓，交通极其便利，步行可达Monorail和LRT站。",
-          "property_type": "Serviced Residence",
-          "room_types_available": [
-            "Studio",
-            "2-Bedroom"
-          ],
-          "price_range": {
-            "min": 1200,
-            "max": 3000,
-            "currency": "MYR",
-            "unit": "per_month"
-          },
-          "distance_to_university": {
-            "km": 1.5,
-            "walking_minutes": 15,
-            "description": "市中心步行范围内。"
-          },
-          "pros": [
-            "交通便利",
-            "租金在市中心算亲民",
-            "生活配套丰富"
-          ],
-          "cons": [
-            "电梯较慢",
-            "居住密度高"
-          ],
-          "facilities": [
-            "Pool",
-            "Gym",
-            "Convenience Store"
-          ],
-          "tenant_rating": {
-            "overall": 4.3,
-            "safety": 4.4,
-            "cleanliness": 4.1,
-            "value_for_money": 4.2
-          }
-        }
-      ]
-    },
-    {
       "university_name": "Sunway University",
       "state": "Selangor",
       "latitude": 3.0678,
@@ -2523,6 +1272,165 @@
             "minimum_months": 12,
             "deposit_months": 2,
             "utilities_included": true
+          }
+        },
+        {
+          "community_name": "Impian Meridian",
+          "address": "Jalan Subang 1, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0615,
+          "longitude": 101.5955,
+          "description": "位于USJ 1的老牌热门公寓，以高性价比和极其便利的BRT交通著称，是双威和莫纳什学生的备选高性价比方案。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "距离Sunway/Monash大学约1.5公里，一站BRT直达。"
+          },
+          "pros": [
+            "租金性价比极高",
+            "门口即是BRT站",
+            "设施齐全"
+          ],
+          "cons": [
+            "建筑较旧",
+            "电梯偶尔需要排队"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Mydin USJ",
+              "type": "shopping",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "South Quay-USJ 1",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sauna",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2009,
+            "total_units": 500,
+            "floors": 28,
+            "developer": "Cahaya Pegaso"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 3.9,
+            "cleanliness": 3.6,
+            "value_for_money": 4.8
+          },
+          "target_tenants": [
+            "Budget students",
+            "Working professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "The Grand Subang @ SS13",
+          "address": "Jalan SS 13/3, 47500 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0645,
+          "longitude": 101.5985,
+          "description": "位于SS13工业区边缘的现代公寓，专为学生设计，提供往返Taylor's、Sunway和Monash的免费班车。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1300,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.2,
+            "walking_minutes": 15,
+            "driving_minutes": 5,
+            "description": "步行15分钟或搭乘班车5分钟可达Taylor's。"
+          },
+          "pros": [
+            "纯学生社区",
+            "设施新颖",
+            "提供免费穿梭巴士"
+          ],
+          "cons": [
+            "周边工业环境一般",
+            "步行距离略远"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Taylor's University",
+              "type": "university",
+              "distance_km": 1.2
+            },
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "Sunway Lagoon",
+            "bus_routes": [
+              "Free Shuttle"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Lounge",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2019,
+            "total_units": 578,
+            "floors": 22,
+            "developer": "Mediaraya"
+          },
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.4,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Taylor's Students",
+            "Sunway Students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
           }
         },
         {
@@ -3989,6 +2897,165 @@
             "deposit_months": 2,
             "utilities_included": true
           }
+        },
+        {
+          "community_name": "Impian Meridian",
+          "address": "Jalan Subang 1, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0615,
+          "longitude": 101.5955,
+          "description": "位于USJ 1的老牌热门公寓，以高性价比和极其便利的BRT交通著称，是双威和莫纳什学生的备选高性价比方案。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "距离Sunway/Monash大学约1.5公里，一站BRT直达。"
+          },
+          "pros": [
+            "租金性价比极高",
+            "门口即是BRT站",
+            "设施齐全"
+          ],
+          "cons": [
+            "建筑较旧",
+            "电梯偶尔需要排队"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Mydin USJ",
+              "type": "shopping",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "South Quay-USJ 1",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sauna",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2009,
+            "total_units": 500,
+            "floors": 28,
+            "developer": "Cahaya Pegaso"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 3.9,
+            "cleanliness": 3.6,
+            "value_for_money": 4.8
+          },
+          "target_tenants": [
+            "Budget students",
+            "Working professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "The Grand Subang @ SS13",
+          "address": "Jalan SS 13/3, 47500 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0645,
+          "longitude": 101.5985,
+          "description": "位于SS13工业区边缘的现代公寓，专为学生设计，提供往返Taylor's、Sunway和Monash的免费班车。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1300,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.2,
+            "walking_minutes": 15,
+            "driving_minutes": 5,
+            "description": "步行15分钟或搭乘班车5分钟可达Taylor's。"
+          },
+          "pros": [
+            "纯学生社区",
+            "设施新颖",
+            "提供免费穿梭巴士"
+          ],
+          "cons": [
+            "周边工业环境一般",
+            "步行距离略远"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Taylor's University",
+              "type": "university",
+              "distance_km": 1.2
+            },
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "Sunway Lagoon",
+            "bus_routes": [
+              "Free Shuttle"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Lounge",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2019,
+            "total_units": 578,
+            "floors": 22,
+            "developer": "Mediaraya"
+          },
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.4,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Taylor's Students",
+            "Sunway Students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
         }
       ]
     },
@@ -5262,6 +4329,165 @@
             "minimum_months": 12,
             "deposit_months": 2,
             "utilities_included": true
+          }
+        },
+        {
+          "community_name": "Impian Meridian",
+          "address": "Jalan Subang 1, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0615,
+          "longitude": 101.5955,
+          "description": "位于USJ 1的老牌热门公寓，以高性价比和极其便利的BRT交通著称，是双威和莫纳什学生的备选高性价比方案。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "距离Sunway/Monash大学约1.5公里，一站BRT直达。"
+          },
+          "pros": [
+            "租金性价比极高",
+            "门口即是BRT站",
+            "设施齐全"
+          ],
+          "cons": [
+            "建筑较旧",
+            "电梯偶尔需要排队"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Mydin USJ",
+              "type": "shopping",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "South Quay-USJ 1",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sauna",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2009,
+            "total_units": 500,
+            "floors": 28,
+            "developer": "Cahaya Pegaso"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 3.9,
+            "cleanliness": 3.6,
+            "value_for_money": 4.8
+          },
+          "target_tenants": [
+            "Budget students",
+            "Working professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "The Grand Subang @ SS13",
+          "address": "Jalan SS 13/3, 47500 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0645,
+          "longitude": 101.5985,
+          "description": "位于SS13工业区边缘的现代公寓，专为学生设计，提供往返Taylor's、Sunway和Monash的免费班车。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1300,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.2,
+            "walking_minutes": 15,
+            "driving_minutes": 5,
+            "description": "步行15分钟或搭乘班车5分钟可达Taylor's。"
+          },
+          "pros": [
+            "纯学生社区",
+            "设施新颖",
+            "提供免费穿梭巴士"
+          ],
+          "cons": [
+            "周边工业环境一般",
+            "步行距离略远"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Taylor's University",
+              "type": "university",
+              "distance_km": 1.2
+            },
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "Sunway Lagoon",
+            "bus_routes": [
+              "Free Shuttle"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Lounge",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2019,
+            "total_units": 578,
+            "floors": 22,
+            "developer": "Mediaraya"
+          },
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.4,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Taylor's Students",
+            "Sunway Students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
           }
         }
       ]
@@ -7443,6 +6669,110 @@
             "deposit_months": 2.5,
             "utilities_included": false
           }
+        },
+        {
+          "community_name": "Southview Serviced Apartments",
+          "address": "Jalan Kerinchi Kiri, Bangsar South, 59200 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.1105,
+          "longitude": 101.6645,
+          "description": "位于Bangsar South核心区，紧邻KL Gateway Mall，是马大留学生的热门选择，生活极其便利。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 15,
+            "driving_minutes": 5,
+            "description": "靠近马大校门，步行或搭乘穿梭巴士均可。"
+          },
+          "pros": [
+            "生活配套极其丰富",
+            "交通便利（近LRT Universiti）",
+            "安全性高"
+          ],
+          "cons": [
+            "租金相对较高",
+            "人流量大"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "KL Gateway Mall",
+              "type": "shopping",
+              "distance_km": 0.1
+            },
+            {
+              "name": "LRT Universiti",
+              "type": "transport",
+              "distance_km": 0.3
+            }
+          ],
+          "facilities": [
+            "Infinity Pool",
+            "Gymnasium",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.7,
+            "cleanliness": 4.5,
+            "value_for_money": 3.8
+          }
+        },
+        {
+          "community_name": "Pantai Hillpark (Phase 1-5)",
+          "address": "Jalan Pantai Dalam, 59200 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.105,
+          "longitude": 101.662,
+          "description": "老牌成熟社区，环境优美，租金跨度大，是马大留学生传统的聚居地。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2,
+            "driving_minutes": 8,
+            "description": "有公共巴士直达马大校门。"
+          },
+          "pros": [
+            "环境安静",
+            "租金选择多",
+            "社区配套成熟"
+          ],
+          "cons": [
+            "部分期数建筑较旧",
+            "步行距离较远"
+          ],
+          "facilities": [
+            "Pool",
+            "Gym",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 4,
+            "cleanliness": 3.8,
+            "value_for_money": 4.5
+          }
         }
       ]
     },
@@ -7804,6 +7134,51 @@
             "minimum_months": 12,
             "deposit_months": 2.5,
             "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Altitude 236",
+          "address": "Persiaran Alam Damai, 56000 Cheras, Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.08,
+          "longitude": 101.734,
+          "description": "高品质公寓，提供更宽敞的居住空间和更好的设施，适合预算较充足的学生。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 4500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.5,
+            "walking_minutes": 7,
+            "driving_minutes": 2,
+            "description": "步行可达校园。"
+          },
+          "pros": [
+            "低密度",
+            "设施豪华",
+            "景观好"
+          ],
+          "cons": [
+            "租金高",
+            "房型较大"
+          ],
+          "facilities": [
+            "Pool",
+            "Gym",
+            "Squash Court"
+          ],
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.7,
+            "cleanliness": 4.6,
+            "value_for_money": 3.6
           }
         }
       ]
@@ -8771,6 +8146,285 @@
       ]
     },
     {
+      "university_name": "Universiti Tunku Abdul Rahman (UTAR) Kampar",
+      "state": "Perak",
+      "latitude": 4.3375,
+      "longitude": 101.1415,
+      "nearby_communities": [
+        {
+          "community_name": "The Meadow Park",
+          "address": "Jalan Kampar Barat 1, 31900 Kampar, Perak",
+          "state": "Perak",
+          "latitude": 4.3255,
+          "longitude": 101.1215,
+          "description": "位于金宝（Kampar）的高端低密度公寓，以其优美的环境和完善的设施著称，是UTAR学生的热门选择。",
+          "property_type": "Townhouse / Apartment",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 350,
+            "max": 1500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 4,
+            "walking_minutes": null,
+            "driving_minutes": 10,
+            "description": "驾车约10分钟可达UTAR校区。"
+          },
+          "pros": [
+            "环境极其优美安静",
+            "设施完善（泳池、健身房、室内运动场）",
+            "安保严密"
+          ],
+          "cons": [
+            "距离大学较远，需依赖穿梭巴士或自驾",
+            "租金在金宝属于较高水平"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "UTAR Kampar",
+              "type": "university",
+              "distance_km": 4
+            },
+            {
+              "name": "Tesco Kampar",
+              "type": "shopping",
+              "distance_km": 3
+            },
+            {
+              "name": "Grand Kampar Hotel",
+              "type": "landmark",
+              "distance_km": 2.5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "UTAR Shuttle Bus"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 50
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Badminton Court",
+            "Table Tennis",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2016,
+            "total_units": 426,
+            "floors": 3,
+            "developer": "Team Keris Berhad"
+          },
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.7,
+            "cleanliness": 4.6,
+            "value_for_money": 4.2
+          },
+          "target_tenants": [
+            "UTAR Students",
+            "Families"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Champs Elysees",
+          "address": "Bandar Agacia, 31900 Kampar, Perak",
+          "state": "Perak",
+          "latitude": 4.3185,
+          "longitude": 101.1285,
+          "description": "位于金宝Agacia城，以欧式建筑风格著称的网红公寓，主要提供单间公寓（Studio），深受追求个性的学生喜爱。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3.5,
+            "walking_minutes": null,
+            "driving_minutes": 8,
+            "description": "驾车约8分钟可达UTAR校区。"
+          },
+          "pros": [
+            "建筑风格独特，非常出片",
+            "设施齐全（泳池、健身房）",
+            "租金包含基本家具"
+          ],
+          "cons": [
+            "周边商业还在开发中",
+            "单位面积较小，仅适合1-2人居住"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Agacia Town",
+              "type": "landmark",
+              "distance_km": 0.1
+            },
+            {
+              "name": "UTAR Kampar",
+              "type": "university",
+              "distance_km": 3.5
+            },
+            {
+              "name": "Kampar KTM Station",
+              "type": "transport",
+              "distance_km": 4
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "UTAR Shuttle Bus"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 50
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "24-Hour Security",
+            "Library"
+          ],
+          "building_details": {
+            "year_built": 2018,
+            "total_units": 600,
+            "floors": 24,
+            "developer": "Agacia Land"
+          },
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.2,
+            "cleanliness": 4.5,
+            "value_for_money": 4.4
+          },
+          "target_tenants": [
+            "Individual Students",
+            "Couples"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Residensi Akasa",
+          "address": "Jalan Balakong, 43300 Seri Kembangan, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0285,
+          "longitude": 101.7515,
+          "description": "位于蕉赖南区（Cheras South）的高端公寓，以其人造沙滩泳池和豪华设施著称，适合在附近大学就读的学生。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 5.5,
+            "walking_minutes": null,
+            "driving_minutes": 12,
+            "description": "驾车约12分钟可达UCSI或UTAR附近校区。"
+          },
+          "pros": [
+            "设施极其豪华（含沙滩泳池）",
+            "安保严密",
+            "单位品质高"
+          ],
+          "cons": [
+            "距离大学较远，需依赖交通工具",
+            "周边交通有时拥堵"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "AEON Mall Cheras Selatan",
+              "type": "shopping",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Columbia Asia Hospital",
+              "type": "hospital",
+              "distance_km": 1.2
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "Rapid KL"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 150
+            }
+          },
+          "facilities": [
+            "Man-made Beach Pool",
+            "Gymnasium",
+            "Sky Lounge",
+            "Badminton Court",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2020,
+            "total_units": 998,
+            "floors": 35,
+            "developer": "Hap Seng Land"
+          },
+          "tenant_rating": {
+            "overall": 4.6,
+            "safety": 4.7,
+            "cleanliness": 4.7,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Students",
+            "Expats",
+            "Young Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
       "university_name": "Universiti Kebangsaan Malaysia (UKM) Bangi",
       "state": "Selangor",
       "latitude": 2.9285,
@@ -9159,6 +8813,348 @@
       ]
     },
     {
+      "university_name": "SEGi University",
+      "state": "Selangor",
+      "latitude": 3.1475,
+      "longitude": 101.5765,
+      "nearby_communities": [
+        {
+          "community_name": "Cova Suites",
+          "address": "Jalan Teknologi, Kota Damansara, 47810 Petaling Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.1465,
+          "longitude": 101.5745,
+          "description": "位于哥打白沙罗（Kota Damansara）的成熟公寓，正对着SEGi大学和Thomson医院，是该校学生的首选居住地。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room",
+            "3 Bedrooms Unit"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.2,
+            "walking_minutes": 3,
+            "driving_minutes": 1,
+            "description": "过个马路即达SEGi大学校门。"
+          },
+          "pros": [
+            "距离极其靠近大学",
+            "租金选择多样",
+            "周边餐饮便利"
+          ],
+          "cons": [
+            "建筑稍显陈旧",
+            "人员密度较大"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "SEGi University",
+              "type": "university",
+              "distance_km": 0.1
+            },
+            {
+              "name": "Thomson Hospital",
+              "type": "hospital",
+              "distance_km": 0.2
+            },
+            {
+              "name": "MRT Kota Damansara",
+              "type": "transport",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "T801"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 100
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Cafeteria",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2010,
+            "total_units": 386,
+            "floors": 23,
+            "developer": "Phileo Promenade"
+          },
+          "tenant_rating": {
+            "overall": 3.9,
+            "safety": 3.8,
+            "cleanliness": 3.5,
+            "value_for_money": 4.5
+          },
+          "target_tenants": [
+            "SEGi Students",
+            "Hospital Staff"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "HELP University Subang Bestari",
+      "state": "Selangor",
+      "latitude": 3.1615,
+      "longitude": 101.5285,
+      "nearby_communities": [
+        {
+          "community_name": "Nadayu 801",
+          "address": "Jalan Apollo U5/190, Subang Bestari, 40150 Shah Alam, Selangor",
+          "state": "Selangor",
+          "latitude": 3.1605,
+          "longitude": 101.5305,
+          "description": "Subang Bestari区域最新的现代化公寓，设计前卫，专为学生和年轻白领打造。",
+          "property_type": "Apartment",
+          "room_types_available": [
+            "Studio",
+            "3 Bedrooms Unit"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.5,
+            "walking_minutes": 7,
+            "driving_minutes": 2,
+            "description": "步行7分钟可达HELP大学Subang校区。"
+          },
+          "pros": [
+            "设施全新且现代化",
+            "单位设计合理",
+            "安保系统先进"
+          ],
+          "cons": [
+            "周边商业还在完善中",
+            "租金在当地属于高位"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "HELP University",
+              "type": "university",
+              "distance_km": 0.4
+            },
+            {
+              "name": "Star Avenue Lifestyle Mall",
+              "type": "shopping",
+              "distance_km": 2.5
+            },
+            {
+              "name": "Subang Airport",
+              "type": "transport",
+              "distance_km": 5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "T802"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 150
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Multipurpose Hall",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2022,
+            "total_units": 499,
+            "floors": 19,
+            "developer": "Nadayu Properties"
+          },
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.6,
+            "cleanliness": 4.7,
+            "value_for_money": 4
+          },
+          "target_tenants": [
+            "HELP Students",
+            "Young Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Xiamen University Malaysia",
+      "state": "Selangor",
+      "latitude": 2.8325,
+      "longitude": 101.7065,
+      "nearby_communities": [
+        {
+          "community_name": "Bell Suites",
+          "address": "Sunsuria City, 43900 Sepang, Selangor",
+          "state": "Selangor",
+          "latitude": 2.8315,
+          "longitude": 101.7045,
+          "description": "位于Sunsuria City，正对着厦门大学马来西亚分校，提供高品质的SOHO单位。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio",
+            "1 Bedroom",
+            "2 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1100,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.3,
+            "walking_minutes": 5,
+            "driving_minutes": 1,
+            "description": "步行5分钟即可到达厦大校门。"
+          },
+          "pros": [
+            "距离极近",
+            "生活配套完善（楼下有商铺）",
+            "环境优美"
+          ],
+          "cons": [
+            "租金在Sepang区域较高",
+            "单位面积较小"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Xiamen University",
+              "type": "university",
+              "distance_km": 0.2
+            },
+            {
+              "name": "ERL Salak Tinggi",
+              "type": "transport",
+              "distance_km": 1
+            },
+            {
+              "name": "Horizon Village Outlets",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "Smart Selangor"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 100
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sky Lounge",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2020,
+            "total_units": 478,
+            "floors": 17,
+            "developer": "Sunsuria Berhad"
+          },
+          "tenant_rating": {
+            "overall": 4.6,
+            "safety": 4.7,
+            "cleanliness": 4.6,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Xiamen Uni Students",
+            "KLIA Staff"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Horizon Suites",
+          "address": "Sunsuria City, 43900 Sepang, Selangor",
+          "state": "Selangor",
+          "latitude": 2.829,
+          "longitude": 101.705,
+          "description": "设施极其丰富的现代社区，提供多样化的房型选择，是厦大留学生的热门聚集地。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "1-Bedroom",
+            "2-Bedroom"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 1800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.8,
+            "walking_minutes": 10,
+            "description": "步行约10分钟。"
+          },
+          "pros": [
+            "设施豪华",
+            "房型选择多",
+            "价格较Bell Suites亲民"
+          ],
+          "cons": [
+            "部分单位空间较小",
+            "入住率高"
+          ],
+          "facilities": [
+            "Large Swimming Pool",
+            "Gym",
+            "Jogging Track"
+          ],
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.5,
+            "value_for_money": 4.3
+          }
+        }
+      ]
+    },
+    {
       "university_name": "International Islamic University Malaysia (IIUM)",
       "state": "Selangor",
       "latitude": 3.2515,
@@ -9539,6 +9535,199 @@
           "target_tenants": [
             "TAR UMT Students",
             "Working Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "INTI International University",
+      "state": "Negeri Sembilan",
+      "latitude": 2.8135,
+      "longitude": 101.7585,
+      "nearby_communities": [
+        {
+          "community_name": "Starz Valley",
+          "address": "Jalan BBN 12/1, Bandar Nilai Utama, 71800 Nilai, Negeri Sembilan",
+          "state": "Negeri Sembilan",
+          "latitude": 2.8125,
+          "longitude": 101.7565,
+          "description": "位于汝来（Nilai）核心教育区，紧邻INTI大学，是该校学生最主要的居住和社交中心。",
+          "property_type": "Serviced Apartment / SOHO",
+          "room_types_available": [
+            "Studio",
+            "2 Bedrooms Unit",
+            "3 Bedrooms Unit"
+          ],
+          "price_range": {
+            "min": 700,
+            "max": 1800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.1,
+            "walking_minutes": 2,
+            "driving_minutes": 1,
+            "description": "步行2分钟即可到达INTI大学校门。"
+          },
+          "pros": [
+            "距离极其靠近",
+            "楼下即是商业街（餐饮、便利店多）",
+            "租金相对实惠"
+          ],
+          "cons": [
+            "建筑密度高，隐私性一般",
+            "周末及节假日人流量大"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "INTI International University",
+              "type": "university",
+              "distance_km": 0.1
+            },
+            {
+              "name": "AEON Mall Nilai",
+              "type": "shopping",
+              "distance_km": 2.5
+            },
+            {
+              "name": "MesaMall",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "Nilai City Bus"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 80
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Multipurpose Hall",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2014,
+            "total_units": 1500,
+            "floors": 15,
+            "developer": "Golden Mart Development"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 4,
+            "cleanliness": 3.6,
+            "value_for_money": 4.5
+          },
+          "target_tenants": [
+            "INTI Students",
+            "Young Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "MesaHill",
+          "address": "Persiaran Ilmu, Bandar Baru Nilai, 71800 Nilai, Negeri Sembilan",
+          "state": "Negeri Sembilan",
+          "latitude": 2.8185,
+          "longitude": 101.7655,
+          "description": "汝来区域的高端公寓，楼下即是MesaMall，提供极佳的生活便利性和现代化的居住体验。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio",
+            "1 Bedroom",
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "驾车5分钟可达INTI大学或Manipal大学。"
+          },
+          "pros": [
+            "生活极其便利（楼下即是商场、电影院）",
+            "设施非常新且现代化",
+            "环境安全且安静"
+          ],
+          "cons": [
+            "租金在汝来属于较高水平",
+            "距离大学稍远"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "MesaMall",
+              "type": "shopping",
+              "distance_km": 0.05
+            },
+            {
+              "name": "Manipal International University",
+              "type": "university",
+              "distance_km": 0.5
+            },
+            {
+              "name": "Nilai Medical Centre",
+              "type": "hospital",
+              "distance_km": 2
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": null,
+            "nearest_brt": null,
+            "nearest_monorail": null,
+            "bus_routes": [
+              "Nilai City Bus"
+            ],
+            "parking": {
+              "available": true,
+              "monthly_fee": 100
+            }
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sauna",
+            "Library",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2017,
+            "total_units": 2000,
+            "floors": 25,
+            "developer": "Green Target Group"
+          },
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.6,
+            "cleanliness": 4.5,
+            "value_for_money": 4.2
+          },
+          "target_tenants": [
+            "Students",
+            "Expats",
+            "Young Professionals"
           ],
           "lease_terms": {
             "minimum_months": 12,
@@ -11267,6 +11456,95 @@
             "deposit_months": 2,
             "utilities_included": false
           }
+        },
+        {
+          "community_name": "Cinta Ayu Resort Apartment",
+          "address": "Pulai Springs Resort, 81300 Skudai, Johor",
+          "state": "Johor",
+          "latitude": 1.558,
+          "longitude": 103.622,
+          "description": "位于Pulai Springs度假村内，环境优雅，提供酒店式公寓体验，是UTM学生的高端选择。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 3800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3.5,
+            "driving_minutes": 10,
+            "description": "距离UTM校门约10分钟车程。"
+          },
+          "pros": [
+            "度假村环境",
+            "设施齐全",
+            "安全性高"
+          ],
+          "cons": [
+            "租金较高",
+            "生活配套需依赖校外"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gym",
+            "Golf Course access",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.6,
+            "cleanliness": 4.4,
+            "value_for_money": 3.5
+          }
+        },
+        {
+          "community_name": "Melana Apartment",
+          "address": "Taman Perling, 81200 Johor Bahru, Johor",
+          "state": "Johor",
+          "latitude": 1.505,
+          "longitude": 103.675,
+          "description": "高性价比的住宅，适合预算有限的学生，社区成熟，生活便利。",
+          "property_type": "Apartment",
+          "room_types_available": [
+            "Single Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 350,
+            "max": 1500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 8,
+            "driving_minutes": 15,
+            "description": "适合有车一族。"
+          },
+          "pros": [
+            "租金极低",
+            "周边配套齐全",
+            "社区氛围好"
+          ],
+          "cons": [
+            "建筑较旧",
+            "距离校区稍远"
+          ],
+          "facilities": [
+            "Security",
+            "Parking"
+          ],
+          "tenant_rating": {
+            "overall": 3.8,
+            "safety": 3.5,
+            "cleanliness": 3.2,
+            "value_for_money": 4.7
+          }
         }
       ]
     },
@@ -11353,6 +11631,95 @@
             "minimum_months": 12,
             "deposit_months": 2.5,
             "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Evo Soho",
+          "address": "Persiaran Bangi, Bandar Baru Bangi, 43650 Selangor",
+          "state": "Selangor",
+          "latitude": 2.962,
+          "longitude": 101.753,
+          "description": "位于Bangi Sentral核心区，楼下即是商场，生活极其便利，深受追求品质的学生喜爱。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "Duplex"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3.5,
+            "driving_minutes": 10,
+            "description": "建议开车或搭乘公共交通。"
+          },
+          "pros": [
+            "生活极其便利",
+            "视野开阔",
+            "安保严密"
+          ],
+          "cons": [
+            "租金相对较高",
+            "距离校区稍远"
+          ],
+          "facilities": [
+            "Infinity Pool",
+            "Gym",
+            "Jogging Track"
+          ],
+          "tenant_rating": {
+            "overall": 4.5,
+            "safety": 4.6,
+            "cleanliness": 4.5,
+            "value_for_money": 3.9
+          }
+        },
+        {
+          "community_name": "Cerrado @ Southville City",
+          "address": "Southville City, Off North-South Highway, 43800 Bangi, Selangor",
+          "state": "Selangor",
+          "latitude": 2.905,
+          "longitude": 101.755,
+          "description": "现代化的大型社区，设施丰富，提供高品质的居住环境，吸引大量UKM留学生。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 5,
+            "driving_minutes": 12,
+            "description": "需开车或搭乘校车。"
+          },
+          "pros": [
+            "设施豪华",
+            "社区环境好",
+            "安全性高"
+          ],
+          "cons": [
+            "位置相对偏僻",
+            "需自备交通工具"
+          ],
+          "facilities": [
+            "Large Pool",
+            "Indoor Gym",
+            "Sauna",
+            "Reading Room"
+          ],
+          "tenant_rating": {
+            "overall": 4.6,
+            "safety": 4.8,
+            "cleanliness": 4.7,
+            "value_for_money": 4.1
           }
         }
       ]
@@ -11442,6 +11809,233 @@
             "deposit_months": 2.5,
             "utilities_included": false
           }
+        },
+        {
+          "community_name": "UNIV 360 Place",
+          "address": "Jalan Raya 2, Serdang Jaya, 43300 Seri Kembangan, Selangor",
+          "state": "Selangor",
+          "latitude": 3.015,
+          "longitude": 101.71,
+          "description": "专为学生和年轻专业人士设计的现代公寓，是UPM学生最热门的校外住宿点之一。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2.5,
+            "driving_minutes": 8,
+            "description": "建议搭乘UPM校车或开车。"
+          },
+          "pros": [
+            "学生社区氛围浓厚",
+            "设施现代",
+            "租金适中"
+          ],
+          "cons": [
+            "周边交通有时拥堵",
+            "部分单位面积较小"
+          ],
+          "facilities": [
+            "Rooftop Pool",
+            "Gym",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.2,
+            "safety": 4,
+            "cleanliness": 3.9,
+            "value_for_money": 4.4
+          }
+        },
+        {
+          "community_name": "De Centrum Unipark",
+          "address": "Jalan Ikram-Uniten, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 2.98,
+          "longitude": 101.735,
+          "description": "位于UPM、UNITEN和IUKL三大校区交汇处，生活配套齐全，租客以学生为主。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 600,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3,
+            "driving_minutes": 10,
+            "description": "紧邻校区，交通便利。"
+          },
+          "pros": [
+            "楼下即商场",
+            "学生群体集中",
+            "租金性价比高"
+          ],
+          "cons": [
+            "管理维护一般",
+            "高峰期人流量大"
+          ],
+          "facilities": [
+            "Pool",
+            "Gym",
+            "Tennis Court"
+          ],
+          "tenant_rating": {
+            "overall": 4,
+            "safety": 3.8,
+            "cleanliness": 3.5,
+            "value_for_money": 4.5
+          }
+        },
+        {
+          "community_name": "Univ 360 Place",
+          "address": "Jalan Raya 2, Serdang Jaya, 43300 Seri Kembangan, Selangor",
+          "state": "Selangor",
+          "latitude": 3.015,
+          "longitude": 101.71,
+          "description": "专为学生和年轻专业人士设计的现代公寓，是UPM学生最热门的校外住宿点之一。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2.5,
+            "driving_minutes": 8,
+            "description": "建议搭乘UPM校车或开车。"
+          },
+          "pros": [
+            "学生社区氛围浓厚",
+            "设施现代",
+            "租金适中"
+          ],
+          "cons": [
+            "周边交通有时拥堵",
+            "部分单位面积较小"
+          ],
+          "facilities": [
+            "Rooftop Pool",
+            "Gym",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.2,
+            "safety": 4,
+            "cleanliness": 3.9,
+            "value_for_money": 4.4
+          }
+        },
+        {
+          "community_name": "The Heritage",
+          "address": "Jalan SB Dagang, 43300 Seri Kembangan, Selangor",
+          "state": "Selangor",
+          "latitude": 3.025,
+          "longitude": 101.715,
+          "description": "位于The Mines湖畔，环境优美，配套成熟，是UPM学生最喜爱的老牌公寓之一。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 3000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3,
+            "driving_minutes": 10,
+            "description": "距离UPM校门约10分钟车程。"
+          },
+          "pros": [
+            "湖景优美",
+            "直通商场",
+            "生活配套完善"
+          ],
+          "cons": [
+            "建筑稍旧",
+            "交通有时拥堵"
+          ],
+          "facilities": [
+            "Pool",
+            "Gym",
+            "Tennis Court",
+            "Direct access to The Mines"
+          ],
+          "tenant_rating": {
+            "overall": 4.2,
+            "safety": 4.1,
+            "cleanliness": 3.9,
+            "value_for_money": 4
+          }
+        },
+        {
+          "community_name": "Dream City",
+          "address": "Jalan Anggerik, Bluwater Estate, 43300 Seri Kembangan, Selangor",
+          "state": "Selangor",
+          "latitude": 3.02,
+          "longitude": 101.72,
+          "description": "现代化的生态社区，设施顶级，适合追求高品质居住体验的留学生。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 1500,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 4,
+            "driving_minutes": 12,
+            "description": "建议开车或搭乘校车。"
+          },
+          "pros": [
+            "设施极佳",
+            "低密度环境",
+            "安全性高"
+          ],
+          "cons": [
+            "租金高",
+            "位置相对独立"
+          ],
+          "facilities": [
+            "Infinity Pool",
+            "Sky Garden",
+            "Gym",
+            "Jogging Track"
+          ],
+          "tenant_rating": {
+            "overall": 4.7,
+            "safety": 4.8,
+            "cleanliness": 4.7,
+            "value_for_money": 3.6
+          }
         }
       ]
     },
@@ -11527,6 +12121,52 @@
             "minimum_months": 12,
             "deposit_months": 2,
             "utilities_included": true
+          }
+        },
+        {
+          "community_name": "Diamond City",
+          "address": "Jalan Diamond City, 43500 Semenyih, Selangor",
+          "state": "Selangor",
+          "latitude": 2.95,
+          "longitude": 101.86,
+          "description": "高端别墅社区，适合预算充足的学生合租，环境优美，安全性极高。",
+          "property_type": "Landed House/Villa",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 600,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2,
+            "driving_minutes": 5,
+            "description": "有校车或需开车。"
+          },
+          "pros": [
+            "环境极其优美",
+            "居住空间大",
+            "设施豪华"
+          ],
+          "cons": [
+            "租金高",
+            "交通依赖车"
+          ],
+          "facilities": [
+            "Clubhouse",
+            "Pool",
+            "Gym",
+            "Cinema"
+          ],
+          "tenant_rating": {
+            "overall": 4.7,
+            "safety": 4.9,
+            "cleanliness": 4.8,
+            "value_for_money": 3.8
           }
         }
       ]
@@ -11616,6 +12256,1520 @@
             "minimum_months": 12,
             "deposit_months": 2.5,
             "utilities_included": false
+          }
+        },
+        {
+          "community_name": "EduCity Village",
+          "address": "Iskandar Puteri, 79100 Johor",
+          "state": "Johor",
+          "latitude": 1.435,
+          "longitude": 103.61,
+          "description": "专门为EduCity学生设计的宿舍，价格亲民，配套齐全，有校车接送。",
+          "property_type": "Student Hostel",
+          "room_types_available": [
+            "Single Room",
+            "Twin Sharing"
+          ],
+          "price_range": {
+            "min": 600,
+            "max": 1200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "driving_minutes": 5,
+            "description": "有免费校车接送。"
+          },
+          "pros": [
+            "价格实惠",
+            "学生氛围好",
+            "管理规范"
+          ],
+          "cons": [
+            "设施较基础",
+            "房型单一"
+          ],
+          "facilities": [
+            "Security",
+            "Study Area",
+            "Laundry"
+          ],
+          "tenant_rating": {
+            "overall": 4,
+            "safety": 4.3,
+            "cleanliness": 4,
+            "value_for_money": 4.5
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "SEGi University Kota Damansara",
+      "state": "Selangor",
+      "latitude": 3.1485,
+      "longitude": 101.5775,
+      "nearby_communities": [
+        {
+          "community_name": "Cova Suites",
+          "address": "Jalan Teknologi, Kota Damansara, 47810 Petaling Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.1465,
+          "longitude": 101.5755,
+          "description": "SEGi大学正对面的核心公寓，以其极佳的地理位置和完善的学生生活配套著称。通过天桥可直达Cova Square商圈。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room"
+          ],
+          "price_range": {
+            "min": 600,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.2,
+            "walking_minutes": 3,
+            "driving_minutes": 1,
+            "description": "步行3分钟即可到达SEGi大学。"
+          },
+          "pros": [
+            "地理位置极其优越",
+            "生活配套成熟",
+            "租金适中"
+          ],
+          "cons": [
+            "建筑较旧",
+            "电梯维护偶尔不稳定"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "SEGi University",
+              "type": "university",
+              "distance_km": 0.2
+            },
+            {
+              "name": "Thomson Hospital",
+              "type": "hospital",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_mrt": "Kota Damansara",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Multipurpose Hall",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2010,
+            "total_units": 386,
+            "floors": 23,
+            "developer": "Phileo Land"
+          },
+          "tenant_rating": {
+            "overall": 4.2,
+            "safety": 4,
+            "cleanliness": 3.8,
+            "value_for_money": 4.5
+          },
+          "target_tenants": [
+            "SEGi Students",
+            "Hospital Staff"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Emporis SOHO & Residences",
+          "address": "Persiaran Surian, Kota Damansara, 47810 Petaling Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.1515,
+          "longitude": 101.5715,
+          "description": "哥打白沙罗区域的高端综合开发项目，楼下即是超市和众多餐饮店，是SEGi学生追求高品质生活的首选。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Duplex SOHO",
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1500,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1,
+            "walking_minutes": 12,
+            "driving_minutes": 3,
+            "description": "距离SEGi大学约1公里。"
+          },
+          "pros": [
+            "生活极其便利（楼下即是Jaya Grocer）",
+            "设施非常新",
+            "安保严密"
+          ],
+          "cons": [
+            "租金较高",
+            "周边交通繁忙"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Jaya Grocer",
+              "type": "supermarket",
+              "distance_km": 0.01
+            },
+            {
+              "name": "Kota Damansara MRT",
+              "type": "transport",
+              "distance_km": 1.2
+            }
+          ],
+          "transportation": {
+            "nearest_mrt": "Kota Damansara",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Infinity Pool",
+            "Gymnasium",
+            "Basketball Court",
+            "Tennis Court",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2019,
+            "total_units": 616,
+            "floors": 28,
+            "developer": "SCLAND"
+          },
+          "tenant_rating": {
+            "overall": 4.7,
+            "safety": 4.8,
+            "cleanliness": 4.7,
+            "value_for_money": 3.9
+          },
+          "target_tenants": [
+            "Expats",
+            "High-income students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "INTI International University Nilai",
+      "state": "Negeri Sembilan",
+      "latitude": 2.8135,
+      "longitude": 101.7615,
+      "nearby_communities": [
+        {
+          "community_name": "Starz Valley",
+          "address": "Jalan BBN 12/1, Bandar Baru Nilai, 71800 Nilai, Negeri Sembilan",
+          "state": "Negeri Sembilan",
+          "latitude": 2.8155,
+          "longitude": 101.7635,
+          "description": "汝来INTI大学正对面的核心学生公寓，几乎是INTI留学生的首选，生活氛围极其浓厚。",
+          "property_type": "Apartment",
+          "room_types_available": [
+            "Studio",
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.1,
+            "walking_minutes": 2,
+            "driving_minutes": 1,
+            "description": "正对INTI大学正门。"
+          },
+          "pros": [
+            "地理位置无敌",
+            "纯学生环境",
+            "周边餐饮丰富"
+          ],
+          "cons": [
+            "人口密度大",
+            "设施维护一般"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "INTI University",
+              "type": "university",
+              "distance_km": 0.1
+            },
+            {
+              "name": "AEON Mall Nilai",
+              "type": "shopping",
+              "distance_km": 2.5
+            }
+          ],
+          "transportation": {
+            "nearest_ktm": "Nilai Station",
+            "bus_routes": [
+              "Shuttle Bus"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2014,
+            "total_units": 1500,
+            "floors": 15,
+            "developer": "Golden Mart Sdn Bhd"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 3.8,
+            "cleanliness": 3.6,
+            "value_for_money": 4.6
+          },
+          "target_tenants": [
+            "INTI Students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Universiti Tunku Abdul Rahman (UTAR) Sungai Long",
+      "state": "Selangor",
+      "latitude": 3.0405,
+      "longitude": 101.7945,
+      "nearby_communities": [
+        {
+          "community_name": "Landmark Residences",
+          "address": "Jalan Sungai Long, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0315,
+          "longitude": 101.7825,
+          "description": "双溪龙区域的新晋热门公寓，以其现代化的设计和丰富的设施深受拉曼大学学生喜爱。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1000,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "距离UTAR Sungai Long约5分钟车程。"
+          },
+          "pros": [
+            "设施新颖",
+            "安保良好",
+            "性价比高"
+          ],
+          "cons": [
+            "步行距离稍远",
+            "高峰期交通拥堵"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "UTAR Sungai Long",
+              "type": "university",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Batu 11 Cheras MRT",
+              "type": "transport",
+              "distance_km": 1
+            }
+          ],
+          "transportation": {
+            "nearest_mrt": "Batu 11 Cheras",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Playground",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2018,
+            "total_units": 400,
+            "floors": 30,
+            "developer": "Cheras Landmark Sdn Bhd"
+          },
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.4,
+            "cleanliness": 4.2,
+            "value_for_money": 4.5
+          },
+          "target_tenants": [
+            "UTAR Students",
+            "Working Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Flora Green",
+          "address": "Bandar Sungai Long, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 3.04,
+          "longitude": 101.795,
+          "description": "UTAR学生最常选的公寓，地理位置优越，就在大学正对面。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Twin Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 350,
+            "max": 1500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.16,
+            "walking_minutes": 2,
+            "description": "步行2分钟即达。"
+          },
+          "pros": [
+            "位置绝佳",
+            "租金便宜",
+            "生活极其方便"
+          ],
+          "cons": [
+            "建筑陈旧",
+            "管理一般"
+          ],
+          "facilities": [
+            "Security",
+            "Swimming Pool"
+          ],
+          "tenant_rating": {
+            "overall": 4,
+            "safety": 3.7,
+            "cleanliness": 3.2,
+            "value_for_money": 4.8
+          }
+        },
+        {
+          "community_name": "Evergreen Park Cypress",
+          "address": "Bandar Sungai Long, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 3.042,
+          "longitude": 101.793,
+          "description": "靠近UTAR的成熟公寓，环境相对安静，深受追求学习氛围的学生喜爱。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 400,
+            "max": 1800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.7,
+            "walking_minutes": 10,
+            "description": "步行约10分钟。"
+          },
+          "pros": [
+            "环境安静",
+            "租金合理",
+            "户型宽敞"
+          ],
+          "cons": [
+            "设施较老",
+            "车位有限"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gym",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 4,
+            "cleanliness": 3.7,
+            "value_for_money": 4.3
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Universiti Teknologi Malaysia (UTM) Kuala Lumpur",
+      "state": "Kuala Lumpur",
+      "latitude": 3.1715,
+      "longitude": 101.7215,
+      "nearby_communities": [
+        {
+          "community_name": "Platinum Suites (The Face Suites)",
+          "address": "1020 Jalan Sultan Ismail, 50250 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.1585,
+          "longitude": 101.7035,
+          "description": "吉隆坡市中心的标志性高端公寓，拥有著名的屋顶无边泳池，是追求奢华都市生活的学生和白领的首选。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "1 Bedroom",
+            "2 Bedrooms"
+          ],
+          "price_range": {
+            "min": 3000,
+            "max": 6000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2.5,
+            "walking_minutes": null,
+            "driving_minutes": 10,
+            "description": "距离UTM KL约10分钟车程。"
+          },
+          "pros": [
+            "设施顶级（无边泳池看双子塔）",
+            "地理位置核心",
+            "安保极其严密"
+          ],
+          "cons": [
+            "租金极其昂贵",
+            "主要针对高端租客和游客"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Suria KLCC",
+              "type": "shopping",
+              "distance_km": 1
+            },
+            {
+              "name": "Dang Wangi LRT",
+              "type": "transport",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": "Dang Wangi",
+            "nearest_monorail": "Bukit Nanas"
+          },
+          "facilities": [
+            "Infinity Pool",
+            "Sky Gym",
+            "Fine Dining",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2015,
+            "total_units": 733,
+            "floors": 51,
+            "developer": "Platinum Victory"
+          },
+          "tenant_rating": {
+            "overall": 4.8,
+            "safety": 4.9,
+            "cleanliness": 4.9,
+            "value_for_money": 3.5
+          },
+          "target_tenants": [
+            "High-income expats",
+            "Wealthy international students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 3,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Gurney Heights",
+          "address": "Jalan Bukit Keramat, 54000 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.17,
+          "longitude": 101.725,
+          "description": "UTM KL校区旁的老牌公寓，租金极具竞争力，是预算有限学生的首选。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 400,
+            "max": 1800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.5,
+            "walking_minutes": 7,
+            "description": "步行可达UTM校区。"
+          },
+          "pros": [
+            "租金极低",
+            "地理位置优越",
+            "周边餐饮丰富"
+          ],
+          "cons": [
+            "建筑陈旧",
+            "安保一般"
+          ],
+          "facilities": [
+            "Pool",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 3.7,
+            "safety": 3.5,
+            "cleanliness": 3,
+            "value_for_money": 4.8
+          }
+        },
+        {
+          "community_name": "The Haute Gurney",
+          "address": "Jalan Gurney, 54000 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.171,
+          "longitude": 101.726,
+          "description": "较新的现代公寓，设施完善，提供更好的居住体验。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.6,
+            "walking_minutes": 8,
+            "description": "步行可达。"
+          },
+          "pros": [
+            "设施现代",
+            "安全性高",
+            "视野开阔"
+          ],
+          "cons": [
+            "租金相对较高",
+            "访客停车不便"
+          ],
+          "facilities": [
+            "Infinity Pool",
+            "Gym",
+            "Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.6,
+            "value_for_money": 4
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "SEGi College Subang Jaya",
+      "state": "Selangor",
+      "latitude": 3.0595,
+      "longitude": 101.5915,
+      "nearby_communities": [
+        {
+          "community_name": "Edumetro @ USJ 1",
+          "address": "Persiaran Kewajipan, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0598,
+          "longitude": 101.5918,
+          "description": "位于SEGi Subang Jaya校区楼上的综合开发项目，真正实现‘下楼即上学’。包含SOHO和套房，是SEGi学生的首选。",
+          "property_type": "Serviced Apartment / SOHO",
+          "room_types_available": [
+            "Studio",
+            "Dual-key",
+            "2 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0,
+            "walking_minutes": 1,
+            "driving_minutes": 0,
+            "description": "就在大学楼上。"
+          },
+          "pros": [
+            "零距离入学",
+            "设施非常新",
+            "楼下有零售店和餐饮"
+          ],
+          "cons": [
+            "租金相对周边较高",
+            "由于是新盘，入住率还在提升中"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Da Men Mall",
+              "type": "shopping",
+              "distance_km": 0.1
+            },
+            {
+              "name": "The Summit USJ",
+              "type": "shopping",
+              "distance_km": 0.2
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "USJ 7",
+            "nearest_lrt": "USJ 7"
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2022,
+            "total_units": 1000,
+            "floors": 30,
+            "developer": "HCK Capital Group"
+          },
+          "tenant_rating": {
+            "overall": 4.7,
+            "safety": 4.8,
+            "cleanliness": 4.7,
+            "value_for_money": 4.2
+          },
+          "target_tenants": [
+            "SEGi Students",
+            "Working Professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Da Men Residence",
+          "address": "Persiaran Kewajipan, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0585,
+          "longitude": 101.5925,
+          "description": "位于Da Men Mall商场上方的公寓，紧邻SEGi大学，生活配套极其丰富，深受国际留学生喜爱。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 3500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.1,
+            "walking_minutes": 2,
+            "driving_minutes": 1,
+            "description": "步行2分钟可达SEGi大学。"
+          },
+          "pros": [
+            "生活极其便利（楼下即商场）",
+            "步行可达LRT/BRT站",
+            "安保严密"
+          ],
+          "cons": [
+            "由于靠近商场人流量大",
+            "租金处于中高位"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Da Men Mall",
+              "type": "shopping",
+              "distance_km": 0.01
+            },
+            {
+              "name": "USJ 7 LRT/BRT",
+              "type": "transport",
+              "distance_km": 0.3
+            }
+          ],
+          "transportation": {
+            "nearest_lrt": "USJ 7",
+            "nearest_brt": "USJ 7"
+          },
+          "facilities": [
+            "Infinity Pool",
+            "Gymnasium",
+            "Sauna",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2016,
+            "total_units": 480,
+            "floors": 23,
+            "developer": "Global Orion"
+          },
+          "tenant_rating": {
+            "overall": 4.6,
+            "safety": 4.7,
+            "cleanliness": 4.5,
+            "value_for_money": 4
+          },
+          "target_tenants": [
+            "Students",
+            "Expats"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "Impian Meridian",
+          "address": "Jalan Subang 1, USJ 1, 47600 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0615,
+          "longitude": 101.5955,
+          "description": "位于USJ 1的老牌热门公寓，以高性价比和极其便利的BRT交通著称，是双威和莫纳什学生的备选高性价比方案。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Master Room"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 2200,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 20,
+            "driving_minutes": 5,
+            "description": "距离Sunway/Monash大学约1.5公里，一站BRT直达。"
+          },
+          "pros": [
+            "租金性价比极高",
+            "门口即是BRT站",
+            "设施齐全"
+          ],
+          "cons": [
+            "建筑较旧",
+            "电梯偶尔需要排队"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            },
+            {
+              "name": "Mydin USJ",
+              "type": "shopping",
+              "distance_km": 0.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "South Quay-USJ 1",
+            "bus_routes": [
+              "Rapid KL"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Sauna",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2009,
+            "total_units": 500,
+            "floors": 28,
+            "developer": "Cahaya Pegaso"
+          },
+          "tenant_rating": {
+            "overall": 4.1,
+            "safety": 3.9,
+            "cleanliness": 3.6,
+            "value_for_money": 4.8
+          },
+          "target_tenants": [
+            "Budget students",
+            "Working professionals"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2,
+            "utilities_included": false
+          }
+        },
+        {
+          "community_name": "The Grand Subang @ SS13",
+          "address": "Jalan SS 13/3, 47500 Subang Jaya, Selangor",
+          "state": "Selangor",
+          "latitude": 3.0645,
+          "longitude": 101.5985,
+          "description": "位于SS13工业区边缘的现代公寓，专为学生设计，提供往返Taylor's、Sunway和Monash的免费班车。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "2 Bedrooms",
+            "3 Bedrooms"
+          ],
+          "price_range": {
+            "min": 1300,
+            "max": 2800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.2,
+            "walking_minutes": 15,
+            "driving_minutes": 5,
+            "description": "步行15分钟或搭乘班车5分钟可达Taylor's。"
+          },
+          "pros": [
+            "纯学生社区",
+            "设施新颖",
+            "提供免费穿梭巴士"
+          ],
+          "cons": [
+            "周边工业环境一般",
+            "步行距离略远"
+          ],
+          "nearby_amenities": [
+            {
+              "name": "Taylor's University",
+              "type": "university",
+              "distance_km": 1.2
+            },
+            {
+              "name": "Sunway Pyramid",
+              "type": "shopping",
+              "distance_km": 1.5
+            }
+          ],
+          "transportation": {
+            "nearest_brt": "Sunway Lagoon",
+            "bus_routes": [
+              "Free Shuttle"
+            ]
+          },
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Lounge",
+            "24-Hour Security"
+          ],
+          "building_details": {
+            "year_built": 2019,
+            "total_units": 578,
+            "floors": 22,
+            "developer": "Mediaraya"
+          },
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.5,
+            "cleanliness": 4.4,
+            "value_for_money": 4.1
+          },
+          "target_tenants": [
+            "Taylor's Students",
+            "Sunway Students"
+          ],
+          "lease_terms": {
+            "minimum_months": 12,
+            "deposit_months": 2.5,
+            "utilities_included": false
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "HELP University Damansara Heights Campus",
+      "state": "Kuala Lumpur",
+      "latitude": 3.151,
+      "longitude": 101.664,
+      "nearby_communities": [
+        {
+          "community_name": "D28 Damansara",
+          "address": "28 Jalan Medan Setia 2, Bukit Damansara, 50490 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.15,
+          "longitude": 101.663,
+          "description": "专门为学生和年轻专业人士设计的精品工作室公寓，位于高档社区，安全性极高。",
+          "property_type": "Studio Apartment",
+          "room_types_available": [
+            "Studio"
+          ],
+          "price_range": {
+            "min": 1300,
+            "max": 1800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.2,
+            "walking_minutes": 3,
+            "driving_minutes": 1,
+            "description": "步行即可到达HELP大学。"
+          },
+          "pros": [
+            "极其靠近校园",
+            "独立空间",
+            "周边社区高档安全"
+          ],
+          "cons": [
+            "空间较小",
+            "租金相对较高"
+          ],
+          "facilities": [
+            "24-Hour Security",
+            "Gym",
+            "Lounge"
+          ],
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.9,
+            "cleanliness": 4.5,
+            "value_for_money": 3.9
+          }
+        },
+        {
+          "community_name": "Twins @ Damansara Heights",
+          "address": "Jalan Johar, Bukit Damansara, 50490 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.153,
+          "longitude": 101.662,
+          "description": "高端公寓，适合预算充足的学生，步行可达MRT Pusat Bandar Damansara。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Single Room",
+            "Medium Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 4500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 0.6,
+            "walking_minutes": 8,
+            "driving_minutes": 2,
+            "description": "步行约8分钟。"
+          },
+          "pros": [
+            "交通便利",
+            "设施豪华",
+            "高层视野开阔"
+          ],
+          "cons": [
+            "租金昂贵",
+            "管理费高"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gym",
+            "Library"
+          ],
+          "tenant_rating": {
+            "overall": 4.4,
+            "safety": 4.7,
+            "cleanliness": 4.6,
+            "value_for_money": 3.5
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "KLCC / City Center (UTM KL / City U)",
+      "state": "Kuala Lumpur",
+      "latitude": 3.1579,
+      "longitude": 101.7123,
+      "nearby_communities": [
+        {
+          "community_name": "Platinum Suites (The Face)",
+          "address": "1020 Jalan Sultan Ismail, 50250 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.1585,
+          "longitude": 101.7035,
+          "description": "KLCC核心区的高端公寓，以顶楼无边泳池闻名，适合追求极致都市生活的学生或实习生。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Single Room",
+            "Master Room",
+            "Whole Unit"
+          ],
+          "price_range": {
+            "min": 1500,
+            "max": 6000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2,
+            "driving_minutes": 10,
+            "description": "近LRT/Monorail。"
+          },
+          "pros": [
+            "地段绝佳",
+            "设施顶级",
+            "景观震撼"
+          ],
+          "cons": [
+            "租金昂贵",
+            "游客较多"
+          ],
+          "facilities": [
+            "Infinity Pool",
+            "Gym",
+            "Sky Lounge"
+          ],
+          "tenant_rating": {
+            "overall": 4.6,
+            "safety": 4.8,
+            "cleanliness": 4.9,
+            "value_for_money": 3.2
+          }
+        },
+        {
+          "community_name": "Mercu Summer Suites",
+          "address": "Jalan Cendana, 50250 Kuala Lumpur",
+          "state": "Kuala Lumpur",
+          "latitude": 3.1595,
+          "longitude": 101.7045,
+          "description": "市中心高性价比的工作室公寓，交通极其便利，步行可达Monorail和LRT站。",
+          "property_type": "Serviced Residence",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom"
+          ],
+          "price_range": {
+            "min": 1200,
+            "max": 3000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 1.5,
+            "walking_minutes": 15,
+            "description": "市中心步行范围内。"
+          },
+          "pros": [
+            "交通便利",
+            "租金在市中心算亲民",
+            "生活配套丰富"
+          ],
+          "cons": [
+            "电梯较慢",
+            "居住密度高"
+          ],
+          "facilities": [
+            "Pool",
+            "Gym",
+            "Convenience Store"
+          ],
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.4,
+            "cleanliness": 4.1,
+            "value_for_money": 4.2
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Universiti Tenaga Nasional (UNITEN)",
+      "state": "Selangor",
+      "latitude": 2.9887,
+      "longitude": 101.7187,
+      "nearby_communities": [
+        {
+          "community_name": "Seri Cempaka Condominium",
+          "address": "Jalan Sungai Long, Bandar Sungai Long, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 3.036,
+          "longitude": 101.778,
+          "description": "距离 UNITEN 最近的公寓之一，位于 Sungai Long 商业区，生活便利。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "1-Bedroom",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 2000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 6,
+            "driving_minutes": 12,
+            "description": "开车约12分钟。"
+          },
+          "pros": [
+            "距离校园近",
+            "租金适中",
+            "周边商业配套齐全"
+          ],
+          "cons": [
+            "建筑稍旧",
+            "停车位紧张"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Playground",
+            "24-Hour Security",
+            "BBQ Area"
+          ],
+          "tenant_rating": {
+            "overall": 3.8,
+            "safety": 3.9,
+            "cleanliness": 3.5,
+            "value_for_money": 4.2
+          }
+        },
+        {
+          "community_name": "Sungai Long Golf Residences",
+          "address": "Bandar Sungai Long, 43000 Kajang, Selangor",
+          "state": "Selangor",
+          "latitude": 3.04,
+          "longitude": 101.785,
+          "description": "高尔夫球场景观公寓，环境优美，适合追求生活品质的学生。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 1000,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 6,
+            "driving_minutes": 10,
+            "description": "开车约10分钟。"
+          },
+          "pros": [
+            "环境优美",
+            "高尔夫球场景观",
+            "设施齐全"
+          ],
+          "cons": [
+            "距离稍远",
+            "租金偏高"
+          ],
+          "facilities": [
+            "Golf Course",
+            "Swimming Pool",
+            "Gymnasium",
+            "Club House",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.2,
+            "safety": 4.3,
+            "cleanliness": 4.1,
+            "value_for_money": 3.7
+          }
+        },
+        {
+          "community_name": "Mahkota Residences Cheras",
+          "address": "Bandar Mahkota Cheras, 43200 Cheras, Selangor",
+          "state": "Selangor",
+          "latitude": 3.02,
+          "longitude": 101.76,
+          "description": "Mahkota Cheras 区域的成熟公寓，靠近 AEON Mall，生活极其便利。",
+          "property_type": "Condominium",
+          "room_types_available": [
+            "1-Bedroom",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 800,
+            "max": 2500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 10,
+            "driving_minutes": 15,
+            "description": "开车约15分钟。"
+          },
+          "pros": [
+            "靠近商场",
+            "租金合理",
+            "生活配套成熟"
+          ],
+          "cons": [
+            "高峰期堵车",
+            "距离校园较远"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Playground",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 3.9,
+            "safety": 4,
+            "cleanliness": 3.7,
+            "value_for_money": 4.3
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Universiti Malaysia Pahang (UMP) Gambang",
+      "state": "Pahang",
+      "latitude": 3.976,
+      "longitude": 103.381,
+      "nearby_communities": [
+        {
+          "community_name": "Bukit Gambang Resort City",
+          "address": "Jalan Gambang, Bukit Gambang, 26300 Kuantan, Pahang",
+          "state": "Pahang",
+          "latitude": 3.98,
+          "longitude": 103.375,
+          "description": "度假村式综合社区，旁边就是水上乐园和商场，生活娱乐一体化。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 1500,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 4,
+            "driving_minutes": 6,
+            "description": "开车约6分钟。"
+          },
+          "pros": [
+            "度假村式环境",
+            "设施丰富",
+            "租金适中"
+          ],
+          "cons": [
+            "距离校园需开车",
+            "周末游客多"
+          ],
+          "facilities": [
+            "Water Park",
+            "Swimming Pool",
+            "Gymnasium",
+            "Tennis Court",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 4.3,
+            "safety": 4.2,
+            "cleanliness": 4.4,
+            "value_for_money": 4.1
+          }
+        },
+        {
+          "community_name": "Gambang Square",
+          "address": "Taman Gambang, 26300 Kuantan, Pahang",
+          "state": "Pahang",
+          "latitude": 3.972,
+          "longitude": 103.385,
+          "description": "距离 UMP 最近的住宅区，步行可达校园，是学生租房的首选。",
+          "property_type": "Apartment",
+          "room_types_available": [
+            "1-Bedroom",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 400,
+            "max": 800,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 2,
+            "walking_minutes": 15,
+            "driving_minutes": 3,
+            "description": "步行约15分钟。"
+          },
+          "pros": [
+            "极近校园",
+            "租金最低",
+            "周边餐饮丰富"
+          ],
+          "cons": [
+            "设施简陋",
+            "建筑老旧"
+          ],
+          "facilities": [
+            "Parking",
+            "Surau",
+            "Playground"
+          ],
+          "tenant_rating": {
+            "overall": 3.5,
+            "safety": 3.3,
+            "cleanliness": 3.2,
+            "value_for_money": 4.8
+          }
+        }
+      ]
+    },
+    {
+      "university_name": "Universiti Sains Islam Malaysia (USIM)",
+      "state": "Negeri Sembilan",
+      "latitude": 2.847,
+      "longitude": 101.8,
+      "nearby_communities": [
+        {
+          "community_name": "Alam Sari Nilai",
+          "address": "Alam Sari, 71800 Nilai, Negeri Sembilan",
+          "state": "Negeri Sembilan",
+          "latitude": 2.845,
+          "longitude": 101.805,
+          "description": "安静的住宅区，适合学生居住，周边有商店和餐厅。",
+          "property_type": "Apartment",
+          "room_types_available": [
+            "Single Room",
+            "2-Bedroom",
+            "3-Bedroom"
+          ],
+          "price_range": {
+            "min": 400,
+            "max": 2000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 3,
+            "driving_minutes": 5,
+            "description": "开车约5分钟。"
+          },
+          "pros": [
+            "租金低",
+            "环境安静",
+            "生活便利"
+          ],
+          "cons": [
+            "设施基础",
+            "公共交通不便"
+          ],
+          "facilities": [
+            "Playground",
+            "Surau",
+            "Parks"
+          ],
+          "tenant_rating": {
+            "overall": 3.6,
+            "safety": 3.7,
+            "cleanliness": 3.5,
+            "value_for_money": 4.5
+          }
+        },
+        {
+          "community_name": "Evo Suites Nilai",
+          "address": "Pusat Bandar Baru Nilai, 71800 Nilai, Negeri Sembilan",
+          "state": "Negeri Sembilan",
+          "latitude": 2.835,
+          "longitude": 101.795,
+          "description": "现代化服务式公寓，位于 Nilai 新区中心，楼下有商业配套。",
+          "property_type": "Serviced Apartment",
+          "room_types_available": [
+            "Studio",
+            "2-Bedroom"
+          ],
+          "price_range": {
+            "min": 500,
+            "max": 1000,
+            "currency": "MYR",
+            "unit": "per_month"
+          },
+          "distance_to_university": {
+            "km": 4,
+            "driving_minutes": 8,
+            "description": "开车约8分钟。"
+          },
+          "pros": [
+            "设施现代",
+            "楼下有商店",
+            "性价比高"
+          ],
+          "cons": [
+            "距离稍远",
+            "入住率提升中"
+          ],
+          "facilities": [
+            "Swimming Pool",
+            "Gymnasium",
+            "Function Room",
+            "24-Hour Security"
+          ],
+          "tenant_rating": {
+            "overall": 4,
+            "safety": 4.1,
+            "cleanliness": 4,
+            "value_for_money": 4.2
           }
         }
       ]
