@@ -5,40 +5,67 @@ import PropertyListings from '@/components/PropertyListings';
 import { useAuth } from '@/lib/AuthContext';
 import { useApp } from '@/lib/ThemeProvider';
 import Link from 'next/link';
+import { LogIn } from 'lucide-react';
 
 export default function ListingsPage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const { t, lang } = useApp();
 
   useEffect(() => {
     document.title = `${t('navListings')} | Malaysia Ez Rent`;
   }, [t]);
 
-  // Unauthenticated or admin: read-only mode
-  if (role === null || role === 'admin') {
+  // Guest mode: show hero + clean listings (sidebar will be empty, we hide it via CSS)
+  if (!loading && !role) {
     return (
-      <>
-        {role === null && (
-          <div style={{
-            margin: '12px 16px 0', padding: '12px 16px', borderRadius: 10,
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.03))',
-            border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      <div className="guest-mode">
+        {/* Hero Section — centered logo */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '32px 16px 20px', textAlign: 'center',
+        }}>
+          <img
+            src="/image.png"
+            alt="Malaysia Ez Rent"
+            style={{
+              width: 180, height: 180, objectFit: 'contain',
+              marginBottom: 14, filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.1))',
+            }}
+          />
+          <h1 style={{
+            fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700,
+            color: 'var(--text-h)', margin: '0 0 6px',
+            fontFamily: 'var(--font-display)',
           }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-body)' }}>
-              {lang === 'zh' ? '🔒 登录后即可收藏房源、表达租房意向，享受平台保障' : '🔒 Login to save favorites, express interest, and enjoy platform protection'}
-            </span>
-            <Link href="/login" style={{
-              padding: '6px 16px', borderRadius: 6, background: 'var(--primary)', color: 'white',
-              fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-            }}>
-              {lang === 'zh' ? '立即登录' : 'Login'}
-            </Link>
-          </div>
-        )}
-        <PropertyListings readOnly />
-      </>
+            {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
+          </h1>
+          <p style={{
+            fontSize: '0.88rem', color: 'var(--text-muted)',
+            margin: '0 0 16px', maxWidth: 480, lineHeight: 1.6,
+          }}>
+            {lang === 'zh'
+              ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验'
+              : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
+          </p>
+          <Link href="/login" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 20px', borderRadius: 8,
+            background: 'var(--primary)', color: 'white',
+            fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
+          }}>
+            <LogIn size={15} />
+            {lang === 'zh' ? '登录后享受完整功能' : 'Login for Full Access'}
+          </Link>
+        </div>
+
+        {/* Listings — guest mode */}
+        <PropertyListings guestMode />
+      </div>
     );
   }
 
-  return <PropertyListings />;
+  // Authenticated: normal listings
+  if (loading) return null;
+
+  return <PropertyListings readOnly={role === 'admin'} />;
 }

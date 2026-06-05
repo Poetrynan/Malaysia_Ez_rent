@@ -6,11 +6,16 @@ import { PendingCountsProvider } from '@/lib/PendingCountsContext';
 import AppSidebar from '@/components/AppSidebar';
 import AppTopbar from '@/components/AppTopbar';
 import { useApp } from '@/lib/ThemeProvider';
+import { usePathname } from 'next/navigation';
 import { CheckCircle2, AlertTriangle, Building2 } from 'lucide-react';
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { t, lang } = useApp();
   const { role, loading, agentRegStatus } = useAuth();
+  const pathname = usePathname();
+
+  // Guest mode: on /listings without login — hide sidebar & topbar
+  const isGuest = !loading && !role && pathname === '/listings';
 
   if (loading) {
     return (
@@ -24,10 +29,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="app-container">
-      <AppSidebar />
-      <main className="main-viewport">
-        <AppTopbar />
+    <div className="app-container" style={isGuest ? { gridTemplateColumns: '1fr' } : undefined}>
+      {!isGuest && <AppSidebar />}
+      <main className="main-viewport" style={isGuest ? { gridColumn: '1 / -1' } : undefined}>
+        {!isGuest && <AppTopbar />}
         <div className="main-content">
           {/* Agent Registration Status Banners */}
           {role === 'student' && agentRegStatus === 'pending' && (

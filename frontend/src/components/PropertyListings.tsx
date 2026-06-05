@@ -361,7 +361,7 @@ const maskEmail = (email: string) => {
   return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`;
 };
 
-export default function PropertyListings({ readOnly = false }: { readOnly?: boolean }) {
+export default function PropertyListings({ readOnly = false, guestMode = false }: { readOnly?: boolean; guestMode?: boolean }) {
   const { t, lang } = useApp();
   const [units, setUnits] = useState<UnitWithCommunity[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -1051,7 +1051,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 
           {/* Status toggle */}
           <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-            {(['all', 'available', 'favorites'] as const).map(s => (
+            {(guestMode ? (['all', 'available'] as const) : (['all', 'available', 'favorites'] as const)).map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
                 style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: statusFilter === s ? 'var(--primary)' : 'transparent', color: statusFilter === s ? 'white' : 'var(--text-muted)' }}>
                 {s === 'all' ? t('filterAll') : s === 'available' ? t('filterAvailable') : (lang === 'zh' ? '我的收藏' : 'Favorites')}
@@ -1127,7 +1127,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
         viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
             {filtered.map(u => (
-              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} />
+              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} guestMode={guestMode} />
             ))}
           </div>
         ) : (
@@ -1338,6 +1338,18 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                               ✕ {lang === 'zh' ? '该房源已被承租' : 'This property is already rented'}
                             </span>
                           </div>
+                        ) : guestMode ? (
+                          <div style={{ padding: '12px', background: 'rgba(59,130,246,0.06)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              {lang === 'zh' ? '登录后即可收藏房源、表达租房意向，享受平台保障' : 'Login to save favorites, express interest, and enjoy platform protection'}
+                            </span>
+                            <a href="/login" style={{
+                              padding: '6px 16px', borderRadius: 6, background: 'var(--primary)', color: 'white',
+                              fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+                            }}>
+                              {lang === 'zh' ? '立即登录' : 'Login'}
+                            </a>
+                          </div>
                         ) : readOnly ? (
                           <div style={{ padding: '12px', background: 'rgba(59,130,246,0.06)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: '14px' }}>ℹ️</span>
@@ -1347,14 +1359,14 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {!readOnly && !hasMyInterest && !isFull && (
+                            {!readOnly && !guestMode && !hasMyInterest && !isFull && (
                               <button onClick={() => expressInterest(selected.id)} style={{
                                 padding: '10px 24px', borderRadius: 8, border: 'none',
                                 background: 'var(--primary)', color: 'white',
                                 fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                               }}>{lang === 'zh' ? '我要租' : 'Express Interest'}</button>
                             )}
-                            {!readOnly && hasMyInterest && (
+                            {!readOnly && !guestMode && hasMyInterest && (
                               <button onClick={() => {
                                 if (myEntry?.status === 'confirmed') {
                                   // Check if the lease actually exists for this user and unit
@@ -1422,9 +1434,16 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                           <span style={{ fontSize: '0.82rem', color: 'var(--danger)', fontWeight: 600, marginLeft: 12 }}>
                             {lang === 'zh' ? '该房源已被承租' : 'This property is already rented'}
                           </span>
+                        ) : guestMode ? (
+                          <a href="/login" style={{
+                            padding: '8px 18px', borderRadius: 8, background: 'var(--primary)', color: 'white',
+                            fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none',
+                          }}>
+                            {lang === 'zh' ? '登录后加入合租' : 'Login to Join'}
+                          </a>
                         ) : (
                           <>
-                            {!hasMyInterest && !isFull && !showNoteInput && (
+                            {!guestMode && !hasMyInterest && !isFull && !showNoteInput && (
                               <button onClick={() => {
                                 if (myLeasedUnitIds.length > 0) {
                                   showToast(
@@ -1448,8 +1467,8 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                         )}
                       </div>
 
-                      {/* Note input */}
-                      {showNoteInput && !hasMyInterest && (
+                      {/* Note input — hidden for guests */}
+                      {!guestMode && showNoteInput && !hasMyInterest && (
                         <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
                           <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('coRentNoteLabel')}</label>
                           <textarea className="form-textarea" rows={3} value={noteInput} onChange={e => setNoteInput(e.target.value)}
@@ -1500,7 +1519,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
                                   </div>
                                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{isMe ? i.email : maskEmail(i.email)}</div>
                                 </div>
-                                {isMe ? (
+                                {!guestMode && isMe ? (
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -2513,7 +2532,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
 }
 
 /* ── Compact Property Card ── */
-function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteToggle }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string; userId?: string | null; lang?: string; onFavoriteToggle?: () => void }) {
+function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteToggle, guestMode }: { unit: UnitWithCommunity; agentLabel?: string | null; onSelect: () => void; t: (k: any) => string; userId?: string | null; lang?: string; onFavoriteToggle?: () => void; guestMode?: boolean }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -2545,10 +2564,12 @@ function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteT
           style={{ position: 'absolute', top: 12, right: 12 }}>
           {unit.status === 'available' ? t('available') : t('rented')}
         </span>
-        {/* Favorites button */}
-        <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}>
-          <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} onToggle={onFavoriteToggle} />
-        </div>
+        {/* Favorites button — hidden for guests */}
+        {!guestMode && (
+          <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}>
+            <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} onToggle={onFavoriteToggle} />
+          </div>
+        )}
         {/* Room type tag */}
         <span style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.65)', color: 'white', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>
           {unit.room_type}
