@@ -449,8 +449,17 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 
 /* Messages */
 .manus-msg { display: flex; flex-direction: column; animation: slideUp 0.2s ease-out; }
-.manus-user { align-self: flex-end; align-items: flex-end; }
-.manus-assistant { align-self: flex-start; align-items: flex-start; }
+.manus-msg.user { align-self: flex-end; }
+.manus-msg.assistant { align-self: flex-start; }
+
+/* Assistant row: avatar left, bubble right (same pattern as user bubble) */
+.manus-assistant {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 90%;
+}
 
 /* Assistant bubble */
 .manus-assistant-bubble {
@@ -458,7 +467,9 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   border: 1px solid var(--glass-border);
   border-radius: 16px 16px 16px 4px;
   padding: 12px 16px;
-  max-width: 85%;
+  flex: 1;
+  min-width: 0;
+  max-width: calc(100% - 52px);
   box-shadow: var(--glass-shadow);
 }
 
