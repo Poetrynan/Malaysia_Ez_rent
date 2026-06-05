@@ -34,9 +34,9 @@ semantic_query: "Sunway 附近小区"
 
 ### 第三步：工具做完了
 
-几秒钟后，卡片左边的竖条变成**绿色**，图标从旋转的 spinner 变成 ✅，下面出现 `✓ 5 条结果`。
+几秒钟后，卡片左边的竖条变成**绿色**，图标从旋转的 spinner 变成 ✅，卡片下方**自动展开可读预览**（如假日列表、通勤时间、汇率结果），无需点击。
 
-这就像是厨房告诉你"菜做好了"。
+这就像是厨房告诉你"菜做好了"，还把菜端到你面前。
 
 ### 第四步：AI 组织答案
 
@@ -59,7 +59,7 @@ semantic_query: "Sunway 附近小区"
 | 设计选择 | 原因 |
 |---------|------|
 | 思考步骤自动折叠 | 不刷屏，只看当前在干嘛，想看历史就点开 |
-| 工具卡片可展开 | 看结果不需要时折叠，想看详情就展开 |
+| 工具卡片默认展示预览 | 完成后直接显示格式化结果；点标题栏 `▸` 才看原始 JSON |
 | 计时器实时显示 | 让用户知道没卡死，有心理预期 |
 | 停止按钮 | 用户可以随时打断，不用干等 |
 | 地图延迟加载 | 先看文字回答，再看地图，信息有优先级 |
@@ -161,16 +161,21 @@ for loop_idx in range(MAX_LOOPS):
         yield sse_event({"type": "tool_call", "tool_name": name, "args": args})
         result = execute_tool(name, args)
         yield sse_event({"type": "tool_result", "tool_name": name, "result": result})
-        # 知识库地图卡片延后决策（kb_map_candidate）；通勤卡片立即入 pending
+        # 知识库：所有小区入 kb_card_candidates；通勤卡入 pending_ui_components
+        # 循环结束后按 answer_text 匹配决定出几张 KB 地图卡
         # 喂给模型的工具结果先经 compact_tool_result() 压缩关键字段
 ```
 
 **关键设计 1：文字先于地图**
 
-所有 UI 组件（`pending_ui_components` + 延后的 `kb_map_candidate`）在**循环结束且文字已输出后**统一发送：
+所有 UI 组件（`pending_ui_components` + 按答案筛选的 `kb_card_candidates`）在**循环结束且文字已输出后**统一发送：
 - 用户先看到文字分析/推荐
 - 然后才看到地图/卡片组件
 - 避免"只有卡片、没有分析"的糟糕体验
+
+**关键设计 1b：多小区对比 → 多张地图卡**
+
+循环中把知识库返回的**每个**带坐标小区存入 `kb_card_candidates`。答案写完后扫描 `answer_text`：凡在正文中被提到的小区各出一张 MapAndCard（最多 3 张）。已出现在通勤卡上的小区不重复。不再依赖模型是否记得设 `show_map=true`。
 
 **关键设计 2：循环耗尽时的强制收尾合成**
 
@@ -304,31 +309,27 @@ setMessages(prev => [...prev,
 ### 4.1 渲染顺序（每个 assistant 消息）
 
 ```
-┌─────────────────────────────────────┐
-│ 1. Thinking Steps (思考步骤)         │
-│    ├─ 已完成: ✅ 2步已完成 (折叠)    │
-│    ├─ 展开后: ✅ 步骤1 ✅ 步骤2      │
-│    └─ 当前: 🔵 正在调用工具... 15s   │
-├─────────────────────────────────────┤
-│ 2. Tool Cards (工具调用卡片)         │
-│    ┌─────────────────────────────┐  │
-│    │ 🔍 search_knowledge_base ✓  │  │
-│    │ semantic_query: "Sunway"    │  │
-│    │ ▸ 点击展开查看结果           │  │
-│    └─────────────────────────────┘  │
-├─────────────────────────────────────┤
-│ 3. Final Answer (最终回答)           │
-│    📝 最终回答                       │
-│    ─────────────                    │
-│    Markdown 渲染的文字内容           │
-├─────────────────────────────────────┤
-│ 4. UI Components (地图/卡片)         │
-│    ┌─────────────────────────────┐  │
-│    │ 🗺️ MapAndCard              │  │
-│    │ Google Maps iframe          │  │
-│    └─────────────────────────────┘  │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ 🤖 [头像]  ┌─ Assistant Bubble ─────────────┐   │
+│            │ 1. Thinking Steps               │   │
+│            │    ✅ 2步已完成 / 🔵 正在调用…   │   │
+│            ├─────────────────────────────────┤   │
+│            │ 2. Tool Cards（宽度自适应）      │   │
+│            │    📅 get_malaysia_holidays ✓   │   │
+│            │    year: 2026                   │   │
+│            │    2026年公共假期 · 共15天       │   │
+│            │    • 2026-01-01 New Year's Day   │   │
+│            ├─────────────────────────────────┤   │
+│            │ 3. Final Answer                 │   │
+│            │    📝 最终回答 + Markdown       │   │
+│            ├─────────────────────────────────┤   │
+│            │ 4. UI Components（可多张地图）   │   │
+│            │    🗺️ MapAndCard × N            │   │
+│            └─────────────────────────────────┘   │
+└──────────────────────────────────────────────────┘
 ```
+
+**头像布局：** `.manus-assistant` 使用 `display: flex; flex-direction: row`，机器人头像在气泡**左侧**（与用户消息对称，用户气泡在右侧）。
 
 ### 4.2 Thinking Steps 渲染逻辑
 
@@ -351,17 +352,40 @@ setMessages(prev => [...prev,
 ### 4.3 Tool Cards 渲染逻辑
 
 ```
-┌──────────────────────────────┐
-│ 🔍 search_knowledge_base  ✓ │  ← header: icon + name + status
-│ semantic_query: "Sunway"     │  ← args: 每个参数一行
-│ ▸ 点击展开查看结果            │  ← 可点击展开/折叠
-│ ✓ 5 条结果                   │  ← 折叠时的摘要
-└──────────────────────────────┘
+┌─────────────────────────────────────┐
+│ 📅 get_malaysia_holidays  ✓    ▸   │  ← header（▸ 仅切换原始 JSON）
+│ year: 2026                          │  ← args：单行，过长横向滑动
+├─────────────────────────────────────┤
+│ 2026 年马来西亚公共假期 · 共 15 天   │  ← renderToolResult() 预览
+│ • 2026-01-01 New Year's Day         │     完成后**默认展示**，无需点击
+│ • 2026-05-01 Labour Day             │
+└─────────────────────────────────────┘
+         ↓ 点击 header 展开
+┌─────────────────────────────────────┐
+│ 原始数据                            │
+│ { "year": 2026, "holidays": [...] } │
+└─────────────────────────────────────┘
 ```
+
+**`renderToolResult(name, result)`** 按工具类型格式化预览：
+
+| 工具 | 预览内容 |
+|------|---------|
+| `get_malaysia_holidays` | 年份 + 假日列表（最多 12 条） |
+| `calculate_commute` | 起终点 + 驾车/公交/步行时间 |
+| `convert_currency_frankfurter` | 换算结果 + 汇率 |
+| `search_knowledge_base` | 小区名 + 价格 + 评分（最多 5 条） |
+| `get_web_realtime_info` | 摘要文本（前 500 字） |
+| 其他 | JSON 摘要或条数 |
+
+**布局（自适应，不硬换行）：**
+- 卡片 `width: fit-content; max-width: 100%` — 短内容紧凑，长内容顶满气泡宽度
+- 参数行 `flex-wrap: nowrap; overflow-x: auto` — 单行展示，过长可横滑
+- 工具名空间不足时 `text-overflow: ellipsis`
 
 **状态样式：**
 - `running`：左侧 3px 青色边框 + 旋转 spinner
-- `done`：左侧 3px 绿色边框 + 绿色勾
+- `done`：左侧 3px 绿色边框 + 绿色勾 + 自动显示预览区
 - `error`：左侧 3px 红色边框 + 红色叉
 
 ### 4.4 Final Answer 渲染
@@ -393,6 +417,8 @@ setMessages(prev => [...prev,
 | 知识库模式 | `is_knowledge_base: true` | 小区资料卡片 + 价格/评分标签 |
 | 房源模式 | 默认 | 房源位置 + 通勤计算器 |
 
+**多张地图卡：** 多小区对比时，`uiComponents` 可含多个 `MapAndCard`（每个被答案提及的小区一张），在最终回答下方纵向排列。
+
 ---
 
 ## 五、CSS 设计系统
@@ -418,9 +444,12 @@ setMessages(prev => [...prev,
 
 | 组件 | CSS 类 | 关键样式 |
 |------|--------|---------|
+| AI 消息行 | `.manus-assistant` | `display:flex; row`，头像左 + 气泡右 |
 | 用户气泡 | `.manus-user-text` | 青色背景，圆角 `18px 18px 6px 18px` |
 | AI 气泡 | `.manus-assistant-bubble` | 玻璃背景，圆角 `16px 16px 16px 4px` |
-| 工具卡片 | `.manus-tool-card` | 白色背景，12px 圆角，左侧状态色条 |
+| 工具卡片 | `.manus-tool-card` | `width:fit-content; max-width:100%`，左侧状态色条 |
+| 工具预览 | `.manus-tool-body` / `.manus-tool-preview-*` | 完成后默认展示，无需点击 |
+| 工具参数 | `.manus-tool-args` | 单行 `nowrap`，过长 `overflow-x:auto` |
 | 思考步骤 | `.manus-thought` | 白色背景，8px 圆角，slideUp 动画 |
 | 最终回答 | `.manus-answer` | 白色背景，12px 圆角 |
 | 推理内容 | `.manus-thought-content` | 紫色左边框，200px 最大高度滚动 |
@@ -512,6 +541,9 @@ setMessages(prev => [...prev,
 | `**粗体**` | `<strong>` |
 | `` `代码` `` | `<code>` |
 | `[链接](url)` | `<a>` |
+| `<br>` / `<br/>` | 换行（`renderInline` 识别 HTML 换行标签） |
+
+**注意：** 表格单元格内应避免模型输出 `<br>`；系统 prompt 要求单元格保持简短，多行信息放表格下方的列表。前端已兼容 `<br>` 以防模型偶尔违规输出。
 
 ---
 
@@ -697,7 +729,7 @@ setMessages(prev => [...prev,
 
 **修复：**
 - 前端：流结束后 flush 剩余 buffer（`if (buf.trim()) processBuf(false)`）
-- 后端：循环结束后补发 `pending_ui_components` + 默认兜底文字
+- 后端：循环结束后补发 UI 组件；兜底文字已由**强制收尾合成**取代（见 Bug 5）
 
 ---
 
@@ -718,7 +750,7 @@ setMessages(prev => [...prev,
 
 ---
 
-### Bug 5：复杂决策题只甩地图卡片、无分析（2026-06-05 修复）
+### Bug 5：复杂决策题只甩地图卡片、无分析（2026-06-05 修复，后续增强见 Bug 9）
 
 **现象：** 用户问"我想住 GEO，但学校在 UM，还可能去 Monash 交换，住哪里最好？"，AI 只回复"以上是根据搜索结果整理的信息，希望对你有帮助！"，底下堆了两张互不相关的地图卡片（GEO 无出发地、Pantai Hillpark 有目的地），没有任何对比分析或推荐。
 
@@ -731,7 +763,7 @@ setMessages(prev => [...prev,
 **修复：**
 
 - 循环结束且 `final_text_emitted=false` 时，追加**强制收尾合成**（不传 `tools`，`max_completion_tokens=3072`），模型必须写出对比分析与明确推荐。
-- 知识库地图改为 `kb_map_candidate` **延后决策**，循环结束后仅当 `has_commute=false` 才追加。
+- 知识库地图改为延后决策；后续升级为 `kb_card_candidates` 多卡匹配（见 Bug 9）。
 - 合并通勤卡与知识库信息时，校验 `community_name` 与 `origin_name` 是否匹配。
 - 系统 prompt 新增 `## DECISION / TRADE-OFF QUESTIONS`：决策题必须先查再写分析，禁止只甩卡片或废话兜底。
 
@@ -766,6 +798,52 @@ setMessages(prev => [...prev,
 **现象：** 多约束决策题（住 A 但学校 B、还可能去 C）推理深度不够。
 
 **修复：** `assess_reasoning_effort(query)` 动态选择 `low` / `medium` / `high`；决策/对比类关键词命中 `high`，汇率/节假日命中 `low`。
+
+---
+
+### Bug 9：多小区对比只出一张地图卡（2026-06-05 修复）
+
+**现象：** 用户对比 GEO 与 Pantai Hillpark 两个小区，文字里两个都分析了，但底部零张或仅一张地图卡。
+
+**根因：** 旧逻辑只取 `search_knowledge_base` 的单个 `best` 结果，且依赖模型设 `show_map=true`（模型经常忘记设）。
+
+**修复：**
+- 循环中收集所有带坐标的搜索结果到 `kb_card_candidates`
+- 答案完成后扫描 `answer_text`，正文提到几个小区就出几张卡（上限 3）
+- 已在通勤卡展示的小区跳过；`kb_show_map=true` 时保留单卡兜底（防非住房问题误弹卡）
+
+---
+
+### Bug 10：Markdown 表格内 `<br>` 原样显示（2026-06-05 修复）
+
+**现象：** 对比表格单元格出现字面量 `<br>` 而非换行。
+
+**根因：** 自定义 `renderInline` 不识别 HTML 标签。
+
+**修复：** `renderInline` 按 `<br>` / `<br/>` 切分并渲染 React `<br />`；系统 prompt 禁止在表格单元格内使用 HTML。
+
+---
+
+### Bug 11：工具卡完成后只显示「✓ 完成」，需点击才看结果（2026-06-05 修复）
+
+**现象：** 如节假日查询，工具执行完毕但卡片只显示 `✓ 完成`，用户必须点开才能看假日列表。
+
+**根因：** 工具结果默认折叠，折叠态摘要过于简陋。
+
+**修复：**
+- 新增 `renderToolResult()`，工具 `done` 后**默认展示**人类可读预览
+- 点击 header 右侧 `▸` 才展开原始 JSON（开发者/调试用）
+- 卡片 `width: fit-content` 自适应宽度；参数单行横滑，不硬换行
+
+---
+
+### Bug 12：AI 头像不在气泡左侧（2026-06-05 修复）
+
+**现象：** 机器人头像显示在气泡上方，而非气泡左边，不像标准 IM 布局。
+
+**根因：** `.manus-assistant` 容器缺少 `display: flex`，头像与气泡按块级元素纵向堆叠。
+
+**修复：** `.manus-assistant { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; }`，头像左、气泡右。
 
 ---
 

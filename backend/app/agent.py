@@ -1,5 +1,6 @@
 import json
 import asyncio
+from types import SimpleNamespace
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.config import Config
 from app.tools import (
@@ -28,6 +29,153 @@ _EFFORT_LOW_KW = [
     "汇率", "换算", "多少人民币", "多少钱", "节假日", "假期", "放假",
     "holiday", "currency", "exchange rate",
 ]
+
+
+import re as _re
+
+
+def _rate_limit_message(err_str: str) -> str:
+    """Build an honest, specific rate-limit message, including retry time if present.
+
+    Distinguishes per-day (TPD) exhaustion from short per-minute (TPM) throttling so the
+    user knows whether to wait minutes or wait for the daily reset.
+    """
+    retry_hint = ""
+    m = _re.search(r"try again in ([\dhms\. ]+)", err_str, _re.IGNORECASE)
+    if m:
+        retry_hint = f"（约 {m.group(1).strip()} 后恢复）"
+    is_daily = "per day" in err_str.lower() or "TPD" in err_str
+    if is_daily:
+        return (
+            "🙏 抱歉，AI 助手今日的免费额度已经用完了" + retry_hint + "。"
+            "可以稍后再试，或联系管理员升级服务额度。今天先用「房源列表」「我的租约」等页面功能吧～"
+        )
+    return "⏳ 当前请求有点密集，触发了限流" + retry_hint + "。请稍等几秒后重试。"
+
+
+def _is_rate_limit_error(err_str: str) -> bool:
+    low = err_str.lower()
+    return (
+        "429" in err_str
+        or "resource_exhausted" in low
+        or "quota" in low
+        or "rate_limit" in low
+    )
+
+
+def _model_chain(start_model: str) -> List[str]:
+    """Primary model first, then fallback — each Groq model has its own TPD budget."""
+    models = [start_model]
+    fb = (Config.AGENT_FALLBACK_MODEL or "").strip()
+    if fb and fb != start_model:
+        models.append(fb)
+    return models
+
+
+def _groq_extra_body(model: str, reasoning_effort: str, *, with_tools: bool) -> Optional[dict]:
+    """Build model-specific Groq extra_body — gpt-oss and qwen3 use different reasoning knobs."""
+    m = model.lower()
+    if "gpt-oss" in m:
+        body: Dict[str, Any] = {"include_reasoning": True}
+        if reasoning_effort:
+            body["reasoning_effort"] = reasoning_effort
+        return body
+    if "qwen" in m:
+        # Qwen3: none/default only; hide reasoning when tools are on (Groq requirement)
+        body = {"reasoning_effort": "none" if reasoning_effort == "low" else "default"}
+        if with_tools:
+            body["reasoning_format"] = "hidden"
+        return body
+    return None
+
+
+def _iter_llm_stream(
+    start_model: str,
+    messages: list,
+    *,
+    tools: Optional[list],
+    tool_choice: str,
+    max_completion_tokens: int,
+    reasoning_effort: str,
+):
+    """Stream an LLM completion, auto-falling back to AGENT_FALLBACK_MODEL on 429.
+
+    Yields event tuples for the caller to turn into SSE:
+      ("text_delta", str)
+      ("model_switch", str)   — switched to this model after primary rate-limited
+      ("complete", dict)      — final accumulators + error metadata
+    """
+    models = _model_chain(start_model)
+
+    for mi, model_name in enumerate(models):
+        content_text = ""
+        reasoning_text = ""
+        tool_calls_acc: Dict[int, dict] = {}
+        try:
+            extra_body = _groq_extra_body(model_name, reasoning_effort, with_tools=bool(tools))
+            kwargs: Dict[str, Any] = {
+                "model": model_name,
+                "messages": messages,
+                "timeout": 90.0,
+                "max_completion_tokens": max_completion_tokens,
+                "stream": True,
+            }
+            if tools is not None:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = tool_choice
+            if extra_body:
+                kwargs["extra_body"] = extra_body
+
+            if mi > 0:
+                yield ("model_switch", model_name)
+
+            stream = openai_client.chat.completions.create(**kwargs)
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                r = getattr(delta, "reasoning", None)
+                if r:
+                    reasoning_text += r
+                if getattr(delta, "content", None):
+                    content_text += delta.content
+                    yield ("text_delta", delta.content)
+                for tc in (getattr(delta, "tool_calls", None) or []):
+                    slot = tool_calls_acc.setdefault(
+                        tc.index, {"id": None, "name": "", "arguments": ""}
+                    )
+                    if tc.id:
+                        slot["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        slot["name"] = tc.function.name
+                    if tc.function and tc.function.arguments:
+                        slot["arguments"] += tc.function.arguments
+
+            yield ("complete", {
+                "content_text": content_text,
+                "reasoning_text": reasoning_text,
+                "tool_calls_acc": tool_calls_acc,
+                "used_model": model_name,
+                "all_rate_limited": False,
+                "error": None,
+            })
+            return
+
+        except Exception as e:
+            last_err = e
+            err_str = str(e)
+            if _is_rate_limit_error(err_str) and mi < len(models) - 1:
+                print(f"[Agent] {model_name} rate limited, trying {models[mi + 1]}...")
+                continue
+            yield ("complete", {
+                "content_text": content_text,
+                "reasoning_text": reasoning_text,
+                "tool_calls_acc": tool_calls_acc,
+                "used_model": model_name,
+                "all_rate_limited": _is_rate_limit_error(err_str),
+                "error": e,
+            })
+            return
 
 
 def assess_reasoning_effort(query: str) -> str:
@@ -475,6 +623,14 @@ async def live_agent_stream(
     reasoning_effort = assess_reasoning_effort(query)  # low/medium/high per query difficulty
     MAX_COMPLETION_TOKENS = 3072  # Room for reasoning + a full answer (default 1024 was too small)
     MAX_LOOPS = 6  # Allow up to 6 rounds for complex multi-tool queries
+
+    # ── Token-saving guards (Groq free tier has a tight daily budget) ──
+    tool_result_cache = {}  # (tool_name, args_key) -> result; avoids re-running identical calls
+    empty_search_keys = set()  # search queries that returned 0 results; don't retry within a turn
+    tool_call_counts = {}  # tool_name -> times called this turn; caps runaway repeated calls
+    MAX_CALLS_PER_TOOL = 3  # hard cap on how many times one tool may run in a single turn
+    rate_limited = False  # True only when primary + fallback both hit 429
+    active_model = Config.AGENT_MODEL  # may switch to AGENT_FALLBACK_MODEL mid-turn
     for loop_idx in range(MAX_LOOPS):
         step_labels = [
             "🔍 正在理解你的问题...",
@@ -484,64 +640,79 @@ async def live_agent_stream(
         yield sse_event({"type": "thinking", "step": step_labels[min(loop_idx, len(step_labels)-1)]})
         await asyncio.sleep(0.3)
 
-        try:
-            # Build extra kwargs for Groq reasoning support (effort scales with difficulty)
-            extra_body = {"include_reasoning": True}
-            if reasoning_effort:
-                extra_body["reasoning_effort"] = reasoning_effort
+        # Accumulators for the streamed response (filled by _iter_llm_stream)
+        content_text = ""
+        reasoning_text = ""
+        tool_calls_acc = {}  # index -> {id, name, arguments}
+        content_streamed = False
 
-            response = openai_client.chat.completions.create(
-                model=Config.AGENT_MODEL,
-                messages=messages,
-                tools=tools_definitions,
-                tool_choice="auto",
-                timeout=90.0,
-                max_completion_tokens=MAX_COMPLETION_TOKENS,
-                extra_body=extra_body
-            )
-        except Exception as e:
-            err_str = str(e)
-            print(f"[Agent Error] {type(e).__name__}: {err_str[:500]}")
-            # Rate limit / quota exceeded
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                yield sse_event({"type": "text", "delta": "🙏 抱歉，当前 AI 助手使用人数较多，请求已达今日上限。请稍后再试，或联系管理员升级服务额度。"})
-            # API key invalid / forbidden
-            elif "401" in err_str or "403" in err_str or "invalid" in err_str.lower() or "forbidden" in err_str.lower() or "authorization" in err_str.lower():
-                yield sse_event({"type": "text", "delta": f"⚙️ AI 服务配置异常（{type(e).__name__}），请联系管理员检查 API Key 和模型设置。"})
-            # Model overloaded
-            elif "503" in err_str or "overloaded" in err_str.lower() or "high demand" in err_str.lower():
-                yield sse_event({"type": "text", "delta": "⏳ AI 助手当前繁忙，请稍等几秒后重试。"})
-            # Network / timeout
-            elif "timeout" in err_str.lower() or "connect" in err_str.lower():
-                yield sse_event({"type": "text", "delta": "🌐 网络连接超时，请检查网络后重试。"})
-            # Generic fallback
-            else:
-                yield sse_event({"type": "text", "delta": f"❌ AI 助手遇到了问题，请稍后重试。如持续出现请联系管理员。"})
-            return
+        for ev_type, payload in _iter_llm_stream(
+            active_model,
+            messages,
+            tools=tools_definitions,
+            tool_choice="auto",
+            max_completion_tokens=MAX_COMPLETION_TOKENS,
+            reasoning_effort=reasoning_effort,
+        ):
+            if ev_type == "text_delta":
+                content_streamed = True
+                yield sse_event({"type": "text", "delta": payload})
+            elif ev_type == "model_switch":
+                active_model = payload
+                yield sse_event({"type": "thinking", "step": "⚡ 主模型额度紧张，已切换备用模型继续回答..."})
+            elif ev_type == "complete":
+                content_text = payload["content_text"]
+                reasoning_text = payload["reasoning_text"]
+                tool_calls_acc = payload["tool_calls_acc"]
+                active_model = payload["used_model"]
+                err = payload.get("error")
+                if err:
+                    err_str = str(err)
+                    print(f"[Agent Error] {type(err).__name__}: {err_str[:500]}")
+                    if payload.get("all_rate_limited"):
+                        rate_limited = True
+                        yield sse_event({"type": "text", "delta": _rate_limit_message(err_str)})
+                    elif "401" in err_str or "403" in err_str or "invalid" in err_str.lower() or "forbidden" in err_str.lower() or "authorization" in err_str.lower():
+                        yield sse_event({"type": "text", "delta": f"⚙️ AI 服务配置异常（{type(err).__name__}），请联系管理员检查 API Key 和模型设置。"})
+                    elif "503" in err_str or "overloaded" in err_str.lower() or "high demand" in err_str.lower():
+                        yield sse_event({"type": "text", "delta": "⏳ AI 助手当前繁忙，请稍等几秒后重试。"})
+                    elif "timeout" in err_str.lower() or "connect" in err_str.lower():
+                        yield sse_event({"type": "text", "delta": "🌐 网络连接超时，请检查网络后重试。"})
+                    else:
+                        yield sse_event({"type": "text", "delta": "❌ AI 助手遇到了问题，请稍后重试。如持续出现请联系管理员。"})
+                    return
 
-        # Safety check for empty/malformed response
-        if not response.choices:
-            yield sse_event({"type": "text", "delta": "⚠️ AI 返回了空响应，请重试。"})
-            break
+        # Reconstruct tool_calls (ordered by their streamed index) into objects that
+        # expose the same .id/.type/.function.name/.arguments shape the loop expects.
+        tool_calls = None
+        if tool_calls_acc:
+            tool_calls = []
+            for idx in sorted(tool_calls_acc.keys()):
+                slot = tool_calls_acc[idx]
+                if not slot.get("name"):
+                    continue
+                tool_calls.append(SimpleNamespace(
+                    id=slot["id"] or f"call_{idx}",
+                    type="function",
+                    function=SimpleNamespace(name=slot["name"], arguments=slot["arguments"] or "{}"),
+                ))
+            if not tool_calls:
+                tool_calls = None
 
-        message = response.choices[0].message
-        tool_calls = message.tool_calls
+        # Build a message-like object for the assistant-message append below
+        message = SimpleNamespace(content=content_text, tool_calls=tool_calls)
 
-        # Send Groq reasoning process to frontend (if available)
-        reasoning = getattr(message, 'reasoning', None)
-        if reasoning:
-            yield sse_event({"type": "thinking", "label": "🧠 模型推理过程", "content": reasoning[:1000]})
-            await asyncio.sleep(0.3)
+        # Surface accumulated reasoning (if Groq returned any)
+        if reasoning_text:
+            yield sse_event({"type": "thinking", "label": "🧠 模型推理过程", "content": reasoning_text[:1000]})
+            await asyncio.sleep(0.2)
 
-        # If model chooses to write text (no tool calls)
+        # If model chose to write text (no tool calls) — it was already streamed live.
         if not tool_calls:
-            content = message.content or ""
-            # Stream the final text typewriter-style
-            for char in content:
-                yield sse_event({"type": "text", "delta": char})
-                await asyncio.sleep(0.01)
-            answer_text = content
-            final_text_emitted = bool(content.strip())
+            if not content_streamed:
+                yield sse_event({"type": "text", "delta": "⚠️ AI 返回了空响应，请重试。"})
+            answer_text = content_text
+            final_text_emitted = bool(content_text.strip())
             # Cards are emitted in the unified block after the loop
             break
 
@@ -569,49 +740,80 @@ async def live_agent_stream(
             tool_args = json.loads(tool_call.function.arguments)
 
             yield sse_event({"type": "tool_call", "tool_name": tool_name, "args": tool_args})
-            await asyncio.sleep(0.8)
+            await asyncio.sleep(0.5)
 
-            # Invoke target tool
+            # Build a stable cache key from tool name + sorted args
+            cache_key = (tool_name, json.dumps(tool_args, ensure_ascii=False, sort_keys=True))
+            # Search query signal used for empty-result memo (avoid re-searching dead terms)
+            search_term = (tool_args.get("semantic_query") or tool_args.get("location") or "").strip().lower()
+            search_tools = {"search_knowledge_base", "search_internal_db", "search_external_listings"}
+
             result_data = None
-            if tool_name == "calculate_commute":
-                has_commute = True
-                result_data = calculate_commute(
-                    origin_address=tool_args.get("origin_address", ""),
-                    destination_address=tool_args.get("destination_address", tool_args.get("university_name", ""))
-                )
-            elif tool_name == "get_web_realtime_info":
-                result_data = get_web_realtime_info(query=tool_args.get("query", ""))
-            elif tool_name == "convert_currency_frankfurter":
-                result_data = convert_currency_frankfurter(
-                    amount=tool_args.get("amount", 1.0),
-                    from_currency=tool_args.get("from_currency", "MYR"),
-                    to_currency=tool_args.get("to_currency", "CNY")
-                )
-            elif tool_name == "get_malaysia_holidays":
-                result_data = get_malaysia_holidays(
-                    year=tool_args.get("year", 2026)
-                )
-            elif tool_name == "search_internal_db":
-                result_data = search_internal_db(
-                    semantic_query=tool_args.get("semantic_query", ""),
-                    room_type=tool_args.get("room_type"),
-                    max_price=tool_args.get("max_price")
-                )
-            elif tool_name == "search_knowledge_base":
-                result_data = search_knowledge_base(
-                    semantic_query=tool_args.get("semantic_query", ""),
-                    state=tool_args.get("state"),
-                    max_results=tool_args.get("max_results", 5)
-                )
-            elif tool_name == "search_external_listings":
-                result_data = search_external_listings(
-                    location=tool_args.get("location", ""),
-                    room_type=tool_args.get("room_type"),
-                    max_price=tool_args.get("max_price")
-                )
+            served_from_guard = False
+
+            if cache_key in tool_result_cache:
+                # Identical call already made this turn — reuse, spend zero tokens/API
+                result_data = tool_result_cache[cache_key]
+                served_from_guard = True
+            elif tool_name in search_tools and search_term and search_term in empty_search_keys:
+                # We already searched this term and got nothing — don't burn another call
+                result_data = [] if tool_name != "search_external_listings" else {"success": True, "listings": []}
+                served_from_guard = True
+            elif tool_call_counts.get(tool_name, 0) >= MAX_CALLS_PER_TOOL:
+                # Runaway guard: model keeps calling the same tool with variations
+                result_data = {"error": True, "message": f"已达到 {tool_name} 的本轮调用上限，请基于已有结果作答。"}
+                served_from_guard = True
+            else:
+                tool_call_counts[tool_name] = tool_call_counts.get(tool_name, 0) + 1
+                # Invoke target tool
+                if tool_name == "calculate_commute":
+                    has_commute = True
+                    result_data = calculate_commute(
+                        origin_address=tool_args.get("origin_address", ""),
+                        destination_address=tool_args.get("destination_address", tool_args.get("university_name", ""))
+                    )
+                elif tool_name == "get_web_realtime_info":
+                    result_data = get_web_realtime_info(query=tool_args.get("query", ""))
+                elif tool_name == "convert_currency_frankfurter":
+                    result_data = convert_currency_frankfurter(
+                        amount=tool_args.get("amount", 1.0),
+                        from_currency=tool_args.get("from_currency", "MYR"),
+                        to_currency=tool_args.get("to_currency", "CNY")
+                    )
+                elif tool_name == "get_malaysia_holidays":
+                    result_data = get_malaysia_holidays(
+                        year=tool_args.get("year", 2026)
+                    )
+                elif tool_name == "search_internal_db":
+                    result_data = search_internal_db(
+                        semantic_query=tool_args.get("semantic_query", ""),
+                        room_type=tool_args.get("room_type"),
+                        max_price=tool_args.get("max_price")
+                    )
+                elif tool_name == "search_knowledge_base":
+                    result_data = search_knowledge_base(
+                        semantic_query=tool_args.get("semantic_query", ""),
+                        state=tool_args.get("state"),
+                        max_results=tool_args.get("max_results", 5)
+                    )
+                elif tool_name == "search_external_listings":
+                    result_data = search_external_listings(
+                        location=tool_args.get("location", ""),
+                        room_type=tool_args.get("room_type"),
+                        max_price=tool_args.get("max_price")
+                    )
+
+                # Memoize result + remember dead search terms
+                tool_result_cache[cache_key] = result_data
+                if tool_name in search_tools and search_term:
+                    is_empty = (isinstance(result_data, list) and len(result_data) == 0) or (
+                        isinstance(result_data, dict) and not result_data.get("listings")
+                    )
+                    if is_empty:
+                        empty_search_keys.add(search_term)
 
             yield sse_event({"type": "tool_result", "tool_name": tool_name, "result": result_data})
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3 if served_from_guard else 0.5)
 
             # Collect UI components — will be emitted AFTER text is done
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
@@ -735,9 +937,12 @@ async def live_agent_stream(
             })
 
     # If the loop exhausted its rounds while still calling tools, the model never
-    # wrote a real answer. Instead of dumping a useless generic line, force ONE final
-    # synthesis pass (no tools allowed) so the model MUST analyze the gathered data.
-    if not final_text_emitted:
+    # wrote a real answer. Force ONE final synthesis pass (no tools) so the model MUST
+    # analyze the gathered data. Skip it when:
+    #   - already rate-limited (another call just 429s again — wasteful)
+    #   - the query is trivial (low effort) — the in-loop call almost always answered,
+    #     and a 2nd full LLM call isn't worth the daily token budget.
+    if not final_text_emitted and not rate_limited and reasoning_effort != "low":
         yield sse_event({"type": "thinking", "step": "📝 正在综合分析，给出建议..."})
         await asyncio.sleep(0.3)
         messages.append({
@@ -749,36 +954,38 @@ async def live_agent_stream(
                 "Never reply with a generic filler like '以上是根据搜索结果整理的信息'. Be specific and helpful."
             )
         })
-        try:
-            # No `tools` passed at all → model physically cannot call a tool and must
-            # produce a text answer. More robust across providers than tool_choice="none".
-            final_resp = openai_client.chat.completions.create(
-                model=Config.AGENT_MODEL,
-                messages=messages,
-                timeout=90.0,
-                max_completion_tokens=MAX_COMPLETION_TOKENS,
-                extra_body={"reasoning_effort": reasoning_effort} if reasoning_effort else None,
-            )
-            final_content = ""
-            if final_resp.choices:
-                final_content = final_resp.choices[0].message.content or ""
-            if final_content.strip():
-                for char in final_content:
-                    yield sse_event({"type": "text", "delta": char})
-                    await asyncio.sleep(0.01)
-                answer_text = final_content
-                final_text_emitted = True
-        except Exception as e:
-            print(f"[Agent Synthesis Error] {type(e).__name__}: {str(e)[:300]}")
+        final_content = ""
+        for ev_type, payload in _iter_llm_stream(
+            active_model,
+            messages,
+            tools=None,
+            tool_choice="auto",
+            max_completion_tokens=MAX_COMPLETION_TOKENS,
+            reasoning_effort=reasoning_effort,
+        ):
+            if ev_type == "text_delta":
+                final_content += payload
+                yield sse_event({"type": "text", "delta": payload})
+            elif ev_type == "model_switch":
+                active_model = payload
+                yield sse_event({"type": "thinking", "step": "⚡ 主模型额度紧张，已切换备用模型继续综合分析..."})
+            elif ev_type == "complete":
+                active_model = payload["used_model"]
+                if not final_content:
+                    final_content = payload["content_text"]
+                err = payload.get("error")
+                if err:
+                    es = str(err)
+                    print(f"[Agent Synthesis Error] {type(err).__name__}: {es[:300]}")
+                    if payload.get("all_rate_limited"):
+                        rate_limited = True
+        if final_content.strip():
+            answer_text = final_content
+            final_text_emitted = True
 
-    # Last-resort message only if synthesis also failed to produce anything
-    if not final_text_emitted:
-        yield sse_event({"type": "text", "delta": "我已经查到了相关信息（见下方卡片）。如果你能告诉我更具体的需求（预算、几人住、最看重通勤还是安全），我可以帮你直接对比并给出推荐 😊"})
-
-    # Decide which knowledge-base map cards to show: one for EACH community the answer
-    # actually mentions (so a 2-community comparison renders 2 cards). Matching against
-    # the written answer is a strong housing signal and doesn't rely on the model
-    # remembering to set show_map. Skip communities already shown on a commute card.
+    # Decide which knowledge-base map cards to show FIRST (so the fallback message can
+    # know whether any cards will actually appear). One card per community the answer
+    # mentions; skip communities already on a commute card.
     answer_lower = (answer_text or "").lower()
     MAX_KB_CARDS = 3
     shown = 0
@@ -786,20 +993,25 @@ async def live_agent_stream(
         if shown >= MAX_KB_CARDS:
             break
         name = (cand["props"].get("community_name") or "").strip()
-        if not name:
+        if not name or name.lower() in commute_card_names:
             continue
-        if name.lower() in commute_card_names:
-            continue  # already on a commute card
         if name.lower() in answer_lower:
             pending_ui_components.append(cand)
             shown += 1
-    # Fallback: model explicitly flagged housing (show_map) but no community name matched
-    # in the answer (e.g. it paraphrased the name) — show the single best candidate.
-    # Gated by kb_show_map so non-housing questions never get a stray card.
+    # Fallback: model flagged housing (show_map) but no name matched in the answer.
     if shown == 0 and kb_show_map and not has_commute and kb_card_candidates:
         first = kb_card_candidates[0]
         if (first["props"].get("community_name") or "").strip().lower() not in commute_card_names:
             pending_ui_components.append(first)
+
+    # Honest last-resort message — only when no real answer was produced.
+    if not final_text_emitted:
+        if rate_limited:
+            pass  # the 429 message was already streamed at the point of failure
+        elif pending_ui_components:
+            yield sse_event({"type": "text", "delta": "我已经为你整理了相关信息，请查看下方的卡片。如果告诉我更具体的需求（预算、几人住、最看重通勤还是安全），我可以帮你直接对比并给出推荐 😊"})
+        else:
+            yield sse_event({"type": "text", "delta": "抱歉，我暂时没能找到匹配的信息 🙇。可以换个说法，或补充更具体的条件（如大学名称、地区、预算），我再帮你查一次。"})
 
     # Emit all collected UI components AFTER the text (maps, cards, etc.)
     for comp in pending_ui_components:

@@ -548,6 +548,48 @@ def search_external_listings(
 
 
 # Tool: search_knowledge_base (RAG rental knowledge base)
+# Colloquial / abbreviated names → canonical terms appended to the embedding query.
+# Malaysian universities & areas are often referred to by Chinese nicknames or acronyms
+# that don't embed close to the official English names, causing 0-result searches.
+KB_ALIASES = {
+    "马大": "University of Malaya UM 马来亚大学",
+    "马来亚": "University of Malaya UM",
+    "um": "University of Malaya 马来亚大学",
+    "博大": "Universiti Putra Malaysia UPM 博特拉大学",
+    "upm": "Universiti Putra Malaysia 博特拉大学",
+    "国大": "Universiti Kebangsaan Malaysia UKM 国民大学",
+    "ukm": "Universiti Kebangsaan Malaysia 国民大学",
+    "理大": "Universiti Sains Malaysia USM 理科大学",
+    "usm": "Universiti Sains Malaysia 理科大学",
+    "工大": "Universiti Teknologi Malaysia UTM 工艺大学",
+    "utm": "Universiti Teknologi Malaysia 工艺大学",
+    "多媒体大学": "Multimedia University MMU",
+    "mmu": "Multimedia University 多媒体大学",
+    "莫纳什": "Monash University Malaysia",
+    "泰莱": "Taylor's University 泰莱大学",
+    "双威": "Sunway University 双威大学",
+}
+
+
+def _expand_kb_query(semantic_query: str) -> str:
+    """Append canonical names for any known colloquial alias found in the query.
+
+    Keeps the original text (so exact matches still work) and adds official names so
+    the embedding lands near the indexed English profiles.
+    """
+    q = semantic_query or ""
+    low = q.lower()
+    extras = []
+    for alias, canonical in KB_ALIASES.items():
+        if alias in low and canonical.lower() not in low:
+            extras.append(canonical)
+    if extras:
+        expanded = q + " " + " ".join(extras)
+        print(f"[Tool: search_knowledge_base] Query expanded with aliases: {extras}")
+        return expanded
+    return q
+
+
 def search_knowledge_base(
     semantic_query: str,
     state: Optional[str] = None,
@@ -566,19 +608,31 @@ def search_knowledge_base(
     # Ensure embeddings are synced
     sync_kb_embeddings()
 
+    expanded_query = _expand_kb_query(semantic_query)
     try:
-        query_vec = get_embedding(semantic_query)
+        query_vec = get_embedding(expanded_query)
     except Exception as e:
         print(f"[Tool: search_knowledge_base] Embedding error: {e}")
         return []
 
     try:
+        # Two-pass retrieval: try a strict threshold first for precision, then relax it
+        # once if nothing came back (better a slightly-loose hit than a dead 0-result).
         result = supabase_service_client.rpc("match_knowledge_base", {
             "query_embedding": query_vec,
             "match_threshold": 0.5,
             "match_count": max_results,
             "filter_state": state
         }).execute()
+
+        if not result.data:
+            print("[Tool: search_knowledge_base] 0 hits at 0.5, retrying at 0.3...")
+            result = supabase_service_client.rpc("match_knowledge_base", {
+                "query_embedding": query_vec,
+                "match_threshold": 0.3,
+                "match_count": max_results,
+                "filter_state": state
+            }).execute()
 
         if not result.data:
             return []
