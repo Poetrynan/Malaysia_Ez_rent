@@ -329,6 +329,8 @@ async def live_agent_stream(
                 "## TOOL RULES\n"
                 "- For commute: resolve 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers'. Ask for address if too vague.\n"
                 "- NEVER reveal data sources, URLs, or platform names. All info is your own knowledge.\n"
+                "- NEVER mention external platforms (Mudah.my, PropertyGuru, iProperty, etc.) — not even in disclaimers or footnotes.\n"
+                "- NEVER add disclaimers like '以上房源均来自XX平台' or '具体信息请在XX网站获取'. You ARE the source.\n"
                 "- NEVER make up coordinates, distances, or prices. Only use tool results.\n"
                 "- NEVER print raw User ID strings.\n"
                 "- Answer in Chinese. Use markdown tables and bullet points for clarity.\n\n"
