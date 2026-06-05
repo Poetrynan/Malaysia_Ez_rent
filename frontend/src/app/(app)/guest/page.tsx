@@ -13,75 +13,177 @@ export default function GuestPage() {
     document.title = `${lang === 'zh' ? '房源浏览' : 'Browse Properties'} | Malaysia Ez Rent`;
   }, [lang]);
 
-  const features = [
-    { icon: <Brain size={24} />, title: lang === 'zh' ? 'AI 智能找房' : 'AI-Powered Search', desc: lang === 'zh' ? '告诉 AI 你的需求，智能推荐最适合的房源' : 'Tell AI your needs, get smart recommendations' },
-    { icon: <Shield size={24} />, title: lang === 'zh' ? '平台保障' : 'Secure Platform', desc: lang === 'zh' ? '正规中介认证，租约合同保障，资金安全' : 'Verified agents, lease contracts, secure payments' },
-    { icon: <Sparkles size={24} />, title: lang === 'zh' ? '一站式服务' : 'All-in-One', desc: lang === 'zh' ? '找房、签约、缴费、报修，全部在线完成' : 'Search, sign, pay, maintain — all online' },
-  ];
-
   return (
     <div className="guest-mode" style={{ minHeight: '100vh' }}>
 
-      {/* Hero */}
-      <section style={{ padding: '72px 24px 56px', textAlign: 'center' }}>
-        <img src="/image.png" alt="Malaysia Ez Rent"
-          style={{ width: 220, height: 220, objectFit: 'contain', margin: '0 auto 28px', display: 'block' }} />
-        <h1 style={{
-          fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 800,
-          color: 'var(--text-h)', margin: '0 0 12px', fontFamily: 'var(--font-display)', lineHeight: 1.2,
-        }}>
-          {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
-        </h1>
-        <p style={{ fontSize: '1rem', color: 'var(--text-muted)', margin: '0 auto 32px', maxWidth: 520, lineHeight: 1.7 }}>
-          {lang === 'zh' ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验' : 'Browse quality properties in Malaysia. AI-powered, secure rental experience.'}
-        </p>
-        <Link href="/login" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '12px 32px', borderRadius: 10, background: 'var(--primary)', color: 'white',
-          fontSize: '0.95rem', fontWeight: 700, textDecoration: 'none',
-        }}>
-          <LogIn size={16} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={15} />
-        </Link>
+      {/* ═══════════ HERO ═══════════ */}
+      <section style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '80px 24px 60px', textAlign: 'center',
+        background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)',
+      }}>
+        {/* Decorative blobs */}
+        <div style={{
+          position: 'absolute', top: -120, right: -80, width: 400, height: 400,
+          borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -100, left: -60, width: 300, height: 300,
+          borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.05) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
+          {/* Logo */}
+          <img
+            src="/image.png"
+            alt="Malaysia Ez Rent"
+            style={{
+              width: 260, height: 260, objectFit: 'contain',
+              margin: '0 auto 32px', display: 'block',
+              filter: 'drop-shadow(0 8px 32px rgba(14,116,144,0.15))',
+            }}
+          />
+
+          {/* Headline */}
+          <h1 style={{
+            fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 800,
+            color: 'var(--text-h)', margin: '0 0 16px',
+            fontFamily: 'var(--font-display)', lineHeight: 1.2,
+            letterSpacing: '-0.02em',
+          }}>
+            {lang === 'zh' ? '找到你的理想住所' : 'Find Your Perfect Home'}
+          </h1>
+
+          {/* Subtitle */}
+          <p style={{
+            fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)',
+            margin: '0 auto 40px', maxWidth: 560, lineHeight: 1.7,
+          }}>
+            {lang === 'zh'
+              ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验'
+              : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
+          </p>
+
+          {/* CTA Button */}
+          <Link href="/login" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '14px 36px', borderRadius: 12,
+            background: 'var(--primary)', color: 'white',
+            fontSize: '1rem', fontWeight: 700, textDecoration: 'none',
+            boxShadow: '0 4px 20px rgba(14,116,144,0.3)',
+            transition: 'all 0.3s ease',
+          }}>
+            <LogIn size={18} />
+            {lang === 'zh' ? '立即开始' : 'Get Started'}
+            <ChevronRight size={16} />
+          </Link>
+        </div>
       </section>
 
-      {/* Features */}
-      <section style={{ padding: '0 24px 56px', maxWidth: 900, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-          {features.map((f, i) => (
-            <div key={i} className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', borderRadius: 14 }}>
-              <div style={{ color: 'var(--primary)', marginBottom: 12 }}>{f.icon}</div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{f.title}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{f.desc}</p>
+      {/* ═══════════ FEATURES ═══════════ */}
+      <section style={{
+        padding: '60px 24px', maxWidth: 1000, margin: '0 auto',
+      }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 24,
+        }}>
+          {[
+            {
+              icon: <Brain size={28} style={{ color: 'var(--primary)' }} />,
+              title: lang === 'zh' ? 'AI 智能找房' : 'AI-Powered Search',
+              desc: lang === 'zh'
+                ? '告诉 AI 你的需求，智能推荐最适合的房源和小区'
+                : 'Tell AI your needs, get smart recommendations for the best properties',
+            },
+            {
+              icon: <Shield size={28} style={{ color: 'var(--primary)' }} />,
+              title: lang === 'zh' ? '平台保障' : 'Secure Platform',
+              desc: lang === 'zh'
+                ? '正规中介认证，租约合同保障，资金安全可追溯'
+                : 'Verified agents, lease contracts, traceable payments',
+            },
+            {
+              icon: <Sparkles size={28} style={{ color: 'var(--primary)' }} />,
+              title: lang === 'zh' ? '一站式服务' : 'All-in-One Service',
+              desc: lang === 'zh'
+                ? '找房、签约、缴费、报修，全部在线完成'
+                : 'Search, sign, pay, and maintain — all online',
+            },
+          ].map((f, i) => (
+            <div key={i} className="glass-card" style={{
+              padding: '28px 24px', textAlign: 'center',
+              borderRadius: 16, transition: 'transform 0.2s ease',
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: 'var(--primary-light, rgba(14,116,144,0.08))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                {f.icon}
+              </div>
+              <h3 style={{
+                fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-h)',
+                margin: '0 0 8px',
+              }}>{f.title}</h3>
+              <p style={{
+                fontSize: '0.88rem', color: 'var(--text-muted)',
+                margin: 0, lineHeight: 1.6,
+              }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Listings */}
-      <section style={{ padding: '0 24px 56px', maxWidth: 1200, margin: '0 auto' }}>
-        <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 4px' }}>
-          {lang === 'zh' ? '热门房源' : 'Featured Properties'}
-        </h2>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px' }}>
-          {lang === 'zh' ? '登录后可收藏和表达租房意向' : 'Login to save favorites and express interest'}
-        </p>
+      {/* ═══════════ LISTINGS ═══════════ */}
+      <section style={{ padding: '0 24px 60px', maxWidth: 1200, margin: '0 auto' }}>
+        {/* Section header */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{
+            fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 700,
+            color: 'var(--text-h)', margin: '0 0 4px',
+          }}>
+            {lang === 'zh' ? '热门房源' : 'Featured Properties'}
+          </h2>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
+            {lang === 'zh' ? '浏览所有可租房源，登录后可收藏和表达意向' : 'Browse all available properties. Login to save favorites and express interest.'}
+          </p>
+        </div>
+
         <PropertyListings guestMode />
       </section>
 
-      {/* Bottom CTA */}
-      <section style={{ padding: '48px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>
+      {/* ═══════════ BOTTOM CTA ═══════════ */}
+      <section style={{
+        padding: '60px 24px', textAlign: 'center',
+        background: 'linear-gradient(135deg, var(--primary-light, rgba(14,116,144,0.04)) 0%, var(--bg-base) 100%)',
+      }}>
+        <h2 style={{
+          fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700,
+          color: 'var(--text-h)', margin: '0 0 12px',
+        }}>
           {lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?'}
         </h2>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 auto 24px', maxWidth: 400 }}>
-          {lang === 'zh' ? '注册后即可收藏房源、表达意向，享受平台保障' : 'Register to save favorites and enjoy platform protection.'}
+        <p style={{
+          fontSize: '0.95rem', color: 'var(--text-muted)',
+          margin: '0 auto 28px', maxWidth: 440,
+        }}>
+          {lang === 'zh'
+            ? '注册后即可收藏心仪房源、表达租房意向，享受平台全程保障'
+            : 'Register to save favorites, express interest, and enjoy full platform protection.'}
         </p>
         <Link href="/login" style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '10px 28px', borderRadius: 10, background: 'var(--primary)', color: 'white',
-          fontSize: '0.9rem', fontWeight: 700, textDecoration: 'none',
+          padding: '12px 32px', borderRadius: 10,
+          background: 'var(--primary)', color: 'white',
+          fontSize: '0.95rem', fontWeight: 700, textDecoration: 'none',
+          boxShadow: '0 4px 16px rgba(14,116,144,0.25)',
         }}>
-          <LogIn size={15} />{lang === 'zh' ? '免费注册' : 'Sign Up Free'}
+          <LogIn size={16} />
+          {lang === 'zh' ? '免费注册' : 'Sign Up Free'}
         </Link>
       </section>
     </div>
