@@ -27,8 +27,9 @@ class Config:
         "https://api.openai.com/v1"
     )
     AGENT_MODEL = (
-        os.getenv("GEMINI_MODEL", "").strip() or 
-        os.getenv("NEXT_PUBLIC_AGENT_MODEL", "").strip() or 
+        os.getenv("AGENT_MODEL", "").strip() or
+        os.getenv("GEMINI_MODEL", "").strip() or
+        os.getenv("NEXT_PUBLIC_AGENT_MODEL", "").strip() or
         "gpt-4o-mini"
     )
     
