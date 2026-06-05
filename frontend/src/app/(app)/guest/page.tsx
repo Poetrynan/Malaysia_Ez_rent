@@ -77,7 +77,7 @@ export default function GuestPage() {
             position: 'absolute', left: h.x, top: h.y,
             transform: `rotate(${h.rotate}deg)`,
             fontSize: h.size, fontWeight: 300, fontFamily: h.font,
-            color: 'var(--primary)', opacity: heroVisible ? 0.18 : 0,
+            color: 'var(--primary)', opacity: heroVisible ? 0.25 : 0,
             animation: heroVisible ? `helloFloatIn 1s ${h.delay}s cubic-bezier(0.16, 1, 0.3, 1) both` : 'none',
             pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '0.02em',
           }}>
@@ -87,7 +87,7 @@ export default function GuestPage() {
 
         {/* Hero content — slides up from bottom */}
         <div style={{
-          position: 'relative', maxWidth: 800, margin: '0 auto',
+          position: 'relative', maxWidth: 800, margin: '0 auto', zIndex: 1,
           opacity: heroVisible ? 1 : 0,
           transform: heroVisible ? 'translateY(0)' : 'translateY(60px)',
           transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
