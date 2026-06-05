@@ -14,8 +14,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const { role, loading, agentRegStatus } = useAuth();
   const pathname = usePathname();
 
-  // Guest mode: on /guest without login — hide sidebar & topbar
-  const isGuest = !loading && !role && pathname === '/guest';
+  // Guest mode: on /guest — ALWAYS hide sidebar & topbar (clean browsing experience)
+  const isGuest = pathname === '/guest';
 
   if (loading) {
     return (

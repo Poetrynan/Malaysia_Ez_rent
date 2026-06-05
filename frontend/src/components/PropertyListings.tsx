@@ -995,8 +995,8 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [search, typeFilter, maxRent, statusFilter, sort]);
+  // Reset page when filters or view mode change
+  useEffect(() => { setPage(1); }, [search, typeFilter, maxRent, statusFilter, sort, viewMode]);
 
   const sameCommUnits = selected
     ? units.filter(u => u.community_id === selected.community_id && u.id !== selected.id)
@@ -1135,7 +1135,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         </div>
       ) : (
         viewMode === 'grid' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: guestMode ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: guestMode ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(5, 1fr)', gap: 16 }}>
             {paginated.map(u => (
               <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} guestMode={guestMode} />
             ))}
@@ -1149,7 +1149,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         )
       )}
 
-      {/* ── Pagination (guest mode only) ── */}
+      {/* ── Pagination ── */}
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

@@ -39,8 +39,13 @@ export default function ListingsPage() {
     }
   }, [loading, role, router]);
 
+  // Not logged in — redirect to guest page immediately, no UI flash
+  if (!loading && !role) {
+    return null;
+  }
+
   // Loading: show progress bar while checking identity
-  if (loading || !role) {
+  if (loading) {
     return (
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         {/* Progress bar */}

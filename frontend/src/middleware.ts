@@ -30,27 +30,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Redirect root: guests → /guest, logged-in → /listings (client handles admin redirect)
+  // Redirect root → /guest (public landing page for all visitors)
   if (pathname === '/') {
-    if (isMockMode) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/guest';
-      return NextResponse.redirect(url);
-    }
-    // Live mode: check auth to decide destination
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    const { createServerClient } = await import('@supabase/ssr');
     const url = request.nextUrl.clone();
-    try {
-      const supabase = createServerClient(supabaseUrl, supabaseKey, {
-        cookies: { getAll: () => request.cookies.getAll(), setAll: () => {} },
-      });
-      const { data: { user } } = await supabase.auth.getUser();
-      url.pathname = user ? '/listings' : '/guest';
-    } catch {
-      url.pathname = '/guest';
-    }
+    url.pathname = '/guest';
     return NextResponse.redirect(url);
   }
 

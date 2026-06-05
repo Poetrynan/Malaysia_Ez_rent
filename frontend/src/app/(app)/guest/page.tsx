@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import PropertyListings from '@/components/PropertyListings';
 import LegalContent from '@/components/LegalContent';
 import { useApp } from '@/lib/ThemeProvider';
+import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { LogIn, Brain, Shield, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe } from 'lucide-react';
+import { LogIn, Brain, Shield, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe, ArrowRight } from 'lucide-react';
 
 const FEATURES = [
   { icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', descZh: '告诉 AI 你的需求，智能推荐最适合的房源和小区', descEn: 'Tell AI your needs, get smart recommendations for the best properties' },
@@ -52,6 +53,7 @@ function FooterLink({ href, onClick, children }: { href?: string; onClick?: () =
 
 export default function GuestPage() {
   const { lang, setLang } = useApp();
+  const { role } = useAuth();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [heroVisible, setHeroVisible] = useState(false);
 
@@ -64,6 +66,12 @@ export default function GuestPage() {
 
   return (
     <div className="guest-mode" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ═══════════ LANGUAGE TOGGLE (top-right floating) ═══════════ */}
+      <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        style={{ position: 'fixed', top: 20, right: 24, zIndex: 100, display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(12px)', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', transition: 'all 0.2s ease' }}>
+        <Globe size={14} />{lang === 'zh' ? 'EN' : '中文'}
+      </button>
 
       {/* ═══════════ HERO ═══════════ */}
       <section style={{ position: 'relative', padding: '120px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)' }}>
@@ -109,15 +117,17 @@ export default function GuestPage() {
           <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 560, lineHeight: 1.7 }}>
             {lang === 'zh' ? '浏览马来西亚优质房源，AI 智能推荐，安全可靠的租房体验' : 'Browse quality properties in Malaysia. AI-powered recommendations, secure rental experience.'}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <CtaButton large>
-              <LogIn size={18} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={16} />
-            </CtaButton>
-            {/* Language toggle */}
-            <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '14px 20px', borderRadius: 12, border: '2px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-h)', fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(8px)', transition: 'all 0.2s ease' }}>
-              <Globe size={16} />{lang === 'zh' ? 'EN' : '中文'}
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {role ? (
+              <Link href={role === 'admin' ? '/admin/properties' : '/listings'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 38px', borderRadius: 12, background: 'var(--primary)', color: 'white', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(14,116,144,0.2)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                <ArrowRight size={18} />{lang === 'zh' ? '进入系统' : 'Enter System'}
+              </Link>
+            ) : (
+              <CtaButton large>
+                <LogIn size={18} />{lang === 'zh' ? '立即开始' : 'Get Started'}<ChevronRight size={16} />
+              </CtaButton>
+            )}
           </div>
         </div>
       </section>
@@ -219,14 +229,23 @@ export default function GuestPage() {
       {/* ═══════════ BOTTOM CTA ═══════════ */}
       <section style={{ padding: '64px 24px', textAlign: 'center', background: 'linear-gradient(135deg, var(--primary-light, rgba(14,116,144,0.04)) 0%, var(--bg-base) 100%)' }}>
         <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 12px' }}>
-          {lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?'}
+          {role ? (lang === 'zh' ? '欢迎回来！' : 'Welcome Back!') : (lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?')}
         </h2>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: '0 auto 32px', maxWidth: 440, lineHeight: 1.7 }}>
-          {lang === 'zh' ? '注册后即可收藏心仪房源、表达租房意向，享受平台全程保障' : 'Register to save favorites, express interest, and enjoy full platform protection.'}
+          {role
+            ? (lang === 'zh' ? '点击进入系统，继续管理您的租房事务' : 'Enter the system to continue managing your rental.')
+            : (lang === 'zh' ? '注册后即可收藏心仪房源、表达租房意向，享受平台全程保障' : 'Register to save favorites, express interest, and enjoy full platform protection.')}
         </p>
-        <CtaButton>
-          <LogIn size={16} />{lang === 'zh' ? '免费注册' : 'Sign Up Free'}
-        </CtaButton>
+        {role ? (
+          <Link href={role === 'admin' ? '/admin/properties' : '/listings'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 32px', borderRadius: 12, background: 'var(--primary)', color: 'white', fontSize: '0.92rem', fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(14,116,144,0.2)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <ArrowRight size={16} />{lang === 'zh' ? '进入系统' : 'Enter System'}
+          </Link>
+        ) : (
+          <CtaButton>
+            <LogIn size={16} />{lang === 'zh' ? '免费注册' : 'Sign Up Free'}
+          </CtaButton>
+        )}
       </section>
 
       {/* ═══════════ FOOTER ═══════════ */}
