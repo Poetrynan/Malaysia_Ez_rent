@@ -374,7 +374,8 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 8;
+  // Grid: 10 per page (5 cols × 2 rows), List: 8 per page
+  const PAGE_SIZE = viewMode === 'grid' ? 10 : 8;
   const [selected, setSelected] = useState<UnitWithCommunity | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -990,9 +991,9 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
     return res;
   }, [units, search, typeFilter, maxRent, statusFilter, sort]);
 
-  // Pagination: 8 per page for guest mode, no limit otherwise
-  const totalPages = guestMode ? Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)) : 1;
-  const paginated = guestMode ? filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : filtered;
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [search, typeFilter, maxRent, statusFilter, sort]);
@@ -1134,7 +1135,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         </div>
       ) : (
         viewMode === 'grid' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: guestMode ? 'repeat(auto-fill, minmax(240px, 1fr))' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
             {paginated.map(u => (
               <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} guestMode={guestMode} />
             ))}
@@ -1149,7 +1150,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
       )}
 
       {/* ── Pagination (guest mode only) ── */}
-      {guestMode && totalPages > 1 && (
+      {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
             style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--glass-border)', background: page === 1 ? 'transparent' : 'var(--glass-bg)', color: page === 1 ? 'var(--text-muted)' : 'var(--text-h)', fontSize: '0.82rem', fontWeight: 600, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === 1 ? 0.5 : 1 }}>

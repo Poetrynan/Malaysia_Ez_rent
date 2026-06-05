@@ -114,6 +114,32 @@ export default function GuestPage() {
         <PropertyListings guestMode />
       </section>
 
+      {/* ═══════════ TRUST ═══════════ */}
+      <section style={{ padding: '64px 24px', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.04)) 50%, var(--bg-base) 100%)' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>
+            {lang === 'zh' ? '告别假房源，每一套都真实' : 'No Fake Listings. Every Property is Verified.'}
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 600, lineHeight: 1.7 }}>
+            {lang === 'zh' ? '其他平台上 30%–40% 是重复或虚假的"幽灵房源"。我们从源头杜绝这个问题。' : 'Up to 30-40% of listings on other platforms are duplicate or ghost listings. We eliminate this from the source.'}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+            {[
+              { icon: '🔒', title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
+              { icon: '📸', title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
+              { icon: '💰', title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' } },
+              { icon: '🏠', title: { zh: '房源实时更新', en: 'Real-Time Listings' }, desc: { zh: '中介更新房源后即时反映，价格、状态始终最新', en: 'Listings update instantly when agents make changes — always current' } },
+            ].map((item, i) => (
+              <div key={i} style={{ padding: '20px 16px', borderRadius: 14, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.8rem', marginBottom: 10 }}>{item.icon}</div>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? item.title.zh : item.title.en}</h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>{lang === 'zh' ? item.desc.zh : item.desc.en}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════ TESTIMONIALS ═══════════ */}
       <section style={{ padding: '64px 24px', maxWidth: 1100, margin: '0 auto' }}>
         <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 40px' }}>
