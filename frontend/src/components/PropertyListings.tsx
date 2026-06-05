@@ -985,8 +985,10 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
     if (statusFilter === 'available') res = res.filter(u => u.status === 'available');
     if (statusFilter === 'favorites') res = res.filter(u => favoriteUnitIds.has(u.id));
     res.sort((a, b) => sort === 'asc' ? a.rent - b.rent : b.rent - a.rent);
+    // Guest mode: show max 8 properties (2 rows of 4 in grid, 8 rows in list)
+    if (guestMode) res = res.slice(0, 8);
     return res;
-  }, [units, search, typeFilter, maxRent, statusFilter, sort]);
+  }, [units, search, typeFilter, maxRent, statusFilter, sort, guestMode]);
 
   const sameCommUnits = selected
     ? units.filter(u => u.community_id === selected.community_id && u.id !== selected.id)
