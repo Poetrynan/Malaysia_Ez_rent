@@ -2967,7 +2967,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           )}
 
           {/* Add unit */}
-          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none', maxWidth: 720 }}>
+          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none', maxWidth: 720, width: '100%', margin: '0 auto' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>

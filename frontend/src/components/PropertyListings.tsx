@@ -1008,7 +1008,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <h2 style={{ fontSize: '1.4rem', margin: 0 }}>{t('listingsTitle')}</h2>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '3px 11px', borderRadius: 999, whiteSpace: 'nowrap' }}>
           {filtered.length} {t('listingsSubtitle')}
         </span>
         <button
@@ -1063,7 +1063,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
           <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
             {(guestMode ? (['all', 'available'] as const) : (['all', 'available', 'favorites'] as const)).map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
-                style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: statusFilter === s ? 'var(--primary)' : 'transparent', color: statusFilter === s ? 'white' : 'var(--text-muted)' }}>
+                style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: statusFilter === s ? 'var(--gradient-primary)' : 'transparent', color: statusFilter === s ? 'white' : 'var(--text-muted)' }}>
                 {s === 'all' ? t('filterAll') : s === 'available' ? t('filterAvailable') : (lang === 'zh' ? '我的收藏' : 'Favorites')}
               </button>
             ))}
@@ -1080,7 +1080,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
             <button type="button" onClick={() => setViewMode('grid')}
               style={{
                 padding: '8px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: viewMode === 'grid' ? 'var(--primary)' : 'transparent',
+                background: viewMode === 'grid' ? 'var(--gradient-primary)' : 'transparent',
                 color: viewMode === 'grid' ? 'white' : 'var(--text-muted)',
                 transition: 'all 0.2s'
               }}
@@ -1091,7 +1091,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
             <button type="button" onClick={() => setViewMode('list')}
               style={{
                 padding: '8px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: viewMode === 'list' ? 'var(--primary)' : 'transparent',
+                background: viewMode === 'list' ? 'var(--gradient-primary)' : 'transparent',
                 color: viewMode === 'list' ? 'white' : 'var(--text-muted)',
                 transition: 'all 0.2s'
               }}
@@ -1105,19 +1105,19 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
 
       {/* ── Card/List Grid ── */}
       {listingsLoading ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
-          <Building2 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+        <div className="glass-card empty-state">
+          <div className="empty-state-icon"><RefreshCw size={28} style={{ animation: 'spin 1s linear infinite' }} /></div>
           <p>{lang === 'zh' ? '正在加载房源…' : 'Loading listings…'}</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
-          <Building2 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+        <div className="glass-card empty-state">
+          <div className="empty-state-icon"><Building2 size={32} /></div>
           {listingsError ? (
             <>
-              <p style={{ marginBottom: 12, color: 'var(--danger)' }}>
+              <p style={{ color: 'var(--danger)' }}>
                 {lang === 'zh' ? '加载房源失败' : 'Failed to load listings'}: {listingsError}
               </p>
-              <button type="button" className="btn btn-primary" onClick={() => loadListings()}>
+              <button type="button" className="btn btn-primary empty-cta" onClick={() => loadListings()}>
                 {lang === 'zh' ? '重试' : 'Retry'}
               </button>
             </>

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star, Search } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
@@ -267,6 +268,7 @@ export default function TenantPortal({
   onUnreadFeedbackCountChange?: (count: number) => void 
 }) {
   const { t, lang } = useApp();
+  const router = useRouter();
   const [interest, setInterest] = useState<any | null>(null);
   const [interestUnit, setInterestUnit] = useState<Unit | null>(null);
   const [interestCommunity, setInterestCommunity] = useState<Community | null>(null);
@@ -1415,7 +1417,7 @@ export default function TenantPortal({
               </div>
 
               {/* Section 1: Basic info — 2-column grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px', marginBottom: 20 }}>
+              <div className="grid-2" style={{ marginBottom: 20 }}>
                 <div>
                   <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                     {t('profileName')} <span style={{ color: 'var(--danger)' }}>*</span>
@@ -1457,7 +1459,7 @@ export default function TenantPortal({
                   <AlertCircle size={14} />
                   {t('profileIdHint')}
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+                <div className="grid-2">
                   <div>
                     <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
                     <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
@@ -1473,7 +1475,7 @@ export default function TenantPortal({
 
               {/* Section 3 & 4: Document + Student card upload (side by side) */}
               <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="grid-2" style={{ gap: 20 }}>
                   {/* Document upload */}
                   <div>
                     <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
@@ -1737,7 +1739,7 @@ export default function TenantPortal({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
               <div style={{ flex: 1 }} />
               <button onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackText.trim() || !profileComplete}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: (feedbackText.trim() && profileComplete) ? 'var(--primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: (feedbackText.trim() && profileComplete) ? 'pointer' : 'not-allowed' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: (feedbackText.trim() && profileComplete) ? 'var(--gradient-primary)' : 'var(--glass-border)', color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.82rem', cursor: (feedbackText.trim() && profileComplete) ? 'pointer' : 'not-allowed', boxShadow: (feedbackText.trim() && profileComplete) ? '0 4px 12px -2px var(--primary-glow)' : 'none', transition: 'all 0.2s' }}>
                 <Send size={13} /> {t('feedbackSubmit')}
               </button>
             </div>
@@ -1747,7 +1749,10 @@ export default function TenantPortal({
           {showMyFeedbacks && (
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
               {myFeedbacks.length === 0 ? (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>{t('feedbackNoItems')}</p>
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+                  <div className="empty-state-icon" style={{ width: 52, height: 52, borderRadius: 14, marginBottom: 12 }}><MessageSquare size={22} /></div>
+                  <p style={{ fontSize: '0.82rem', margin: 0 }}>{t('feedbackNoItems')}</p>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
                   {myFeedbacks.map(f => (
@@ -2075,9 +2080,9 @@ export default function TenantPortal({
                 })}
               </div>
             ) : (
-              <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+              <div className="glass-card empty-state">
+                <div className="empty-state-icon"><Clock size={30} /></div>
+                <p>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
               </div>
             )
           )}
@@ -2120,12 +2125,13 @@ export default function TenantPortal({
 
         {/* Current tab — no active lease, show empty state */}
         {leaseTab === 'current' && (
-          <div className="glass-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
-            <AlertCircle size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
-            <h3 style={{ marginBottom: 8 }}>{t('noLeaseTitle')}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', maxWidth: 380, margin: '0 auto' }}>
-              {t('noLeaseDesc')}
-            </p>
+          <div className="glass-card empty-state">
+            <div className="empty-state-icon"><Home size={32} /></div>
+            <h3>{t('noLeaseTitle')}</h3>
+            <p>{t('noLeaseDesc')}</p>
+            <button className="btn btn-primary empty-cta" onClick={() => router.push('/listings')}>
+              <Search size={15} />{lang === 'zh' ? '去找房源' : 'Browse Listings'}
+            </button>
           </div>
         )}
 
@@ -2229,9 +2235,9 @@ export default function TenantPortal({
               })}
             </div>
           ) : (
-            <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-              <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-              <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+            <div className="glass-card empty-state">
+              <div className="empty-state-icon"><Clock size={30} /></div>
+              <p>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
             </div>
           )
         )}
@@ -2618,9 +2624,9 @@ export default function TenantPortal({
                 })}
               </div>
             ) : (
-              <div className="glass-card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                <Clock size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-                <p style={{ margin: 0, fontSize: '0.88rem' }}>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
+              <div className="glass-card empty-state">
+                <div className="empty-state-icon"><Clock size={30} /></div>
+                <p>{lang === 'zh' ? '暂无历史租约' : 'No lease history yet'}</p>
               </div>
             )
           )}

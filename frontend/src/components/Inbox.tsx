@@ -748,8 +748,8 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
                   key={tab.id}
                   onClick={() => setFilterType(tab.id)}
                   style={{
-                    padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', border: '1px solid var(--glass-border)',
-                    background: filterType === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                    padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', border: '1px solid ' + (filterType === tab.id ? 'transparent' : 'var(--glass-border)'),
+                    background: filterType === tab.id ? 'var(--gradient-primary)' : 'var(--glass-bg)',
                     color: filterType === tab.id ? 'white' : 'var(--text-body)',
                     fontWeight: 600, cursor: 'pointer', transition: '0.2s'
                   }}
@@ -768,12 +768,9 @@ export default function Inbox({ adminRole, onUnreadCountChange }: InboxProps) {
                 <p style={{ fontSize: '0.82rem', margin: 0 }}>{lang === 'zh' ? '加载通知中...' : 'Loading alerts...'}</p>
               </div>
             ) : filteredNotifications.length === 0 ? (
-              <div style={{
-                border: '1px dashed var(--glass-border)', borderRadius: 12, padding: '48px 24px',
-                textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'
-              }}>
-                <MailOpen size={40} style={{ color: 'var(--text-muted)', opacity: 0.35, marginBottom: 12 }} />
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>{t.noMessages}</p>
+              <div className="empty-state" style={{ border: '1px dashed var(--glass-border)', borderRadius: 12, padding: '44px 24px' }}>
+                <div className="empty-state-icon"><MailOpen size={30} /></div>
+                <p>{t.noMessages}</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
