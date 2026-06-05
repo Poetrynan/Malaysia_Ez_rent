@@ -677,3 +677,178 @@ To keep tenants and agents informed of system events and admin reviews without l
 - `Inbox` triggers an `onUnreadCountChange(count)` callback.
 - The root layout `page.tsx` subscribes to this state and displays a floating red counter badge in both Student and Admin sidebars next to the "Inbox & Alerts" icon (`Mail`).
 
+
+---
+
+## 22) RAG Knowledge Base, Embedding Pipeline & Manus AI Chat Redesign (2026-06-05)
+
+### 22.1 RAG Knowledge Base (rental_knowledge_base)
+
+**Problem:** No real property listings in the database; Agent had no community/neighborhood data to recommend.
+
+**Solution:** Created a separate `rental_knowledge_base` table with 132 community profiles across 42 Malaysian universities, using pgvector for semantic search.
+
+**Table Schema:**
+```sql
+CREATE TABLE rental_knowledge_base (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    university_name VARCHAR(200) NOT NULL,
+    community_name VARCHAR(200) NOT NULL,
+    address TEXT NOT NULL,
+    state VARCHAR(100),
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    description TEXT,
+    property_type VARCHAR(100),
+    data JSONB NOT NULL,           -- Full rich data (price_range, pros, cons, ratings, etc.)
+    embedding VECTOR(1024),        -- bge-m3 semantic embedding
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Semantic Search Function:**
+```sql
+CREATE OR REPLACE FUNCTION match_knowledge_base (
+    query_embedding VECTOR(1024),
+    match_threshold FLOAT DEFAULT 0.2,
+    match_count INT DEFAULT 5,
+    filter_state VARCHAR DEFAULT NULL
+) RETURNS TABLE (id, university_name, community_name, address, state,
+    latitude, longitude, description, property_type, data, similarity)
+```
+
+**Data Source:** Merged from two JSON files:
+- `malaysia_rental_data_ultimate.json` (39 universities, 118 entries)
+- `malaysia_rental_data_expanded.json` (8 universities, 19 entries)
+- Merged result: `malaysia_rental_data_merged.json` (42 universities, 132 entries, 92 unique communities)
+- Cross-university duplicates are intentional (nearby universities share communities)
+
+### 22.2 Embedding Pipeline (bge-m3)
+
+**Model:** `BAAI/bge-m3` via SiliconFlow API (free tier)
+- Multilingual (100+ languages), 1024-dimensional vectors
+- API: OpenAI-compatible endpoint at `https://api.siliconflow.cn/v1`
+- Config: `AI_EMBEDDING_MODEL=BAAI/bge-m3` in `.env`
+
+**How Embeddings Work (step by step):**
+
+1. **Text Preparation:** For each community, concatenate `community_name + property_type + description` into a single text string.
+
+2. **Vector Generation:** Call SiliconFlow API:
+   ```python
+   from openai import OpenAI
+   client = OpenAI(api_key=EMBEDDING_API_KEY, base_url="https://api.siliconflow.cn/v1")
+   response = client.embeddings.create(input=[text], model="BAAI/bge-m3")
+   vector = response.data[0].embedding  # 1024-dimensional float array
+   ```
+
+3. **Storage:** Write the vector to the `embedding` column in Supabase via the service-role client.
+
+4. **Semantic Search:** When user asks a question, generate an embedding for the query text, then call `match_knowledge_base` RPC which computes cosine similarity:
+   ```sql
+   1 - (k.embedding <=> query_embedding) AS similarity
+   ```
+   Results are sorted by similarity and filtered by threshold (0.15+).
+
+**Import Script:** `backend/scripts/import_knowledge_base.py`
+- Reads merged JSON -> inserts into `rental_knowledge_base` -> generates embeddings for all entries
+- Run with: `cd backend && python scripts/import_knowledge_base.py`
+- Idempotent: clears old data first, regenerates everything
+
+**Sync Function:** `sync_kb_embeddings()` in `tools.py`
+- Called lazily when `search_knowledge_base` tool runs
+- Scans for entries where `embedding IS NULL` and generates missing ones
+
+### 22.3 Agent Tool: search_knowledge_base
+
+**File:** `backend/app/tools.py` -- `search_knowledge_base()`
+- Takes `semantic_query`, optional `state` filter, `max_results`
+- Generates query embedding -> calls `match_knowledge_base` RPC
+- Returns structured results with price ranges, ratings, pros/cons, transportation, facilities
+
+**Wired into Agent:** `backend/app/agent.py`
+- Added as tool definition with `search_knowledge_base` name
+- System prompt updated: Agent uses BOTH `search_knowledge_base` AND `get_web_realtime_info` together for housing questions
+- Knowledge base provides structured profiles; web search provides real-time market info
+
+### 22.4 External Search Unlock
+
+**Before:** Tavily queries had `-site:iproperty.com.my -site:propertyguru.com.my` etc. hardcoded to block external rental platforms.
+
+**After:** Removed all site exclusions. Agent CAN search any platform but MUST NEVER reveal the source URL/platform to the user.
+
+**Files Changed:**
+- `tools.py` line 369: removed `-site:` exclusions from Tavily query
+- `agent.py` system prompt: updated rules to allow external search, forbid revealing sources
+- `ai-architecture.md`, `README.md`, `FAQ.md`: updated documentation
+
+### 22.5 Manus AI-Style Chat Interface
+
+**Design Philosophy:** Single-page, full-process visibility chat (like Manus AI). No split panels -- everything flows top-to-bottom in one scroll.
+
+**Process Flow:**
+```
+User question -> Thinking steps (dot + text) -> Tool call cards (live updating)
+-> Tool results (checkmark) -> Final answer (divider + streaming text)
+-> Map/cards (after text completes)
+```
+
+**Component:** `frontend/src/components/AIChat.tsx` (complete rewrite)
+
+**Key Types:**
+```typescript
+interface ToolCard {
+  id: string; name: string; args: Record<string, any>;
+  status: 'running' | 'done' | 'error'; result?: any;
+}
+interface Message {
+  id: string; role: 'user' | 'assistant';
+  thoughts: string[];           // Thinking steps
+  tools: ToolCard[];            // Tool execution cards
+  content: string;              // Final answer text
+  uiComponents: { component: string; props: any }[];  // Map/cards
+  contentStarted: boolean;      // Whether text streaming has begun
+}
+```
+
+**SSE Event Flow:**
+- `thinking` -> append to `message.thoughts[]`
+- `tool_call` -> push new card to `toolBoardCards` with status='running'
+- `tool_result` -> update last card to status='done'
+- `text` -> append to `message.content`, set `textStarted=true`
+- `ui_component` -> push to `resultsPanel[]` (rendered after text)
+
+**Features:**
+- Welcome screen with 6 bilingual quick-start prompt cards
+- Tool cards with spinner -> checkmark animation, expandable raw output
+- Final answer separated by divider with label
+- Chat history stored in localStorage (view/delete/load sessions)
+- History button in top-right corner with slide-in panel
+- Centered title bar with LED status dot
+- Input box: floating pill shape, 640px max-width, centered
+
+### 22.6 Design System Integration (ui-ux-pro-max)
+
+Used the `.ui-ux-pro-max` plugin for design decisions:
+- **AI-Native UI** style for chat layout
+- **Bento Grid** for welcome cards (Apple-inspired, 16px radius, soft shadows)
+- **Real Estate teal palette** matching existing design system
+- **Soft shadows** instead of hard borders
+- **UX compliance:** Focus rings, aria-labels, readable font sizes
+
+### 22.7 Review System Fixes
+
+- **Admin delete RLS policy:** Added `"Admins can delete any review"` policy allowing super_admin to delete any review
+- **One lease = one review:** Added `UNIQUE(user_id, unit_id)` constraint + frontend check
+- **User name display:** ReviewSystem now joins `users.full_name` instead of showing truncated UUID
+- **AdminPanel field fix:** Changed `select('id, name')` to `select('id, full_name')` to match actual schema
+
+### 22.8 Error Handling Improvements
+
+Agent now shows friendly Chinese error messages instead of raw technical errors:
+- 429 (rate limit): request limit reached, try later
+- 503 (overloaded): service busy, retry in seconds
+- 401 (auth): config error, contact admin
+- Network: connection timeout, check network
+- Model changed from gemini-2.5-flash (20 req/day) to gemini-2.0-flash (1500 req/day)

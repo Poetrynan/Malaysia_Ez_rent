@@ -1847,3 +1847,131 @@ active → terminated（租客终止）→ completed（中介归档）
 | `LegalContent.tsx` | **新建** — 服务条款（10 章）+ 隐私政策（12 章），中英双语，PDPA 合规 |
 | `032_lease_unit_number.sql` | leases 加 unit_number；触发器清空 users.unit_number；expire_ended_leases() 函数 |
 
+
+## 五十、RAG 知识库 + Embedding 向量化 + Manus AI 聊天重设计（2026-06-05）
+
+### 50.1 RAG 知识库建设
+
+**背景：** 数据库没有真实房源，AI Agent 无法推荐小区。需要一个外部知识库来支撑 Agent 的推荐能力。
+
+**解决方案：** 新建 `rental_knowledge_base` 表，存储 42 所大学、132 个小区的详细资料（价格、评分、优缺点、交通、设施等），使用 pgvector 做语义搜索。
+
+**数据来源：**
+- `malaysia_rental_data_ultimate.json`（39 所大学，118 条记录）
+- `malaysia_rental_data_expanded.json`（8 所大学，19 条记录）
+- 合并去重后：`malaysia_rental_data_merged.json`（42 所大学，132 条，92 个独立小区）
+- 跨大学重复是有意义的（邻近大学共享小区）
+
+### 50.2 Embedding 向量化流程（bge-m3）
+
+**模型：** `BAAI/bge-m3`，通过 SiliconFlow API（免费）
+- 多语言支持（100+ 语言），1024 维向量
+- API：OpenAI 兼容接口 `https://api.siliconflow.cn/v1`
+
+**工作原理（逐步详解）：**
+
+1. **文本准备：** 将每个小区的 `community_name + property_type + description` 拼接成一段文本。
+
+2. **向量生成：** 调用 SiliconFlow API：
+   ```python
+   from openai import OpenAI
+   client = OpenAI(api_key=EMBEDDING_API_KEY, base_url="https://api.siliconflow.cn/v1")
+   response = client.embeddings.create(input=[text], model="BAAI/bge-m3")
+   vector = response.data[0].embedding  # 1024 维浮点数组
+   ```
+
+3. **存储：** 通过 Supabase service-role client 写入 `embedding` 列。
+
+4. **语义搜索：** 用户提问时，为问题生成 embedding，调用 `match_knowledge_base` RPC 计算余弦相似度：
+   ```sql
+   1 - (k.embedding <=> query_embedding) AS similarity
+   ```
+   结果按相似度排序，阈值 0.15+。
+
+**导入脚本：** `backend/scripts/import_knowledge_base.py`
+- 读取合并 JSON → 插入 `rental_knowledge_base` → 批量生成 embedding
+- 运行：`cd backend && python scripts/import_knowledge_base.py`
+- 幂等：先清空旧数据再重新生成
+
+**同步函数：** `sync_kb_embeddings()` in `tools.py`
+- `search_knowledge_base` 工具调用时懒加载
+- 扫描 `embedding IS NULL` 的记录并补生成
+
+### 50.3 Agent 工具：search_knowledge_base
+
+- 接受 `semantic_query`、可选 `state` 过滤、`max_results`
+- 生成查询 embedding → 调用 `match_knowledge_base` RPC
+- 返回结构化结果：价格范围、评分、优缺点、交通、设施
+
+**Agent 联动：** 系统提示词要求 Agent 同时使用 `search_knowledge_base`（知识库结构化数据）和 `get_web_realtime_info`（实时网络搜索），双引擎回答。
+
+### 50.4 外部搜索解锁
+
+**之前：** Tavily 查询硬编码 `-site:iproperty.com.my` 等排除规则，禁止搜索外部租房平台。
+
+**之后：** 移除所有站点排除。Agent 可以搜索任何平台，但**绝不能**向用户暴露来源 URL/平台名称。
+
+### 50.5 Manus AI 风格聊天界面
+
+**设计理念：** 单页面、全过程可视化的聊天（类似 Manus AI）。不用分栏，所有内容在一个滚动流里自上而下展开。
+
+**流程：** 用户提问 → 思考步 → 工具卡实时更新 → 工具完成 → 文字结论流式输出 → 地图/卡片
+
+**核心组件：** `AIChat.tsx` 完全重写
+
+**SSE 事件流：**
+- `thinking` → 追加到 `message.thoughts[]`
+- `tool_call` → 新建工具卡（状态=running）
+- `tool_result` → 更新工具卡状态为 done
+- `text` → 追加到 `message.content`
+- `ui_component` → 推入 `resultsPanel[]`（文字完成后渲染）
+
+**功能：**
+- 欢迎页 6 个双语快捷提示卡片
+- 工具卡：转圈 → 打勾动画，可展开查看原始输出
+- 最终回答用分隔线 + 标签区分
+- 聊天记录存 localStorage（查看/删除/加载）
+- 右上角历史记录按钮 + 滑出面板
+- 标题栏居中 + LED 状态灯
+
+### 50.6 设计系统集成（ui-ux-pro-max）
+
+使用 `.ui-ux-pro-max` 插件做设计决策：
+- **AI-Native UI** 风格
+- **Bento Grid** 欢迎卡片（Apple 风格，16px 圆角，柔和阴影）
+- **Real Estate teal 配色** 匹配现有设计系统
+- **UX 合规：** 焦点环、aria-label、可读字体大小
+
+### 50.7 评价系统修复
+
+- **管理员删除权限：** 新增 RLS 策略允许 super_admin 删除任何评价
+- **一人一评：** 唯一约束 `UNIQUE(user_id, unit_id)` + 前端检查
+- **用户姓名显示：** ReviewSystem 关联查 `users.full_name` 替代 UUID
+- **AdminPanel 字段修正：** `select('id, name')` → `select('id, full_name')`
+
+### 50.8 错误处理优化
+
+Agent 显示友好中文错误信息：
+- 429（额度用完）：请求达上限，请稍后再试
+- 503（模型繁忙）：当前繁忙，稍等重试
+- 401（认证失败）：配置异常，联系管理员
+- 网络超时：检查网络后重试
+- 模型从 gemini-2.5-flash（20 次/天）切换到 gemini-2.0-flash（1500 次/天）
+
+### 50.9 文件变更清单
+
+| 文件 | 改动 |
+|------|------|
+| `backend/.env` | `AI_EMBEDDING_MODEL` 改为 `BAAI/bge-m3`，`GEMINI_MODEL` 改为 `gemini-2.0-flash` |
+| `backend/app/tools.py` | 新增 `search_knowledge_base()`、`sync_kb_embeddings()`，移除 Tavily 排除规则 |
+| `backend/app/agent.py` | 新增 `search_knowledge_base` 工具定义 + 调度，更新系统提示词 |
+| `backend/scripts/import_knowledge_base.py` | **新建** — JSON 导入 + embedding 生成脚本 |
+| `frontend/src/components/AIChat.tsx` | **完全重写** — Manus AI 风格聊天 |
+| `frontend/src/app/globals.css` | 新增 `.manus-*` 系列样式 |
+| `supabase/schema.sql` | embedding 维度 1536 → 1024 |
+| `supabase/migrations/039_embedding_bge_m3.sql` | **新建** — embedding 维度迁移 |
+| `supabase/migrations/040_rental_knowledge_base.sql` | **新建** — 知识库表 + 搜索函数 |
+| `supabase/migrations/041_review_unique_per_user_unit.sql` | **新建** — 评价唯一约束 + 管理员删除权限 |
+| `RAG/malaysia_rental_data_merged.json` | **新建** — 合并后的知识库数据 |
+| `docs/technical-issues-log.md` | **新建** — 技术问题回顾 |
+| `docs/ai-architecture.md` | 新增第 22 节 |
