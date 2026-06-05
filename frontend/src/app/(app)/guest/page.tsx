@@ -32,6 +32,14 @@ const HELLO_WORDS = [
   { word: 'Selamat Datang', x: '78%', y: '80%', rotate: -3, size: '1rem', font: 'var(--font-display)', delay: 2.0 },
   { word: 'สวัสดี', x: '90%', y: '10%', rotate: 7, size: '1.3rem', font: 'sans-serif', delay: 1.3 },
   { word: 'Ciao', x: '12%', y: '92%', rotate: -10, size: '1.5rem', font: 'italic', delay: 1.7 },
+  { word: 'Hallo', x: '72%', y: '12%', rotate: -5, size: '1.3rem', font: 'sans-serif', delay: 1.15 },
+  { word: 'Xin chào', x: '18%', y: '45%', rotate: 6, size: '1.2rem', font: 'sans-serif', delay: 1.35 },
+  { word: 'Kamusta', x: '92%', y: '72%', rotate: -8, size: '1.1rem', font: 'sans-serif', delay: 1.55 },
+  { word: 'வணக்கம்', x: '6%', y: '68%', rotate: 4, size: '1.2rem', font: 'serif', delay: 1.45 },
+  { word: 'Γεια σας', x: '75%', y: '48%', rotate: -7, size: '1.1rem', font: 'serif', delay: 1.65 },
+  { word: 'Привет', x: '20%', y: '25%', rotate: 9, size: '1.3rem', font: 'sans-serif', delay: 1.75 },
+  { word: 'Olá', x: '68%', y: '88%', rotate: -3, size: '1.5rem', font: 'italic', delay: 1.85 },
+  { word: 'Habari', x: '95%', y: '55%', rotate: 5, size: '1.1rem', font: 'sans-serif', delay: 1.95 },
 ];
 
 function CtaButton({ children, large }: { children: React.ReactNode; large?: boolean }) {
