@@ -364,10 +364,10 @@ async def live_agent_stream(
 
         try:
             # Build extra kwargs for Groq reasoning support
-            extra_kwargs = {}
+            extra_body = {}
             if Config.AGENT_REASONING_EFFORT:
-                extra_kwargs["reasoning_effort"] = Config.AGENT_REASONING_EFFORT
-                extra_kwargs["include_reasoning"] = True
+                extra_body["reasoning_effort"] = Config.AGENT_REASONING_EFFORT
+                extra_body["include_reasoning"] = True
 
             response = openai_client.chat.completions.create(
                 model=Config.AGENT_MODEL,
@@ -375,7 +375,7 @@ async def live_agent_stream(
                 tools=tools_definitions,
                 tool_choice="auto",
                 timeout=90.0,
-                **extra_kwargs
+                extra_body=extra_body if extra_body else None
             )
         except Exception as e:
             err_str = str(e)
