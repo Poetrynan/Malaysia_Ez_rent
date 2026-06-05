@@ -383,6 +383,11 @@ async def live_agent_stream(
                 print(f"[Agent Error] {e}")
             return
 
+        # Safety check for empty/malformed response
+        if not response.choices:
+            yield sse_event({"type": "text", "delta": "⚠️ AI 返回了空响应，请重试。"})
+            break
+
         message = response.choices[0].message
         tool_calls = message.tool_calls
 
