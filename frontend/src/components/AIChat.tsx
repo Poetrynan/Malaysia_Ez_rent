@@ -307,6 +307,7 @@ export default function AIChat() {
             {m.role === 'assistant' && (
               <div className="manus-assistant">
                 <div className="manus-avatar assistant"><Bot size={14} /></div>
+                <div className="manus-assistant-bubble">
                 <div className="manus-assistant-content">
                   {/* Thinking steps */}
                   {m.thoughts.map((th, i) => (
@@ -390,6 +391,7 @@ export default function AIChat() {
                       ))}
                     </div>
                   )}
+                </div>
                 </div>
               </div>
             )}
