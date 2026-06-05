@@ -340,6 +340,7 @@ export default function AIChat() {
 
   /* ── Render ── */
   return (
+    <div className="manus-page">
     <div className="manus-layout">
       {/* Title bar */}
       <div className="manus-title-bar">
@@ -523,14 +524,15 @@ export default function AIChat() {
 
         <div ref={messagesEndRef} />
       </div>
+    </div>
 
-      {/* Input */}
+    {/* Input — fixed at page bottom, outside manus-layout */}
+    <div className="manus-input-area">
       <form onSubmit={handleSend} className="manus-input-bar">
         <textarea
           value={query}
           onChange={e => {
             setQuery(e.target.value);
-            // Auto-resize textarea
             e.target.style.height = 'auto';
             e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
           }}
@@ -549,8 +551,9 @@ export default function AIChat() {
         </button>
       </form>
       <div className="manus-disclaimer">此结果由 AI 生成，请仔细甄别</div>
+    </div>
 
-      {/* History overlay */}
+    {/* History overlay */}
       <div className={`manus-history-overlay ${historyOpen ? 'open' : ''}`} onClick={() => setHistoryOpen(false)} />
       <div className={`manus-history-panel ${historyOpen ? 'open' : ''}`}>
         <div className="manus-history-header">

@@ -370,12 +370,27 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* ── MANUS AI CHAT ── */
-.manus-layout {
+.manus-page {
   display: flex;
   flex-direction: column;
   height: calc(100% - 60px);
   width: 100%;
+}
+.manus-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   position: relative;
+}
+.manus-input-area {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 10% 4px;
 }
 .manus-scroll {
   flex: 1;
@@ -747,8 +762,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   border-radius: 14px;
   flex-shrink: 0;
   max-width: 700px;
-  margin: 0 auto 4px;
-  width: 80%;
+  width: 100%;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .manus-disclaimer {
