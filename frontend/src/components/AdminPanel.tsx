@@ -51,7 +51,7 @@ function formatLeasePropertyLabel(
   const parts: string[] = [];
   if (community?.name) parts.push(community.name);
   if (unit?.room_type) parts.push(`(${unit.room_type})`);
-  if (unitNumber) parts.push(`#${unitNumber}`);
+  if (unitNumber) parts.push(unitNumber);
   return parts.join(' · ') || unknownLabel;
 }
 
@@ -2666,12 +2666,13 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
   const fmtMonth = (d: string) => new Date(d).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
 
-  const tabStyle = (active: boolean) => ({
+  const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 20px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
     fontSize: '0.875rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-    background: active ? 'var(--primary)' : 'transparent',
-    color: active ? 'white' : 'var(--text-muted)',
     transition: 'all 0.2s',
+    ...(active
+      ? { background: 'var(--gradient-primary)', color: 'white', boxShadow: '0 4px 12px -2px var(--primary-glow)' }
+      : {}),
   });
 
   return (
@@ -2680,7 +2681,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       {/* Tab Bar and Mode Status Indicator */}
       {!hideTabBar && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', width: '100%' }}>
-          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
+          <div className="seg-tabs" style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content' }}>
             <button style={tabStyle(tab === 'dashboard')} onClick={() => setTab('dashboard')}>
               <BarChart3 size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '看板' : 'Dashboard'}
             </button>
@@ -2780,7 +2781,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       {/* ── PROPERTIES TAB ── */}
       {tab === 'properties' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6 }}>
+          <div className="seg-tabs" style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6 }}>
             <button
               style={tabStyle(propertiesView === 'editor')}
               onClick={() => setPropertiesView('editor')}
@@ -2803,29 +2804,15 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
 
           {/* Sub-selector / Segment Control inside Editor View */}
           {propertiesView === 'editor' && (
-            <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content', margin: '0 auto 10px' }}>
+            <div className="seg-tabs" style={{ display: 'flex', gap: 4, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 4, width: 'fit-content', margin: '0 auto 10px' }}>
               <button
-                style={{
-                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
-                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-                  background: editorSubTab === 'community' ? 'var(--primary)' : 'transparent',
-                  color: editorSubTab === 'community' ? 'white' : 'var(--text-muted)',
-                  transition: 'all 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 6
-                }}
+                style={{ ...tabStyle(editorSubTab === 'community'), padding: '6px 18px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 onClick={() => setEditorSubTab('community')}
               >
                 <Building2 size={14} />{lang === 'zh' ? '新增小区' : 'Add Community'}
               </button>
               <button
-                style={{
-                  padding: '6px 18px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
-                  fontSize: '0.82rem', cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-                  background: editorSubTab === 'unit' ? 'var(--primary)' : 'transparent',
-                  color: editorSubTab === 'unit' ? 'white' : 'var(--text-muted)',
-                  transition: 'all 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 6
-                }}
+                style={{ ...tabStyle(editorSubTab === 'unit'), padding: '6px 18px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 onClick={() => setEditorSubTab('unit')}
               >
                 <Home size={14} />{lang === 'zh' ? '新增房间' : 'Add Room Unit'}
@@ -2980,7 +2967,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           )}
 
           {/* Add unit */}
-          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none' }}>
+          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none', maxWidth: 720 }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>
@@ -3060,19 +3047,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{lang === 'zh' ? '基本信息' : 'Basic Info'}</span>
             </div>
 
-            <div className="form-group">
-              <label>{t('selectCommunity')} <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <select
-                className="form-select"
-                value={unitForm.community_id}
-                onChange={e => { setUnitForm(f => ({ ...f, community_id: e.target.value })); clearError('community_id'); }}
-                style={fieldErrors.community_id ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined}
-              >
-                <option value="">{t('selectCommunity')}</option>
-                {communities.map(c => <option key={c.id} value={c.id}>{getCommunityOptionLabel(c)}</option>)}
-              </select>
-            </div>
             <div className="form-row">
+              <div className="form-group">
+                <label>{t('selectCommunity')} <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <select
+                  className="form-select"
+                  value={unitForm.community_id}
+                  onChange={e => { setUnitForm(f => ({ ...f, community_id: e.target.value })); clearError('community_id'); }}
+                  style={fieldErrors.community_id ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : undefined}
+                >
+                  <option value="">{t('selectCommunity')}</option>
+                  {communities.map(c => <option key={c.id} value={c.id}>{getCommunityOptionLabel(c)}</option>)}
+                </select>
+              </div>
               <div className="form-group"><label>{t('roomType')}</label>
                 <select className="form-select" value={unitForm.room_type} onChange={e => setUnitForm(f => ({ ...f, room_type: e.target.value }))}>
                   {ROOM_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
@@ -3102,6 +3089,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 value={unitForm.available_from}
                 onChange={e => setUnitForm(f => ({ ...f, available_from: e.target.value }))}
                 placeholder={lang === 'zh' ? '选择可入住日期' : 'Select move-in date'}
+                style={{ maxWidth: 260 }}
               />
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                 {lang === 'zh' ? '该房源从哪天开始可以入住' : 'When is this unit available for move-in'}
@@ -3356,7 +3344,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       {/* ── LEASES TAB ── */}
       {tab === 'leases' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6, width: 'fit-content' }}>
+          <div className="seg-tabs" style={{ display: 'flex', gap: 8, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: 6, width: 'fit-content' }}>
             <button style={tabStyle(leasesView === 'interests')} onClick={() => setLeasesView('interests')}>
               {t('leaseSubtabInterests')}
               {visibleInterests.filter(i => i.status === 'interested').length > 0 && (
@@ -5205,7 +5193,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {t('reviewMonth')}：{fmtMonth(reviewingPayment.billing_month)}
-              {(() => { const l = visibleLeases.find(x => x.id === reviewingPayment.lease_id); return l?.unit_number ? <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '1px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600 }}>{lang === 'zh' ? '单元' : 'Unit'} #{l.unit_number}</span> : null; })()}
+              {(() => { const l = visibleLeases.find(x => x.id === reviewingPayment.lease_id); return l?.unit_number ? <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '1px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600 }}>{lang === 'zh' ? '单元' : 'Unit'} {l.unit_number}</span> : null; })()}
               <span className="status-badge" style={{
                 fontSize: '0.7rem',
                 padding: '2px 8px',

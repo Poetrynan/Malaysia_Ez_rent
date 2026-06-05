@@ -1900,7 +1900,7 @@ export default function TenantPortal({
                 style={{
                   padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
                   border: '1px solid var(--glass-border)',
-                  background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                  background: leaseTab === tab.id ? 'var(--gradient-primary)' : 'var(--glass-bg)',
                   color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
                   fontWeight: 600, cursor: 'pointer', transition: '0.2s',
                   fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
@@ -2038,7 +2038,7 @@ export default function TenantPortal({
                             </span>
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
+                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} ${h.unit_number}` : ''}
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                             {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
@@ -2104,7 +2104,7 @@ export default function TenantPortal({
               style={{
                 padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
                 border: '1px solid var(--glass-border)',
-                background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                background: leaseTab === tab.id ? 'var(--gradient-primary)' : 'var(--glass-bg)',
                 color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
                 fontWeight: 600, cursor: 'pointer', transition: '0.2s',
                 fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
@@ -2176,7 +2176,7 @@ export default function TenantPortal({
                         </div>
                         {/* Unit Number + 日期 */}
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number} · ` : ''}
+                          {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} ${h.unit_number} · ` : ''}
                           {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
                         </div>
                         {/* Termination reason */}
@@ -2276,7 +2276,7 @@ export default function TenantPortal({
                 style={{
                   padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem',
                   border: '1px solid var(--glass-border)',
-                  background: leaseTab === tab.id ? 'var(--primary)' : 'var(--glass-bg)',
+                  background: leaseTab === tab.id ? 'var(--gradient-primary)' : 'var(--glass-bg)',
                   color: leaseTab === tab.id ? 'white' : 'var(--text-body)',
                   fontWeight: 600, cursor: 'pointer', transition: '0.2s',
                   fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
@@ -2589,7 +2589,7 @@ export default function TenantPortal({
                             </span>
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} #${h.unit_number}` : ''}
+                            {h.unit_number ? `${lang === 'zh' ? '单元' : 'Unit'} ${h.unit_number}` : ''}
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                             {h.start_date} → {h.end_date} · {lang === 'zh' ? `${leaseDuration}个月` : `${leaseDuration} months`}
