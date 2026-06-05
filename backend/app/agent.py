@@ -570,6 +570,13 @@ async def live_agent_stream(
                 "content": json.dumps(result_data, ensure_ascii=False)
             })
 
+    # Fallback: loop ended without emitting text (all iterations had tool calls)
+    # Emit pending UI components and a default message
+    for comp in pending_ui_components:
+        yield sse_event(comp)
+        await asyncio.sleep(0.3)
+    yield sse_event({"type": "text", "delta": "以上是根据搜索结果整理的信息，希望对你有帮助！如有其他问题，随时问我 😊"})
+
 
 
 

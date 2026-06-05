@@ -305,20 +305,25 @@ export default function AIChat() {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
+      const processBuf = (remaining: boolean) => {
+        const lines = buf.split('\n');
+        buf = remaining ? (lines.pop() || '') : '';
+        for (const l of lines) {
+          if (l.startsWith('data: ')) {
+            try { updateMsg(aid, JSON.parse(l.slice(6))); } catch {}
+          }
+        }
+      };
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         if (value) {
           buf += dec.decode(value, { stream: true });
-          const lines = buf.split('\n');
-          buf = lines.pop() || '';
-          for (const l of lines) {
-            if (l.startsWith('data: ')) {
-              try { updateMsg(aid, JSON.parse(l.slice(6))); } catch {}
-            }
-          }
+          processBuf(true);
         }
       }
+      // Flush remaining buffer after stream ends
+      if (buf.trim()) processBuf(false);
     } catch (err: any) {
       if (err.name === 'AbortError') {
         // User stopped — keep what was already generated
