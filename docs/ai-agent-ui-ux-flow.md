@@ -76,7 +76,7 @@ semantic_query: "Sunway 附近小区"
                                     ↓
                             agent_stream_router()
                                     ↓
-                            live_agent_stream()  ← ReAct Loop (最多3轮)
+                            live_agent_stream()  ← ReAct Loop (最多6轮)
                                     ↓
                             SSE events (data: {...}\n\n)
                                     ↓
@@ -123,21 +123,25 @@ def sse_event(data: Dict[str, Any]) -> str:
 | `text` | 流式文字 | `{type: "text", delta: "单个字符"}` |
 | `ui_component` | 富UI组件 | `{type: "ui_component", component: "MapAndCard", props: {...}}` |
 
-#### ReAct 循环（最多 3 轮）
+#### ReAct 循环（最多 6 轮）
 
 ```python
-MAX_LOOPS = 3
+MAX_LOOPS = 6
+MAX_COMPLETION_TOKENS = 3072
+reasoning_effort = assess_reasoning_effort(query)  # low / medium / high
+
 for loop_idx in range(MAX_LOOPS):
     # 1. 发送 thinking 事件
     yield sse_event({"type": "thinking", "step": step_labels[loop_idx]})
 
-    # 2. 调用 LLM（带 tools）
+    # 2. 调用 LLM（带 tools，动态推理强度 + 更大输出上限）
     response = openai_client.chat.completions.create(
         model=Config.AGENT_MODEL,
         messages=messages,
         tools=tools_definitions,
         tool_choice="auto",
-        extra_body={"reasoning_effort": "medium", "include_reasoning": True}
+        max_completion_tokens=MAX_COMPLETION_TOKENS,
+        extra_body={"reasoning_effort": reasoning_effort, "include_reasoning": True}
     )
 
     # 3. 如果有推理过程，发送 thinking 事件
@@ -145,13 +149,11 @@ for loop_idx in range(MAX_LOOPS):
     if reasoning:
         yield sse_event({"type": "thinking", "label": "🧠 模型推理过程", "content": reasoning[:1000]})
 
-    # 4. 如果没有 tool_calls → 输出最终答案
+    # 4. 如果没有 tool_calls → 输出最终答案，break（卡片在循环后统一发送）
     if not tool_calls:
         for char in content:
             yield sse_event({"type": "text", "delta": char})
-        # 答案输出完后才发送 UI 组件（延迟策略）
-        for comp in pending_ui_components:
-            yield sse_event(comp)
+        final_text_emitted = bool(content.strip())
         break
 
     # 5. 如果有 tool_calls → 执行工具，收集结果
@@ -159,16 +161,31 @@ for loop_idx in range(MAX_LOOPS):
         yield sse_event({"type": "tool_call", "tool_name": name, "args": args})
         result = execute_tool(name, args)
         yield sse_event({"type": "tool_result", "tool_name": name, "result": result})
-        # 收集 UI 组件到 pending 列表（不立即发送）
-        if has_ui: pending_ui_components.append(ui_event)
+        # 知识库地图卡片延后决策（kb_map_candidate）；通勤卡片立即入 pending
+        # 喂给模型的工具结果先经 compact_tool_result() 压缩关键字段
 ```
 
-**关键设计：UI 组件延迟发送**
+**关键设计 1：文字先于地图**
 
-`pending_ui_components` 列表在工具执行时收集，但只在**最终文字答案输出完毕后**才发送。这确保了：
-- 用户先看到文字回答
+所有 UI 组件（`pending_ui_components` + 延后的 `kb_map_candidate`）在**循环结束且文字已输出后**统一发送：
+- 用户先看到文字分析/推荐
 - 然后才看到地图/卡片组件
-- 避免答案还没出来就先渲染地图
+- 避免"只有卡片、没有分析"的糟糕体验
+
+**关键设计 2：循环耗尽时的强制收尾合成**
+
+若 6 轮全是 `tool_calls`、模型从未写出正文，不再发送废话兜底句，而是追加一次**不带 tools 的强制合成调用**（`tool_choice` 无 tools），让模型必须根据已收集的工具结果写出中文分析与推荐。
+
+**关键设计 3：动态推理强度**
+
+`assess_reasoning_effort(query)` 按问题难度选择 Groq `reasoning_effort`：
+- 决策/对比题（"还是、哪个、住哪、推荐…"）→ `high`
+- 汇率/节假日等查表题 → `low`
+- 其余 → 配置默认 `medium`
+
+**关键设计 4：工具结果智能压缩**
+
+`compact_tool_result()` 在写入 messages 前只保留高信号字段（价格、评分、安全、距离、优缺点等），避免原先 `MAX_RESULT_CHARS=2000` 硬截断把整段小区信息从中间切断。地图卡片仍使用工具返回的**完整原始数据**构建。
 
 #### 可用工具（7 个）
 
@@ -698,6 +715,57 @@ setMessages(prev => [...prev,
 - 将知识库的小区信息（名称、价格、评分、描述）合并到通勤卡片的 props 中
 - 前端 MapAndCard 组件已有优先级逻辑：`isCommuteMode` > `isKBMode` > 房源模式
 - 最终效果：一张卡片同时展示通勤路线 + 小区信息，只调用一次 Google Maps API
+
+---
+
+### Bug 5：复杂决策题只甩地图卡片、无分析（2026-06-05 修复）
+
+**现象：** 用户问"我想住 GEO，但学校在 UM，还可能去 Monash 交换，住哪里最好？"，AI 只回复"以上是根据搜索结果整理的信息，希望对你有帮助！"，底下堆了两张互不相关的地图卡片（GEO 无出发地、Pantai Hillpark 有目的地），没有任何对比分析或推荐。
+
+**根因（三重）：**
+
+1. **循环耗尽无正文：** 复杂问题触发多轮工具调用（知识库 + 通勤 + 外部搜索），6 轮全用在 `tool_calls` 上，模型从未进入"写答案"分支。旧代码在循环结束后只发一句写死的废话兜底，**模型根本没机会分析**。
+2. **两张各说各话的卡片：** `search_knowledge_base` 的地图卡片在 `calculate_commute` 之前就被加入 `pending_ui_components`（`has_commute` 尚未置位），导致知识库单点卡 + 通勤路线卡同时出现。
+3. **跨小区信息错贴：** 知识库的 GEO 价格/评分被合并进 Pantai Hillpark 的通勤卡片（未校验 origin 名称是否一致）。
+
+**修复：**
+
+- 循环结束且 `final_text_emitted=false` 时，追加**强制收尾合成**（不传 `tools`，`max_completion_tokens=3072`），模型必须写出对比分析与明确推荐。
+- 知识库地图改为 `kb_map_candidate` **延后决策**，循环结束后仅当 `has_commute=false` 才追加。
+- 合并通勤卡与知识库信息时，校验 `community_name` 与 `origin_name` 是否匹配。
+- 系统 prompt 新增 `## DECISION / TRADE-OFF QUESTIONS`：决策题必须先查再写分析，禁止只甩卡片或废话兜底。
+
+---
+
+### Bug 6：工具结果硬截断导致模型"看不全"（2026-06-05 修复）
+
+**现象：** 多小区对比时，模型回答片面或遗漏选项，像"没查到"一样。
+
+**根因：** 工具返回的完整 JSON 在写入 messages 前被 `MAX_RESULT_CHARS=2000` 从中间硬切，第二个/第三个小区的数据常被截断丢失。同时 Groq 免费层 **8K TPM** 速率限制迫使代码保守截断。
+
+**修复：**
+
+- 新增 `compact_tool_result()`：按工具类型只保留关键字段（社区名、价格、评分、安全、距离、前 3 优点、前 2 缺点等），**信息密度更高、不易从中间切断**。
+- 安全网上限放宽至 3500 字符（仅兜底）。
+- 地图/UI 组件仍用完整 `result_data`，不受压缩影响。
+
+---
+
+### Bug 7：输出 token 上限过小，分析写到一半被掐（2026-06-05 修复）
+
+**现象：** 有分析意图但正文很短或戛然而止。
+
+**根因：** 未设置 `max_completion_tokens`，Groq 默认 **1024**；gpt-oss 的推理 token 也计入此上限，复杂题推理占满后留给正文的所剩无几。
+
+**修复：** 主循环与强制收尾合成均设 `max_completion_tokens=3072`。
+
+---
+
+### Bug 8：所有问题都用 medium 推理，复杂题思考不足（2026-06-05 修复）
+
+**现象：** 多约束决策题（住 A 但学校 B、还可能去 C）推理深度不够。
+
+**修复：** `assess_reasoning_effort(query)` 动态选择 `low` / `medium` / `high`；决策/对比类关键词命中 `high`，汇率/节假日命中 `low`。
 
 ---
 

@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-06-04 (UTC+8)
+Last updated: 2026-06-05 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -173,24 +173,29 @@ Malaysia_Ez_rent/
 ### Agent orchestration
 
 - `backend/app/agent.py`
-  - ReAct-like loop with tool calls.
-  - Accepts an optional `history` conversation list in `live_agent_stream` and `agent_stream_router` to restore dialogue context for OpenAI/Gemini, enabling context-aware follow-up reasoning.
-  - Emits SSE events (`thinking`, `tool_call`, `tool_result`, `text`, `ui_component`). Emits `ui_component` event (`MapAndCard`) upon successful commute tool execution.
-  - **Stateless Operation**: Removed all database insert logic logging conversation traces to database tables (`agent_conversations` is deprecated/removed). Context is passed strictly in-memory over HTTP request lifetimes.
+  - ReAct-like loop with tool calls (`MAX_LOOPS=6`).
+  - Accepts an optional `history` conversation list in `live_agent_stream` and `agent_stream_router` to restore dialogue context, enabling context-aware follow-up reasoning.
+  - Emits SSE events (`thinking`, `tool_call`, `tool_result`, `text`, `ui_component`). Map/cards deferred until after final text (or forced synthesis).
+  - **Forced synthesis fallback**: if the loop exhausts on tool calls without emitting text, one final LLM call **without tools** synthesizes a Chinese answer from all tool results (decision questions must compare options and give a recommendation).
+  - **Dynamic reasoning**: `assess_reasoning_effort(query)` → Groq `reasoning_effort` `low` / `medium` / `high` by query type.
+  - **Tool result compaction**: `compact_tool_result()` strips verbose JSON to key fields before appending to messages (UI cards still use full tool output).
+  - **Output budget**: `max_completion_tokens=3072` on main loop and synthesis (Groq default 1024 was too small once reasoning tokens are counted).
+  - **Stateless Operation**: No `agent_conversations` DB writes; context is in-memory per HTTP request only.
+  - **Current model (env):** `openai/gpt-oss-120b` on Groq (`AGENT_API_BASE=https://api.groq.com/openai/v1`). Free-tier **8K TPM** is the practical bottleneck — not model size (131K context window).
 
-### Tooling (Live Agent: 4 tools)
+### Tooling (Live Agent: 7 tools)
 
 - `backend/app/tools.py`
   - `calculate_commute`: Google Maps Geocoding + Distance Matrix. Accepts ANY free-text address (no hardcoded lists). LLM resolves abbreviations before calling. Returns origin/destination coordinates + driving/transit/walk durations. Returns structured error when geocoding fails.
-  - `get_web_realtime_info`: Tavily for policy/transit/general facts — **NOT for property listings**. Query excludes iProperty, PropertyGuru, SpeedHome, Mudah, iBilik, etc.
+  - `get_web_realtime_info`: Tavily for policy/transit/general facts — **NOT for property listings**.
   - `convert_currency_frankfurter`, `get_malaysia_holidays`.
+  - `search_knowledge_base` — RAG knowledge base search (174 communities near 52 universities). Returns rich community profiles (price, ratings, pros/cons, transportation). Supports `show_map` / `map_community_name` for conditional map cards.
+  - `search_external_listings` — Tavily advanced search for live listings; Agent must NEVER reveal source platform names or URLs to users.
+  - `search_internal_db` — internal pgvector room search (exposed to Live Agent; room browsing UI remains **Property Listings tab**).
 
 **Not exposed to Live Agent (by design):**
 
-- `search_internal_db` — legacy/Mock helper only; room browsing is **Property Listings tab**, not AI chat.
 - `check_my_own_rental_status` — lease/bills are **Student Portal tab**, not AI chat.
-- `search_knowledge_base` — RAG knowledge base search (130+ communities near 42 universities). Returns rich community profiles.
-- `get_web_realtime_info` — Tavily web search. CAN search any platform (iProperty, PropertyGuru, etc.) to extract rental info, but must NEVER reveal the source to the user.
 
 ### Media compression (frontend)
 
@@ -881,15 +886,13 @@ The frontend SSE parser had a bug: when `reader.read()` returned `done=true`, re
 
 **Fix:** After the read loop ends, flush remaining buffer with `processBuf(false)`.
 
-### 23.5 Backend Loop Fallback
+### 23.5 Backend Loop Fallback (superseded by §24.1)
 
-The ReAct loop (`MAX_LOOPS=5`) could exhaust all iterations on tool calls without ever emitting text or UI components.
-
-**Fix:** After the loop ends, emit `pending_ui_components` + a default fallback message.
+The ReAct loop could exhaust all iterations on tool calls without ever emitting text. The original fix emitted a generic Chinese filler sentence — **replaced** in §24.1 by forced synthesis.
 
 ### 23.6 MAX_LOOPS Increase
 
-Increased from 3 to 5 to support complex multi-tool queries (knowledge base + external search + commute).
+Increased from 3 → 5 → **6** to support complex multi-tool queries (knowledge base + external search + commute).
 
 ### 23.7 Platform Name Sanitization
 
@@ -910,3 +913,77 @@ All user-facing text now uses generic Chinese descriptions instead of internal p
 - User avatar moved from right to left (same side as AI avatar)
 - Thinking steps and tool card titles: `white-space: nowrap` to prevent wrapping
 - Input bar: fixed to page bottom via flex layout (`flex: 1; min-height: 0`)
+
+---
+
+## 24. Agent Intelligence & Decision-Query Fixes (2026-06-05)
+
+### 24.1 Forced synthesis when loop exhausts (critical)
+
+**Problem:** Multi-constraint housing decisions (e.g. "住 GEO 但学校 UM，还可能 Monash 交换") triggered 5–6 consecutive tool-call rounds. The model never returned `tool_calls=none`, so no analysis was streamed. The old fallback was a hardcoded line: "以上是根据搜索结果整理的信息…" plus map cards — users saw cards with zero reasoning.
+
+**Fix:**
+
+1. Track `final_text_emitted` across the loop.
+2. If false after the loop, append a system instruction and call the LLM **once more without `tools`** (`max_completion_tokens=3072`).
+3. Model must write Chinese comparison + clear recommendation; generic filler is forbidden in prompt.
+4. Emit `pending_ui_components` and deferred `kb_map_candidate` **after** synthesis text.
+
+### 24.2 Deferred KB map card + commute dedup
+
+**Problem:** `search_knowledge_base` appended a static community pin card before `calculate_commute` set `has_commute=true`, yielding two unrelated MapAndCards (e.g. GEO pin + Pantai Hillpark route).
+
+**Fix:**
+
+- Store KB map props in `kb_map_candidate` during the loop; append to `pending_ui_components` only if `not has_commute` after the loop.
+- When merging KB metadata into a commute card, require `community_name` ≈ `origin_name` (substring match); prevents GEO ratings on a Pantai Hillpark route.
+
+### 24.3 Decision / trade-off system prompt
+
+New `## DECISION / TRADE-OFF QUESTIONS` block in system prompt:
+
+- Search and commute first, then **always** write head-to-head analysis (price, commute to each campus, safety, trade-offs).
+- One primary recommendation + optional backup.
+- Include actual commute numbers from tool results.
+- Cards supplement analysis; never replace it.
+
+### 24.4 Dynamic `reasoning_effort`
+
+`assess_reasoning_effort(query)`:
+
+| Effort | Trigger examples |
+|--------|------------------|
+| `high` | 还是、哪个、对比、纠结、住哪、推荐、权衡… |
+| `low` | 汇率、换算、节假日、holiday… |
+| `medium` | default (`AGENT_REASONING_EFFORT` env) |
+
+Applied to main ReAct calls and forced synthesis via Groq `extra_body`.
+
+### 24.5 Tool result compaction (token budget)
+
+**Problem:** Blind `result_json[:2000]` truncation dropped entire communities mid-JSON under Groq free-tier **8K TPM**.
+
+**Fix:** `compact_tool_result(tool_name, result)` before appending to `messages`:
+
+| Tool | Kept fields |
+|------|-------------|
+| `search_knowledge_base` | community, university, price, rating, safety, distance, top pros/cons, transport snippet |
+| `search_external_listings` | answer_summary (600 chars), listing title/price/snippet |
+| `search_internal_db` | community, room_type, rent, short description |
+| `get_malaysia_holidays` | date + name (15 rows) |
+| `get_web_realtime_info` | first 1200 chars |
+
+Safety cap: 3500 chars after compaction. **UI MapAndCard still uses full `result_data`.**
+
+### 24.6 Output token ceiling
+
+`max_completion_tokens=3072` on main loop and synthesis. Groq default 1024 includes gpt-oss **reasoning tokens**, leaving too little room for long Chinese answers.
+
+### 24.7 Model vs limits (operational note)
+
+| Capability | Value |
+|------------|-------|
+| Model | `openai/gpt-oss-120b` (Groq) |
+| Context window | 131,072 tokens |
+| Practical limit (free tier) | **8K TPM** — drives compaction and loop cap |
+| Upgrade path | Groq paid tier → higher TPM, less truncation needed |

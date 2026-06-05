@@ -18,6 +18,98 @@ def sse_event(data: Dict[str, Any]) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+# Decision/comparison queries deserve deeper reasoning; trivial lookups don't.
+# We pick the effort per-query so we don't waste the tight Groq token budget.
+_EFFORT_HIGH_KW = [
+    "还是", "哪个", "对比", "比较", "纠结", "住哪", "该住", "最好住", "值不值",
+    "权衡", "更好", "选哪", "应该住", "推荐", "划算", " vs ", "区别", "哪家",
+]
+_EFFORT_LOW_KW = [
+    "汇率", "换算", "多少人民币", "多少钱", "节假日", "假期", "放假",
+    "holiday", "currency", "exchange rate",
+]
+
+
+def assess_reasoning_effort(query: str) -> str:
+    """Return 'low' | 'medium' | 'high' based on how much thinking the query needs."""
+    q = (query or "").lower()
+    if any(kw in q for kw in _EFFORT_HIGH_KW):
+        return "high"
+    if any(kw in q for kw in _EFFORT_LOW_KW):
+        return "low"
+    return (Config.AGENT_REASONING_EFFORT or "medium").strip()
+
+
+def compact_tool_result(tool_name: str, result: Any) -> Any:
+    """Reduce a tool result to high-signal fields only.
+
+    The model has a tiny token budget on Groq's free tier. Dumping the full verbose
+    JSON (and then hard-truncating it) used to drop whole communities mid-entry. Here
+    we keep the fields the model actually needs to reason, so several options survive.
+    Note: UI cards are built from the FULL result elsewhere — this only trims what the
+    model reads.
+    """
+    try:
+        if tool_name == "search_knowledge_base" and isinstance(result, list):
+            compact = []
+            for it in result[:5]:
+                tr = it.get("tenant_rating") or {}
+                pr = it.get("price_range") or {}
+                trans = it.get("transportation")
+                if isinstance(trans, (dict, list)):
+                    trans = json.dumps(trans, ensure_ascii=False)[:200]
+                elif isinstance(trans, str):
+                    trans = trans[:200]
+                compact.append({
+                    "community": it.get("community_name"),
+                    "university": it.get("university_name"),
+                    "state": it.get("state"),
+                    "price": (f"RM{pr.get('min')}-{pr.get('max')}/{pr.get('unit', 'mo')}" if pr else None),
+                    "rating": tr.get("overall"),
+                    "safety": tr.get("safety"),
+                    "distance_to_university": it.get("distance_to_university"),
+                    "room_types": it.get("room_types_available"),
+                    "pros": (it.get("pros") or [])[:3],
+                    "cons": (it.get("cons") or [])[:2],
+                    "transportation": trans,
+                })
+            return compact
+        if tool_name == "search_external_listings" and isinstance(result, dict):
+            return {
+                "success": result.get("success"),
+                "answer_summary": (result.get("answer_summary") or "")[:600],
+                "listings": [
+                    {
+                        "title": (l.get("title") or "")[:80],
+                        "price_myr": l.get("price_myr"),
+                        "snippet": (l.get("snippet") or "")[:200],
+                    } for l in (result.get("listings") or [])[:5]
+                ],
+            }
+        if tool_name == "search_internal_db" and isinstance(result, list):
+            return [
+                {
+                    "community": it.get("community_name"),
+                    "room_type": it.get("room_type"),
+                    "rent": it.get("rent"),
+                    "status": it.get("status"),
+                    "description": (it.get("description") or "")[:160],
+                } for it in result[:5]
+            ]
+        if tool_name == "get_malaysia_holidays" and isinstance(result, dict):
+            hs = result.get("holidays") or []
+            return {
+                "year": result.get("year"),
+                "total": result.get("total_holidays") or len(hs),
+                "holidays": [{"date": h.get("date"), "name": h.get("english_name")} for h in hs[:15]],
+            }
+        if tool_name == "get_web_realtime_info" and isinstance(result, str):
+            return result[:1200]
+    except Exception as e:
+        print(f"[compact_tool_result] {tool_name}: {e}")
+    return result
+
+
 async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, None]:
     """
     Simulates a high-fidelity ReAct agent thought loop and tool execution.
@@ -326,6 +418,17 @@ async def live_agent_stream(
                 "- Search the knowledge base with relevant filters\n"
                 "- Rank results by the requested criteria (price → low to high, rating → high to low)\n"
                 "- Present top 3-5 options with clear reasoning\n\n"
+                "## DECISION / TRADE-OFF QUESTIONS (VERY IMPORTANT)\n"
+                "When the user is torn between options or has competing constraints (e.g. '我想住A，但学校在B，"
+                "还可能去C交换，住哪里最好？'):\n"
+                "1. Do your searches/commute calculations FIRST.\n"
+                "2. Then ALWAYS write a real analysis: compare the options head-to-head (commute to EACH relevant "
+                "campus, price, safety, trade-offs), state the key tension, and give ONE clear recommendation with "
+                "the reason. Offer a backup option if it's a close call.\n"
+                "3. If you computed a commute, mention the actual numbers in your text.\n"
+                "- NEVER answer a decision question with only map cards and no written analysis. Cards SUPPLEMENT "
+                "your analysis, they never replace it.\n"
+                "- NEVER end with empty filler like '以上是根据搜索结果整理的信息，希望对你有帮助'. Always give substance.\n\n"
                 "## TOOL RULES\n"
                 "- For commute: resolve 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers'. Ask for address if too vague.\n"
                 "- NEVER reveal how you get data or mention any backend tools/services. You are the expert, not a tool wrapper.\n"
@@ -362,7 +465,11 @@ async def live_agent_stream(
     pending_ui_components = []  # Collect map data, emit AFTER text is done
     has_commute = False  # Track if calculate_commute was called (skip duplicate map card)
     kb_community_info = None  # Store knowledge base result for merging into commute card
-    MAX_LOOPS = 5  # Allow up to 5 rounds for complex multi-tool queries
+    kb_map_candidate = None  # Deferred KB map card props (only emitted if no commute card wins)
+    final_text_emitted = False  # Track whether the model produced a real final answer
+    reasoning_effort = assess_reasoning_effort(query)  # low/medium/high per query difficulty
+    MAX_COMPLETION_TOKENS = 3072  # Room for reasoning + a full answer (default 1024 was too small)
+    MAX_LOOPS = 6  # Allow up to 6 rounds for complex multi-tool queries
     for loop_idx in range(MAX_LOOPS):
         step_labels = [
             "🔍 正在理解你的问题...",
@@ -373,11 +480,10 @@ async def live_agent_stream(
         await asyncio.sleep(0.3)
 
         try:
-            # Build extra kwargs for Groq reasoning support
-            extra_body = {}
-            if Config.AGENT_REASONING_EFFORT:
-                extra_body["reasoning_effort"] = Config.AGENT_REASONING_EFFORT
-                extra_body["include_reasoning"] = True
+            # Build extra kwargs for Groq reasoning support (effort scales with difficulty)
+            extra_body = {"include_reasoning": True}
+            if reasoning_effort:
+                extra_body["reasoning_effort"] = reasoning_effort
 
             response = openai_client.chat.completions.create(
                 model=Config.AGENT_MODEL,
@@ -385,7 +491,8 @@ async def live_agent_stream(
                 tools=tools_definitions,
                 tool_choice="auto",
                 timeout=90.0,
-                extra_body=extra_body if extra_body else None
+                max_completion_tokens=MAX_COMPLETION_TOKENS,
+                extra_body=extra_body
             )
         except Exception as e:
             err_str = str(e)
@@ -428,10 +535,8 @@ async def live_agent_stream(
             for char in content:
                 yield sse_event({"type": "text", "delta": char})
                 await asyncio.sleep(0.01)
-            # Text done — now emit all pending UI components (maps, cards, etc.)
-            for comp in pending_ui_components:
-                yield sse_event(comp)
-                await asyncio.sleep(0.3)
+            final_text_emitted = bool(content.strip())
+            # Cards are emitted in the unified block after the loop
             break
 
         # Append assistant's message with tool calls
@@ -526,9 +631,10 @@ async def live_agent_stream(
                         "tenant_rating": best.get("tenant_rating"),
                         "description": best.get("description"),
                     }
-                # Only create separate map card if no commute card will be shown
-                if show_map and not has_commute and best.get("latitude") and best.get("longitude"):
-                    pending_ui_components.append({
+                # Defer the KB map card: a commute card may appear later in this same
+                # round and should take priority. We decide once, after the whole loop.
+                if show_map and best.get("latitude") and best.get("longitude"):
+                    kb_map_candidate = {
                         "type": "ui_component",
                         "component": "MapAndCard",
                         "props": {
@@ -542,7 +648,7 @@ async def live_agent_stream(
                             "description": best.get("description"),
                             "is_knowledge_base": True
                         }
-                    })
+                    }
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
@@ -571,25 +677,35 @@ async def live_agent_stream(
                     "destination_lat": float(result_data.get("destination_lat") or 3.0645),
                     "destination_lng": float(result_data.get("destination_lng") or 101.6000)
                 }
-                # Merge community info from knowledge base (avoid duplicate card)
+                # Merge community info from knowledge base ONLY when it refers to the
+                # same place as the commute origin. Otherwise we'd label a route from
+                # community A with the price/rating of community B (confusing & wrong).
                 if kb_community_info:
-                    commute_props.update({
-                        "community_name": kb_community_info.get("community_name"),
-                        "university_name": kb_community_info.get("university_name"),
-                        "price_range": kb_community_info.get("price_range"),
-                        "tenant_rating": kb_community_info.get("tenant_rating"),
-                        "description": kb_community_info.get("description"),
-                        "is_knowledge_base": True,
-                    })
+                    kb_name = (kb_community_info.get("community_name") or "").strip().lower()
+                    origin_name = (commute_props.get("origin_name") or "").strip().lower()
+                    names_match = bool(kb_name) and bool(origin_name) and (
+                        kb_name == origin_name or kb_name in origin_name or origin_name in kb_name
+                    )
+                    if names_match:
+                        commute_props.update({
+                            "community_name": kb_community_info.get("community_name"),
+                            "university_name": kb_community_info.get("university_name"),
+                            "price_range": kb_community_info.get("price_range"),
+                            "tenant_rating": kb_community_info.get("tenant_rating"),
+                            "description": kb_community_info.get("description"),
+                            "is_knowledge_base": True,
+                        })
                 pending_ui_components.append({
                     "type": "ui_component",
                     "component": "MapAndCard",
                     "props": commute_props
                 })
 
-            # Append tool result to messages (truncate to stay within token limits)
-            result_json = json.dumps(result_data, ensure_ascii=False)
-            MAX_RESULT_CHARS = 2000  # ~500 tokens, keeps total well under Groq 8K TPM
+            # Append tool result to messages — compress to high-signal fields first so
+            # the model sees ALL options instead of a JSON blob cut off mid-entry.
+            compact = compact_tool_result(tool_name, result_data)
+            result_json = json.dumps(compact, ensure_ascii=False)
+            MAX_RESULT_CHARS = 3500  # safety net only; compaction already trims most bulk
             if len(result_json) > MAX_RESULT_CHARS:
                 result_json = result_json[:MAX_RESULT_CHARS] + "... (truncated)"
             messages.append({
@@ -599,12 +715,54 @@ async def live_agent_stream(
                 "content": result_json
             })
 
-    # Fallback: loop ended without emitting text (all iterations had tool calls)
-    # Emit pending UI components and a default message
+    # If the loop exhausted its rounds while still calling tools, the model never
+    # wrote a real answer. Instead of dumping a useless generic line, force ONE final
+    # synthesis pass (no tools allowed) so the model MUST analyze the gathered data.
+    if not final_text_emitted:
+        yield sse_event({"type": "thinking", "step": "📝 正在综合分析，给出建议..."})
+        await asyncio.sleep(0.3)
+        messages.append({
+            "role": "system",
+            "content": (
+                "Based on ALL the tool results above, write the FINAL answer for the user now, in Chinese. "
+                "Do NOT call any tools. If the user is choosing between options or locations, directly compare "
+                "them (price, commute, safety, trade-offs) and give a clear, decisive recommendation with reasoning. "
+                "Never reply with a generic filler like '以上是根据搜索结果整理的信息'. Be specific and helpful."
+            )
+        })
+        try:
+            # No `tools` passed at all → model physically cannot call a tool and must
+            # produce a text answer. More robust across providers than tool_choice="none".
+            final_resp = openai_client.chat.completions.create(
+                model=Config.AGENT_MODEL,
+                messages=messages,
+                timeout=90.0,
+                max_completion_tokens=MAX_COMPLETION_TOKENS,
+                extra_body={"reasoning_effort": reasoning_effort} if reasoning_effort else None,
+            )
+            final_content = ""
+            if final_resp.choices:
+                final_content = final_resp.choices[0].message.content or ""
+            if final_content.strip():
+                for char in final_content:
+                    yield sse_event({"type": "text", "delta": char})
+                    await asyncio.sleep(0.01)
+                final_text_emitted = True
+        except Exception as e:
+            print(f"[Agent Synthesis Error] {type(e).__name__}: {str(e)[:300]}")
+
+    # Last-resort message only if synthesis also failed to produce anything
+    if not final_text_emitted:
+        yield sse_event({"type": "text", "delta": "我已经查到了相关信息（见下方卡片）。如果你能告诉我更具体的需求（预算、几人住、最看重通勤还是安全），我可以帮你直接对比并给出推荐 😊"})
+
+    # Finalize the deferred KB map card: only show it if no commute card was produced
+    if kb_map_candidate and not has_commute:
+        pending_ui_components.append(kb_map_candidate)
+
+    # Emit all collected UI components AFTER the text (maps, cards, etc.)
     for comp in pending_ui_components:
         yield sse_event(comp)
         await asyncio.sleep(0.3)
-    yield sse_event({"type": "text", "delta": "以上是根据搜索结果整理的信息，希望对你有帮助！如有其他问题，随时问我 😊"})
 
 
 

@@ -118,7 +118,7 @@ Malaysia_Ez_rent/
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | `main.py` | ✅ 完成 | FastAPI + CORS，SSE `/api/chat` 端点 |
-| `agent.py` | ✅ 完成 | **真实流式 API 调用**（`stream=True`），支持 SiliconFlow/DeepSeek/OpenAI 兼容 API；System Prompt 加入规则限制，禁止对用户念出或复述 ID。 |
+| `agent.py` | ✅ 完成 | Groq `gpt-oss-120b` ReAct 循环（MAX_LOOPS=6）；动态 `reasoning_effort`；工具结果 `compact_tool_result` 压缩；循环耗尽**强制收尾合成**；延后 KB 地图卡；`max_completion_tokens=3072`；决策题系统 prompt。 |
 | `tools.py` | ✅ 完成 | Live Agent **6 工具**：通勤、Tavily 常识、汇率、假期、`search_knowledge_base`（RAG 知识库 130+ 小区）、`search_external_listings`（外部房源搜索）；`search_internal_db` 仅 Mock/遗留 |
 | `config.py` | ✅ 完成 | 环境变量统一管理 |
 | `run.py` | ✅ 完成 | uvicorn 热重载启动，监听 `127.0.0.1:8000` |
@@ -2004,7 +2004,7 @@ Agent 显示友好中文错误信息：
 
 **修复（双重 Bug）：**
 - **前端 SSE buffer 遗漏：** 流结束后 `buf` 残留数据未处理 → 流结束后 flush buffer
-- **后端无兜底：** 3 轮全用在 tool_calls 上 → 循环结束后补发 UI 组件 + 默认文字
+- **后端无兜底（初版）：** 多轮全用在 tool_calls 上 → 循环结束后补发 UI 组件 + 默认文字（**已被 §五十二 强制收尾合成取代**）
 
 ### 51.5 重复地图卡片浪费 Google API
 
@@ -2016,9 +2016,9 @@ Agent 显示友好中文错误信息：
 
 **改动：** MapAndCard 组件通勤模式新增社区信息展示（价格、评分、安全评分、描述），当同时有知识库数据时自动渲染。
 
-### 51.7 MAX_LOOPS 3 → 5
+### 51.7 MAX_LOOPS 3 → 5 → 6
 
-**改动：** 复杂问题（需搜知识库 + 搜外部房源 + 算通勤）现在有 5 轮工具调用机会。
+**改动：** 复杂问题（需搜知识库 + 搜外部房源 + 算通勤）现在有 6 轮工具调用机会。
 
 ### 51.8 禁止 AI 提及外部平台
 
@@ -2053,3 +2053,68 @@ Agent 显示友好中文错误信息：
 | `frontend/src/components/MapAndCard.tsx` | 通勤模式合并社区信息展示 |
 | `frontend/src/app/globals.css` | .manus-page flex 布局、头像尺寸、nowrap |
 | `docs/ai-agent-ui-ux-flow.md` | 新增 Bug 记录章节 |
+
+---
+
+## 五十二、AI Agent 决策题智能修复与 Token 预算优化（2026-06-05）
+
+**背景：** 用户问多约束住房决策题（如"想住 GEO、学校在 UM、可能 Monash 交换，住哪最好？"）时，AI 只回复废话兜底句 + 两张互不相关的地图卡片，无任何对比分析——被用户反馈为"人工智障"。根因不是模型太小（当前 `openai/gpt-oss-120b`，131K 上下文），而是 **ReAct 循环耗尽未写答案** + **Groq 免费层 8K TPM 迫使工具结果硬截断** + **输出 token 默认仅 1024**。
+
+### 52.1 强制收尾合成（替代废话兜底）
+
+**问题：** 6 轮全用于 `tool_calls`，模型从未输出正文；旧代码发送写死的"以上是根据搜索结果整理的信息…"。
+
+**修复：**
+- 新增 `final_text_emitted` 标志；循环结束后若为 false，追加一次**不带 tools** 的 LLM 调用（`max_completion_tokens=3072`）。
+- 系统指令要求：对比选项（价格/通勤/安全/取舍），给出明确推荐，禁止废话兜底。
+- 地图卡片在合成文字**之后**统一发送。
+
+### 52.2 延后知识库地图 + 通勤卡去重
+
+**问题：** GEO 知识库单点卡与 Pantai Hillpark 通勤卡同时出现；GEO 价格/评分错贴到 Pantai 路线上。
+
+**修复：**
+- 知识库地图存入 `kb_map_candidate`，循环结束后仅当 `has_commute=false` 才追加。
+- 合并 KB 信息进通勤卡时校验 `community_name` 与 `origin_name` 一致。
+
+### 52.3 决策/取舍类系统 Prompt
+
+新增 `## DECISION / TRADE-OFF QUESTIONS`：先查再分析、报出通勤数字、一张明确推荐 + 备选，卡片不得替代文字分析。
+
+### 52.4 动态推理强度 `assess_reasoning_effort()`
+
+| 强度 | 触发 |
+|------|------|
+| `high` | 还是、哪个、对比、纠结、住哪、推荐、权衡… |
+| `low` | 汇率、换算、节假日… |
+| `medium` | 默认（`AGENT_REASONING_EFFORT` 环境变量） |
+
+主循环与强制收尾合成均通过 Groq `extra_body.reasoning_effort` 生效。
+
+### 52.5 工具结果智能压缩 `compact_tool_result()`
+
+**问题：** `MAX_RESULT_CHARS=2000` 硬截断 JSON，第二个/第三个小区数据从中间被砍掉，模型"看不全"。
+
+**修复：** 写入 messages 前按工具类型只保留关键字段（社区、价格、评分、安全、距离、优缺点等）；安全网上限 3500 字符。**UI 地图卡片仍用完整 `result_data`。**
+
+### 52.6 输出 token 上限 3072
+
+Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复杂分析写到一半被掐。主循环 + 收尾合成均设为 **3072**。
+
+### 52.7 模型与限制说明（运维备忘）
+
+| 项 | 值 |
+|----|-----|
+| 对话模型 | `openai/gpt-oss-120b`（Groq） |
+| 上下文 | 131,072 tokens |
+| 免费层瓶颈 | **8K TPM**（非模型智商问题） |
+| 质变路径 | 升级 Groq 付费层 → TPM 大幅提升，可减少截断 |
+
+### 文件变更清单
+
+| 文件 | 改动 |
+|------|------|
+| `backend/app/agent.py` | `assess_reasoning_effort`、`compact_tool_result`、强制收尾合成、`kb_map_candidate` 延后、`final_text_emitted`、名称匹配合并、MAX_LOOPS 6、max_completion_tokens 3072、决策题 prompt |
+| `docs/ai-agent-ui-ux-flow.md` | ReAct 循环文档更新、Bug 5–8 记录 |
+| `docs/ai-architecture.md` | §4 工具数修正为 7、§24 智能修复专节 |
+| `PROGRESS.md` | 本节（五十二） |
