@@ -42,18 +42,6 @@ const HELLO_WORDS = [
   { word: 'Habari', x: '95%', y: '55%', rotate: 5, size: '1.1rem', font: 'sans-serif', delay: 1.95 },
 ];
 
-// Builds an SVG path for an n-point star (default 14, the Malaysian "Bintang Persekutuan")
-function flagStar(cx: number, cy: number, outerR: number, innerR: number, points = 14) {
-  const step = Math.PI / points;
-  let d = '';
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const a = i * step - Math.PI / 2;
-    d += `${i === 0 ? 'M' : 'L'}${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)} `;
-  }
-  return d + 'Z';
-}
-
 // Reveals children with a subtle slide-up the first time they scroll into view
 function Reveal({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -158,32 +146,10 @@ export default function GuestPage() {
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
-          {/* Artistic brand name — letters filled with the Malaysian flag (Jalur Gemilang) */}
-          <svg viewBox="0 0 700 90" style={{ width: 'clamp(340px, 60vw, 580px)', height: 'auto', margin: '0 auto 8px', display: 'block', filter: 'drop-shadow(0 2px 5px rgba(1,0,102,0.35))' }}>
-            <defs>
-              <mask id="flagTextMask">
-                <rect x="0" y="0" width="700" height="90" fill="black" />
-                <text x="350" y="60" dominantBaseline="middle" textAnchor="middle"
-                  style={{ fontSize: '74px', fontWeight: 800, fontFamily: 'Georgia, "Times New Roman", serif', letterSpacing: '-1px', fill: 'white' }}>
-                  Malaysia Ez Rent
-                </text>
-              </mask>
-            </defs>
-            {/* Flag, revealed only through the letter shapes */}
-            <g mask="url(#flagTextMask)">
-              {/* 14 alternating red/white stripes */}
-              {Array.from({ length: 14 }).map((_, i) => (
-                <rect key={i} x="0" y={i * (90 / 14)} width="700" height={90 / 14 + 0.3} fill={i % 2 === 0 ? '#CC0001' : '#FFFFFF'} />
-              ))}
-              {/* Blue canton — upper hoist, spans the top 7 stripes */}
-              <rect x="0" y="0" width="300" height="45" fill="#010066" />
-              {/* Yellow crescent (outer disc minus an offset disc) */}
-              <circle cx="105" cy="22.5" r="16.5" fill="#FFCD00" />
-              <circle cx="116" cy="20.5" r="13" fill="#010066" />
-              {/* Yellow 14-point federal star */}
-              <path d={flagStar(188, 23, 15, 6.2)} fill="#FFCD00" />
-            </g>
-          </svg>
+          {/* Brand name — flag stripes simulated purely with CSS text gradient */}
+          <div className="flag-wordmark" style={{ fontSize: 'clamp(2rem, 7vw, 3.6rem)', lineHeight: 1.12, margin: '0 auto 8px' }}>
+            Malaysia Ez Rent
+          </div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
             {lang === 'zh' ? '大马留学生 AI 智能租房系统' : 'AI-Powered Rental System for Malaysia'}
           </div>
@@ -232,7 +198,7 @@ export default function GuestPage() {
             {lang === 'zh' ? '为什么选择我们' : 'Why Choose Us'}
           </h2>
         </Reveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 64 }}>
+        <div className="guest-grid" style={{ marginBottom: 64 }}>
           {FEATURES.map((f, i) => (
             <Reveal key={i} delay={i * 90}>
               <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, height: '100%' }}>
@@ -251,7 +217,7 @@ export default function GuestPage() {
             {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
           </h2>
         </Reveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+        <div className="guest-grid">
           {STEPS.map((s, i) => (
             <Reveal key={i} delay={i * 90}>
               <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, position: 'relative', height: '100%' }}>
@@ -284,7 +250,7 @@ export default function GuestPage() {
               {lang === 'zh' ? '其他平台上 30%–40% 是重复或虚假的"幽灵房源"。我们从源头杜绝这个问题。' : 'Up to 30-40% of listings on other platforms are duplicate or ghost listings. We eliminate this from the source.'}
             </p>
           </Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20 }}>
+          <div className="guest-grid-4">
             {[
               { Icon: ShieldCheck, title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
               { Icon: Camera, title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
@@ -313,7 +279,7 @@ export default function GuestPage() {
             {lang === 'zh' ? '他们已经找到了理想的家' : 'They Already Found Their Home'}
           </h2>
         </Reveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div className="guest-grid">
           {[
             { quote: { zh: '从开始找房到签约只用了三天，整个流程比我想象中顺畅太多。', en: 'From searching to signing took only three days. The whole process was way smoother than I expected.' }, name: 'Li Wei', role: { zh: 'Monash 大学生', en: 'Monash University Student' }, img: 11 },
             { quote: { zh: '终于不用在 WhatsApp 群里翻中介消息了，所有东西都在一个平台上搞定。', en: "No more digging through WhatsApp messages from agents. Everything is on one platform." }, name: 'Sarah Tan', role: { zh: 'Taylor\'s 大学生', en: "Taylor's University Student" }, img: 5 },

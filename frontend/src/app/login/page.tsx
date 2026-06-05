@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
-import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard, ShieldCheck, Camera, BadgeDollarSign } from 'lucide-react';
 import { useApp } from '@/lib/ThemeProvider';
 import LegalContent from '@/components/LegalContent';
 
@@ -150,16 +150,29 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <div style={cardStyle}>
+      <div className="login-card-anim" style={cardStyle}>
         {/* ── LOGO ── */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src="/logo.png" alt="Malaysia Ez Rent"
             style={{ width: 72, height: 72, objectFit: 'contain', display: 'inline-block', marginBottom: 12 }} />
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-h)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+          <div className="flag-wordmark" style={{ fontSize: '1.7rem', lineHeight: 1.15 }}>
             Malaysia Ez Rent
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6 }}>
             {lang === 'zh' ? 'AI 智能租房助手' : 'AI Smart Housing Assistant'}
+          </div>
+          {/* Trust pills — consistent with the landing page */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 14 }}>
+            {[
+              { Icon: ShieldCheck, zh: '实名认证', en: 'Verified' },
+              { Icon: Camera, zh: '真实房源', en: 'Real Photos' },
+              { Icon: BadgeDollarSign, zh: '资金安全', en: 'Secure' },
+            ].map((p, i) => (
+              <span key={i} className="guest-trust-pill" style={{ padding: '5px 11px', fontSize: '0.72rem' }}>
+                <p.Icon size={12} style={{ color: 'var(--primary)' }} />
+                {lang === 'zh' ? p.zh : p.en}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -227,8 +240,8 @@ export default function LoginPage() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <User size={20} style={{ color: 'var(--primary)' }} />
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <User size={20} style={{ color: '#fff' }} />
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
@@ -248,8 +261,8 @@ export default function LoginPage() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Building2 size={20} style={{ color: 'var(--primary)' }} />
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Building2 size={20} style={{ color: '#fff' }} />
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
@@ -279,8 +292,8 @@ export default function LoginPage() {
             </button>
 
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-                <User size={22} style={{ color: 'var(--primary)' }} />
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <User size={22} style={{ color: '#fff' }} />
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
                 {lang === 'zh' ? '租客登录' : 'Tenant Login'}
@@ -335,8 +348,8 @@ export default function LoginPage() {
             </button>
 
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-                <Building2 size={22} style={{ color: 'var(--primary)' }} />
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <Building2 size={22} style={{ color: '#fff' }} />
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
                 {lang === 'zh' ? '中介登录' : 'Agent Login'}

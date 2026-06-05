@@ -1377,6 +1377,43 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   transform: translateY(0);
 }
 
+/* Login card entrance */
+.login-card-anim { animation: fadeReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .login-card-anim { animation: none; }
+}
+
+/* Brand wordmark — Malaysian flag stripes filled into the text via CSS only */
+.flag-wordmark {
+  display: inline-block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: repeating-linear-gradient(
+    180deg,
+    #CC0001 0,
+    #CC0001 7px,
+    #ffffff 7px,
+    #ffffff 14px
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  -webkit-text-stroke: 0.6px rgba(1, 0, 102, 0.6);
+  text-shadow: 0 2px 6px rgba(1, 0, 102, 0.18);
+}
+
+/* Horizontal card grids — stay in a row on desktop/tablet, stack only on phones */
+.guest-grid { display: grid; gap: 20px; grid-template-columns: repeat(3, 1fr); }
+.guest-grid-4 { display: grid; gap: 20px; grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) {
+  .guest-grid, .guest-grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .guest-grid, .guest-grid-4 { grid-template-columns: 1fr; }
+}
+
 /* Section kicker / eyebrow label */
 .guest-eyebrow {
   display: inline-flex;
