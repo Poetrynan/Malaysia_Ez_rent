@@ -37,23 +37,84 @@ const toolIcon = (name: string) =>
 
 const renderMarkdown = (text: string) => {
   if (!text) return null;
-  return text.split('\n').map((line, i) => {
-    if (line.startsWith('### ')) return <h4 key={i} className="md-h4">{line.slice(4)}</h4>;
-    if (line.startsWith('## ')) return <h3 key={i} className="md-h3">{line.slice(3)}</h3>;
-    if (line.startsWith('# ')) return <h2 key={i} className="md-h2">{line.slice(2)}</h2>;
-    if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="md-li">{line.slice(2)}</li>;
-    if (!line.trim()) return <div key={i} className="md-br" />;
-    // inline bold + code
-    const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g);
-    return (
-      <p key={i} className="md-p">
-        {parts.map((part, j) => {
-          if (part.startsWith('**') && part.endsWith('**')) return <strong key={j}>{part.slice(2, -2)}</strong>;
-          if (part.startsWith('`') && part.endsWith('`')) return <code key={j} className="md-code">{part.slice(1, -1)}</code>;
-          return part;
-        })}
-      </p>
-    );
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table detection: line starts with | and next line is separator
+    if (line.trim().startsWith('|') && i + 1 < lines.length && lines[i + 1].trim().match(/^\|[\s\-:|]+\|/)) {
+      const headers = line.split('|').filter(c => c.trim()).map(c => c.trim());
+      i += 2; // skip header + separator
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        rows.push(lines[i].split('|').filter(c => c.trim()).map(c => c.trim()));
+        i++;
+      }
+      elements.push(
+        <table key={`tbl-${elements.length}`} className="md-table">
+          <thead><tr>{headers.map((h, hi) => <th key={hi}>{renderInline(h)}</th>)}</tr></thead>
+          <tbody>{rows.map((row, ri) => <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{renderInline(cell)}</td>)}</tr>)}</tbody>
+        </table>
+      );
+      continue;
+    }
+
+    // Headings
+    if (line.startsWith('### ')) { elements.push(<h4 key={`h4-${i}`} className="md-h4">{renderInline(line.slice(4))}</h4>); i++; continue; }
+    if (line.startsWith('## ')) { elements.push(<h3 key={`h3-${i}`} className="md-h3">{renderInline(line.slice(3))}</h3>); i++; continue; }
+    if (line.startsWith('# ')) { elements.push(<h2 key={`h2-${i}`} className="md-h2">{renderInline(line.slice(2))}</h2>); i++; continue; }
+
+    // Horizontal rule
+    if (line.match(/^[\-\*_]{3,}$/)) { elements.push(<hr key={`hr-${i}`} className="md-hr" />); i++; continue; }
+
+    // Blockquote
+    if (line.startsWith('> ')) { elements.push(<blockquote key={`bq-${i}`} className="md-quote">{renderInline(line.slice(2))}</blockquote>); i++; continue; }
+
+    // Unordered list (collect consecutive)
+    if (line.match(/^[\-\*] /)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^[\-\*] /)) {
+        items.push(lines[i].replace(/^[\-\*] /, ''));
+        i++;
+      }
+      elements.push(<ul key={`ul-${elements.length}`} className="md-ul">{items.map((item, j) => <li key={j} className="md-li">{renderInline(item)}</li>)}</ul>);
+      continue;
+    }
+
+    // Ordered list (collect consecutive)
+    if (line.match(/^\d+\. /)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^\d+\. /)) {
+        items.push(lines[i].replace(/^\d+\. /, ''));
+        i++;
+      }
+      elements.push(<ol key={`ol-${elements.length}`} className="md-ol">{items.map((item, j) => <li key={j} className="md-li">{renderInline(item)}</li>)}</ol>);
+      continue;
+    }
+
+    // Empty line
+    if (!line.trim()) { elements.push(<div key={`br-${i}`} className="md-br" />); i++; continue; }
+
+    // Paragraph
+    elements.push(<p key={`p-${i}`} className="md-p">{renderInline(line)}</p>);
+    i++;
+  }
+
+  return <>{elements}</>;
+};
+
+// Helper: render inline formatting (bold, code, links)
+const renderInline = (text: string): React.ReactNode => {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g);
+  return parts.map((part, j) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={j}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`')) return <code key={j} className="md-code">{part.slice(1, -1)}</code>;
+    const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+    if (linkMatch) return <a key={j} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="md-link">{linkMatch[1]}</a>;
+    return part;
   });
 };
 
@@ -487,6 +548,7 @@ export default function AIChat() {
           {isGenerating ? <StopCircle size={18} /> : <Send size={16} />}
         </button>
       </form>
+      <div className="manus-disclaimer">此结果由 AI 生成，请仔细甄别</div>
 
       {/* History overlay */}
       <div className={`manus-history-overlay ${historyOpen ? 'open' : ''}`} onClick={() => setHistoryOpen(false)} />
