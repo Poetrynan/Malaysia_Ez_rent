@@ -19,7 +19,7 @@ from app.tools import get_embedding, supabase_service_client
 
 MERGED_JSON_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "RAG", "malaysia_rental_data_merged.json"
+    "RAG", "malaysia_rental_data_ultimate_v5.json"
 )
 
 

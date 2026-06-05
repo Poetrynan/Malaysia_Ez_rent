@@ -1,6 +1,5 @@
 -- 042_admin_rls_override.sql
 -- 一劳永逸：创建 admin 判断函数 + 给所有关键表加管理员全局策略
--- 以后新建表只需调用 admin_policy() 即可
 
 -- 1. 创建 admin 判断函数（可复用）
 CREATE OR REPLACE FUNCTION is_super_admin()
@@ -14,6 +13,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
 -- 2. 给所有关键表加管理员 DELETE + UPDATE 策略
+
 -- reviews（评价）
 DROP POLICY IF EXISTS "Admins can delete any review" ON reviews;
 CREATE POLICY "Admins can delete any review" ON reviews
@@ -55,24 +55,9 @@ DROP POLICY IF EXISTS "Admins can manage all maintenance" ON maintenance_request
 CREATE POLICY "Admins can manage all maintenance" ON maintenance_requests
     FOR ALL USING (is_super_admin());
 
--- maintenance_conversations（维修对话）
-DROP POLICY IF EXISTS "Admins can manage all maintenance conversations" ON maintenance_conversations;
-CREATE POLICY "Admins can manage all maintenance conversations" ON maintenance_conversations
-    FOR ALL USING (is_super_admin());
-
 -- user_notifications（用户通知）
 DROP POLICY IF EXISTS "Admins can manage all notifications" ON user_notifications;
 CREATE POLICY "Admins can manage all notifications" ON user_notifications
-    FOR ALL USING (is_super_admin());
-
--- admin_notifications（管理通知）
-DROP POLICY IF EXISTS "Admins can manage admin notifications" ON admin_notifications;
-CREATE POLICY "Admins can manage admin notifications" ON admin_notifications
-    FOR ALL USING (is_super_admin());
-
--- announcements（公告）
-DROP POLICY IF EXISTS "Admins can manage announcements" ON announcements;
-CREATE POLICY "Admins can manage announcements" ON announcements
     FOR ALL USING (is_super_admin());
 
 -- unit_images（房源图片）
