@@ -69,3 +69,25 @@ CREATE POLICY "Admins can manage unit images" ON unit_images
 DROP POLICY IF EXISTS "Admins can manage knowledge base" ON rental_knowledge_base;
 CREATE POLICY "Admins can manage knowledge base" ON rental_knowledge_base
     FOR ALL USING (is_super_admin());
+
+-- 3. 自动为新建表添加管理员策略（Event Trigger）
+CREATE OR REPLACE FUNCTION auto_admin_policy()
+RETURNS event_trigger AS $$
+DECLARE
+  obj record;
+BEGIN
+  FOR obj IN SELECT * FROM pg_event_trigger_ddl_commands() WHERE command_tag = 'CREATE TABLE'
+  LOOP
+    EXECUTE format(
+      'CREATE POLICY "Admins can manage %s" ON %s FOR ALL USING (is_super_admin())',
+      obj.object_identity, obj.object_identity
+    );
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP EVENT TRIGGER IF EXISTS auto_admin_policy_trigger;
+CREATE EVENT TRIGGER auto_admin_policy_trigger
+  ON ddl_command_end
+  WHEN TAG IN ('CREATE TABLE')
+  EXECUTE FUNCTION auto_admin_policy();
