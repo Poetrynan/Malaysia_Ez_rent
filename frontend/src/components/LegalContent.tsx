@@ -43,10 +43,11 @@ export default function LegalContent({ type, onClose }: { type: LegalType; onClo
 function TermsContent({ lang }: { lang: string }) {
   if (lang === 'zh') return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>最后更新：2026 年 6 月 2 日</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>最后更新：2026 年 6 月 6 日</p>
 
       <Section title="1. 服务概述">
         <p>Malaysia Ez Rent（以下简称"本平台"）是一个面向马来西亚留学生及本地租客的 AI 智能租房服务平台。本平台由独立运营团队开发和维护，为租客提供房源浏览、在线表达租房意向、合约管理、在线缴租等功能，同时为持牌中介（REN）提供房源管理、租约创建和收款审核等工具。</p>
+        <p>本平台允许未注册用户以游客身份浏览房源信息。游客可以查看房源图片、价格、房型等公开信息，但无法执行收藏、表达意向、在线缴费等操作。注册登录后即可使用完整功能。</p>
         <p>使用本平台即表示您同意受本服务条款的约束。如果您不同意本条款，请勿使用本平台。</p>
       </Section>
 
@@ -78,9 +79,10 @@ function TermsContent({ lang }: { lang: string }) {
       </Section>
 
       <Section title="6. 智能助手（AI Agent）">
-        <p>6.1 本平台内置 AI 智能助手，可提供通勤时间估算、马来西亚政策常识查询、汇率换算和假期查询等辅助功能。</p>
-        <p>6.2 AI 助手的回答仅供参考，不构成专业建议。通勤时间、政策信息等可能因实时变化而与实际情况存在差异。</p>
+        <p>6.1 本平台内置 AI 智能助手，可提供通勤时间估算、马来西亚政策常识查询、汇率换算、假期查询、小区信息检索和外部房源搜索等辅助功能。</p>
+        <p>6.2 AI 助手的回答仅供参考，不构成专业建议。通勤时间、政策信息、房源信息等可能因实时变化而与实际情况存在差异。</p>
         <p>6.3 AI 助手不会访问您的个人租约或财务信息。对话内容仅在当前会话中保留，不会被永久存储。</p>
+        <p>6.4 AI 助手可搜索外部租房平台获取房源信息，但不会向您暴露信息来源。搜索结果以平台自有知识形式呈现。</p>
       </Section>
 
       <Section title="7. 知识产权">
@@ -106,10 +108,11 @@ function TermsContent({ lang }: { lang: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Last updated: June 2, 2026</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Last updated: June 6, 2026</p>
 
       <Section title="1. Service Overview">
         <p>Malaysia Ez Rent (the &quot;Platform&quot;) is an AI-powered rental platform serving international students and local tenants in Malaysia. The Platform is independently developed and maintained, providing tenants with property browsing, online rental interest expression, lease management, and online rent payment, while offering licensed agents (REN) tools for property management, lease creation, and payment verification.</p>
+        <p>The Platform allows unregistered users to browse property listings as guests. Guests may view property photos, pricing, room types, and other public information, but cannot perform actions such as saving favorites, expressing rental interests, or making online payments. Full functionality is available after registration and login.</p>
         <p>By using this Platform, you agree to be bound by these Terms of Service. If you do not agree, please do not use the Platform.</p>
       </Section>
 
@@ -141,9 +144,10 @@ function TermsContent({ lang }: { lang: string }) {
       </Section>
 
       <Section title="6. AI Assistant">
-        <p>6.1 The Platform includes an AI assistant that provides commute time estimation, Malaysia policy queries, currency conversion, and holiday lookup as auxiliary features.</p>
-        <p>6.2 AI responses are for reference only and do not constitute professional advice. Commute times, policy information, and other data may differ from actual conditions due to real-time changes.</p>
+        <p>6.1 The Platform includes an AI assistant that provides commute time estimation, Malaysia policy queries, currency conversion, holiday lookup, community information search, and external listing search as auxiliary features.</p>
+        <p>6.2 AI responses are for reference only and do not constitute professional advice. Commute times, policy information, property information, and other data may differ from actual conditions due to real-time changes.</p>
         <p>6.3 The AI assistant does not access your personal lease or financial information. Conversation content is retained only during the current session and is not permanently stored.</p>
+        <p>6.4 The AI assistant may search external rental platforms to obtain property information, but will not expose the source of information to you. Search results are presented as the Platform&apos;s own knowledge.</p>
       </Section>
 
       <Section title="7. Intellectual Property">
@@ -173,13 +177,14 @@ function TermsContent({ lang }: { lang: string }) {
 function PrivacyContent({ lang }: { lang: string }) {
   if (lang === 'zh') return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>最后更新：2026 年 6 月 2 日</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>最后更新：2026 年 6 月 6 日</p>
 
       <Section title="1. 引言">
         <p>Malaysia Ez Rent（以下简称"本平台"）深知个人信息对您的重要性，我们将按照《2010 年个人数据保护法》（Malaysia Personal Data Protection Act 2010, "PDPA"）及相关法律法规的要求，保护您的个人信息安全。本隐私政策说明了我们如何收集、使用、存储和保护您的个人信息。</p>
       </Section>
 
       <Section title="2. 我们收集的信息">
+        <p><strong>2.0 游客浏览：</strong>未登录用户可以浏览房源信息。游客浏览不会被记录个人信息，浏览行为不会与任何个人身份关联。</p>
         <p><strong>2.1 账户信息：</strong>通过 Google OAuth 或 Magic Link 注册时，我们会获取您的邮箱地址和显示名称。</p>
         <p><strong>2.2 个人资料信息：</strong>您在个人资料页主动填写的姓名、电话号码、学校/公司名称、护照号码或马来西亚身份证号码（IC）、单元号（由中介在创建租约时填入）。</p>
         <p><strong>2.3 证件照片：</strong>您上传的身份证件照片（护照/IC）和学生证照片，用于中介审核租约资格。</p>
@@ -235,7 +240,8 @@ function PrivacyContent({ lang }: { lang: string }) {
         <p>• <strong>Supabase：</strong>数据库和身份认证（隐私政策：supabase.com/privacy）</p>
         <p>• <strong>Google OAuth：</strong>登录认证（隐私政策：policies.google.com/privacy）</p>
         <p>• <strong>Google Maps：</strong>地图显示和通勤计算（隐私政策：policies.google.com/privacy）</p>
-        <p>• <strong>Google Gemini：</strong>AI 助手推理服务</p>
+        <p>• <strong>AI 推理服务：</strong>AI 助手推理和向量检索（隐私政策取决于具体服务提供商）</p>
+        <p>• <strong>Tavily：</strong>AI 助手联网搜索（隐私政策：tavily.com/privacy）</p>
       </Section>
 
       <Section title="10. 未成年人保护">
@@ -259,13 +265,14 @@ function PrivacyContent({ lang }: { lang: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Last updated: June 2, 2026</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Last updated: June 6, 2026</p>
 
       <Section title="1. Introduction">
         <p>Malaysia Ez Rent (the &quot;Platform&quot;) values the importance of your personal information. We protect your personal data in accordance with the Malaysia Personal Data Protection Act 2010 (&quot;PDPA&quot;) and related regulations. This Privacy Policy explains how we collect, use, store, and protect your personal information.</p>
       </Section>
 
       <Section title="2. Information We Collect">
+        <p><strong>2.0 Guest Browsing:</strong> Unregistered users may browse property listings as guests. Guest browsing is not recorded and is not associated with any personal identity.</p>
         <p><strong>2.1 Account Information:</strong> When you register via Google OAuth or Magic Link, we obtain your email address and display name.</p>
         <p><strong>2.2 Profile Information:</strong> Information you voluntarily provide on your profile page, including name, phone number, school/company name, passport number or Malaysian IC number, and unit number (set by your agent when creating a lease).</p>
         <p><strong>2.3 Credential Photos:</strong> ID document photos (passport/IC) and student card photos you upload for agent lease qualification review.</p>
@@ -321,7 +328,8 @@ function PrivacyContent({ lang }: { lang: string }) {
         <p>&bull; <strong>Supabase:</strong> Database and authentication (privacy: supabase.com/privacy)</p>
         <p>&bull; <strong>Google OAuth:</strong> Login authentication (privacy: policies.google.com/privacy)</p>
         <p>&bull; <strong>Google Maps:</strong> Map display and commute calculation (privacy: policies.google.com/privacy)</p>
-        <p>&bull; <strong>Google Gemini:</strong> AI assistant inference service</p>
+        <p>&bull; <strong>AI Inference Services:</strong> AI assistant reasoning and vector search (privacy depends on specific provider)</p>
+        <p>&bull; <strong>Tavily:</strong> AI assistant web search (privacy: tavily.com/privacy)</p>
       </Section>
 
       <Section title="10. Children&apos;s Protection">

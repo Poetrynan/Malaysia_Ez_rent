@@ -1,6 +1,6 @@
 # Malaysia Ez Rent AI Development Architecture
 
-Last updated: 2026-06-05 (UTC+8)
+Last updated: 2026-06-06 (UTC+8)
 
 This document is the single-source onboarding guide for future AI agents working in this repo.
 
@@ -29,7 +29,8 @@ Malaysia_Ez_rent/
 │   │   ├── layout.tsx                  # root layout (ThemeProvider, Google Fonts, Maps Script)
 │   │   ├── (app)/                      # route group (not in URL)
 │   │   │   ├── layout.tsx              # app shell: AuthProvider + PendingCountsProvider + sidebar + topbar
-│   │   │   ├── listings/page.tsx       # /listings — public, read-only for unauthenticated
+│   │   │   ├── guest/page.tsx          # /guest — public guest browsing (no auth, hero + listings)
+│   │   │   ├── listings/page.tsx       # /listings — authenticated users only
 │   │   │   ├── chat/page.tsx           # /chat — AI assistant (auth required)
 │   │   │   ├── my-lease/page.tsx       # /my-lease — tenant lease management
 │   │   │   ├── profile/page.tsx        # /profile — user profile
@@ -348,8 +349,9 @@ Notes:
   - if user exists in `admin_users` -> admin
   - else -> student
 - Frontend middleware:
-  - `/` redirects to `/listings`
-  - `/listings` is public (no auth required) — unauthenticated users see read-only mode
+  - `/` redirects to `/guest` (not logged in) or `/listings` (logged in)
+  - `/guest` is public (no auth required) — hero + property browsing + trust signals
+  - `/listings` requires auth — redirects guests to `/guest`
   - `/login`, `/auth/*`, `/calculator`, `/register-agent`, `/mobile-upload/*` — always allowed
   - All other routes require authentication (Supabase SSR check in live mode)
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
