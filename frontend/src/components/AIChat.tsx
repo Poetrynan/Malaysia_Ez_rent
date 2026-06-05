@@ -340,26 +340,44 @@ export default function AIChat() {
                 <div className="manus-avatar assistant"><Bot size={14} /></div>
                 <div className="manus-assistant-bubble">
                 <div className="manus-assistant-content">
-                  {/* Thinking steps — show only latest, click to expand history */}
+                  {/* Thinking steps — latest visible, completed steps auto-collapsed with ✅ */}
                   {m.thoughts.length > 0 && (() => {
                     const latest = m.thoughts[m.thoughts.length - 1];
                     const prev = m.thoughts.slice(0, -1);
                     const isExpanded = expandedThoughts.has(m.id);
+                    const isLatestDone = !isGenerating || m.contentStarted;
                     return (
                       <div className="manus-thought-group">
-                        <div className="manus-thought" onClick={() => {
-                          if (prev.length > 0) setExpandedThoughts(s => { const n = new Set(s); n.has(m.id) ? n.delete(m.id) : n.add(m.id); return n; });
-                        }} style={{ cursor: prev.length > 0 ? 'pointer' : 'default' }}>
-                          <span className="manus-thought-dot" />
-                          <span style={{flex: 1}}>{latest}{isGenerating && elapsed > 0 && ` (${elapsed}s)`}</span>
-                          {prev.length > 0 && <span style={{fontSize: '0.7rem', color: 'var(--text-muted)'}}>{isExpanded ? '▲' : '▼'} {prev.length}步</span>}
-                        </div>
+                        {/* Completed steps — collapsed with ✅, click to expand */}
+                        {prev.length > 0 && (
+                          <div className="manus-thought-completed" onClick={() => setExpandedThoughts(s => { const n = new Set(s); n.has(m.id) ? n.delete(m.id) : n.add(m.id); return n; })}>
+                            <CheckCircle size={14} style={{color: '#22C55E', flexShrink: 0}} />
+                            <span style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                              {isExpanded ? `▾ ${prev.length}步已完成` : `▸ ${prev.length}步已完成`}
+                            </span>
+                          </div>
+                        )}
                         {isExpanded && prev.map((th, i) => (
-                          <div key={`th-${i}`} className="manus-thought" style={{opacity: 0.6, paddingLeft: 24}}>
-                            <span className="manus-thought-dot" style={{width: 4, height: 4}} />
-                            <span style={{fontSize: '0.78rem'}}>{th}</span>
+                          <div key={`th-${i}`} className="manus-thought" style={{opacity: 0.5, paddingLeft: 28, fontSize: '0.78rem'}}>
+                            <CheckCircle size={12} style={{color: '#22C55E', flexShrink: 0}} />
+                            <span>{th}</span>
                           </div>
                         ))}
+                        {/* Current (latest) step — pulsing dot, not yet done */}
+                        {!isLatestDone && (
+                          <div className="manus-thought">
+                            <span className="manus-thought-dot pulse" />
+                            <span style={{flex: 1}}>{latest}</span>
+                            {elapsed > 0 && <span style={{fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600}}>{elapsed}s</span>}
+                          </div>
+                        )}
+                        {/* Latest step done — show ✅ */}
+                        {isLatestDone && (
+                          <div className="manus-thought" style={{opacity: 0.7}}>
+                            <CheckCircle size={14} style={{color: '#22C55E', flexShrink: 0}} />
+                            <span>{latest}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

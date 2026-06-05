@@ -509,6 +509,16 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   transition: opacity 0.2s;
 }
 .manus-thought:hover { opacity: 0.9; }
+.manus-thought-completed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.manus-thought-completed:hover { background: rgba(34, 197, 94, 0.05); }
 .manus-thought-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
