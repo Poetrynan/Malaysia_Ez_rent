@@ -29,6 +29,13 @@ function CtaButton({ children, large }: { children: React.ReactNode; large?: boo
   );
 }
 
+function FooterLink({ href, onClick, children }: { href?: string; onClick?: () => void; children: React.ReactNode }) {
+  const [hover, setHover] = useState(false);
+  const style = { fontSize: '0.8rem', color: hover ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, background: 'none', border: 'none', textDecoration: 'none', transition: 'color 0.2s ease' };
+  if (href) return <Link href={href} style={style} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>{children}</Link>;
+  return <button onClick={onClick} style={style} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>{children}</button>;
+}
+
 export default function GuestPage() {
   const { lang } = useApp();
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
@@ -41,21 +48,17 @@ export default function GuestPage() {
     <div className="guest-mode" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ═══════════ HERO ═══════════ */}
-      <section style={{ position: 'relative', overflow: 'hidden', padding: '80px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)' }}>
+      <section style={{ position: 'relative', padding: '80px 24px 64px', textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.06)) 50%, var(--bg-base) 100%)' }}>
+        {/* Decorative blobs — pointer-events none, no overflow hidden */}
         <div style={{ position: 'absolute', top: -120, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -100, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
+          {/* Logo — circular badge */}
           <div style={{ width: 280, height: 280, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass-bg)', border: '2px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)', animation: 'guestLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
             <img src="/image.png" alt="Malaysia Ez Rent" style={{ width: '110%', height: '110%', objectFit: 'cover', mixBlendMode: 'multiply' }} />
           </div>
           {/* Artistic brand name */}
-          <div style={{
-            fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800,
-            fontFamily: 'var(--font-display)', letterSpacing: '-0.03em',
-            background: 'linear-gradient(135deg, var(--primary) 0%, #14b8a6 50%, var(--primary) 100%)',
-            backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            margin: '0 0 8px', lineHeight: 1.1,
-          }}>
+          <div style={{ fontSize: 'clamp(2.2rem, 6vw, 4rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, var(--primary) 0%, #14b8a6 50%, var(--primary) 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 8px', lineHeight: 1.1 }}>
             Malaysia Ez Rent
           </div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 20px', letterSpacing: '0.08em', fontWeight: 500 }}>
@@ -73,9 +76,8 @@ export default function GuestPage() {
         </div>
       </section>
 
-      {/* ═══════════ FEATURES + STEPS (2×3 grid) ═══════════ */}
+      {/* ═══════════ FEATURES ═══════════ */}
       <section style={{ padding: '64px 24px', maxWidth: 1000, margin: '0 auto' }}>
-        {/* Row 1: Features */}
         <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
           {lang === 'zh' ? '平台特色' : 'Why Choose Us'}
         </h2>
@@ -90,7 +92,6 @@ export default function GuestPage() {
             </div>
           ))}
         </div>
-        {/* Row 2: Steps */}
         <h2 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 28px' }}>
           {lang === 'zh' ? '三步轻松入住' : 'Three Steps to Your New Home'}
         </h2>
@@ -108,41 +109,9 @@ export default function GuestPage() {
         </div>
       </section>
 
-      {/* ═══════════ LISTINGS ═══════════ */}
+      {/* ═══════════ LISTINGS (paginated, 8 per page) ═══════════ */}
       <section style={{ padding: '0 24px 64px', maxWidth: 1200, margin: '0 auto', flex: 1 }}>
         <PropertyListings guestMode />
-      </section>
-
-      {/* ═══════════ TRUST — 告别假房源 ═══════════ */}
-      <section style={{ padding: '64px 24px', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--primary-light, rgba(14,116,144,0.04)) 50%, var(--bg-base) 100%)' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>
-            {lang === 'zh' ? '告别假房源，每一套都真实' : 'No Fake Listings. Every Property is Verified.'}
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 auto 40px', maxWidth: 600, lineHeight: 1.7 }}>
-            {lang === 'zh'
-              ? '其他平台上 30%–40% 是重复或虚假的"幽灵房源"。我们从源头杜绝这个问题。'
-              : 'Up to 30-40% of listings on other platforms are duplicate or ghost listings. We eliminate this from the source.'}
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
-            {[
-              { icon: '🔒', title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
-              { icon: '📸', title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
-              { icon: '💰', title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' } },
-              { icon: '🏠', title: { zh: '一房一码', en: 'One Listing Per Unit' }, desc: { zh: '同一套房只有一条记录，不会被不同中介重复发布', en: 'Each unit listed once — no duplicate ghost listings' } },
-            ].map((item, i) => (
-              <div key={i} style={{ padding: '20px 16px', borderRadius: 14, background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', marginBottom: 10 }}>{item.icon}</div>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>
-                  {lang === 'zh' ? item.title.zh : item.title.en}
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-                  {lang === 'zh' ? item.desc.zh : item.desc.en}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
@@ -164,8 +133,7 @@ export default function GuestPage() {
                 &ldquo;{lang === 'zh' ? t.quote.zh : t.quote.en}&rdquo;
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <img src={`https://i.pravatar.cc/80?img=${t.img}`} alt={t.name}
-                  style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                <img src={`https://i.pravatar.cc/80?img=${t.img}`} alt={t.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? t.role.zh : t.role.en}</div>
@@ -196,23 +164,14 @@ export default function GuestPage() {
             © 2026 Malaysia Ez Rent · {lang === 'zh' ? '大马留学生 AI 智能租房系统' : 'AI-Powered Rental System for Malaysia'}
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            <button onClick={() => setLegalModal('terms')} style={{ background: 'none', border: 'none', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-              {lang === 'zh' ? '服务条款' : 'Terms of Service'}
-            </button>
-            <button onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-              {lang === 'zh' ? '隐私政策' : 'Privacy Policy'}
-            </button>
-            <Link href="/calculator" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
-              {lang === 'zh' ? '费用计算器' : 'Calculator'}
-            </Link>
-            <Link href="/register-agent" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
-              {lang === 'zh' ? '申请成为中介' : 'Become an Agent'}
-            </Link>
+            <FooterLink onClick={() => setLegalModal('terms')}>{lang === 'zh' ? '服务条款' : 'Terms of Service'}</FooterLink>
+            <FooterLink onClick={() => setLegalModal('privacy')}>{lang === 'zh' ? '隐私政策' : 'Privacy Policy'}</FooterLink>
+            <FooterLink href="/calculator">{lang === 'zh' ? '费用计算器' : 'Calculator'}</FooterLink>
+            <FooterLink href="/register-agent">{lang === 'zh' ? '申请成为中介' : 'Become an Agent'}</FooterLink>
           </div>
         </div>
       </footer>
 
-      {/* Legal modal */}
       {legalModal && <LegalContent type={legalModal} onClose={() => setLegalModal(null)} />}
     </div>
   );
