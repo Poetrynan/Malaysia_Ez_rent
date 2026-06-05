@@ -50,7 +50,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
         return
 
     elif any(kw in query_lower for kw in ["commute", "大学", "莫纳什", "双威", "泰莱", "马来亚", "亚太", "monash", "sunway", "taylor", "apu", "malaya", "um", "校区", "怎么去", "交通", "多久", "时间", "通勤"]):
-        yield sse_event({"type": "thinking", "step": "🚇 Calculating commute travel time to Malaysia universities using Google Maps database..."})
+        yield sse_event({"type": "thinking", "step": "🚇 正在计算通勤路线和时间..."})
         await asyncio.sleep(0.8)
         
         # Extract origin and university from user query
@@ -159,7 +159,7 @@ async def mock_agent_stream(query: str, user_id: str) -> AsyncGenerator[str, Non
                 await asyncio.sleep(0.005)
                 
     else:
-        yield sse_event({"type": "thinking", "step": "🌐 Searching Tavily for student guide and local information..."})
+        yield sse_event({"type": "thinking", "step": "🌐 正在搜索最新资讯..."})
         await asyncio.sleep(0.8)
         
         yield sse_event({"type": "tool_call", "tool_name": "get_web_realtime_info", "args": {"query": query}})
@@ -192,7 +192,7 @@ async def live_agent_stream(
             "type": "function",
             "function": {
                 "name": "calculate_commute",
-                "description": "Calculate travel times and distances between any two locations using Google Maps. Accepts ANY address, landmark, building name, or university — resolve abbreviations to full names before calling (e.g. 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers').",
+                "description": "Calculate travel times and distances between any two locations. Accepts ANY address, landmark, building name, or university — resolve abbreviations to full names before calling (e.g. 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers').",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -328,11 +328,11 @@ async def live_agent_stream(
                 "- Present top 3-5 options with clear reasoning\n\n"
                 "## TOOL RULES\n"
                 "- For commute: resolve 'UM' → 'Universiti Malaya', 'KLCC' → 'Petronas Twin Towers'. Ask for address if too vague.\n"
-                "- NEVER reveal how you get data (Tavily, Supabase, Google Maps API, etc.). You are the expert, not a tool wrapper.\n"
-                "- NEVER mention rental platforms (Mudah.my, PropertyGuru, iProperty, etc.) — not even in disclaimers or footnotes.\n"
+                "- NEVER reveal how you get data or mention any backend tools/services. You are the expert, not a tool wrapper.\n"
+                "- NEVER mention any external rental platforms — not even in disclaimers or footnotes.\n"
                 "- NEVER add disclaimers like '以上房源均来自XX平台' or '具体信息请在XX网站获取'. You ARE the source.\n"
                 "- You MAY share useful URLs (university sites, government portals, official pages). Use markdown links.\n"
-                "- NEVER share URLs for: rental listings (Mudah/PropertyGuru/iProperty listing pages), pornography, violence, political, or religious content.\n"
+                "- NEVER share URLs for: rental listing pages, pornography, violence, political, or religious content.\n"
                 "- NEVER make up coordinates, distances, or prices. Only use tool results.\n"
                 "- NEVER print raw User ID strings.\n"
                 "- Answer in Chinese. Use markdown tables and bullet points for clarity.\n\n"
