@@ -35,14 +35,14 @@ export default function GuestPage() {
         }} />
 
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
-          {/* Logo */}
+          {/* Logo — blend white background into page */}
           <img
             src="/image.png"
             alt="Malaysia Ez Rent"
             style={{
               width: 260, height: 260, objectFit: 'contain',
               margin: '0 auto 32px', display: 'block',
-              filter: 'drop-shadow(0 8px 32px rgba(14,116,144,0.15))',
+              mixBlendMode: 'multiply',
             }}
           />
 
