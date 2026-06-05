@@ -1098,3 +1098,22 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 - AIChat saves chat history to localStorage
 - AdminPanel initializes from `defaultTab` prop
 - Sidebar + topbar stay mounted in the layout (persistent across routes)
+
+### Guest 页面路由逻辑（2026-06-06 更新）
+
+`/guest` 是系统入口页面，无论登录状态都是干净的浏览界面：
+
+- **中间件**：`/` 一律重定向到 `/guest`（mock/live 模式统一）
+- **Layout**：`isGuest = pathname === '/guest'`，只看路径不看登录状态
+- **侧边栏/顶栏**：`isGuest` 为 true 时完全隐藏
+- **CTA 按钮**：未登录显示"立即开始"→ `/login`；已登录显示"进入系统"→ `/listings`
+
+### 分页策略
+
+| 视图 | 每页 | 布局 |
+|------|------|------|
+| 网格（租客/中介） | 10 | `repeat(5, 1fr)` |
+| 网格（Guest） | 10 | `repeat(auto-fill, minmax(220px, 1fr))` |
+| 列表 | 8 | 单列 |
+
+分页对所有用户生效，切换视图模式自动重置页码。
