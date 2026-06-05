@@ -102,26 +102,25 @@ export default function GuestPage() {
         <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--text-h)', textAlign: 'center', margin: '0 0 40px' }}>
           {lang === 'zh' ? '他们已经找到了理想的家' : 'They Already Found Their Home'}
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
           {[
-            { quote: { zh: '从开始找房到签约只用了三天，整个流程比我想象中顺畅太多。', en: 'From searching to signing took only three days. The whole process was way smoother than I expected.' }, name: 'Li Wei', role: { zh: 'Monash 大学生', en: 'Monash University Student' }, seed: 'liwei' },
-            { quote: { zh: '终于不用在 WhatsApp 群里翻中介消息了，所有东西都在一个平台上搞定。', en: "No more digging through WhatsApp messages from agents. Everything is on one platform." }, name: 'Sarah Tan', role: { zh: 'Taylor\'s 大学生', en: "Taylor's University Student" }, seed: 'sarah' },
-            { quote: { zh: '最让我放心的是资金安全，每笔付款都有记录，不怕被骗。', en: "What impressed me most is payment security. Every transaction is tracked, no fear of scams." }, name: 'Ahmad Faizal', role: { zh: 'UPM 大学生', en: 'UPM University Student' }, seed: 'ahmad' },
-            { quote: { zh: '中介回复很快，房源信息也很真实，不像其他平台图片和实际差太多。', en: 'Agent responded quickly, property info was accurate — nothing like other platforms where photos mislead.' }, name: 'Chen Yuki', role: { zh: 'Sunway 大学生', en: 'Sunway University Student' }, seed: 'yuki' },
-            { quote: { zh: '合租找室友太方便了，直接在平台上看到谁也在找同一个房子。', en: 'Finding roommates for co-renting is so easy. I could see who else was looking at the same place.' }, name: 'Priya Nair', role: { zh: 'INTI 大学生', en: 'INTI University Student' }, seed: 'priya' },
-            { quote: { zh: '作为一个新生，不用到马来西亚就能提前看好房子，省了太多时间。', en: "As a newcomer, being able to browse properties before arriving in Malaysia saved me so much time." }, name: 'Kim Joon-ho', role: { zh: 'UCSI 大学生', en: 'UCSI University Student' }, seed: 'joonho' },
+            { quote: { zh: '从开始找房到签约只用了三天，整个流程比我想象中顺畅太多。', en: 'From searching to signing took only three days. The whole process was way smoother than I expected.' }, name: 'Li Wei', role: { zh: 'Monash 大学生', en: 'Monash University Student' }, img: 11 },
+            { quote: { zh: '终于不用在 WhatsApp 群里翻中介消息了，所有东西都在一个平台上搞定。', en: "No more digging through WhatsApp messages from agents. Everything is on one platform." }, name: 'Sarah Tan', role: { zh: 'Taylor\'s 大学生', en: "Taylor's University Student" }, img: 5 },
+            { quote: { zh: '最让我放心的是资金安全，每笔付款都有记录，不怕被骗。', en: "What impressed me most is payment security. Every transaction is tracked, no fear of scams." }, name: 'Ahmad Faizal', role: { zh: 'UPM 大学生', en: 'UPM University Student' }, img: 12 },
+            { quote: { zh: '中介回复很快，房源信息也很真实，不像其他平台图片和实际差太多。', en: 'Agent responded quickly, property info was accurate — nothing like other platforms where photos mislead.' }, name: 'Chen Yuki', role: { zh: 'Sunway 大学生', en: 'Sunway University Student' }, img: 9 },
+            { quote: { zh: '合租找室友太方便了，直接在平台上看到谁也在找同一个房子。', en: 'Finding roommates for co-renting is so easy. I could see who else was looking at the same place.' }, name: 'Priya Nair', role: { zh: 'INTI 大学生', en: 'INTI University Student' }, img: 16 },
+            { quote: { zh: '作为一个新生，不用到马来西亚就能提前看好房子，省了太多时间。', en: "As a newcomer, being able to browse properties before arriving in Malaysia saved me so much time." }, name: 'Kim Joon-ho', role: { zh: 'UCSI 大学生', en: 'UCSI University Student' }, img: 7 },
           ].map((t, i) => (
-            <div key={i} className="glass-card" style={{ padding: '24px', borderRadius: 14, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-body)', lineHeight: 1.7, margin: '0 0 20px', fontStyle: 'italic' }}>
+            <div key={i} className="glass-card" style={{ padding: '20px', borderRadius: 14 }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.65, margin: '0 0 16px', fontStyle: 'italic' }}>
                 &ldquo;{lang === 'zh' ? t.quote.zh : t.quote.en}&rdquo;
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary-light, rgba(14,116,144,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', flexShrink: 0 }}>
-                  {t.name.charAt(0)}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <img src={`https://i.pravatar.cc/80?img=${t.img}`} alt={t.name}
+                  style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? t.role.zh : t.role.en}</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? t.role.zh : t.role.en}</div>
                 </div>
               </div>
             </div>
