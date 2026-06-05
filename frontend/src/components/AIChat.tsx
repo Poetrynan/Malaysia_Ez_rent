@@ -106,16 +106,24 @@ const renderMarkdown = (text: string) => {
   return <>{elements}</>;
 };
 
-// Helper: render inline formatting (bold, code, links)
+// Helper: render inline formatting (bold, code, links, <br> line breaks)
 const renderInline = (text: string): React.ReactNode => {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g);
-  return parts.map((part, j) => {
-    if (part.startsWith('**') && part.endsWith('**')) return <strong key={j}>{part.slice(2, -2)}</strong>;
-    if (part.startsWith('`') && part.endsWith('`')) return <code key={j} className="md-code">{part.slice(1, -1)}</code>;
-    const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
-    if (linkMatch) return <a key={j} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="md-link">{linkMatch[1]}</a>;
-    return part;
+  // Normalize HTML line breaks the model sometimes emits inside table cells.
+  const segments = text.split(/<br\s*\/?>/gi);
+  const out: React.ReactNode[] = [];
+  segments.forEach((segment, si) => {
+    if (si > 0) out.push(<br key={`br-${si}`} />);
+    const parts = segment.split(/(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g);
+    parts.forEach((part, j) => {
+      const key = `${si}-${j}`;
+      if (part.startsWith('**') && part.endsWith('**')) { out.push(<strong key={key}>{part.slice(2, -2)}</strong>); return; }
+      if (part.startsWith('`') && part.endsWith('`')) { out.push(<code key={key} className="md-code">{part.slice(1, -1)}</code>); return; }
+      const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (linkMatch) { out.push(<a key={key} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="md-link">{linkMatch[1]}</a>); return; }
+      if (part) out.push(<React.Fragment key={key}>{part}</React.Fragment>);
+    });
   });
+  return out;
 };
 
 /* ── Component ── */

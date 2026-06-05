@@ -413,7 +413,9 @@ async def live_agent_stream(
                 "4. **Things to note** (cons, if any)\n"
                 "5. **Best for** (who is this community ideal for)\n\n"
                 "When comparing communities, use a table format:\n"
-                "| 小区 | 价格 | 评分 | 距大学 | 亮点 |\n\n"
+                "| 小区 | 价格 | 评分 | 距大学 | 亮点 |\n"
+                "- Keep each table cell SHORT (a few words). NEVER put HTML tags like <br> inside cells. "
+                "If a cell needs multiple facts, separate them with a comma or put the detail in a bullet list below the table instead.\n\n"
                 "When user asks vague questions like '便宜的' / '好的' / '推荐':\n"
                 "- Search the knowledge base with relevant filters\n"
                 "- Rank results by the requested criteria (price → low to high, rating → high to low)\n"
@@ -465,7 +467,10 @@ async def live_agent_stream(
     pending_ui_components = []  # Collect map data, emit AFTER text is done
     has_commute = False  # Track if calculate_commute was called (skip duplicate map card)
     kb_community_info = None  # Store knowledge base result for merging into commute card
-    kb_map_candidate = None  # Deferred KB map card props (only emitted if no commute card wins)
+    kb_card_candidates = []  # ALL kb communities with coords; cards chosen by answer text after loop
+    kb_show_map = False  # True if the model flagged any KB search as housing (show_map=true)
+    commute_card_names = set()  # community/origin names already shown on a commute card
+    answer_text = ""  # Accumulated final answer text — used to decide which KB cards to show
     final_text_emitted = False  # Track whether the model produced a real final answer
     reasoning_effort = assess_reasoning_effort(query)  # low/medium/high per query difficulty
     MAX_COMPLETION_TOKENS = 3072  # Room for reasoning + a full answer (default 1024 was too small)
@@ -535,6 +540,7 @@ async def live_agent_stream(
             for char in content:
                 yield sse_event({"type": "text", "delta": char})
                 await asyncio.sleep(0.01)
+            answer_text = content
             final_text_emitted = bool(content.strip())
             # Cards are emitted in the unified block after the loop
             break
@@ -609,8 +615,9 @@ async def live_agent_stream(
 
             # Collect UI components — will be emitted AFTER text is done
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
-                show_map = tool_args.get("show_map", False)
-                # Always find the best matching community for potential merging
+                if tool_args.get("show_map", False):
+                    kb_show_map = True
+                # Best match (for merging into a commute card, if one appears)
                 target_name = tool_args.get("map_community_name", "")
                 best = None
                 if target_name:
@@ -622,7 +629,6 @@ async def live_agent_stream(
                             break
                 if not best:
                     best = result_data[0]
-                # Store community info for merging into commute card later
                 if best.get("latitude") and best.get("longitude"):
                     kb_community_info = {
                         "community_name": best.get("community_name"),
@@ -631,24 +637,34 @@ async def live_agent_stream(
                         "tenant_rating": best.get("tenant_rating"),
                         "description": best.get("description"),
                     }
-                # Defer the KB map card: a commute card may appear later in this same
-                # round and should take priority. We decide once, after the whole loop.
-                if show_map and best.get("latitude") and best.get("longitude"):
-                    kb_map_candidate = {
+                # Collect EVERY community with coordinates as a card candidate. Which ones
+                # actually render is decided AFTER the answer is written — we show a card
+                # for each community the answer actually talks about (so a 2-community
+                # comparison gets 2 cards). This no longer depends on the model setting
+                # show_map, which it often forgets to do.
+                seen_names = {(c["props"].get("community_name") or "").strip().lower() for c in kb_card_candidates}
+                for item in result_data:
+                    name = (item.get("community_name") or "").strip()
+                    if not name or not item.get("latitude") or not item.get("longitude"):
+                        continue
+                    if name.lower() in seen_names:
+                        continue
+                    seen_names.add(name.lower())
+                    kb_card_candidates.append({
                         "type": "ui_component",
                         "component": "MapAndCard",
                         "props": {
-                            "origin_name": best.get("community_name", ""),
-                            "origin_lat": float(best["latitude"]),
-                            "origin_lng": float(best["longitude"]),
-                            "community_name": best.get("community_name"),
-                            "university_name": best.get("university_name"),
-                            "price_range": best.get("price_range"),
-                            "tenant_rating": best.get("tenant_rating"),
-                            "description": best.get("description"),
+                            "origin_name": name,
+                            "origin_lat": float(item["latitude"]),
+                            "origin_lng": float(item["longitude"]),
+                            "community_name": name,
+                            "university_name": item.get("university_name"),
+                            "price_range": item.get("price_range"),
+                            "tenant_rating": item.get("tenant_rating"),
+                            "description": item.get("description"),
                             "is_knowledge_base": True
                         }
-                    }
+                    })
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
@@ -700,6 +716,9 @@ async def live_agent_stream(
                     "component": "MapAndCard",
                     "props": commute_props
                 })
+                for nm in (commute_props.get("origin_name"), commute_props.get("community_name")):
+                    if nm:
+                        commute_card_names.add(nm.strip().lower())
 
             # Append tool result to messages — compress to high-signal fields first so
             # the model sees ALL options instead of a JSON blob cut off mid-entry.
@@ -747,6 +766,7 @@ async def live_agent_stream(
                 for char in final_content:
                     yield sse_event({"type": "text", "delta": char})
                     await asyncio.sleep(0.01)
+                answer_text = final_content
                 final_text_emitted = True
         except Exception as e:
             print(f"[Agent Synthesis Error] {type(e).__name__}: {str(e)[:300]}")
@@ -755,9 +775,31 @@ async def live_agent_stream(
     if not final_text_emitted:
         yield sse_event({"type": "text", "delta": "我已经查到了相关信息（见下方卡片）。如果你能告诉我更具体的需求（预算、几人住、最看重通勤还是安全），我可以帮你直接对比并给出推荐 😊"})
 
-    # Finalize the deferred KB map card: only show it if no commute card was produced
-    if kb_map_candidate and not has_commute:
-        pending_ui_components.append(kb_map_candidate)
+    # Decide which knowledge-base map cards to show: one for EACH community the answer
+    # actually mentions (so a 2-community comparison renders 2 cards). Matching against
+    # the written answer is a strong housing signal and doesn't rely on the model
+    # remembering to set show_map. Skip communities already shown on a commute card.
+    answer_lower = (answer_text or "").lower()
+    MAX_KB_CARDS = 3
+    shown = 0
+    for cand in kb_card_candidates:
+        if shown >= MAX_KB_CARDS:
+            break
+        name = (cand["props"].get("community_name") or "").strip()
+        if not name:
+            continue
+        if name.lower() in commute_card_names:
+            continue  # already on a commute card
+        if name.lower() in answer_lower:
+            pending_ui_components.append(cand)
+            shown += 1
+    # Fallback: model explicitly flagged housing (show_map) but no community name matched
+    # in the answer (e.g. it paraphrased the name) — show the single best candidate.
+    # Gated by kb_show_map so non-housing questions never get a stray card.
+    if shown == 0 and kb_show_map and not has_commute and kb_card_candidates:
+        first = kb_card_candidates[0]
+        if (first["props"].get("community_name") or "").strip().lower() not in commute_card_names:
+            pending_ui_components.append(first)
 
     # Emit all collected UI components AFTER the text (maps, cards, etc.)
     for comp in pending_ui_components:
