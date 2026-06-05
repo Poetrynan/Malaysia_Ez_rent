@@ -403,7 +403,7 @@ export default function AIChat() {
             {/* User message */}
             {m.role === 'user' && (
               <div className="manus-user-bubble">
-                <div className="manus-avatar"><User size={14} /></div>
+                <div className="manus-avatar"><User size={18} /></div>
                 <div className="manus-user-text">{m.content}</div>
               </div>
             )}
@@ -411,7 +411,7 @@ export default function AIChat() {
             {/* Assistant message */}
             {m.role === 'assistant' && (
               <div className="manus-assistant">
-                <div className="manus-avatar assistant"><Bot size={14} /></div>
+                <div className="manus-avatar assistant"><Bot size={18} /></div>
                 <div className="manus-assistant-bubble">
                 <div className="manus-assistant-content">
                   {/* Thinking steps — latest visible, completed steps auto-collapsed with ✅ */}
