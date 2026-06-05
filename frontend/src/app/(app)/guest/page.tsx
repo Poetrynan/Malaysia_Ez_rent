@@ -86,14 +86,14 @@ export default function GuestPage() {
         <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
           {/* Logo — circular badge with entrance animation */}
           <div style={{
-            width: 200, height: 200, borderRadius: '50%', overflow: 'hidden',
-            margin: '0 auto 28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 280, height: 280, borderRadius: '50%', overflow: 'hidden',
+            margin: '0 auto 32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'var(--glass-bg)', border: '2px solid var(--glass-border)',
             boxShadow: '0 8px 32px rgba(14,116,144,0.12), 0 0 0 6px rgba(14,116,144,0.04)',
             animation: 'guestLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
           }}>
             <img src="/image.png" alt="Malaysia Ez Rent"
-              style={{ width: 180, height: 180, objectFit: 'contain', mixBlendMode: 'multiply' }} />
+              style={{ width: 250, height: 250, objectFit: 'contain', mixBlendMode: 'multiply' }} />
           </div>
 
           <h1 style={{
