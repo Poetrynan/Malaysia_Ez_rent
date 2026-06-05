@@ -395,6 +395,7 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [submittingInterest, setSubmittingInterest] = useState(false);
   const [myLeasedUnitIds, setMyLeasedUnitIds] = useState<string[]>([]);
+  const [activeLeaseCounts, setActiveLeaseCounts] = useState<Record<string, number>>({});
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -459,15 +460,33 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
       const uid = userId ?? authUserId;
       let activeLeasedUnitIds: string[] = [];
 
-      if (uid) {
-        // Fetch active leases to see if the user is currently renting any units
-        if (isMockDatabase) {
-          const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      // Fetch active lease counts per unit (for accurate occupancy display)
+      if (isMockDatabase) {
+        const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+        const counts: Record<string, number> = {};
+        mockLeases.filter((l: any) => l.status === 'active').forEach((l: any) => {
+          counts[l.unit_id] = (counts[l.unit_id] || 0) + 1;
+        });
+        setActiveLeaseCounts(counts);
+        if (uid) {
           activeLeasedUnitIds = mockLeases
             .filter((l: any) => String(l.tenant_id) === String(uid) && l.status === 'active')
             .map((l: any) => l.unit_id);
           setMyLeasedUnitIds(activeLeasedUnitIds);
-        } else {
+        }
+      } else {
+        const { data: allActiveLeases, error: leaseCountError } = await supabase
+          .from('leases')
+          .select('unit_id')
+          .eq('status', 'active');
+        if (!leaseCountError && allActiveLeases) {
+          const counts: Record<string, number> = {};
+          allActiveLeases.forEach((l: any) => {
+            counts[l.unit_id] = (counts[l.unit_id] || 0) + 1;
+          });
+          setActiveLeaseCounts(counts);
+        }
+        if (uid) {
           const { data: leasesData, error: leasesError } = await supabase
             .from('leases')
             .select('unit_id')
@@ -1271,13 +1290,12 @@ export default function PropertyListings({ readOnly = false }: { readOnly?: bool
               <div>
                 {(() => {
                   const unitInterests = interests.filter(i => i.unit_id === selected.id && i.status !== 'left');
-                  
-                  // For occupancy counting: a 'confirmed' interest only counts if the unit is NOT available
-                  // (If it's available, any 'confirmed' interest is stale/terminated)
-                  const confirmed = selected.status === 'available' 
-                    ? 0 
-                    : unitInterests.filter(i => i.status === 'confirmed').length;
-                  
+
+                  // Occupancy is based on actual active leases, not just confirmed interests.
+                  // A confirmed interest only means the agent agreed — the tenant hasn't moved in
+                  // until a lease is created.
+                  const confirmed = activeLeaseCounts[selected.id] || 0;
+
                   const interested = unitInterests.filter(i => i.status === 'interested').length;
                   const registered = confirmed + interested;
                   const max = selected.max_occupants || 1;

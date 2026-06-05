@@ -3302,10 +3302,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         <td><span className={`status-badge ${u.status}`}>{u.status === 'available' ? t('statusAvailable') : t('statusRented')}</span></td>
                         <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
                           {(() => {
-                            const unitInterests = interests.filter(i => i.unit_id === u.id && i.status !== 'left');
-                            const confirmed = unitInterests.filter(i => i.status === 'confirmed').length;
+                            // Only count tenants with active leases as "occupants", not just confirmed interests
+                            const activeLeaseCount = leases.filter(l => l.unit_id === u.id && l.status === 'active').length;
                             const max = u.max_occupants || 1;
-                            return <span style={{ color: confirmed >= max ? 'var(--success)' : 'var(--text-muted)' }}>{confirmed}/{max}</span>;
+                            return <span style={{ color: activeLeaseCount >= max ? 'var(--success)' : 'var(--text-muted)' }}>{activeLeaseCount}/{max}</span>;
                           })()}
                         </td>
                         <td style={{ textAlign: 'center' }}>
