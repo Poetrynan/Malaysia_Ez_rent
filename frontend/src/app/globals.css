@@ -486,7 +486,11 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   gap: 8px;
   font-size: 0.82rem;
   color: var(--text-muted);
-  padding: 4px 0;
+  padding: 8px 12px;
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  animation: slideUp 0.2s ease-out;
 }
 .manus-thought-dot {
   width: 6px; height: 6px;
@@ -588,23 +592,32 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   gap: 8px;
   font-size: 0.82rem;
   color: var(--text-muted);
-  padding: 4px 0;
+  padding: 10px 14px;
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  animation: slideUp 0.25s ease-out;
 }
 
 /* Final answer */
 .manus-answer {
   margin-top: 4px;
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  animation: slideUp 0.25s ease-out;
 }
 .manus-answer-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 0;
+  display: none;
 }
 .manus-answer-label {
   font-size: 0.72rem;
   color: var(--text-muted);
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
 }
 .manus-answer-content {
   font-size: 0.92rem;
