@@ -28,3 +28,4 @@ frontend/.env.local
 
 # History snapshots (local reference only)
 history/
+RAG/count.ps1
