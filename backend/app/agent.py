@@ -408,7 +408,7 @@ async def live_agent_stream(
         # Send Groq reasoning process to frontend (if available)
         reasoning = getattr(message, 'reasoning', None)
         if reasoning:
-            yield sse_event({"type": "thinking", "step": f"🧠 思考过程：{reasoning[:500]}{'...' if len(reasoning) > 500 else ''}"})
+            yield sse_event({"type": "thinking", "label": "🧠 模型推理过程", "content": reasoning[:1000]})
             await asyncio.sleep(0.3)
 
         # If model chooses to write text (no tool calls)

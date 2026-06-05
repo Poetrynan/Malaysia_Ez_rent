@@ -19,7 +19,7 @@ interface ToolCard {
 interface Message {
   id: string;
   role: 'user' | 'assistant';
-  thoughts: string[];
+  thoughts: { label: string; content?: string }[];
   tools: ToolCard[];
   content: string;
   uiComponents: { component: string; props: any }[];
@@ -170,7 +170,9 @@ export default function AIChat() {
       const uiComponents = [...m.uiComponents];
 
       if (ev.type === 'thinking') {
-        thoughts.push(ev.step);
+        // Support both formats: {step: "label", content: "..."} or {label: "...", content: "..."}
+        const label = ev.step || ev.label || '思考中...';
+        thoughts.push({ label, content: ev.content });
       } else if (ev.type === 'tool_call') {
         tools.push({ id: `tc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, name: ev.tool_name, args: ev.args, status: 'running' });
       } else if (ev.type === 'tool_result') {
@@ -358,16 +360,22 @@ export default function AIChat() {
                           </div>
                         )}
                         {isExpanded && prev.map((th, i) => (
-                          <div key={`th-${i}`} className="manus-thought" style={{opacity: 0.5, paddingLeft: 28, fontSize: '0.78rem'}}>
-                            <CheckCircle size={12} style={{color: '#22C55E', flexShrink: 0}} />
-                            <span>{th}</span>
+                          <div key={`th-${i}`} className="manus-thought-expandable" onClick={() => setExpandedThoughts(s => { const n = new Set(s); n.has(`${m.id}-th-${i}`) ? n.delete(`${m.id}-th-${i}`) : n.add(`${m.id}-th-${i}`); return n; })}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                              <CheckCircle size={12} style={{color: '#22C55E', flexShrink: 0}} />
+                              <span style={{fontSize: '0.78rem'}}>{th.label}</span>
+                              {th.content && <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>{expandedThoughts.has(`${m.id}-th-${i}`) ? '▾' : '▸'}</span>}
+                            </div>
+                            {th.content && expandedThoughts.has(`${m.id}-th-${i}`) && (
+                              <div className="manus-thought-content">{th.content}</div>
+                            )}
                           </div>
                         ))}
                         {/* Current (latest) step — pulsing dot, not yet done */}
                         {!isLatestDone && (
                           <div className="manus-thought">
                             <span className="manus-thought-dot pulse" />
-                            <span style={{flex: 1}}>{latest}</span>
+                            <span style={{flex: 1}}>{latest.label}</span>
                             {elapsed > 0 && <span style={{fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600}}>{elapsed}s</span>}
                           </div>
                         )}
@@ -375,7 +383,7 @@ export default function AIChat() {
                         {isLatestDone && (
                           <div className="manus-thought" style={{opacity: 0.7}}>
                             <CheckCircle size={14} style={{color: '#22C55E', flexShrink: 0}} />
-                            <span>{latest}</span>
+                            <span>{latest.label}</span>
                           </div>
                         )}
                       </div>
