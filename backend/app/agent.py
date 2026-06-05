@@ -274,7 +274,8 @@ async def live_agent_stream(
                         "semantic_query": {"type": "string", "description": "Natural language query, e.g. 'affordable condo near Sunway University', 'safe apartment with gym in Nilai'."},
                         "state": {"type": "string", "description": "Optional Malaysian state filter, e.g. 'Selangor', 'Kuala Lumpur', 'Perak'."},
                         "max_results": {"type": "integer", "default": 5, "description": "Max number of results to return (default 5)."},
-                        "show_map": {"type": "boolean", "default": False, "description": "Set to true ONLY when the user is asking about housing, properties, neighborhoods, or accommodation. Set to false for general questions (phone cards, visa, food, transport, etc.)."}
+                        "show_map": {"type": "boolean", "default": False, "description": "Set to true ONLY when the user is asking about housing, properties, neighborhoods, or accommodation. Set to false for general questions (phone cards, visa, food, transport, etc.)."},
+                        "map_community_name": {"type": "string", "description": "When show_map=true, set this to the exact community name that the map should display. Must match a community_name from the search results. E.g. if your answer focuses on 'Sunway Geo Residences', set this to 'Sunway Geo Residences'. Only used when show_map=true."}
                     },
                     "required": ["semantic_query"]
                 }
@@ -310,7 +311,8 @@ async def live_agent_stream(
                 "- User asks about prices/recommendations/neighborhoods → call search_knowledge_base + search_external_listings TOGETHER\n"
                 "- Only ask for clarification AFTER searching and finding nothing relevant\n"
                 "- NEVER say 'I don't have information about that' without searching first\n"
-                "- IMPORTANT: Only set show_map=true when the query is about housing/properties/neighborhoods. For general questions (phone cards, visa, food, etc.), set show_map=false.\n\n"
+                "- IMPORTANT: Only set show_map=true when the query is about housing/properties/neighborhoods. For general questions (phone cards, visa, food, etc.), set show_map=false.\n"
+                "- When show_map=true, ALWAYS set map_community_name to the exact community your answer focuses on (must match a community_name from search results). If your answer covers multiple communities, pick the one you recommend most.\n\n"
                 "## HOW TO ANSWER HOUSING QUESTIONS\n"
                 "When presenting community info, ALWAYS structure your answer like this:\n"
                 "1. **Community name + location** (one line)\n"
@@ -497,7 +499,20 @@ async def live_agent_stream(
             if tool_name == "search_knowledge_base" and isinstance(result_data, list) and len(result_data) > 0:
                 show_map = tool_args.get("show_map", False)
                 if show_map:
-                    best = result_data[0]
+                    # Find the community the LLM wants to show on the map
+                    target_name = tool_args.get("map_community_name", "")
+                    best = None
+                    if target_name:
+                        # Match by name (case-insensitive, partial match)
+                        target_lower = target_name.strip().lower()
+                        for item in result_data:
+                            item_name = (item.get("community_name") or "").strip().lower()
+                            if item_name and (item_name == target_lower or target_lower in item_name or item_name in target_lower):
+                                best = item
+                                break
+                    # Fallback to first result if no match found
+                    if not best:
+                        best = result_data[0]
                     if best.get("latitude") and best.get("longitude"):
                         pending_ui_components.append({
                             "type": "ui_component",
@@ -517,21 +532,21 @@ async def live_agent_stream(
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
                 best_match = result_data[0]
-                pending_ui_components.append({
-                    "type": "ui_component",
-                    "component": "MapAndCard",
-                    "props": {
-                        "origin_name": best_match.get("community_name") or "Sunway Geo Residences",
-                        "origin_lat": float(best_match.get("lat") or 3.06341),
-                        "origin_lng": float(best_match.get("lng") or 101.60977),
-                        "destination_name": "Monash University Malaysia",
-                        "destination_lat": 3.0645,
-                        "destination_lng": 101.6000,
-                        "rent": float(best_match.get("rent") or 2500),
-                        "room_type": best_match.get("room_type") or "Studio",
-                        "unit_id": best_match.get("id")
-                    }
-                })
+                origin_lat = float(best_match.get("lat") or 0)
+                origin_lng = float(best_match.get("lng") or 0)
+                if origin_lat and origin_lng:
+                    pending_ui_components.append({
+                        "type": "ui_component",
+                        "component": "MapAndCard",
+                        "props": {
+                            "origin_name": best_match.get("community_name") or "",
+                            "origin_lat": origin_lat,
+                            "origin_lng": origin_lng,
+                            "rent": float(best_match.get("rent") or 0),
+                            "room_type": best_match.get("room_type") or "",
+                            "unit_id": best_match.get("id")
+                        }
+                    })
 
             elif tool_name == "calculate_commute" and isinstance(result_data, dict):
                 pending_ui_components.append({
