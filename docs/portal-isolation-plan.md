@@ -68,7 +68,7 @@ AuthContext.resolveRole():
 | 角色 | 注册 | 登录 | Google 登录 |
 |------|------|------|------------|
 | 租客 | 邮箱+密码+填表+验证码 | 邮箱+密码 **或** Google | ✅ 首次需完善资料 |
-| 中介 | 填表申请（无需密码） | 邮箱+密码（审批通过后） | ❌ 不提供 |
+| 中介 | 填表+设密码+验证码 | 邮箱+密码（审批通过后） | ❌ 不提供 |
 
 **租客 Google 登录流程**：
 ```
@@ -86,10 +86,10 @@ Google 授权 → Supabase 自动创建账号
 ### 新流程
 
 ```
-租客注册 → /register/tenant → 填表 → 发验证码 → 验证通过 → 设置密码 → 注册完成 → /listings
+租客注册 → /register/tenant → 填表+设密码+验证码 → 注册完成 → /listings
 租客登录 → 邮箱+密码 或 Google（首次需完善资料）
 
-中介申请 → /register/agent → 填表+邮箱验证 → 提交 → 等审批
+中介申请 → /register/agent → 填表+设密码+验证码 → 创建账号（无权限）→ 等审批
 中介登录 → 审批通过 → 用邮箱+密码登录 → /admin/*
 
 两个独立入口，两个独立账号，互不相通。
@@ -433,13 +433,17 @@ CREATE POLICY "Admins can update profiles"
   │  REN 执照照片 *             │
   │  [上传区域]                 │
   │                             │
+  │  密码 *                     │
+  │  [________________]         │
+  │                             │
+  │  确认密码 *                 │
+  │  [________________]         │
+  │                             │
   │  [提交申请]                 │
   │                             │
   │  已有账号？去登录             │
   └─────────────────────────────┘
 ```
-
-**注意**：中介申请时不需要设置密码。审批通过后，首次登录时才设置密码。
 
 **注册逻辑（无需登录，需设密码）**：
 ```
@@ -452,7 +456,7 @@ CREATE POLICY "Admins can update profiles"
 7. 提示"申请已提交，等待审批"
 ```
 
-**注意**：中介申请时就创建账号，但没有权限。审批通过后获得权限，直接登录。
+**注意**：中介申请时就设置密码、创建账号，但没有权限。审批通过后获得权限，直接用邮箱+密码登录。
 
 ### 4.3 新建：`/api/send-verification/route.ts`
 
@@ -574,10 +578,10 @@ const resolveRole = async (user) => {
 | `'admin'` | 中介（已审批，已有账号） | /admin/* |
 
 **中介审批流程**：
-1. 中介在 `/register/agent` 提交申请（无需登录，无需账号）
-2. 申请存入 `agent_profiles` 表（`auth_user_id = NULL`）
-3. 管理员审批通过
-4. 中介去 `/login` 登录 → 系统检测到该邮箱已审批通过但无账号 → 引导设置密码 → 创建 Supabase 账号 → 自动关联 `auth_user_id` → 跳转到 /admin/*
+1. 中介在 `/register/agent` 提交申请（无需登录，设置密码，创建账号）
+2. 申请存入 `agent_profiles` 表，账号已创建但无权限
+3. 管理员审批通过，插入 `admin_users` 记录
+4. 中介用邮箱+密码登录 → AuthContext 检测到 `admin_users` 记录 → 跳转到 /admin/*
 
 ### 4.8 修改：`middleware.ts`
 
@@ -870,13 +874,13 @@ created_at TIMESTAMPTZ
 
 **改动**：
 - 删除从 `agent_registrations` 表删除的逻辑
-- 新增从 `tenant_profiles` 表删除的逻辑
 - 新增从 `agent_profiles` 表删除的逻辑
+- `users` 表已有删除逻辑（通过 `ON DELETE CASCADE`），无需额外处理
 
 #### `src/lib/supabase.ts`（Mock 模式）
 
 **改动**：
-- Mock localStorage keys 新增：`ez_tenant_profiles`、`ez_agent_profiles`、`ez_email_verifications`
+- Mock localStorage keys 新增：`ez_agent_profiles`、`ez_email_verifications`
 - 删除：`ez_agent_registrations`（被 `ez_agent_profiles` 替代）
 - Mock auth 新增：`signUp` 方法（支持邮箱+密码注册）
 
@@ -886,7 +890,6 @@ created_at TIMESTAMPTZ
 - 删除自动插入 `user_notifications`（agent_status）的逻辑（改用邮件通知）
 - 保留自动创建 `public.users` 记录的逻辑
 - 保留自动关联 `admin_users` 的逻辑（审批通过后，中介首次登录时自动关联）
-- 新增：如果 `user_metadata.role = 'student'`，自动创建 `tenant_profiles` 记录（可选）
 
 #### `src/utils/compressImage.ts`
 
@@ -964,7 +967,7 @@ created_at TIMESTAMPTZ
 
 | 阶段 | 内容 | 时间 |
 |------|------|------|
-| 1 | 建表（tenant_profiles + agent_profiles + email_verifications） | 0.5h |
+| 1 | 建表（agent_profiles + email_verifications）+ 扩展 users 表 | 0.5h |
 | 2 | 邮箱验证码 API（send + verify） | 2h |
 | 3 | 租客注册页（含证件上传+图片压缩） | 3h |
 | 4 | Google 完善资料页 | 1.5h |
@@ -988,7 +991,7 @@ created_at TIMESTAMPTZ
 1. Supabase Auth → 新建用户（填邮箱、密码）
 2. user_metadata → 设置 { role: 'student', full_name: '...', identity_type: '...' }
 3. Supabase Storage → 上传证件照片（朋友通过 WhatsApp/微信发送）
-4. tenant_profiles 表 → 插入记录，填入照片 URL
+4. users 表 → 更新记录，填入证件信息和照片 URL
 ```
 
 ### 9.0.2 创建中介账号
@@ -1096,15 +1099,14 @@ newAdmin = { email, display_name, phone, whatsapp, wechat_id }
 - [ ] Google 登录（已有完整资料）→ 直接进入系统
 
 ### 中介申请
-- [ ] 中介申请（无需登录）→ 邮箱验证码 → 提交成功
-- [ ] 中介申请不需要设置密码
+- [ ] 中介申请（无需登录）→ 填表+设密码+邮箱验证码 → 提交成功
 - [ ] 同一邮箱不能重复申请
 
 ### 中介审批与登录
-- [ ] 中介审批通过 → 用邮箱登录 → 引导设置密码 → 进入中介端
-- [ ] 中介审批拒绝 → 登录 → 显示拒绝提示
-- [ ] 中介审批中 → 登录 → 显示审批中提示
-- [ ] 未申请过的邮箱 → 登录 → 提示"请先申请入驻"
+- [ ] 中介审批通过 → 用邮箱+密码登录 → 进入中介端
+- [ ] 中介审批拒绝 → 登录 → 显示"该账号不存在或申请未通过"
+- [ ] 中介审批中 → 登录 → 显示"您的申请正在审核中"
+- [ ] 未申请过的邮箱 → 登录 → 显示"该账号不存在或申请未通过"
 
 ### 路由隔离
 - [ ] 未登录用户不能访问 /listings 和 /admin/*
