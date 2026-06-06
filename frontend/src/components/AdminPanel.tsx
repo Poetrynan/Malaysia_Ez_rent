@@ -202,6 +202,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
     agency_name: '', ren_number: '', password: '', confirm_password: '',
   };
   const [newAdmin, setNewAdmin] = useState(emptyNewAdmin);
+  const [selectedAdminDetail, setSelectedAdminDetail] = useState<any | null>(null);
+  const [adminImgModal, setAdminImgModal] = useState<string | null>(null);
 
   const normalizeAgentPhone = (raw: string): string | null => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -250,6 +252,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
   const fetchAdmins = async () => {
     try {
+      if (!isLive) {
+        const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        setAdminList(admins.filter((a: { avatar_url?: string }) => !a.avatar_url?.startsWith('DELETED:')));
+        return;
+      }
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data } = await supabase.from('admin_users').select('*').order('created_at');
@@ -257,6 +264,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
         setAdminList(data.filter((a) => !a.avatar_url?.startsWith('DELETED:')));
       }
     } catch {}
+  };
+
+  const getAdminInitial = (admin: { display_name?: string; email?: string }) => {
+    const name = (admin.display_name || admin.email || 'A').trim();
+    return (name[0] || 'A').toUpperCase();
   };
 
   const handleAddAdmin = async () => {
@@ -4260,36 +4272,52 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               </div>
             )}
 
-            {/* Admin list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {adminList.map(admin => {
-                const initials = (admin.display_name || admin.email || 'A')
-                  .trim()
-                  .split(/\s+/)
-                  .map((w: string) => w[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase();
+            {/* Admin grid */}
+            {adminList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
+                <Users size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-body)' }}>
+                  {lang === 'zh' ? '暂无中介或管理员' : 'No agents or admins yet'}
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 16,
+              }}>
+                {adminList.map(admin => {
+                  const isSuper = admin.role === 'super_admin';
+                  const initial = getAdminInitial(admin);
 
-                const isSuper = admin.role === 'super_admin';
-
-                return (
-                  <div key={admin.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px 20px',
-                    borderRadius: 12,
-                    background: 'var(--bg-surface-solid)',
-                    border: '1px solid var(--glass-border)',
-                    boxShadow: 'var(--glass-shadow)',
-                    transition: 'all 0.2s ease',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                      {/* Circle Avatar badge */}
+                  return (
+                    <div
+                      key={admin.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        padding: '20px 16px 16px',
+                        borderRadius: 16,
+                        background: 'var(--bg-surface-solid)',
+                        border: '1px solid var(--glass-border)',
+                        boxShadow: 'var(--glass-shadow)',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px var(--primary-glow)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = 'var(--glass-border)';
+                        e.currentTarget.style.boxShadow = 'var(--glass-shadow)';
+                      }}
+                    >
                       <div style={{
-                        width: 44,
-                        height: 44,
+                        width: 64,
+                        height: 64,
                         borderRadius: '50%',
                         background: isSuper
                           ? 'linear-gradient(135deg, var(--accent), var(--warning))'
@@ -4297,139 +4325,340 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: isSuper ? 'var(--text-inverse)' : 'white',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        boxShadow: isSuper ? '0 4px 12px var(--accent-light)' : '0 4px 12px var(--primary-glow)',
-                        flexShrink: 0,
-                        marginRight: 16,
+                        color: isSuper ? 'var(--text-inverse)' : '#fff',
+                        fontWeight: 800,
+                        fontSize: '1.35rem',
+                        boxShadow: isSuper ? '0 6px 16px var(--accent-light)' : '0 6px 16px var(--primary-glow)',
+                        marginBottom: 12,
                       }}>
-                        {initials}
+                        {initial}
                       </div>
 
-                      {/* Info Panel */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.95rem' }}>
-                            {admin.display_name || admin.email}
-                          </span>
-                          {isSuper ? (
-                            <span style={{
-                              fontSize: '0.68rem',
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                              background: 'var(--warning-light)',
-                              color: 'var(--warning)',
-                              fontWeight: 700,
-                            }}>
-                              {lang === 'zh' ? '超级管理员' : 'Super Admin'}
-                            </span>
-                          ) : (
-                            <span style={{
-                              fontSize: '0.68rem',
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                              background: 'var(--primary-light)',
-                              color: 'var(--primary)',
-                              fontWeight: 700,
-                            }}>
-                              {lang === 'zh' ? '中介 / 协管员' : 'Agent / Editor'}
-                            </span>
-                          )}
-                        </div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: '0.92rem', textAlign: 'center', lineHeight: 1.3, marginBottom: 6 }}>
+                        {admin.display_name || admin.email}
+                      </div>
 
-                        {/* Contact details row */}
+                      <span style={{
+                        fontSize: '0.66rem',
+                        padding: '3px 10px',
+                        borderRadius: 999,
+                        background: isSuper ? 'var(--warning-light)' : 'var(--primary-light)',
+                        color: isSuper ? 'var(--warning)' : 'var(--primary)',
+                        fontWeight: 700,
+                        marginBottom: 10,
+                      }}>
+                        {isSuper
+                          ? (lang === 'zh' ? '超级管理员' : 'Super Admin')
+                          : (lang === 'zh' ? '中介' : 'Agent')}
+                      </span>
+
+                      {admin.agency_name && (
                         <div style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px 16px',
-                          marginTop: 6,
-                          fontSize: '0.78rem',
+                          fontSize: '0.74rem',
                           color: 'var(--text-body)',
+                          textAlign: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          marginBottom: 4,
+                          maxWidth: '100%',
                         }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Email:</span>
-                            <span style={{ fontWeight: 500 }}>{admin.email}</span>
-                          </span>
-                          {admin.phone && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ color: 'var(--text-muted)' }}>Tel:</span>
-                              <span style={{ fontWeight: 500 }}>{admin.phone}</span>
-                            </span>
-                          )}
-                          {admin.whatsapp && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ color: 'var(--text-muted)' }}>WA:</span>
-                              <span style={{ fontWeight: 500 }}>{admin.whatsapp}</span>
-                            </span>
-                          )}
-                          {admin.wechat_id && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ color: 'var(--text-muted)' }}>{lang === 'zh' ? '微信:' : 'WeChat:'}</span>
-                              <span style={{ fontWeight: 500 }}>{admin.wechat_id}</span>
-                            </span>
-                          )}
+                          <Building2 size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{admin.agency_name}</span>
                         </div>
+                      )}
 
-                        {/* Agency details row */}
-                        {(admin.agency_name || admin.ren_number) && (
-                          <div style={{
-                            display: 'flex',
-                            gap: 12,
-                            fontSize: '0.72rem',
-                            color: 'var(--text-muted)',
-                            marginTop: 6,
-                            background: 'var(--bg-hover)',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            width: 'fit-content',
-                          }}>
-                            {admin.agency_name && (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span>🏢</span>
-                                <span>{admin.agency_name}</span>
-                              </span>
-                            )}
-                            {admin.ren_number && (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span>🔑</span>
-                                <span>REN: {admin.ren_number}</span>
-                              </span>
-                            )}
-                          </div>
+                      {admin.phone && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Phone size={11} />
+                          <span>{admin.phone}</span>
+                        </div>
+                      )}
+
+                      {admin.ren_number && (
+                        <div style={{
+                          fontSize: '0.68rem',
+                          color: 'var(--text-muted)',
+                          background: 'var(--bg-hover)',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          marginBottom: 14,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          REN {admin.ren_number}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 'auto' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAdminDetail(admin)}
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            border: '1px solid var(--glass-border)',
+                            background: 'var(--glass-bg)',
+                            color: 'var(--text-h)',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.color = 'var(--primary)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
+                            e.currentTarget.style.color = 'var(--text-h)';
+                          }}
+                        >
+                          <Eye size={13} />
+                          {lang === 'zh' ? '查看详情' : 'Details'}
+                        </button>
+                        {!isSuper && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAdmin(admin.id, admin.display_name || admin.email)}
+                            title={lang === 'zh' ? '移除中介' : 'Remove agent'}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              border: '1px solid transparent',
+                              background: 'var(--danger-light)',
+                              color: 'var(--danger)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = 'var(--danger)';
+                              e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'var(--danger-light)';
+                              e.currentTarget.style.color = 'var(--danger)';
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         )}
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
 
-                    {/* Delete action */}
-                    {!isSuper && (
-                      <button onClick={() => handleDeleteAdmin(admin.id, admin.display_name || admin.email)} style={{
-                        background: 'var(--danger-light)',
-                        border: '1px solid transparent',
-                        color: 'var(--danger)',
-                        cursor: 'pointer',
-                        padding: 8,
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'all 0.2s',
-                        marginLeft: 12,
-                      }} title={lang === 'zh' ? '删除管理员' : 'Delete admin'}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--danger)';
-                        e.currentTarget.style.color = '#fff';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'var(--danger-light)';
-                        e.currentTarget.style.color = 'var(--danger)';
-                      }}>
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+            {/* Admin detail modal */}
+            {selectedAdminDetail && (() => {
+              const admin = selectedAdminDetail;
+              const isSuper = admin.role === 'super_admin';
+              const initial = getAdminInitial(admin);
+              const joinedAt = admin.created_at
+                ? new Date(admin.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : null;
+              const renderDetailRow = (icon: React.ReactNode, label: string, value?: string | null) => (
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  padding: '10px 12px', borderRadius: 12,
+                  background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                }}>
+                  <span style={{ color: 'var(--primary)', flexShrink: 0, display: 'inline-flex', marginTop: 2 }}>{icon}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-h)', fontWeight: 600, wordBreak: 'break-word' }}>{value || '—'}</div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+
+              return (
+                <div
+                  onClick={() => setSelectedAdminDetail(null)}
+                  style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9998,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                    animation: 'scaleIn 0.2s ease',
+                  }}
+                >
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    className="glass-card"
+                    style={{
+                      width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto',
+                      padding: 0, borderRadius: 18,
+                    }}
+                  >
+                    <div style={{
+                      padding: '20px 22px',
+                      borderBottom: '1px solid var(--glass-border)',
+                      display: 'flex', alignItems: 'center', gap: 14,
+                    }}>
+                      <div style={{
+                        width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+                        background: isSuper
+                          ? 'linear-gradient(135deg, var(--accent), var(--warning))'
+                          : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: isSuper ? 'var(--text-inverse)' : '#fff',
+                        fontWeight: 800, fontSize: '1.2rem',
+                      }}>
+                        {initial}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)' }}>
+                          {admin.display_name || admin.email}
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {isSuper
+                            ? (lang === 'zh' ? '超级管理员' : 'Super Administrator')
+                            : (lang === 'zh' ? '中介账号' : 'Agent Account')}
+                          {joinedAt && ` · ${lang === 'zh' ? '加入于' : 'Joined'} ${joinedAt}`}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAdminDetail(null)}
+                        style={{
+                          width: 34, height: 34, borderRadius: 10, border: '1px solid var(--glass-border)',
+                          background: 'var(--glass-bg)', color: 'var(--text-muted)', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                        {renderDetailRow(<Mail size={15} />, lang === 'zh' ? '邮箱' : 'Email', admin.email)}
+                        {renderDetailRow(<Phone size={15} />, lang === 'zh' ? '手机' : 'Phone', admin.phone)}
+                        {renderDetailRow(<MessageSquare size={15} />, 'WhatsApp', admin.whatsapp)}
+                        {renderDetailRow(<User size={15} />, lang === 'zh' ? '微信号' : 'WeChat ID', admin.wechat_id)}
+                        {renderDetailRow(<Building2 size={15} />, lang === 'zh' ? '公司' : 'Agency', admin.agency_name)}
+                        {renderDetailRow(<FileText size={15} />, lang === 'zh' ? '职位' : 'Job Title', admin.job_title)}
+                        {renderDetailRow(<ShieldCheck size={15} />, 'REN', admin.ren_number)}
+                      </div>
+
+                      {(admin.ren_tag_url || admin.avatar_url || admin.payment_qr_code) && (
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
+                            {lang === 'zh' ? '上传资料' : 'UPLOADED FILES'}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                            {admin.ren_tag_url && (
+                              <button
+                                type="button"
+                                onClick={() => setAdminImgModal(admin.ren_tag_url)}
+                                style={{
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                                  padding: 10, borderRadius: 12, cursor: 'pointer',
+                                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                                  transition: 'border-color 0.15s ease',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                              >
+                                <img src={admin.ren_tag_url} alt="REN tag" style={{ width: 120, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                                  {lang === 'zh' ? 'REN 执照' : 'REN Tag'}
+                                </span>
+                              </button>
+                            )}
+                            {admin.avatar_url && !admin.avatar_url.startsWith('DELETED:') && (
+                              <button
+                                type="button"
+                                onClick={() => setAdminImgModal(admin.avatar_url)}
+                                style={{
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                                  padding: 10, borderRadius: 12, cursor: 'pointer',
+                                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                                }}
+                              >
+                                <img src={admin.avatar_url} alt="Avatar" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--glass-border)' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                                  {lang === 'zh' ? '头像' : 'Avatar'}
+                                </span>
+                              </button>
+                            )}
+                            {admin.payment_qr_code && (
+                              <button
+                                type="button"
+                                onClick={() => setAdminImgModal(admin.payment_qr_code)}
+                                style={{
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                                  padding: 10, borderRadius: 12, cursor: 'pointer',
+                                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+                                }}
+                              >
+                                <img src={admin.payment_qr_code} alt="Payment QR" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                                  {lang === 'zh' ? '收款码' : 'Payment QR'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {!isSuper && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAdminDetail(null);
+                            handleDeleteAdmin(admin.id, admin.display_name || admin.email);
+                          }}
+                          style={{
+                            marginTop: 8,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            padding: '10px 16px', borderRadius: 10,
+                            border: '1px solid rgba(239, 68, 68, 0.35)',
+                            background: 'rgba(239, 68, 68, 0.06)',
+                            color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={15} />
+                          {lang === 'zh' ? '移除该中介' : 'Remove this agent'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {adminImgModal && (
+              <div
+                onClick={() => setAdminImgModal(null)}
+                style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10000,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAdminImgModal(null)}
+                    style={{
+                      position: 'absolute', top: -12, right: -12, width: 32, height: 32,
+                      borderRadius: '50%', background: 'var(--danger)', color: '#fff',
+                      border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                  <img src={adminImgModal} alt="Preview" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain' }} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
