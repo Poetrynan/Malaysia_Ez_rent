@@ -12,13 +12,18 @@
 
 ```
 现状流程：
-  学生注册 → 登录 → 租客端 → 申请当中介 → 等审批（卡在租客端）→ 审批通过 → 重新登录 → 中介端
+  1. 没有学生注册页，直接通过 Magic Link（邮箱链接）或 Google 登录
+  2. 登录后根据 admin_users 表判断角色：有记录 → 中介端，无记录 → 租客端
+  3. 中介申请页（/register-agent）不需要登录，任何人可填表提交
+  4. 学生也可以从租客端侧边栏申请当中介
+  5. 审批通过后需要重新登录，系统才重新检查 admin_users 表
 
 问题：
-  1. 一个账号在两种角色之间切换，逻辑混乱
-  2. 审批期间用户被困在租客端，体验差
-  3. 审批通过后需要重新登录才能切换
+  1. 没有正式的注册流程，学生和中介共用同一个登录入口
+  2. 一个账号可能在两种角色之间切换（学生申请当中介）
+  3. 审批通过后需要重新登录才能切换到中介端
   4. agentRegStatus 状态管理复杂
+  5. 中介申请时不需要登录，但审批通过后需要登录，流程不连贯
 ```
 
 ### 当前代码结构
@@ -35,11 +40,23 @@
 ### 当前角色判断逻辑
 
 ```
+登录方式：
+  - Magic Link：输入邮箱 → 收到登录链接 → 点击链接完成登录
+  - Google OAuth：点击按钮 → Google 授权 → 自动登录
+  - Mock 模式：输入邮箱 → 直接登录（模拟）
+
 AuthContext.resolveRole():
   → 查 admin_users 表（id = user.id 或 email = user.email）
-  → 有记录 → role = 'admin'（中介）
-  → 无记录 → role = 'student'（学生）
+  → 有记录 → role = 'admin'（中介）→ 跳转 /admin/*
+  → 无记录 → role = 'student'（学生）→ 跳转 /listings
   → 查 agent_registrations 表获取 agentRegStatus（审批状态）
+
+中介申请流程（/register-agent）：
+  → 不需要登录，任何人可填表
+  → 提交后写入 agent_registrations 表
+  → 管理员在 AdminPanel 审核
+  → 审批通过 → 记录插入 admin_users 表
+  → 用户重新登录 → AuthContext 检测到 admin_users 记录 → 角色变为 admin
 ```
 
 ---
