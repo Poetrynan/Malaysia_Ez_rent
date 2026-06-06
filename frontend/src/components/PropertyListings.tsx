@@ -30,6 +30,13 @@ import AgentRatingBadge from './AgentRatingBadge';
 import { useApp } from '@/lib/ThemeProvider';
 import { nonNegativeInputValue } from '@/lib/numberInput';
 import { useListingsData, type UnitWithCommunity, type AdminContact } from '@/lib/ListingsDataContext';
+import TenantIdentityWarningModal from '@/components/TenantIdentityWarningModal';
+import {
+  type TenantIdentityProfile,
+  TENANT_IDENTITY_SELECT,
+  getTenantIdentityMissingItems,
+  isTenantIdentityFullyComplete,
+} from '@/lib/tenantIdentityUtils';
 
 interface Unit {
   id: string; community_id: string;
@@ -341,8 +348,10 @@ const maskEmail = (email: string) => {
   return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`;
 };
 
-export default function PropertyListings({ readOnly = false, guestMode = false }: { readOnly?: boolean; guestMode?: boolean }) {
+export default function PropertyListings({ guestMode = false }: { guestMode?: boolean }) {
   const { t, lang } = useApp();
+  /** Favorites & tenant-only filters — not for guest browse */
+  const tenantListingFeatures = !guestMode;
   const {
     units,
     admins,
@@ -388,6 +397,12 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
   const [activeLeaseCounts, setActiveLeaseCounts] = useState<Record<string, number>>({});
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tenantIdentity, setTenantIdentity] = useState<TenantIdentityProfile | null>(null);
+  const [identityWarning, setIdentityWarning] = useState<{
+    unitId: string;
+    noteOverride?: string;
+    missing: string[];
+  } | null>(null);
 
   const showToast = useCallback((msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -551,8 +566,51 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
   }, [loadListings, loadAdmins]);
 
   useEffect(() => {
+    if (!tenantListingFeatures) return;
     loadFavorites(authUserId);
-  }, [authUserId, loadFavorites]);
+  }, [authUserId, loadFavorites, tenantListingFeatures]);
+
+  const loadTenantIdentity = useCallback(async () => {
+    if (guestMode) return;
+    if (isMockDatabase) {
+      const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
+      const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      const u = users.find((x: { id: string }) => x.id === tenantId);
+      if (u) {
+        setTenantIdentity({
+          identity_type: u.identity_type,
+          local_id_number: u.local_id_number,
+          passport_number: u.passport_number,
+          ic_photo_front_url: u.ic_photo_front_url,
+          ic_photo_back_url: u.ic_photo_back_url,
+          passport_photo_url: u.passport_photo_url,
+        });
+      }
+      return;
+    }
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('users').select(TENANT_IDENTITY_SELECT).eq('id', user.id).maybeSingle();
+      if (data) setTenantIdentity(data);
+    } catch (e) {
+      console.error('[loadTenantIdentity]', e);
+    }
+  }, [guestMode]);
+
+  useEffect(() => {
+    if (!tenantListingFeatures) return;
+    loadTenantIdentity();
+    const onProfileUpdated = () => loadTenantIdentity();
+    window.addEventListener('ez_profile_updated', onProfileUpdated);
+    return () => window.removeEventListener('ez_profile_updated', onProfileUpdated);
+  }, [tenantListingFeatures, loadTenantIdentity]);
+
+  useEffect(() => {
+    if (!tenantListingFeatures && statusFilter === 'favorites') setStatusFilter('all');
+  }, [tenantListingFeatures, statusFilter]);
 
   useEffect(() => {
     if (isMockDatabase) {
@@ -663,6 +721,18 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
     }, 10000);
     return () => clearInterval(pollId);
   }, [selected?.id]);
+
+  const requestExpressInterest = (unitId: string, noteOverride?: string) => {
+    if (!guestMode && !isTenantIdentityFullyComplete(tenantIdentity)) {
+      setIdentityWarning({
+        unitId,
+        noteOverride,
+        missing: getTenantIdentityMissingItems(tenantIdentity, lang),
+      });
+      return;
+    }
+    expressInterest(unitId, noteOverride);
+  };
 
   const expressInterest = async (unitId: string, noteOverride?: string) => {
     if (myLeasedUnitIds.length > 0) {
@@ -855,7 +925,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
     const noteText = `[Agent Enquiry] ${enquiryMsg.trim()} (Phone: ${enquiryPhone.trim()})`;
     
     // We call the existing expressInterest function
-    await expressInterest(unitId, noteText);
+    requestExpressInterest(unitId, noteText);
     
     setSubmittingEnquiry(false);
     setEnquiryFeedback({ type: 'success', msg: lang === 'zh' ? '咨询已成功发送给中介！' : 'Enquiry sent successfully to the agent!' });
@@ -945,7 +1015,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
 
           {/* Status toggle */}
           <div style={{ display: 'flex', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-            {(guestMode ? (['all', 'available'] as const) : (['all', 'available', 'favorites'] as const)).map(s => (
+            {(tenantListingFeatures ? (['all', 'available', 'favorites'] as const) : (['all', 'available'] as const)).map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
                 style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s', background: statusFilter === s ? 'var(--gradient-primary)' : 'transparent', color: statusFilter === s ? 'white' : 'var(--text-muted)' }}>
                 {s === 'all' ? t('filterAll') : s === 'available' ? t('filterAvailable') : (lang === 'zh' ? '我的收藏' : 'Favorites')}
@@ -1264,23 +1334,16 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
                               {lang === 'zh' ? '立即登录' : 'Login'}
                             </a>
                           </div>
-                        ) : readOnly ? (
-                          <div style={{ padding: '12px', background: 'rgba(59,130,246,0.06)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: '14px' }}>ℹ️</span>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                              {lang === 'zh' ? '租房操作仅限租客使用，中介可通过"租约 & 财务台账"中的"租客意向"审核租客申请。' : 'Renting is for tenants only. Agents can review applications via "Interest Management".'}
-                            </span>
-                          </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {!readOnly && !guestMode && !hasMyInterest && !isFull && (
-                              <button onClick={() => expressInterest(selected.id)} style={{
+                            {!guestMode && !hasMyInterest && !isFull && (
+                              <button onClick={() => requestExpressInterest(selected.id)} style={{
                                 padding: '10px 24px', borderRadius: 8, border: 'none',
                                 background: 'var(--primary)', color: 'white',
                                 fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                               }}>{lang === 'zh' ? '我要租' : 'Express Interest'}</button>
                             )}
-                            {!readOnly && !guestMode && hasMyInterest && (
+                            {!guestMode && hasMyInterest && (
                               <button onClick={() => {
                                 if (myEntry?.status === 'confirmed') {
                                   // Check if the lease actually exists for this user and unit
@@ -1389,12 +1452,12 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
                             placeholder={t('coRentNotePlaceholder')}
                             style={{ resize: 'vertical', fontSize: '0.82rem', marginBottom: 8 }} />
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <button onClick={() => expressInterest(selected.id)} disabled={submittingInterest} style={{
+                            <button onClick={() => requestExpressInterest(selected.id)} disabled={submittingInterest} style={{
                               padding: '7px 16px', borderRadius: 6, border: 'none', background: 'var(--primary)',
                               color: 'white', fontSize: '0.78rem', fontWeight: 600, cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
                               opacity: submittingInterest ? 0.7 : 1,
                             }}>{submittingInterest ? '…' : t('coRentSubmit')}</button>
-                            <button onClick={() => expressInterest(selected.id, '')} disabled={submittingInterest} style={{
+                            <button onClick={() => requestExpressInterest(selected.id, '')} disabled={submittingInterest} style={{
                               padding: '7px 16px', borderRadius: 6, border: '1px solid var(--glass-border)',
                               background: 'transparent', color: 'var(--text-body)',
                               fontSize: '0.78rem', cursor: submittingInterest ? 'wait' : 'pointer', fontFamily: 'inherit',
@@ -2064,7 +2127,6 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
                   )}
 
                   {/* Direct Contact Form */}
-                  {!readOnly && (
                   <div className="glass-card" style={{ padding: 18, background: 'var(--glass-bg)' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-h)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <MessageSquare size={14} style={{ color: 'var(--primary)' }} />
@@ -2129,7 +2191,6 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
                       </button>
                     </form>
                   </div>
-                  )}
 
                 </div>
 
@@ -2362,6 +2423,18 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         </div>
       )}
 
+      {identityWarning && (
+        <TenantIdentityWarningModal
+          missingItems={identityWarning.missing}
+          onClose={() => setIdentityWarning(null)}
+          onContinue={() => {
+            const { unitId, noteOverride } = identityWarning;
+            setIdentityWarning(null);
+            expressInterest(unitId, noteOverride);
+          }}
+        />
+      )}
+
       {/* ── Custom Glassmorphism Confirmation Modal ── */}
       {confirmDialog?.isOpen && (
         <div
@@ -2478,7 +2551,7 @@ function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteT
           style={{ position: 'absolute', top: 12, right: 12 }}>
           {unit.status === 'available' ? t('available') : t('rented')}
         </span>
-        {/* Favorites button — hidden for guests */}
+        {/* Favorites — tenants only (not guest browse) */}
         {!guestMode && (
           <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}>
             <FavoritesManager unitId={unit.id} userId={userId ?? null} size={18} onToggle={onFavoriteToggle} />

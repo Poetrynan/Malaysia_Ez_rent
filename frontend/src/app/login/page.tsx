@@ -174,7 +174,7 @@ export default function LoginPage() {
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
       setLoading(false);
       if (!dbUser || !dbUser.identity_type) {
-        window.location.href = '/register/complete-profile';
+        window.location.href = '/profile';
       } else {
         window.location.href = '/listings';
       }

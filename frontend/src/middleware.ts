@@ -59,8 +59,9 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   let user = null;
+  let supabase: Awaited<ReturnType<typeof createServerClient>> | null = null;
   try {
-    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
@@ -80,13 +81,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Role metadata check for Google/Oauth users
   const role = user.user_metadata?.role;
-  if (!role) {
-    const completeUrl = request.nextUrl.clone();
-    completeUrl.pathname = '/register/complete-profile';
-    return NextResponse.redirect(completeUrl);
-  }
 
   // Strict role isolation redirect
   if (role === 'agent') {
@@ -96,11 +91,33 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(adminHomeUrl);
     }
   } else {
-    // Tenant
+    // Tenant (role === 'student' or legacy accounts without role yet)
     if (pathname.startsWith('/admin/')) {
       const tenantHomeUrl = request.nextUrl.clone();
       tenantHomeUrl.pathname = '/listings';
       return NextResponse.redirect(tenantHomeUrl);
+    }
+
+    // Unified identity gate: no role or no identity_type → complete on /profile
+    if (!pathname.startsWith('/profile')) {
+      let identityType: string | null | undefined = user.user_metadata?.identity_type;
+
+      if (role === 'student' && supabase) {
+        try {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('identity_type')
+            .eq('id', user.id)
+            .maybeSingle();
+          identityType = dbUser?.identity_type || identityType;
+        } catch {}
+      }
+
+      if (!role || !identityType) {
+        const profileUrl = request.nextUrl.clone();
+        profileUrl.pathname = '/profile';
+        return NextResponse.redirect(profileUrl);
+      }
     }
   }
 

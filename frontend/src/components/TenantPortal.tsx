@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star, Search } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star, Search, Upload } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
@@ -25,6 +25,14 @@ interface Payment {
 }
 interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; available_from?: string | null; }
 interface Community { id: string; name: string; }
+
+type IdentityType = 'malaysian' | 'international_student' | 'international_other';
+
+const IDENTITY_OPTIONS: { id: IdentityType; labelZh: string; labelEn: string }[] = [
+  { id: 'malaysian', labelZh: '🇲🇾 马来西亚本地人', labelEn: 'Malaysian Citizen' },
+  { id: 'international_student', labelZh: '🌍 国际留学生', labelEn: 'International Student' },
+  { id: 'international_other', labelZh: '🌐 其他外籍人士', labelEn: 'International Other' },
+];
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
   let startWidth = '0%';
@@ -316,6 +324,20 @@ export default function TenantPortal({
   const [profileDocUploading, setProfileDocUploading] = useState(false);
   const [profileStudentCardBase64, setProfileStudentCardBase64] = useState<string | null>(null);
   const [profileStudentCardUploading, setProfileStudentCardUploading] = useState(false);
+  const [profileIdentityType, setProfileIdentityType] = useState<IdentityType | null>(null);
+  const [icFrontUrl, setIcFrontUrl] = useState<string | null>(null);
+  const [icBackUrl, setIcBackUrl] = useState<string | null>(null);
+  const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
+  const [workPermitUrl, setWorkPermitUrl] = useState<string | null>(null);
+  const [icFrontFile, setIcFrontFile] = useState<File | null>(null);
+  const [icBackFile, setIcBackFile] = useState<File | null>(null);
+  const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [workPermitFile, setWorkPermitFile] = useState<File | null>(null);
+  const [icFrontPreview, setIcFrontPreview] = useState<string | null>(null);
+  const [icBackPreview, setIcBackPreview] = useState<string | null>(null);
+  const [passportPreview, setPassportPreview] = useState<string | null>(null);
+  const [workPermitPreview, setWorkPermitPreview] = useState<string | null>(null);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
@@ -483,6 +505,52 @@ export default function TenantPortal({
     reader.readAsDataURL(file);
   };
 
+  const handleIdentityImageSelect = (e: React.ChangeEvent<HTMLInputElement>, field: 'icFront' | 'icBack' | 'passport' | 'studentCard' | 'workPermit') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setToastMsg(lang === 'zh' ? '仅支持 JPG/PNG/WEBP 格式' : 'Only JPG, PNG, and WEBP are supported');
+      setToastType('error');
+      setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setToastMsg(lang === 'zh' ? '文件大小不能超过 8MB' : 'File must be under 8MB');
+      setToastType('error');
+      setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+    if (field === 'icFront') setIcFrontFile(file);
+    else if (field === 'icBack') setIcBackFile(file);
+    else if (field === 'passport') setPassportFile(file);
+    else if (field === 'workPermit') setWorkPermitFile(file);
+    else if (field === 'studentCard') {
+      handleStudentCardChange(e);
+      return;
+    }
+    import('@/utils/compressImage').then(({ compressImageToDataUrl }) => {
+      compressImageToDataUrl(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.8 })
+        .then(b64 => {
+          if (field === 'icFront') setIcFrontPreview(b64);
+          else if (field === 'icBack') setIcBackPreview(b64);
+          else if (field === 'passport') setPassportPreview(b64);
+          else if (field === 'workPermit') setWorkPermitPreview(b64);
+        })
+        .catch(() => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            if (field === 'icFront') setIcFrontPreview(result);
+            else if (field === 'icBack') setIcBackPreview(result);
+            else if (field === 'passport') setPassportPreview(result);
+            else if (field === 'workPermit') setWorkPermitPreview(result);
+          };
+          reader.readAsDataURL(file);
+        });
+    });
+  };
+
   const loadProfile = async (force = false) => {
     if (profileLoaded && !force) return;
     let name = '';
@@ -501,6 +569,11 @@ export default function TenantPortal({
         setProfileLocalId(u.local_id_number || '');
         setProfileDocUrl(u.document_url || null);
         setProfileStudentCardUrl(u.student_card_url || null);
+        setProfileIdentityType(u.identity_type || null);
+        setIcFrontUrl(u.ic_photo_front_url || null);
+        setIcBackUrl(u.ic_photo_back_url || null);
+        setPassportPhotoUrl(u.passport_photo_url || null);
+        setWorkPermitUrl(u.work_permit_photo_url || null);
         // Get unit_number from active lease
         const mockLeases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
         const mockActiveLease = mockLeases.find((l: any) => l.tenant_id === tenantId && l.status === 'active');
@@ -512,7 +585,7 @@ export default function TenantPortal({
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('users').select('full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url, student_card_url').eq('id', user.id).single();
+        const { data } = await supabase.from('users').select('full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url, student_card_url, identity_type, ic_photo_front_url, ic_photo_back_url, passport_photo_url, work_permit_photo_url').eq('id', user.id).single();
         if (data) {
           name = data.full_name || '';
           setProfileName(name);
@@ -523,6 +596,11 @@ export default function TenantPortal({
           setProfileLocalId(data.local_id_number || '');
           setProfileDocUrl(data.document_url || null);
           setProfileStudentCardUrl(data.student_card_url || null);
+          setProfileIdentityType((data.identity_type as IdentityType) || null);
+          setIcFrontUrl(data.ic_photo_front_url || null);
+          setIcBackUrl(data.ic_photo_back_url || null);
+          setPassportPhotoUrl(data.passport_photo_url || null);
+          setWorkPermitUrl(data.work_permit_photo_url || null);
         }
         // Get unit_number from active lease
         const { data: activeLease } = await supabase.from('leases').select('unit_number').eq('tenant_id', user.id).eq('status', 'active').maybeSingle();
@@ -535,10 +613,43 @@ export default function TenantPortal({
 
   const saveProfile = async () => {
     if (!profileName.trim()) return;
+    setProfileSaveError(null);
+
+    if (!profileIdentityType) {
+      setProfileSaveError(lang === 'zh' ? '请选择您的身份类型' : 'Please select your identity type');
+      return;
+    }
+
+    if (profileIdentityType === 'malaysian') {
+      const cleanedIc = profileLocalId.replace(/[^0-9]/g, '');
+      if (cleanedIc.length !== 12) {
+        setProfileSaveError(lang === 'zh' ? '身份证号码格式不正确（12位数字）' : 'Invalid IC number (12 digits required)');
+        return;
+      }
+      if (!(icFrontPreview || icFrontUrl) || !(icBackPreview || icBackUrl)) {
+        setProfileSaveError(lang === 'zh' ? '请上传身份证正反面照片' : 'Please upload both front and back IC photos');
+        return;
+      }
+    } else {
+      if (!profilePassport.trim()) {
+        setProfileSaveError(lang === 'zh' ? '请输入护照号码' : 'Please enter passport number');
+        return;
+      }
+      if (!(passportPreview || passportPhotoUrl)) {
+        setProfileSaveError(lang === 'zh' ? '请上传护照照片页' : 'Please upload passport photo page');
+        return;
+      }
+    }
+
     setProfileSaving(true);
 
-    // Upload document if new one selected
     let docUrl = profileDocUrl;
+    let studentCardUrl = profileStudentCardUrl;
+    let nextIcFrontUrl = icFrontUrl;
+    let nextIcBackUrl = icBackUrl;
+    let nextPassportPhotoUrl = passportPhotoUrl;
+    let nextWorkPermitUrl = workPermitUrl;
+
     if (profileDocBase64 && !isMockDatabase) {
       setProfileDocUploading(true);
       try {
@@ -558,8 +669,6 @@ export default function TenantPortal({
       docUrl = profileDocBase64;
     }
 
-    // Upload student card if new one selected
-    let studentCardUrl = profileStudentCardUrl;
     if (profileStudentCardBase64 && !isMockDatabase) {
       setProfileStudentCardUploading(true);
       try {
@@ -582,13 +691,17 @@ export default function TenantPortal({
     const profileData: Record<string, string | null> = {
       full_name: profileName.trim(),
       phone: profilePhone.trim(),
-      // unit_number is managed by the lease, not the tenant — don't overwrite it
-      passport_number: profilePassport.trim() || null,
+      passport_number: profileIdentityType === 'malaysian' ? null : (profilePassport.trim().toUpperCase() || null),
       school: profileSchool.trim() || null,
       company: profileCompany.trim() || null,
-      local_id_number: profileLocalId.trim() || null,
+      local_id_number: profileIdentityType === 'malaysian' ? profileLocalId.replace(/[^0-9]/g, '') : null,
       document_url: docUrl,
       student_card_url: studentCardUrl,
+      identity_type: profileIdentityType,
+      ic_photo_front_url: profileIdentityType === 'malaysian' ? (icFrontPreview || icFrontUrl) : null,
+      ic_photo_back_url: profileIdentityType === 'malaysian' ? (icBackPreview || icBackUrl) : null,
+      passport_photo_url: profileIdentityType !== 'malaysian' ? (passportPreview || passportPhotoUrl) : null,
+      work_permit_photo_url: profileIdentityType === 'international_other' ? (workPermitPreview || workPermitUrl) : null,
     };
 
     if (isMockDatabase) {
@@ -603,22 +716,82 @@ export default function TenantPortal({
       localStorage.setItem('ez_users', JSON.stringify(users));
       if (profileDocBase64) setProfileDocUrl(profileDocBase64);
       if (profileStudentCardBase64) setProfileStudentCardUrl(profileStudentCardBase64);
+      if (icFrontPreview) setIcFrontUrl(icFrontPreview);
+      if (icBackPreview) setIcBackUrl(icBackPreview);
+      if (passportPreview) setPassportPhotoUrl(passportPreview);
+      if (workPermitPreview) setWorkPermitUrl(workPermitPreview);
     } else {
       try {
+        const { compressImageFile } = await import('@/utils/compressImage');
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setProfileSaving(false); return; }
+
+        const uploadHelper = async (file: File, path: string) => {
+          const compressed = await compressImageFile(file, { quality: 0.85, maxWidth: 1600 });
+          const { error: uploadErr } = await supabase.storage
+            .from('unit-media')
+            .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+          if (uploadErr) throw uploadErr;
+          const { data } = supabase.storage.from('unit-media').getPublicUrl(path);
+          return data.publicUrl;
+        };
+
+        if (profileIdentityType === 'malaysian') {
+          if (icFrontFile) nextIcFrontUrl = await uploadHelper(icFrontFile, `tenant-docs/ic/${user.id}-front.jpg`);
+          if (icBackFile) nextIcBackUrl = await uploadHelper(icBackFile, `tenant-docs/ic/${user.id}-back.jpg`);
+          profileData.ic_photo_front_url = nextIcFrontUrl;
+          profileData.ic_photo_back_url = nextIcBackUrl;
+          profileData.passport_photo_url = null;
+          profileData.work_permit_photo_url = null;
+        } else {
+          if (passportFile) nextPassportPhotoUrl = await uploadHelper(passportFile, `tenant-docs/passport/${user.id}.jpg`);
+          profileData.passport_photo_url = nextPassportPhotoUrl;
+          profileData.ic_photo_front_url = null;
+          profileData.ic_photo_back_url = null;
+          if (profileIdentityType === 'international_other' && workPermitFile) {
+            nextWorkPermitUrl = await uploadHelper(workPermitFile, `tenant-docs/work-permit/${user.id}.jpg`);
+            profileData.work_permit_photo_url = nextWorkPermitUrl;
+          } else if (profileIdentityType === 'international_student') {
+            profileData.work_permit_photo_url = null;
+          }
+        }
+
+        const { error: metaErr } = await supabase.auth.updateUser({
+          data: { role: 'student', identity_type: profileIdentityType, full_name: profileName.trim() },
+        });
+        if (metaErr) throw metaErr;
+
         const { error } = await supabase.from('users').upsert({ id: user.id, ...profileData });
-        if (error) { console.error('Save profile error:', error); setProfileSaving(false); return; }
+        if (error) throw error;
+
         if (docUrl) setProfileDocUrl(docUrl);
         if (studentCardUrl) setProfileStudentCardUrl(studentCardUrl);
-      } catch (e) { console.error('Save profile error:', e); setProfileSaving(false); return; }
+        setIcFrontUrl(nextIcFrontUrl);
+        setIcBackUrl(nextIcBackUrl);
+        setPassportPhotoUrl(nextPassportPhotoUrl);
+        setWorkPermitUrl(nextWorkPermitUrl);
+      } catch (e) {
+        console.error('Save profile error:', e);
+        setProfileSaving(false);
+        setProfileSaveError(lang === 'zh' ? '保存失败，请重试' : 'Save failed, please try again');
+        return;
+      }
     }
+
     setProfileSaving(false);
     setProfileSaved(true);
     setProfileDocBase64(null);
     setProfileStudentCardBase64(null);
+    setIcFrontFile(null);
+    setIcBackFile(null);
+    setPassportFile(null);
+    setWorkPermitFile(null);
+    setIcFrontPreview(null);
+    setIcBackPreview(null);
+    setPassportPreview(null);
+    setWorkPermitPreview(null);
     setTimeout(() => setProfileSaved(false), 3000);
     window.dispatchEvent(new Event('ez_profile_updated'));
     setToastMsg(lang === 'zh' ? '个人信息已保存' : 'Profile saved');
@@ -1356,17 +1529,64 @@ export default function TenantPortal({
         {(() => {
           const calculateProfileProgress = () => {
             let filled = 0;
-            let total = 9;
+            let total = profileIdentityType === 'malaysian' ? 7 : 6;
             if (profileName.trim()) filled++;
             if (profilePhone.trim()) filled++;
             if (profileUnit.trim()) filled++;
-            if (profileSchool.trim()) filled++;
-            if (profileCompany.trim()) filled++;
-            if (profilePassport.trim()) filled++;
-            if (profileLocalId.trim()) filled++;
-            if (profileDocUrl || profileDocBase64) filled++;
-            if (profileStudentCardUrl || profileStudentCardBase64) filled++;
-            return Math.round((filled / total) * 100);
+            if (profileIdentityType) filled++;
+            if (profileIdentityType === 'malaysian') {
+              if (profileLocalId.replace(/[^0-9]/g, '').length === 12) filled++;
+              if (icFrontPreview || icFrontUrl) filled++;
+              if (icBackPreview || icBackUrl) filled++;
+            } else if (profileIdentityType) {
+              if (profilePassport.trim()) filled++;
+              if (passportPreview || passportPhotoUrl) filled++;
+              if (profileIdentityType === 'international_student' && profileSchool.trim()) filled++;
+              if (profileIdentityType === 'international_other' && profileCompany.trim()) filled++;
+            }
+            return Math.min(100, Math.round((filled / total) * 100));
+          };
+
+          const renderIdentityUpload = (
+            label: string,
+            preview: string | null,
+            existingUrl: string | null,
+            field: 'icFront' | 'icBack' | 'passport' | 'studentCard' | 'workPermit',
+            required = false,
+            onClear?: () => void,
+          ) => {
+            const shown = preview || existingUrl;
+            return (
+              <div>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                  {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
+                </label>
+                {shown ? (
+                  <div style={{ position: 'relative', maxWidth: 220 }}>
+                    <a href={shown} target="_blank" rel="noopener noreferrer">
+                      <img src={shown} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--glass-border)' }} />
+                    </a>
+                    <button type="button" onClick={() => {
+                      if (field === 'icFront') { setIcFrontFile(null); setIcFrontPreview(null); setIcFrontUrl(null); }
+                      else if (field === 'icBack') { setIcBackFile(null); setIcBackPreview(null); setIcBackUrl(null); }
+                      else if (field === 'passport') { setPassportFile(null); setPassportPreview(null); setPassportPhotoUrl(null); }
+                      else if (field === 'workPermit') { setWorkPermitFile(null); setWorkPermitPreview(null); setWorkPermitUrl(null); }
+                      else if (field === 'studentCard') { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }
+                      onClear?.();
+                    }}
+                      style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', fontSize: '0.7rem', cursor: 'pointer' }}>
+                      {lang === 'zh' ? '重选' : 'Change'}
+                    </button>
+                  </div>
+                ) : (
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '20px 16px', border: '2px dashed var(--glass-border)', borderRadius: 10, cursor: 'pointer', background: 'var(--glass-bg)', maxWidth: 220 }}>
+                    <Upload size={20} style={{ color: 'var(--text-muted)' }} />
+                    <span style={{ fontSize: '0.76rem', color: 'var(--text-body)', textAlign: 'center' }}>{lang === 'zh' ? '点击上传' : 'Click to upload'}</span>
+                    <input type="file" accept="image/*" onChange={e => handleIdentityImageSelect(e, field)} style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
+            );
           };
           const progressPercentage = calculateProfileProgress();
           return (
@@ -1374,6 +1594,14 @@ export default function TenantPortal({
               <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
                 <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
               </h4>
+
+              {!profileIdentityType && (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', marginBottom: 16, fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
+                  {lang === 'zh'
+                    ? '请先选择身份类型并上传对应证件，完成后方可使用房源浏览、租约等功能。'
+                    : 'Please select your identity type and upload required documents before using listings and lease features.'}
+                </div>
+              )}
 
               {/* Profile Completion Progress Bar */}
               <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
@@ -1464,110 +1692,96 @@ export default function TenantPortal({
                 </div>
               </div>
 
-              {/* Section 2: ID section */}
+              {/* Section 2: Identity verification */}
               <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-                <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <AlertCircle size={14} />
-                  {t('profileIdHint')}
+                <h5 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>
+                  {lang === 'zh' ? '身份验证' : 'Identity Verification'}
+                </h5>
+                <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                  {lang === 'zh'
+                    ? '请选择您的身份类型，并上传对应证件。信息加密存储，仅供租约审核使用。'
+                    : 'Select your identity type and upload the required documents. Encrypted and used for lease verification only.'}
                 </p>
-                <div className="grid-2">
-                  <div>
-                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profilePassport')}</label>
-                    <input type="text" className="form-input" value={profilePassport} onChange={e => setProfilePassport(e.target.value)}
-                      placeholder={t('profilePassportPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileLocalId')}</label>
-                    <input type="text" className="form-input" value={profileLocalId} onChange={e => setProfileLocalId(e.target.value)}
-                      placeholder={t('profileLocalIdPlaceholder')} style={{ width: '100%', boxSizing: 'border-box' }} />
-                  </div>
+
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>
+                  {lang === 'zh' ? '身份类型' : 'Identity Type'} <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {IDENTITY_OPTIONS.map(opt => (
+                    <div
+                      key={opt.id}
+                      onClick={() => setProfileIdentityType(opt.id)}
+                      style={{
+                        padding: '12px 16px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s ease',
+                        background: profileIdentityType === opt.id ? 'var(--primary-light)' : 'var(--glass-bg)',
+                        border: `1px solid ${profileIdentityType === opt.id ? 'var(--primary)' : 'var(--glass-border)'}`,
+                      }}
+                    >
+                      <span style={{ fontSize: '0.86rem', fontWeight: 600, color: profileIdentityType === opt.id ? 'var(--primary)' : 'var(--text-h)' }}>
+                        {lang === 'zh' ? opt.labelZh : opt.labelEn}
+                      </span>
+                    </div>
+                  ))}
                 </div>
+
+                {profileIdentityType === 'malaysian' && (
+                  <>
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                        {t('profileLocalId')} <span style={{ color: 'var(--danger)' }}>*</span>
+                      </label>
+                      <input type="text" className="form-input" value={profileLocalId}
+                        onChange={e => setProfileLocalId(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="yymmddxxxxxx" maxLength={12}
+                        style={{ width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <div className="grid-2" style={{ gap: 16 }}>
+                      {renderIdentityUpload(lang === 'zh' ? '身份证正面照片' : 'IC Photo (Front)', icFrontPreview, icFrontUrl, 'icFront', true)}
+                      {renderIdentityUpload(lang === 'zh' ? '身份证背面照片' : 'IC Photo (Back)', icBackPreview, icBackUrl, 'icBack', true)}
+                    </div>
+                  </>
+                )}
+
+                {profileIdentityType && profileIdentityType !== 'malaysian' && (
+                  <>
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                        {t('profilePassport')} <span style={{ color: 'var(--danger)' }}>*</span>
+                      </label>
+                      <input type="text" className="form-input" value={profilePassport}
+                        onChange={e => setProfilePassport(e.target.value.toUpperCase())}
+                        placeholder={t('profilePassportPlaceholder')}
+                        style={{ width: '100%', boxSizing: 'border-box', textTransform: 'uppercase' }} />
+                    </div>
+                    <div style={{ marginBottom: 14 }}>
+                      {renderIdentityUpload(lang === 'zh' ? '护照照片页' : 'Passport Information Page', passportPreview, passportPhotoUrl, 'passport', true)}
+                    </div>
+                    {profileIdentityType === 'international_student' && (
+                      <div style={{ marginTop: 8 }}>
+                        {renderIdentityUpload(lang === 'zh' ? '学生证或录取函（选填）' : 'Student ID or Offer Letter (Optional)', profileStudentCardBase64, profileStudentCardUrl, 'studentCard')}
+                      </div>
+                    )}
+                    {profileIdentityType === 'international_other' && (
+                      <div style={{ marginTop: 8 }}>
+                        {renderIdentityUpload(lang === 'zh' ? '工作准证/签证（选填）' : 'Work Permit / Visa (Optional)', workPermitPreview, workPermitUrl, 'workPermit')}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!profileIdentityType && (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '请先选择身份类型，系统将显示对应的证件上传要求。' : 'Select an identity type above to see required documents.'}
+                  </div>
+                )}
               </div>
 
-              {/* Section 3 & 4: Document + Student card upload (side by side) */}
-              <div style={{ borderTop: '1px dashed var(--glass-border)', paddingTop: 16, marginBottom: 20 }}>
-                <div className="grid-2" style={{ gap: 20 }}>
-                  {/* Document upload */}
-                  <div>
-                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>{t('profileDocument')}</label>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileDocumentDesc')}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                      <label style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                        border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                        cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                        color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                      >
-                        <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileDocumentUpload')}</span>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传凭证图片' : 'Click to snap photo or upload'}</span>
-                        <input type="file" accept="image/*" onChange={handleDocChange} style={{ display: 'none' }} />
-                      </label>
-                      {(profileDocBase64 || profileDocUrl) && (
-                        <div style={{ position: 'relative' }}>
-                          <a href={profileDocBase64 || profileDocUrl || '#'} target="_blank" rel="noopener noreferrer">
-                            <img src={profileDocBase64 || profileDocUrl || ''} alt="Document"
-                              style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                          </a>
-                          <button type="button" onClick={() => { setProfileDocBase64(null); setProfileDocUrl(null); }}
-                            style={{
-                              position: 'absolute', top: -8, right: -8,
-                              background: 'var(--danger)', color: 'white', border: 'none',
-                              borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                            }}>×</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Student card upload */}
-                  <div>
-                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                      {t('profileStudentCard')}
-                    </label>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>{t('profileStudentCardDesc')}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                      <label style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        gap: 8, padding: '24px 20px', borderRadius: 12, width: '100%', maxWidth: 220,
-                        border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
-                        cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                        color: 'var(--primary)', transition: 'all 0.2s', textAlign: 'center', boxSizing: 'border-box'
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--primary-glow)'; }}
-                      >
-                        <Camera size={24} style={{ color: 'var(--primary)', marginBottom: 2 }} />
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-h)' }}>{t('profileStudentCardUpload')}</span>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{lang === 'zh' ? '支持拍照或上传图片' : 'Click to snap photo or upload'}</span>
-                        <input type="file" accept="image/*" onChange={handleStudentCardChange} style={{ display: 'none' }} />
-                      </label>
-                      {(profileStudentCardBase64 || profileStudentCardUrl) && (
-                        <div style={{ position: 'relative' }}>
-                          <a href={profileStudentCardBase64 || profileStudentCardUrl || '#'} target="_blank" rel="noopener noreferrer">
-                            <img src={profileStudentCardBase64 || profileStudentCardUrl || ''} alt="Student Card"
-                              style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--primary)', boxShadow: '0 2px 12px var(--primary-glow)' }} />
-                          </a>
-                          <button type="button" onClick={() => { setProfileStudentCardBase64(null); setProfileStudentCardUrl(null); }}
-                            style={{
-                              position: 'absolute', top: -8, right: -8,
-                              background: 'var(--danger)', color: 'white', border: 'none',
-                              borderRadius: '50%', width: 22, height: 22, fontSize: '13px',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                            }}>×</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {profileSaveError && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', marginBottom: 16 }}>
+                  <AlertCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{profileSaveError}</span>
                 </div>
-              </div>
+              )}
 
               {/* Save button */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

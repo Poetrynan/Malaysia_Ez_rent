@@ -53,9 +53,24 @@ export async function GET(request: NextRequest) {
     // redirect — otherwise the session is dropped and complete-profile bounces
     // the user back to /login, causing an infinite Google login loop.
     if (!role) {
-      const completeResponse = NextResponse.redirect(`${origin}/register/complete-profile`);
-      response.cookies.getAll().forEach((cookie) => completeResponse.cookies.set(cookie));
-      return completeResponse;
+      const profileResponse = NextResponse.redirect(`${origin}/profile`);
+      response.cookies.getAll().forEach((cookie) => profileResponse.cookies.set(cookie));
+      return profileResponse;
+    }
+
+    // Tenant with role but missing identity_type → /profile
+    if (role === 'student') {
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('identity_type')
+        .eq('id', user!.id)
+        .maybeSingle();
+      const identityType = dbUser?.identity_type || user?.user_metadata?.identity_type;
+      if (!identityType) {
+        const profileResponse = NextResponse.redirect(`${origin}/profile`);
+        response.cookies.getAll().forEach((cookie) => profileResponse.cookies.set(cookie));
+        return profileResponse;
+      }
     }
 
     return response;

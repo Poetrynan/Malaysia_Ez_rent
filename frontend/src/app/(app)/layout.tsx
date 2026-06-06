@@ -11,6 +11,7 @@ import { CheckCircle2, AlertTriangle, Building2 } from 'lucide-react';
 
 import { TenantDataProvider } from '@/lib/TenantDataContext';
 import { ListingsDataProvider } from '@/lib/ListingsDataContext';
+import TenantIdentityGate from '@/components/TenantIdentityGate';
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { t, lang } = useApp();
@@ -37,7 +38,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <main className="main-viewport" style={isGuest ? { gridColumn: '1 / -1' } : undefined}>
         {!isGuest && <AppTopbar />}
         <div className="main-content">
-          {children}
+          <TenantIdentityGate>{children}</TenantIdentityGate>
         </div>
       </main>
     </div>

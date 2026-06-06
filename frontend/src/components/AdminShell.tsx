@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import AdminPanel from '@/components/AdminPanel';
-import PropertyListings from '@/components/PropertyListings';
+import AdminListingsBrowse from '@/components/AdminListingsBrowse';
 import Inbox from '@/components/Inbox';
 import { useAuth } from '@/lib/AuthContext';
 import { usePendingCounts } from '@/lib/PendingCountsContext';
@@ -52,7 +52,7 @@ export default function AdminShell() {
   }, [pathname, lang]);
 
   if (pathname === '/admin/listings') {
-    return <PropertyListings readOnly />;
+    return <AdminListingsBrowse />;
   }
 
   if (pathname === '/admin/inbox') {
