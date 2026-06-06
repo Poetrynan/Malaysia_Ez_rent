@@ -74,7 +74,7 @@ AuthContext.resolveRole():
 ```sql
 CREATE TABLE agent_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,  -- 审批通过后才关联
   email TEXT NOT NULL UNIQUE,
   full_name TEXT NOT NULL,
   phone TEXT NOT NULL,
@@ -87,6 +87,10 @@ CREATE TABLE agent_profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 注意：auth_user_id 可以为 NULL（申请时未注册账号）
+-- 审批通过后，用户首次登录时自动关联 auth_user_id
+```
 
 -- RLS: 中介只能读自己的资料，管理员可以读所有
 ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
@@ -207,19 +211,18 @@ CREATE POLICY "Admins can update profiles"
   └─────────────────────────────┘
 ```
 
-**注册逻辑**：
+**注册逻辑（无需登录）**：
 ```
-1. 用户填表
+1. 用户填表（不需要登录，任何人都可以申请）
 2. 点击"发送验证码" → 调用 /api/send-verification
 3. 用户输入验证码
 4. 点击"提交申请" → 调用 /api/verify-code
-5. 验证通过 → supabase.auth.signUp({
-     email, password,
-     options: { data: { role: 'agent', full_name, agency_name, ren_number } }
-   })
-6. 同时写入 agent_profiles 表（status: 'pending'）
-7. 注册成功 → 提示"申请已提交，等待审批"
+5. 验证通过 → 写入 agent_profiles 表（status: 'pending'），暂不创建 Supabase 账号
+6. 提示"申请已提交，等待审批"
+7. 审批通过后，用户首次登录时设置密码，自动创建 Supabase 账号
 ```
+
+**注意**：中介申请不需要登录，和现在 register-agent 的行为一致。审批通过后才需要注册账号。
 
 ### 4.3 新建：`/api/send-verification/route.ts`
 
@@ -268,10 +271,14 @@ CREATE TABLE email_verifications (
 
 **改动**：
 - 去掉 `roleView` 状态（学生/中介 tab 选择）
-- 登录页只保留一个统一的登录表单
+- 登录页只保留一个统一的登录表单（邮箱 + 密码）
 - 底部增加两个注册链接：
   - "还没有学生账号？注册" → `/register/student`
-  - "中介入驻" → `/register/agent`
+  - "中介入驻" → `/register/agent`（无需登录，直接跳转）
+
+**中介首次登录逻辑**：
+- 审批通过的中介首次登录时，如果还没有 Supabase 账号 → 引导设置密码 → 自动创建账号
+- 已有账号的中介直接登录 → 跳转到 /admin/*
 
 ### 4.7 修改：`AuthContext.tsx`
 
@@ -311,9 +318,13 @@ const resolveRole = async (user) => {
 |------|------|------|
 | `null` | 未登录 | /guest |
 | `'student'` | 学生 | /listings |
-| `'admin'` | 中介（已审批） | /admin/* |
-| `'agent_pending'` | 中介（审批中） | 显示等待页面 |
-| `'agent_rejected'` | 中介（被拒绝） | 显示拒绝页面 |
+| `'admin'` | 中介（已审批，已有账号） | /admin/* |
+
+**中介审批流程**：
+1. 中介在 `/register/agent` 提交申请（无需登录，无需账号）
+2. 申请存入 `agent_profiles` 表（`auth_user_id = NULL`）
+3. 管理员审批通过
+4. 中介去 `/login` 登录 → 系统检测到该邮箱已审批通过但无账号 → 引导设置密码 → 创建 Supabase 账号 → 自动关联 `auth_user_id` → 跳转到 /admin/*
 
 ### 4.8 修改：`middleware.ts`
 
