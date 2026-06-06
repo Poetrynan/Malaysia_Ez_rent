@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import { CheckCircle2, AlertTriangle, Building2 } from 'lucide-react';
 
 import { TenantDataProvider } from '@/lib/TenantDataContext';
+import { ListingsDataProvider } from '@/lib/ListingsDataContext';
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { t, lang } = useApp();
@@ -48,7 +49,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <PendingCountsProvider>
         <TenantDataProvider>
-          <AppShell>{children}</AppShell>
+          <ListingsDataProvider>
+            <AppShell>{children}</AppShell>
+          </ListingsDataProvider>
         </TenantDataProvider>
       </PendingCountsProvider>
     </AuthProvider>

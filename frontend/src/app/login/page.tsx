@@ -446,7 +446,7 @@ export default function LoginPage() {
               <label htmlFor="student-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
               <div style={{ position: 'relative', marginBottom: 14 }}>
                 <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="student-email" type="email" required placeholder="name@university.edu.my" value={email}
+                <input id="student-email" name="email" type="email" required autoComplete="username" placeholder="name@university.edu.my" value={email}
                   onChange={e => setEmail(e.target.value)} style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
@@ -456,7 +456,7 @@ export default function LoginPage() {
               <label htmlFor="student-password" style={labelStyle}>{lang === 'zh' ? '密码' : 'Password'}</label>
               <div style={{ position: 'relative', marginBottom: 14 }}>
                 <Shield size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="student-password" type="password" required placeholder="••••••••" value={password}
+                <input id="student-password" name="password" type="password" required autoComplete="current-password" placeholder="••••••••" value={password}
                   onChange={e => setPassword(e.target.value)} style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
@@ -514,7 +514,7 @@ export default function LoginPage() {
               <label htmlFor="agent-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
               <div style={{ position: 'relative', marginBottom: 14 }}>
                 <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="agent-email" type="email" required placeholder="name@agency.com" value={email}
+                <input id="agent-email" name="email" type="email" required autoComplete="username" placeholder="name@agency.com" value={email}
                   onChange={e => setEmail(e.target.value)} style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
@@ -524,7 +524,7 @@ export default function LoginPage() {
               <label htmlFor="agent-password" style={labelStyle}>{lang === 'zh' ? '密码' : 'Password'}</label>
               <div style={{ position: 'relative', marginBottom: 14 }}>
                 <Shield size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="agent-password" type="password" required placeholder="••••••••" value={password}
+                <input id="agent-password" name="password" type="password" required autoComplete="current-password" placeholder="••••••••" value={password}
                   onChange={e => setPassword(e.target.value)} style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}

@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import AgentRatingSummary from './AgentRatingSummary';
 import { useApp } from '@/lib/ThemeProvider';
 import { useAdminData } from '@/lib/AdminDataContext';
+import { useListingsData } from '@/lib/ListingsDataContext';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
@@ -79,7 +80,8 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
-export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
+export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activeTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; activeTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
+  const resolvedTab = activeTab ?? defaultTab;
   const { t, lang } = useApp();
   const {
     communities, setCommunities,
@@ -93,6 +95,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     feedbacks, setFeedbacks,
     isLoaded, setIsLoaded,
   } = useAdminData();
+  const { loadListings: refreshListingsCache } = useListingsData();
 
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
@@ -108,22 +111,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   }, [propAdminRole]);
 
   useEffect(() => {
-    if (defaultTab) {
-      setTab(defaultTab);
-      if (defaultTab === 'leases') {
+    if (resolvedTab) {
+      setTab(resolvedTab);
+      if (resolvedTab === 'leases') {
         setLeasesView('interests');
-        if (!isLoaded) loadAll();
-      } else if (defaultTab === 'admins') {
+        if (!isLoaded) loadAll(true);
+      } else if (resolvedTab === 'admins') {
         fetchAdmins();
-      } else if (defaultTab === 'feedback') {
+      } else if (resolvedTab === 'feedback') {
         fetchFeedbacks();
-      } else if (defaultTab === 'agent-reviews') {
+      } else if (resolvedTab === 'agent-reviews') {
         fetchAgentRegistrations();
-      } else if (defaultTab === 'reviews') {
+      } else if (resolvedTab === 'reviews') {
         if (!reviewsLoaded) fetchAllReviews();
       }
     }
-  }, [defaultTab]);
+  }, [resolvedTab]);
   const [adminQR, setAdminQR] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
@@ -614,7 +617,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setPaymentApproveConfirmRecord(null);
     setReviewingPayment(null);
     setAdminNote('');
-    loadAll();
+    loadAll(true);
     showToast(lang === 'zh' ? '审核已通过并已成功发送通知/公告！' : 'Review approved and notification sent successfully!', 'success');
   };
 
@@ -675,7 +678,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setPaymentRejectConfirmRecord(null);
     setReviewingPayment(null);
     setAdminNote('');
-    loadAll();
+    loadAll(true);
     showToast(lang === 'zh' ? '审核已拒绝并已向租客发送驳回通知！' : 'Review rejected and notification sent to tenant!', 'warning');
   };
 
@@ -719,7 +722,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         }
         setReviewingPayment(null);
         setAdminNote('');
-        loadAll();
+        loadAll(true);
         showToast(t('evidenceCleared'), 'success');
       }
     });
@@ -1607,8 +1610,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setIsLoaded(true);
   };
 
-  const loadAll = () => {
-    if (isLoaded) return;
+  const loadAll = (force = false) => {
+    if (isLoaded && !force) return;
     if (isLive) {
       import('@/utils/supabase/client').then(({ createClient }) => {
         loadFromSupabase(createClient());
@@ -1717,7 +1720,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       const list: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
       localStorage.setItem('ez_communities', JSON.stringify([...list, newC]));
     }
-    setCommunityForm({ name: '', address: '', lat: '', lng: '', amenities: [] }); setCommunitySearch(''); loadAll();
+    setCommunityForm({ name: '', address: '', lat: '', lng: '', amenities: [] }); setCommunitySearch(''); loadAll(true);
     showToast(lang === 'zh' ? '小区保存成功！现在可以在下方“2. 新增房间”中选择该小区来录入房间。' : 'Community saved successfully! You can now select it under "2. Add Room Unit" below to list a room.', 'success');
   };
 
@@ -1747,7 +1750,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (unitForm.community_id === communityId) {
           setUnitForm(f => ({ ...f, community_id: '' }));
         }
-        loadAll();
+        loadAll(true);
         showToast(t('validationDeleted'), 'success');
       }
     });
@@ -1934,7 +1937,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     setMediaImages([]); setMediaVideo(null); setEditingUnitId(null);
     setIsCopyDraft(false);
     setCopySourceId('');
-    loadAll();
+    loadAll(true);
   };
 
   const scrollToUnitForm = () => {
@@ -2314,7 +2317,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       showToast(lang === 'zh' ? '租约创建成功！（模拟模式）' : 'Lease created successfully! (Mock)', 'success');
     }
     setLeaseForm({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5', unit_number: '' });
-    loadAll();
+    loadAll(true);
   };
 
   const deleteLease = async (leaseId: string) => {
@@ -2360,7 +2363,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         if (idx !== -1) { uList[idx].status = 'available'; localStorage.setItem('ez_units', JSON.stringify(uList)); }
       }
     }
-    loadAll();
+    loadAll(true);
     showToast(t('validationDeleted'), 'success');
   };
 
@@ -2380,7 +2383,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         localStorage.setItem('ez_leases', JSON.stringify(allLeases));
       }
     }
-    loadAll();
+    loadAll(true);
     showToast(lang === 'zh' ? '已成功结算并归档租约' : 'Lease settled and archived successfully', 'success');
   };
 
@@ -2416,7 +2419,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         setIncomingTenantId('');
         setTransferDate('');
         setSubstitutionNotes('');
-        loadAll();
+        loadAll(true);
       } catch (e: any) {
         showToast(e.message || 'Error executing substitution', 'error');
       } finally {
@@ -2530,7 +2533,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         setIncomingTenantId('');
         setTransferDate('');
         setSubstitutionNotes('');
-        loadAll();
+        loadAll(true);
       } catch (e: any) {
         showToast(e.message || 'Error executing substitution', 'error');
       } finally {
@@ -2606,7 +2609,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
           const ints = JSON.parse(localStorage.getItem('ez_interests') || '[]');
           localStorage.setItem('ez_interests', JSON.stringify(ints.filter((i: any) => i.unit_id !== unitId)));
         }
-        loadAll();
+        setUnits(prev => prev.filter(u => u.id !== unitId));
+        setLeases(prev => prev.filter(l => l.unit_id !== unitId));
+        setInterests(prev => prev.filter(i => i.unit_id !== unitId));
+        if (editingUnitId === unitId) {
+          setEditingUnitId(null);
+          setUnitForm({ community_id: '', room_type: 'Studio', rent: '', description: '', max_occupants: '1', bedrooms: '1', bathrooms: '1', landlord_qr_code: '', landlord_bank_info: '', available_from: '' });
+          setMediaImages([]); setMediaVideo(null);
+        }
+        loadAll(true);
+        refreshListingsCache({ force: true });
         showToast(t('validationDeleted'), 'success');
       }
     });
@@ -2645,12 +2657,12 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         
         if (error) {
           showToast(error.message, 'error');
-          loadAll(); // Revert back to server state
+          loadAll(true); // Revert back to server state
           return;
         }
       } catch (err: any) {
         showToast(err.message, 'error');
-        loadAll(); // Revert back to server state
+        loadAll(true); // Revert back to server state
         return;
       }
     } else {
@@ -2668,7 +2680,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     showToast(lang === 'zh' ? '账单状态已更新' : 'Payment status updated', 'success');
 
     // 4. Background reload to sync
-    loadAll();
+    loadAll(true);
   };
 
   const fmtMonth = (d: string) => new Date(d).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
@@ -2695,7 +2707,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             <button style={tabStyle(tab === 'properties')} onClick={() => { setTab('properties'); setPropertiesView('editor'); }}>
               <Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminProperties')}
             </button>
-            <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('interests'); loadAll(); }}>
+            <button style={tabStyle(tab === 'leases')} onClick={() => { setTab('leases'); setLeasesView('interests'); }}>
               <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />{t('adminLeases')}
               {leasesPendingCount > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
@@ -2708,7 +2720,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 <Users size={14} style={{ display: 'inline', marginRight: 6 }} />管理员
               </button>
             )}
-            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); fetchFeedbacks(); localStorage.setItem('ez_admin_feedback_last_seen', Date.now().toString()); setFeedbackHasNewReply(false); }}>
+            <button style={tabStyle(tab === 'feedback')} onClick={() => { setTab('feedback'); localStorage.setItem('ez_admin_feedback_last_seen', Date.now().toString()); setFeedbackHasNewReply(false); }}>
               <Wrench size={14} style={{ display: 'inline', marginRight: 6 }} />{t('feedback')}
               {feedbackPendingCount > 0 && (
                 <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: '1.4' }}>
@@ -2720,7 +2732,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               )}
             </button>
             {adminRole === 'super_admin' && (
-              <button style={tabStyle(tab === 'reviews')} onClick={() => { setTab('reviews'); if (!reviewsLoaded) fetchAllReviews(); }}>
+              <button style={tabStyle(tab === 'reviews')} onClick={() => setTab('reviews')}>
                 <Star size={14} style={{ display: 'inline', marginRight: 6 }} />{lang === 'zh' ? '评论管理' : 'Reviews'}
               </button>
             )}
@@ -2973,8 +2985,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             </div>
           )}
 
-          {/* Add unit */}
-          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none', maxWidth: 720, width: '100%', margin: '0 auto' }}>
+          {/* Add unit — mount only when the sub-tab is active */}
+          {propertiesView === 'editor' && editorSubTab === 'unit' && (
+          <div id="add-unit-form-section" className="glass-card" style={{ maxWidth: 720, width: '100%', margin: '0 auto' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>
@@ -3269,9 +3282,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </button>
             )}
           </div>
+          )}
 
-          {/* Inventory Table */}
-          <div className="glass-card" style={{ gridColumn: '1 / -1', display: propertiesView === 'inventory' ? 'block' : 'none' }}>
+          {/* Inventory Table — mount only when the inventory sub-tab is active */}
+          {propertiesView === 'inventory' && (
+          <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('inventoryTitle')}</h3>
             <div className="data-table-container" style={{ maxHeight: 420, overflow: 'auto' }}>
               <table className="data-table">
@@ -3345,6 +3360,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
 

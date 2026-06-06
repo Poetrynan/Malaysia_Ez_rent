@@ -52,14 +52,18 @@ export default function ReviewSystem({ unitId, userId, canDeleteAll = false }: R
         const { createClient } = await import('@/utils/supabase/client');
         const sb = await createClient();
         const { data } = await sb.from('reviews').select('*').eq('unit_id', unitId).order('created_at', { ascending: false });
-        // Fetch user names for each review
-        const reviewsWithNames = await Promise.all((data || []).map(async (r: any) => {
-          try {
-            const { data: userData } = await sb.from('users').select('full_name').eq('id', r.user_id).single();
-            return { ...r, user_name: userData?.full_name || null };
-          } catch { return { ...r, user_name: null }; }
-        }));
-        setReviews(reviewsWithNames);
+        const rows = data || [];
+        if (rows.length === 0) {
+          setReviews([]);
+        } else {
+          const userIds = [...new Set(rows.map((r: { user_id: string }) => r.user_id).filter(Boolean))];
+          const nameMap: Record<string, string | null> = {};
+          if (userIds.length > 0) {
+            const { data: users } = await sb.from('users').select('id, full_name').in('id', userIds);
+            for (const u of users || []) nameMap[u.id] = u.full_name ?? null;
+          }
+          setReviews(rows.map((r: any) => ({ ...r, user_name: nameMap[r.user_id] ?? null })));
+        }
       } catch (e) { console.error('Load reviews error:', e); }
     }
     setLoading(false);

@@ -473,7 +473,7 @@ export default function TenantRegisterPage() {
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Mail size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input type="email" className="form-input" value={email} onChange={e => { setEmail(e.target.value); setOtpVerified(false); setOtpSent(false); }}
+                <input type="email" name="email" autoComplete="username" className="form-input" value={email} onChange={e => { setEmail(e.target.value); setOtpVerified(false); setOtpSent(false); }}
                   placeholder="yourname@email.com" disabled={otpVerified}
                   style={{ width: '100%', paddingLeft: 36, boxSizing: 'border-box' }} />
               </div>
@@ -543,7 +543,7 @@ export default function TenantRegisterPage() {
             </label>
             <div style={{ position: 'relative' }}>
               <Lock size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input type={showPassword ? 'text' : 'password'} className="form-input" value={password} onChange={e => setPassword(e.target.value)}
+              <input type={showPassword ? 'text' : 'password'} name="new-password" autoComplete="new-password" className="form-input" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder={lang === 'zh' ? '至少6位字符' : 'At least 6 characters'}
                 style={{ width: '100%', paddingLeft: 36, paddingRight: 36, boxSizing: 'border-box' }} />
               <button
@@ -563,7 +563,7 @@ export default function TenantRegisterPage() {
             </label>
             <div style={{ position: 'relative' }}>
               <Lock size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input type="password" className="form-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+              <input type="password" autoComplete="new-password" className="form-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 placeholder={lang === 'zh' ? '再次输入密码' : 'Re-enter password'}
                 style={{ width: '100%', paddingLeft: 36, boxSizing: 'border-box' }} />
             </div>

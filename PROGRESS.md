@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-06-06 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询**
 
 
 
@@ -123,12 +123,14 @@ Malaysia_Ez_rent/
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `page.tsx` | ✅ 完成 | 统一 SPA 容器，侧边栏导航（**已集成 AdminPanel 冒泡上报的红点提示，显示未处理租约/意向及反馈数量**） + **图标 Logo + 产品名/副标题**，角色判断，**新增侧边栏报修一级菜单 Tab 独立导航与 Wrench 图标统一**，flex 布局修复，**使用 useCallback 和防御性状态比对修复了行内匿名回调引起的 React 185 无限循环渲染 (Render Loop) Bug** |
-| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**精准展示该房源对应 Agent 的联系方式**；卡片/行显示 **中介：display_name**；`loadListings` 失败可重试、登录后自动刷新；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y、公开意向名单；学生详情 **所属中介** + 中介主页（WhatsApp/微信 **暂无** 兜底）；`getUnitsForAgent` 严格 `agent_id` + `UnitWithCommunity` 类型；**修复微信图标显示不全与 WhatsApp 链接格式兼容性问题**；**学生已租房源隐藏“我要租”按钮并显示“您已承租此房源”；意向状态反馈重构为临时 Toast 提醒以移除详情页内的持久化取消意向横幅，且所有 Toast 升级为高级磨砂玻璃微光设计；新增 ProgressFlow 通用组件实现循环延伸进度动画；修复合约终止后房源状态与意向同步重置 Bug** |
+| `PropertyListings.tsx` | ✅ 完成 | 列表/筛选/Lightbox/视频；**消费 `ListingsDataContext` 缓存，切 tab 秒开**；`loadListings` 失败可重试；**Whole Unit 合租**：RPC 提交/取消意向、合租登记 X/Y、公开意向名单；学生详情 **所属中介** + 中介主页（WhatsApp/微信 **暂无** 兜底）；`getUnitsForAgent` 严格 `agent_id` + `UnitWithCommunity` 类型；**修复微信图标显示不全与 WhatsApp 链接格式兼容性问题**；**学生已租房源隐藏“我要租”按钮并显示“您已承租此房源”；意向状态反馈重构为临时 Toast 提醒以移除详情页内的持久化取消意向横幅，且所有 Toast 升级为高级磨砂玻璃微光设计；新增 ProgressFlow 通用组件实现循环延伸进度动画；修复合约终止后房源状态与意向同步重置 Bug** |
 | `AIChat.tsx` | ✅ 完成 | AI 对话界面，添加零依赖原生 Markdown 渲染器，添加动态 Supabase Auth 用户 ID 实时同步，解决个人租约身份对齐问题，**添加 useEffect 监听中英文语言切换，实时动态翻译更新首句 AI 欢迎语**。 |
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息，**重构支持 mode 属性以实现“我的租约”与“维修反馈”双 tab 的物理分离隔离，且历史工单列表支持 Chevron 展开折叠指示器；新增“终止租约 (Terminate Lease)”功能，集成 018 RPC 后端并包含押金扣除中英双语警告弹窗** |
-| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（红点 + Agent 隔离）；房东银行/QR（013）；**复制挂牌**（文本+房东收款，不含图/视频，保存为**新行**）；保存时写入 **`agent_id`**（旧数据可编辑保存补全）；个人资料全宽、仅头像上传压缩、去掉 iProperty 文案；**删除凭证/房源/删图同步 Storage**；数字输入非负；**编辑保存 = UPDATE 同 id，不新建**；**Toast 通知组件统一升级为高级磨砂玻璃 (Glassmorphic) 动效设计** |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（红点 + Agent 隔离）；房东银行/QR（013）；**复制挂牌**；**删除凭证/房源/删图同步 Storage**；**删房源乐观更新 UI + `loadAll(true)`**；**房源子视图按需渲染**（库存表/新增表单）；**`loadAll(force)`**；内部 tab 冗余请求已清理；**Toast 磨砂玻璃动效** |
+| `AdminShell.tsx` | ✅ 完成 | 中介 layout 单例路由：`pathname` → `activeTab`，避免 AdminPanel 每次路由切换整页重挂载；`/admin/listings`、`/admin/inbox` 独立渲染 |
+| `ListingsDataContext.tsx` | ✅ 完成 | 房源列表 SWR 缓存：切 tab 先显示缓存、后台静默刷新；手动「刷新」`force` 全量拉取；覆盖租客/中介浏览/游客 |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
 | `compressImage.ts` | ✅ 完成 | Canvas 压缩：凭证/房源/收款码 JPEG（见第十二节表） |
 | `compressVideo.ts` | ✅ 完成 | MediaRecorder WebM：≤1280×720 ~1.2Mbps；>12MB 触发；`units.video_url` |
@@ -139,9 +141,9 @@ Malaysia_Ez_rent/
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
 | `public/logo.png` | ✅ 完成 | 圆形图标版品牌 Logo（源文件 `QQ20260524-170137.png`），**纯静态资源，不涉及数据库** |
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
-| `login/page.tsx` | ✅ 完成 | 租客：Google OAuth + 邮箱密码；中介：仅邮箱密码（无 Google）；角色分流登录 |
-| `register/tenant/page.tsx` | ✅ 完成 | 租客注册（身份选择+证件上传+邮箱验证码+密码） |
-| `register/agent/page.tsx` | ✅ 完成 | 中介申请（REN+执照+邮箱验证码+密码，审批前无权限） |
+| `login/page.tsx` | ✅ 完成 | 租客：Google OAuth + 邮箱密码；中介：仅邮箱密码；**`name` + `autocomplete` 支持浏览器记住密码/自动填充** |
+| `register/tenant/page.tsx` | ✅ 完成 | 租客注册（身份+证件+验证码+密码）；**`autocomplete="new-password"`** |
+| `register/agent/page.tsx` | ✅ 完成 | 中介申请（REN+执照+验证码+密码）；**`autocomplete="new-password"`** |
 | `register/complete-profile/page.tsx` | ✅ 完成 | Google 新用户/老用户补全身份资料 |
 | `auth/callback/route.ts` | ✅ 完成 | OAuth code + 遗留 token_hash；session cookie 写入 redirect；无 role 时带 cookie 跳转 complete-profile |
 
@@ -259,6 +261,11 @@ Malaysia_Ez_rent/
 | 90 | Google 登录后无限回到 `/login` | OAuth 回调重定向 `complete-profile` 时未携带 auth cookie，session 丢失 | **已修复**：`auth/callback` 重定向时复制 session cookie 到新响应 |
 | 91 | 超管/老中介无法登录中介端 | 门户隔离移除中介 Google 登录；账号无密码；缺 `agent_profiles` 记录 | **已手动处理**：Supabase SQL 补 `role=agent`、设密码、插入 `agent_profiles` |
 | 92 | 老租客 `user_metadata.role` 为空被 middleware 拦截 | 门户隔离迁移未自动回填 role | **已手动处理**：SQL 批量补 `role=student`（非 admin_users 邮箱） |
+| 93 | 删除房源 Toast 成功但列表不更新 | `loadAll()` 在 `isLoaded` 后为空操作 | **已修复**：乐观 `setUnits` + `loadAll(true)` + 同步 `ListingsDataContext` |
+| 94 | 房源列表每次切 tab 转圈重载 | `PropertyListings` 每次挂载重新请求 Supabase | **已修复**：`ListingsDataContext` SWR 缓存 |
+| 95 | 中介 tab 切换卡顿 | 每路由独立 `AdminPanel` 整页重挂载 | **已修复**：`AdminShell` 单实例 + `activeTab` |
+| 96 | 打开房源详情评价加载慢 | ReviewSystem 每条 review 单独查 users（N+1） | **已修复**：批量 `users.in('id', userIds)` |
+| 97 | 浏览器不保存/自动填充密码 | 登录注册 input 缺 HTML 语义属性 | **已修复**：`name` + `autocomplete`（#38） |
 
 ---
 
@@ -2488,6 +2495,29 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 
 ---
 
+## 六十二、Tab 切换性能优化 + 数据刷新修复（2026-06-06）
+
+**目标：** 消除一级导航 tab 切换卡顿；修复删房源后 UI 不更新；减少重复 Supabase 请求。
+
+### 已实施
+
+| 类别 | 内容 | 文件 |
+|------|------|------|
+| 房源列表缓存 | `ListingsDataContext`：首次加载后内存保留；切回 tab 先显示缓存、后台静默刷新；「刷新」按钮 `force` 全量拉取 | `ListingsDataContext.tsx`, `PropertyListings.tsx`, `(app)/layout.tsx` |
+| 中介单实例 | `AdminShell` 挂 `admin/layout`；`pathname` → `activeTab`；dashboard/properties/leases 等切换不重挂载 `AdminPanel` | `AdminShell.tsx`, `admin/layout.tsx` |
+| 子视图按需渲染 | 库存表、新增房源表单仅切到对应子 tab 时挂载 | `AdminPanel.tsx` |
+| 删房源即时 UI | 乐观 `setUnits` / `setLeases` / `setInterests` + `loadAll(true)` + `refreshListingsCache` | `AdminPanel.tsx` |
+| `loadAll(force)` | 增删改后 `loadAll(true)`；首次仍 `isLoaded` 挡重复全量拉取 | `AdminPanel.tsx` |
+| P0-2 收尾 | 移除内部 tab onClick 冗余 `loadAll` / `fetchFeedbacks` / `fetchAllReviews` | `AdminPanel.tsx` |
+| ReviewSystem | 评价用户名批量查询，消除 N+1 | `ReviewSystem.tsx` |
+| 浏览器密码 | 登录/注册页 `name` + `autocomplete` | `login/page.tsx`, `register/*/page.tsx` |
+
+**诊断文档：** `docs/performance-diagnosis.md`（含已完成项与后续低优先级建议）
+
+**残留待观察：** 租客 `TenantPortal` 路由仍各自挂载；`TenantPortal` 单实例仅当租客 tab 仍卡时再实施。
+
+---
+
 ## 六十三、Google OAuth 登录死循环修复（2026-06-06）
 
 **问题：** 谷歌登录成功后，若 `user_metadata.role` 为空，回调重定向到 `/register/complete-profile` 时新建了不带 auth cookie 的响应，导致 session 丢失 → `complete-profile` 检测无用户 → 跳回 `/login` → 无限循环。
@@ -2495,17 +2525,4 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 **修复：** `auth/callback/route.ts` 在重定向到 `complete-profile` 时，将已写入 session 的 cookie 复制到新 redirect 响应上。
 
 **跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/register/complete-profile` → 填完资料 → `/listings`
-
----
-
-## 六十二、租客/中介后台 Tab 导航切换卡顿性能优化（2026-06-06）
-
-**目标：** 诊断并解决大单体页面在 Next.js APP Router 下切换 Tab 功能组件时的频繁卸载挂载、CPU 计算暴涨和网络请求风暴导致的严重卡顿。
-
-### 优化手段
-
-- **持久化上下文缓存 (`AdminDataContext.tsx` / `TenantDataContext.tsx`)** — 创建了独立的全局数据 Provider 缓存层，并将其包裹在后台布局根结点。
-- **读取逻辑下推与去重** — 将 `AdminPanel` (336KB) 和 `TenantPortal` (140KB) 原有的 `useEffect` 异步并发拉取逻辑提炼到 Context Provider 层面，仅在初始化或主动变更时更新。
-- **零延迟渲染与防闪烁** — 后台子页面切路由时直接读取 Context 缓存，避免了每次重新挂载时触发 4-6 个 Supabase SQL 的网络等待，渲染时间从原来的 800ms+ 降低至毫秒级无感知切换，彻底消除了白屏和骨架屏闪烁。
-
 

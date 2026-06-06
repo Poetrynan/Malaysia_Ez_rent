@@ -29,6 +29,7 @@ import ReviewSystem from './ReviewSystem';
 import AgentRatingBadge from './AgentRatingBadge';
 import { useApp } from '@/lib/ThemeProvider';
 import { nonNegativeInputValue } from '@/lib/numberInput';
+import { useListingsData, type UnitWithCommunity, type AdminContact } from '@/lib/ListingsDataContext';
 
 interface Unit {
   id: string; community_id: string;
@@ -42,8 +43,6 @@ interface Community {
   id: string; name: string; address: string; lat: number; lng: number; amenities?: string[];
   image_url?: string | null;
 }
-interface UnitWithCommunity extends Unit { community: Community | null; }
-
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Ensuite', 'Whole Unit'];
 
 const FACILITY_ICONS: Record<string, React.ReactNode> = {
@@ -329,25 +328,6 @@ const agentPriceInputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-interface AdminContact {
-  id?: string;
-  display_name: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  wechat_id: string | null;
-  email: string;
-  avatar_url?: string | null;
-  job_title?: string | null;
-  agency_name?: string | null;
-  agency_license?: string | null;
-  agency_address?: string | null;
-  bio?: string | null;
-  experience_years?: number | null;
-  experience_months?: number | null;
-  area_expertise?: string[] | string | null;
-  property_types?: string[] | string | null;
-}
-
 interface TenantInterest { id: string; unit_id: string; user_id: string; email: string; full_name?: string; phone?: string; note?: string; status: string; created_at: string; }
 
 const maskEmail = (email: string) => {
@@ -363,14 +343,22 @@ const maskEmail = (email: string) => {
 
 export default function PropertyListings({ readOnly = false, guestMode = false }: { readOnly?: boolean; guestMode?: boolean }) {
   const { t, lang } = useApp();
-  const [units, setUnits] = useState<UnitWithCommunity[]>([]);
-  const [listingsLoading, setListingsLoading] = useState(true);
-  const [listingsError, setListingsError] = useState<string | null>(null);
+  const {
+    units,
+    admins,
+    favoriteUnitIds,
+    listingsError,
+    isListingsLoaded,
+    isRefreshing,
+    loadListings,
+    loadAdmins,
+    loadFavorites,
+  } = useListingsData();
+  const listingsLoading = !isListingsLoaded;
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [maxRent, setMaxRent] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'favorites'>('all');
-  const [favoriteUnitIds, setFavoriteUnitIds] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
@@ -382,7 +370,6 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
   const [videoOpen, setVideoOpen] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-  const [admins, setAdmins] = useState<AdminContact[]>([]);
   const filteredAdmins = useMemo(() => {
     if (!selected?.agent_id) return admins;
     const match = admins.filter(a => a.id === selected.agent_id);
@@ -558,117 +545,14 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
     }
   };
 
-  const loadListings = useCallback(async () => {
-    setListingsLoading(true);
-    setListingsError(null);
-    try {
-      if (isMockDatabase) {
-        const allUnits: Unit[] = JSON.parse(localStorage.getItem('ez_units') || '[]');
-        const allCommunities: Community[] = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-        setUnits(allUnits.map(u => ({
-          ...u,
-          community: allCommunities.find(c => c.id === u.community_id) || null,
-        })));
-        if (allUnits.length === 0) {
-          console.warn('[listings] Mock mode: ez_units is empty — admin data is in browser localStorage only, not Supabase.');
-        }
-        return;
-      }
-
-      const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      const [unitRes, commRes] = await Promise.all([
-        supabase.from('units').select('*'),
-        supabase.from('communities').select('*'),
-      ]);
-
-      if (unitRes.error || commRes.error) {
-        const msg = unitRes.error?.message || commRes.error?.message || 'Failed to load listings';
-        console.error('[listings] Supabase error:', unitRes.error, commRes.error);
-        setListingsError(msg);
-        setUnits([]);
-        return;
-      }
-
-      const allUnits: Unit[] = unitRes.data || [];
-      const allCommunities: Community[] = commRes.data || [];
-      setUnits(allUnits.map(u => ({
-        ...u,
-        community: allCommunities.find(c => c.id === u.community_id) || null,
-      })));
-    } catch (e) {
-      console.error('[listings] load failed:', e);
-      setListingsError(e instanceof Error ? e.message : 'Failed to load listings');
-      setUnits([]);
-    } finally {
-      setListingsLoading(false);
-    }
-  }, []);
-
-  // 加载收藏列表
-  const loadFavorites = useCallback(async () => {
-    if (!authUserId) return;
-    if (isMockDatabase) {
-      const favorites = JSON.parse(localStorage.getItem('ez_favorites') || '[]');
-      const ids = favorites.filter((f: any) => f.user_id === authUserId).map((f: any) => f.unit_id);
-      setFavoriteUnitIds(new Set(ids));
-    } else {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { data } = await supabase.from('favorites').select('unit_id').eq('user_id', authUserId);
-        setFavoriteUnitIds(new Set((data || []).map((f: any) => f.unit_id)));
-      } catch (e) {
-        console.error('Load favorites error:', e);
-      }
-    }
-  }, [authUserId]);
-
-  const loadAdmins = useCallback(async () => {
-    if (isMockDatabase) {
-      const storedAdmins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      if (storedAdmins.length > 0) {
-        setAdmins(storedAdmins);
-      } else {
-        const defaultAgent = {
-          id: 'admin-999',
-          display_name: 'Nick Chan',
-          phone: '+6012-345 6789',
-          whatsapp: '60123456789',
-          wechat_id: 'nick_chan_ren',
-          email: 'admin@ezrent.my',
-          avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Nick',
-          job_title: 'Senior Rental Manager',
-          agency_name: 'VIVAHOMES REALTY SDN. BHD',
-          agency_license: 'E (1) 1670',
-          agency_address: 'No. 25-3, Jalan PJU 5/20, The Strand, Kota Damansara, 47810 Petaling Jaya, Selangor',
-          bio: 'Specialist in student accommodations near Sunway, Monash and Taylor universities. With over 5 years of experience in the rental market, I help students find their perfect home away from home with premium, hassle-free services.',
-          experience_years: 5,
-          experience_months: 6,
-          area_expertise: ['Bandar Sunway', 'Subang Jaya', 'Petaling Jaya'],
-          property_types: ['Condo', 'Serviced Residence', 'Apartment', 'Room']
-        };
-        setAdmins([defaultAgent]);
-        localStorage.setItem('ez_admins', JSON.stringify([defaultAgent]));
-      }
-      return;
-    }
-    try {
-      const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      const { data, error } = await supabase.from('admin_users').select('*');
-      if (error) console.error('[listings] admin_users:', error);
-      if (data) setAdmins(data as AdminContact[]);
-    } catch (e) {
-      console.error('[listings] load admins failed:', e);
-    }
-  }, []);
-
   useEffect(() => {
     loadListings();
     loadAdmins();
-    loadFavorites();
-  }, [loadListings, loadAdmins, loadFavorites]);
+  }, [loadListings, loadAdmins]);
+
+  useEffect(() => {
+    loadFavorites(authUserId);
+  }, [authUserId, loadFavorites]);
 
   useEffect(() => {
     if (isMockDatabase) {
@@ -697,8 +581,8 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (mounted) setAuthUserId(session?.user?.id ?? null);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          loadListings();
-          loadAdmins();
+          loadListings({ force: true });
+          loadAdmins({ force: true });
         }
       });
       unsubscribe = () => subscription.unsubscribe();
@@ -1013,21 +897,21 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         </span>
         <button
           type="button"
-          onClick={() => { loadListings(); }}
-          disabled={listingsLoading}
+          onClick={() => { loadListings({ force: true }); loadAdmins({ force: true }); }}
+          disabled={listingsLoading || isRefreshing}
           title={lang === 'zh' ? '刷新房源列表' : 'Refresh listings'}
           style={{
             marginLeft: 'auto',
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', border: '1px solid var(--glass-border)',
-            borderRadius: 8, background: 'var(--glass-bg)', cursor: listingsLoading ? 'not-allowed' : 'pointer',
+            borderRadius: 8, background: 'var(--glass-bg)', cursor: (listingsLoading || isRefreshing) ? 'not-allowed' : 'pointer',
             fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)',
-            transition: 'all 0.2s', opacity: listingsLoading ? 0.6 : 1,
+            transition: 'all 0.2s', opacity: (listingsLoading || isRefreshing) ? 0.6 : 1,
           }}
-          onMouseEnter={e => { if (!listingsLoading) { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; } }}
+          onMouseEnter={e => { if (!listingsLoading && !isRefreshing) { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)'; } }}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
         >
-          <RefreshCw size={14} style={{ animation: listingsLoading ? 'spin 1s linear infinite' : 'none' }} />
+          <RefreshCw size={14} style={{ animation: (listingsLoading || isRefreshing) ? 'spin 1s linear infinite' : 'none' }} />
           {lang === 'zh' ? '刷新' : 'Refresh'}
         </button>
       </div>
@@ -1117,7 +1001,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
               <p style={{ color: 'var(--danger)' }}>
                 {lang === 'zh' ? '加载房源失败' : 'Failed to load listings'}: {listingsError}
               </p>
-              <button type="button" className="btn btn-primary empty-cta" onClick={() => loadListings()}>
+              <button type="button" className="btn btn-primary empty-cta" onClick={() => loadListings({ force: true })}>
                 {lang === 'zh' ? '重试' : 'Retry'}
               </button>
             </>
@@ -1137,7 +1021,7 @@ export default function PropertyListings({ readOnly = false, guestMode = false }
         viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: guestMode ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(5, 1fr)', gap: 16 }}>
             {paginated.map(u => (
-              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={loadFavorites} guestMode={guestMode} />
+              <PropertyCard key={u.id} unit={u} agentLabel={getListingAgentLabel(u, admins, lang)} onSelect={() => { setSelected(u); setImgIdx(0); }} t={t} userId={authUserId} lang={lang} onFavoriteToggle={() => loadFavorites(authUserId, { force: true })} guestMode={guestMode} />
             ))}
           </div>
         ) : (

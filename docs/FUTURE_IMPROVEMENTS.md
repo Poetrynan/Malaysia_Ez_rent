@@ -470,6 +470,72 @@
 
 ---
 
+### ✅ 38. 浏览器记住密码 / 自动填充
+
+**完成时间：** 2026-06-06
+
+**问题：** 登录页和注册页的 `<input>` 缺少 `name` 和 `autocomplete` 属性，浏览器无法识别账号密码字段，导致既不弹出「保存密码」，也不会在下次登录时自动填充。这是纯前端的 HTML 语义问题，无需任何服务器端改动。
+
+**修复：**
+- **登录页** `login/page.tsx`（租客 + 中介两套表单）：邮箱框加 `name="email"` + `autoComplete="username"`；密码框加 `name="password"` + `autoComplete="current-password"`。浏览器据此弹出保存提示并在下次自动补全。
+- **注册页** `register/tenant/page.tsx`、`register/agent/page.tsx`：邮箱框加 `autoComplete="username"`；设置密码框加 `autoComplete="new-password"`（注册场景，浏览器会提示生成/保存新密码，且不会用旧密码乱填）；确认密码框同样用 `new-password`。
+- `register/complete-profile/page.tsx` 无密码框，无需改动。
+
+**预期效果：** 用户登录/注册后浏览器自动提示保存账号密码，下次登录可一键补全，相当于免费实现「记住密码」，全部依赖浏览器原生密码管理器。
+
+---
+
+### ✅ 39. 删除房源后列表不即时刷新
+
+**完成时间：** 2026-06-06
+
+**问题：** 中介删除房源后 Toast 提示成功，但「已登记房源库」表格仍显示该房源，需手动刷新页面才消失。
+
+**根因：** `loadAll()` 在 `isLoaded === true` 时直接 `return`，删房源后调用的 `loadAll()` 成为空操作；UI 仍显示旧的 `units` 状态。
+
+**修复：**
+- `loadAll(force)` 增加 `force` 参数，`force=true` 时跳过早退守卫
+- `deleteUnit` 成功后立即 `setUnits` / `setLeases` / `setInterests` 乐观过滤本地状态
+- 增删改操作统一改为 `loadAll(true)` 强制与 Supabase 同步
+- 同步调用 `refreshListingsCache({ force: true })` 更新租客端列表缓存
+
+**涉及文件：** `AdminPanel.tsx`
+
+---
+
+### ✅ 40. Tab 切换性能优化（房源列表缓存 + 中介单实例）
+
+**完成时间：** 2026-06-06
+
+**问题：** 一级导航 tab 切换时有明显卡顿；房源列表每次进入都转圈重载。
+
+**已实施方案：**
+
+| 优化项 | 实现 | 文件 |
+|--------|------|------|
+| 房源列表 Context 缓存 | `ListingsDataContext`：首次加载后内存保留；切回 tab **先显示缓存**，后台静默刷新；点「刷新」才 `force` 全量拉取 | `ListingsDataContext.tsx`, `PropertyListings.tsx`, `(app)/layout.tsx` |
+| 中介 AdminPanel 单实例 | `AdminShell` 挂 `admin/layout.tsx`，`pathname` → `activeTab`；dashboard/properties/leases 等切换时 **不重挂载** 5,800 行组件 | `AdminShell.tsx`, `admin/layout.tsx`, `admin/*/page.tsx` |
+| 房源子视图按需渲染 | 库存表、新增房源大表单改为 `{condition && (...)}`，未激活子 tab 不挂载 DOM | `AdminPanel.tsx` |
+| `loadAll(force)` | 首次 `isLoaded` 挡重复；增删改后 `loadAll(true)` | `AdminPanel.tsx` |
+
+**资源影响：** 主要占用浏览器内存；同会话 Supabase 读次数**减少**；Vercel / Render 无影响。详见 `docs/performance-diagnosis.md`。
+
+**残留（按体感再优化）：** 租客 `TenantPortal` 路由仍各自挂载；切 `/admin/listings` 或 `/admin/inbox` 时 `AdminPanel` 仍会卸载（但房源浏览已受益于列表缓存）。
+
+---
+
+### ✅ 41. 内部 tab 冗余请求清理 + ReviewSystem 批量查询
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- **P0-2 收尾：** 移除 `AdminPanel` 内部 tab 栏 onClick 中的 `loadAll(true)`、`fetchFeedbacks()`、`fetchAllReviews()`；首次进入各 tab 由 `resolvedTab` effect 按需加载；增删改后仍 `loadAll(true)` 保新鲜度
+- **P2-3 ReviewSystem：** 评价列表由「每条 review 单独查 users」改为一次 `users.in('id', userIds)` 批量取姓名（20 条评价：21 次请求 → 2 次）
+
+**涉及文件：** `AdminPanel.tsx`, `ReviewSystem.tsx`
+
+---
+
 ## 待完成功能
 
 ### 🔲 1. 忘记密码 / 重置密码（Magic Link 老租客兼容）
@@ -530,6 +596,9 @@
 | 登录成功却落在 `/guest`（无侧边栏） | Google OAuth 曾用 `next=/` → 中间件 `/` → `/guest` | **已修复**：OAuth 改为 `next=/listings` |
 | `/listings` 闪一下再跳 Guest | `AuthContext` 加载中 `role=null`，`listings/page.tsx` 误判未登录 `router.replace('/guest')` | **已修复**：`AuthContext` 在 `onAuthStateChange` 解析出 session 前保持 `loading=true`，`/listings` 期间显示进度条而非误跳；未登录时 `return null` 避免闪烁 |
 | 根路径 `/` 永远进 Guest | `middleware.ts` 无条件 `pathname === '/'` → `/guest` | 设计如此（公开入口）；**勿**把 OAuth/Magic Link 的 `next` 设为 `/` |
+| 删除房源后列表不更新 | `loadAll()` 在 `isLoaded` 后为空操作 | **已修复**（#39）：乐观更新 + `loadAll(true)` |
+| Tab 切换卡顿 / 房源列表每次转圈 | 路由重挂载 + 无内存缓存 | **已修复**（#40–#41）：`ListingsDataContext` + `AdminShell`；详见 `performance-diagnosis.md` |
+| 浏览器不提示保存密码 | 登录/注册 input 缺 `name` / `autocomplete` | **已修复**（#38） |
 | 美化改动影响业务逻辑 | 纯 CSS/布局 | 新增行为：无租约空状态「去找房源」按钮（`router.push('/listings')`）；其余为显示层 |
 
 ---
