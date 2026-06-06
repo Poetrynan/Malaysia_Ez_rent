@@ -47,9 +47,17 @@ export async function GET(request: NextRequest) {
   if (authOk) {
     const { data: { user } } = await supabase.auth.getUser();
     const role = user?.user_metadata?.role;
+
+    // New Google users (and legacy users without a role) must finish profile
+    // completion first. We MUST carry the freshly-set auth cookies onto this
+    // redirect — otherwise the session is dropped and complete-profile bounces
+    // the user back to /login, causing an infinite Google login loop.
     if (!role) {
-      return NextResponse.redirect(`${origin}/register/complete-profile`);
+      const completeResponse = NextResponse.redirect(`${origin}/register/complete-profile`);
+      response.cookies.getAll().forEach((cookie) => completeResponse.cookies.set(cookie));
+      return completeResponse;
     }
+
     return response;
   }
 

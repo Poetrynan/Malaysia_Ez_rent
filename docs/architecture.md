@@ -1,8 +1,8 @@
-# Malaysia Ez Rent AI Development Architecture
+# Malaysia Ez Rent — Project Architecture
 
 Last updated: 2026-06-06 (UTC+8)
 
-This document is the single-source onboarding guide for future AI agents working in this repo.
+This document is the single-source onboarding guide for anyone (human or AI agent) working in this repo.
 
 ## 1) System Overview
 
@@ -14,8 +14,8 @@ The project is a full-stack rental platform for Malaysian international housing 
 
 High-level flow:
 
-1. User logs in via Supabase (Google OAuth or Magic Link)
-2. Frontend resolves role from `admin_users` and renders tenant/admin experience
+1. User logs in via Supabase (tenant: email+password or Google OAuth; agent: email+password only)
+2. Frontend resolves role from `user_metadata.role` (`student` | `agent`) and renders tenant/admin experience
 3. AI chat requests stream from frontend -> backend `/api/chat` -> tool calls -> SSE back to UI
 4. Rental operations persist to Supabase tables; media persists to Storage bucket `unit-media`
 
@@ -48,8 +48,11 @@ Malaysia_Ez_rent/
 │   │   │       ├── reviews/page.tsx    # /admin/reviews (super_admin only)
 │   │   │       ├── profile/page.tsx    # /admin/profile
 │   │   │       └── inbox/page.tsx      # /admin/inbox
-│   │   ├── login/page.tsx              # Google + Magic Link
-│   │   ├── auth/callback/route.ts      # OAuth code + Magic Link token_hash → session + redirect
+│   │   ├── login/page.tsx              # Tenant: Google + email/password; Agent: email/password only
+│   │   ├── register/tenant/page.tsx    # Tenant registration (identity docs + email verification)
+│   │   ├── register/agent/page.tsx     # Agent application (REN + password + email verification)
+│   │   ├── register/complete-profile/  # Google new users / legacy users without identity_type
+│   │   ├── auth/callback/route.ts      # OAuth code + legacy token_hash → session + redirect
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
 │   │   ├── AppSidebar.tsx              # sidebar (useRouter navigation, usePathname active state)
@@ -346,24 +349,56 @@ Notes:
 
 ## 7) Auth, Roles, and Access Model
 
-- Login is Supabase Auth; app role is app-level lookup:
-  - if user exists in `admin_users` -> admin
-  - else -> student
-- Frontend middleware:
-  - `/` **always** redirects to `/guest` (mock + live; public landing for all visitors)
-  - `/guest` is public (no auth) — hero + read-only property browsing + trust signals
-  - `/login`, `/auth/*`, `/calculator`, `/register-agent`, `/mobile-upload/*` — always allowed
-  - **Live mode**: all other routes require Supabase SSR auth; unauthenticated → `/login`
-  - **Mock mode**: client-side `AuthContext` handles role; middleware passes through (except `/` → `/guest`)
-- **`/listings` client guard** (`listings/page.tsx`): after `AuthContext` loads, `!role` → `/guest`, `admin` → `/admin/dashboard`. Uses `return null` while redirecting to avoid progress-bar flash. **Do not** set OAuth/Magic Link `next=/` — middleware would send users to `/guest` instead of the app shell.
-- **Auth callback** (`auth/callback/route.ts`):
-  - `code` → `exchangeCodeForSession` (Google OAuth / PKCE)
-  - `token_hash` + `type` → `verifyOtp` (email Magic Link)
-  - Session cookies attached to `NextResponse.redirect(origin + next)` before return
-  - Default `next` is `/` (avoid in login flows; use `/listings`)
-  - Failure → `/login?error=auth_failed`
+### Portal isolation (2026-06-06)
+
+Tenant and agent are **separate account systems**. Role is stored in Supabase Auth `user_metadata.role`:
+
+| `user_metadata.role` | Portal | Login methods |
+|----------------------|--------|---------------|
+| `student` | `/listings`, `/my-lease`, … | Email+password **or** Google OAuth |
+| `agent` (approved) | `/admin/*` | Email+password only (no Google) |
+
+**Registration routes:**
+- `/register/tenant` — email verification + password + identity documents
+- `/register/agent` — REN + password + email verification (account created, no access until approved)
+- `/register/complete-profile` — Google new users or legacy users missing `identity_type`
+
+**Legacy migration (manual SQL, one-time):**
+- Backfill `user_metadata.role = 'student'` for old tenants without role
+- Super admins: set `role = 'agent'`, create password, insert `agent_profiles` (approved)
+
+**Pending:** Forgot-password / reset-password flow for legacy Magic Link users who have no password and no Google — see `docs/FUTURE_IMPROVEMENTS.md` →「待完成功能 #1」.
+
+### Middleware & guards
+
+- `/` **always** redirects to `/guest` (mock + live)
+- `/guest` is public (no auth)
+- `/login`, `/auth/*`, `/calculator`, `/register/*`, `/mobile-upload/*` — always allowed
+- **Live mode**: other routes require Supabase SSR session; unauthenticated → `/login`
+- **Role gate**: if logged in but `user_metadata.role` is missing → `/register/complete-profile`
+- **Strict isolation**: `student` cannot access `/admin/*`; `agent` cannot access tenant routes (middleware redirects)
+- **Mock mode**: client-side `AuthContext` handles role; middleware passes through (except `/` → `/guest`)
+
+### Auth callback (`auth/callback/route.ts`)
+
+- `code` → `exchangeCodeForSession` (Google OAuth / PKCE)
+- `token_hash` + `type` → `verifyOtp` (legacy email link, kept for backward compat)
+- Session cookies **must** be copied onto every redirect response (including `complete-profile`)
+- If `role` missing after OAuth → redirect `/register/complete-profile` **with cookies** (fixed 2026-06-06: previously dropped session → infinite login loop)
+- Login flows use `next=/listings` (never `next=/` — middleware sends `/` to `/guest`)
+- Failure → `/login?error=auth_failed`
+
+### AuthContext (`AuthContext.tsx`)
+
+- Reads `user.user_metadata.role`
+- `agent` → checks `agent_profiles.verification_status`; `approved` + `admin_users` → `role = 'admin'`
+- `student` → `role = 'student'`
+- Subscribes to `onAuthStateChange`; `loading=true` until session resolves
+
+### Other auth notes
+
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
-- **Agent registration flow**: user logs in → `/register-agent` → fills REN/phone/agency info → `agent_registrations` table (pending) → super admin reviews in admin panel → approve creates `admin_users` record → next login gets admin role.
+- **Agent approval flow**: `/register/agent` → `agent_profiles` (pending) → super admin approves in AdminPanel → inserts `admin_users` + sends approval email (Resend) → agent logs in with email+password.
 - **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to handle tenant deactivation. 
   - **Day 0**: Instantly deletes auth-related rows (`tenant_interests`, `maintenance_requests`, `user_notifications`, `auth.users` row) to revoke login access immediately. The `public.users` row is kept with `avatar_url = 'DELETED:timestamp'` to retain documents (passport/IC) for 7 days as legal evidence.
   - **Day 7+**: During subsequent account deletions, any expired deactivated users are cleaned up. The cleanup script dissociates financial/rating rows by updating `tenant_id` or `user_id` to `null` on `leases`, `agent_ratings`, and `reviews` tables (preserving the agent's archived leases, ratings, and payment records intact), deletes the student's document images from Storage, and deletes the `public.users` record completely.
@@ -598,43 +633,55 @@ User: "从公司到um要多久"
   → Frontend: auto-renders route map
 ```
 
-## 15) Login & Agent Registration Flow
+## 15) Login & Agent Registration Flow (Portal Isolation — 2026-06-06)
 
 ### Login Page (`login/page.tsx`)
 
-- Role-based entry: user chooses "I'm a Student" or "I'm an Agent" first.
-- Both paths lead to the same auth flow (Google OAuth / Magic Link).
-- **Post-login redirect**: both Google and Magic Link use `redirectTo` / `emailRedirectTo` → `/auth/callback?next=/listings` (never `next=/`).
-- Agent page has prominent "Apply as Agent" button at bottom.
+- Role-based entry: user chooses "I'm a Tenant" or "I'm an Agent" first.
+- **Tenant tab**: Google OAuth + email/password form; link to `/register/tenant`.
+- **Agent tab**: email/password only (no Google); link to `/register/agent`.
+- **Post-login redirect**: Google uses `redirectTo` → `/auth/callback?next=/listings`.
 - In-app browser detection (WeChat/QQ/Feishu) shows warning to open in external browser.
-- Design: ui-ux-pro-max skill — Trust & Authority style, Plus Jakarta Sans typography, Lucide icons, no emojis.
+- **Removed**: Magic Link login (replaced by email+password; legacy users need forgot-password — pending).
 
-### Agent Registration (`register-agent/page.tsx`)
+### Tenant Registration (`register/tenant/page.tsx`)
 
-- Form fields: email (read-only from auth), name, phone, WhatsApp, agency name, REN number, REN tag image.
-- REN tag image compressed with `REN_TAG_PRESET` (1200×800, JPEG 88%) before upload to Storage `ren-tags/`.
-- Draft saving: if not logged in, form data saved to localStorage; restored on return.
-- Duplicate check: queries `agent_registrations` on mount; shows existing status if already submitted.
+- Step 1: choose identity (Malaysian / international student / international other).
+- Step 2: name, email, phone, ID/passport, document uploads, password.
+- Email verification via `/api/send-verification` + `/api/verify-code` (Resend).
+- `signUp` with `user_metadata: { role: 'student', identity_type, full_name }`.
+
+### Agent Registration (`register/agent/page.tsx`)
+
+- No login required; sets password at registration.
+- Fields: name, email, phone, WhatsApp, agency, REN number, REN tag image, password.
+- Email verification → `signUp` with `user_metadata: { role: 'agent' }` → `agent_profiles` (pending).
+- Replaces old `/register-agent` page.
+
+### Complete Profile (`register/complete-profile/page.tsx`)
+
+- For Google OAuth users without `role`, or legacy users missing `identity_type`.
+- Same identity/doc flow as tenant registration (no email verification, no password).
+- On submit: `updateUser({ data: { role: 'student', identity_type, full_name } })` + upsert `users` table.
 
 ### Approval Flow (`AdminPanel.tsx`)
 
-- Super admin reviews in "Agent Registrations" tab.
-- On approve: 1) Insert into `admin_users` (with `ren_number`, `ren_tag_url`), 2) Delete REN image from Storage, 3) Delete registration record.
-- On reject: update status + rejection reason (record kept for audit).
-- After approval: agent re-logs in → auto-enters agent portal → REN number pre-filled (read-only).
+- Super admin reviews `agent_profiles` (replaces `agent_registrations`).
+- On approve: insert `admin_users`, update `agent_profiles.verification_status = 'approved'`, send approval email (Resend).
+- On reject: update status + send rejection email.
+- After approval: agent logs in with email+password → `/admin/*`.
 
-### Role Determination (`page.tsx`)
+### Role Determination (`AuthContext.tsx`)
 
-- On mount: query `admin_users` by `auth.uid()`. If found → admin; else → tenant.
-- If tenant: additionally query `agent_registrations` for this user → show status banner (pending/approved/rejected) only if a record exists.
-- Banner shows in main content area (not just sidebar) with prominent styling.
-- Mock mode: filters `agent_registrations` by `auth_user_id` to prevent cross-user data leakage.
+- Read `user.user_metadata.role` (`student` | `agent`).
+- `agent` + `agent_profiles.approved` + `admin_users` record → `role = 'admin'`.
+- `student` → `role = 'student'`.
+- Middleware enforces route isolation (tenant cannot access `/admin/*`, agent cannot access tenant routes).
 
-### Database (`029_agent_registration_cleanup.sql`)
+### Database (migrations 043–044)
 
-- `admin_users` gains `ren_number VARCHAR(20)` and `ren_tag_url TEXT` columns.
-- DELETE policy on `agent_registrations` for admins.
-- Storage DELETE policy on `ren-tags/` for authenticated users (admins).
+- `043_portal_isolation_tables.sql`: `agent_profiles`, `email_verifications`, extend `users` identity fields.
+- `044_update_auth_trigger.sql`: update `handle_new_auth_user` trigger (remove notification insert).
 
 ## 16) Admin Panel Tab Structure
 
@@ -1158,9 +1205,13 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 
 | Issue | Cause | Mitigation / status |
 |-------|-------|---------------------|
-| Magic Link / Google first login → `auth_failed` or double login | PKCE/cookie timing; callback previously code-only; `AuthContext` checked `getUser()` once and locked role=null before cookies hydrated | **Fixed**: callback handles `token_hash`; cookies on redirect response; `AuthContext` now subscribes to `onAuthStateChange` (`INITIAL_SESSION`/`SIGNED_IN`) and keeps `loading=true` until session resolves. If it ever recurs, verify Supabase Site URL matches deployment domain |
+| Google login infinite loop back to `/login` | OAuth callback redirected to `complete-profile` without copying auth cookies | **Fixed** (2026-06-06): copy session cookies onto `complete-profile` redirect |
+| Super admin / legacy agent locked out | Portal isolation removed Google for agents; no password; missing `agent_profiles` | **Manually fixed**: SQL backfill `role=agent`, set password, insert `agent_profiles` |
+| Old tenants missing `user_metadata.role` | Migration did not auto-backfill | **Manually fixed**: SQL batch `role=student` for non-admin emails |
+| Legacy Magic Link users cannot log in | Login page removed Magic Link; only password + Google | **Pending**: forgot-password / reset-password — see `FUTURE_IMPROVEMENTS.md` §待完成功能 #1 |
+| Magic Link / Google first login → `auth_failed` or double login | PKCE/cookie timing; `AuthContext` race | **Fixed**: callback dual-path + `onAuthStateChange`; verify Supabase Site URL matches deployment domain |
 | Logged-in user lands on `/guest` | OAuth used `next=/` → middleware `/` → `/guest` | **Fixed**: login page uses `next=/listings` |
-| `/listings` flash then Guest | `role=null` while `AuthContext` loading | **Fixed**: `AuthContext` keeps `loading=true` until `onAuthStateChange` resolves the session, so `/listings` shows the progress bar instead of bouncing to `/guest` |
-| Any auth flow with `next=/` | Middleware always sends `/` to `/guest` | **Never** use `next=/` in `redirectTo` / `emailRedirectTo` |
+| `/listings` flash then Guest | `role=null` while `AuthContext` loading | **Fixed**: `loading=true` until session resolves |
+| Any auth flow with `next=/` | Middleware always sends `/` to `/guest` | **Never** use `next=/` in `redirectTo` |
 
 Full checklist: `docs/FUTURE_IMPROVEMENTS.md` →「已知问题与潜在风险」.

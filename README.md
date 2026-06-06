@@ -112,7 +112,7 @@ Malaysia_Ez_rent/
 │   └── 竞品对比.md               # 竞品分析
 │
 └── docs/                        # 📚 文档
-    ├── ai-architecture.md       # AI Agent 架构详解
+    ├── architecture.md          # 项目整体架构（含 AI Agent）
     ├── FAQ.md                   # 常见问题
     └── deployment-guide.md      # 部署指南
 ```
@@ -344,7 +344,7 @@ rm -rf frontend/.next && cd frontend && npx next dev --webpack -p 3000
 ## 📄 文档
 
 - [售卖策略](售卖策略/README.md) — 商业文档、盈利模式、定价策略
-- [AI 架构详解](docs/ai-architecture.md) — Agent 设计、工具链、开发规范
+- [项目整体架构](docs/architecture.md) — 前端、后端、AI Agent、数据库、开发规范
 - [常见问题](docs/FAQ.md) — Supabase、手机上传、部署问题
 - [部署指南](售卖策略/部署指南.md) — 完整部署步骤
 

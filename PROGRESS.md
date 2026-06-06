@@ -37,8 +37,12 @@ Malaysia_Ez_rent/
 │   │   │   │       ├── reviews/      # 评论管理（超管）
 │   │   │   │       ├── profile/      # 个人设置
 │   │   │   │       └── inbox/        # 消息公告
+│   │   │   ├── register/
+│   │   │   │   ├── tenant/page.tsx       # 租客注册（证件+验证码+密码）
+│   │   │   │   ├── agent/page.tsx        # 中介申请（REN+验证码+密码）
+│   │   │   │   └── complete-profile/     # Google/老用户补全资料
 │   │   │   ├── login/
-│   │   │   │   └── page.tsx      # Google OAuth + Magic Link 双登录
+│   │   │   │   └── page.tsx      # 租客：Google+密码；中介：仅密码
 │   │   │   ├── mobile-upload/
 │   │   │   │   └── [id]/page.tsx # 手机扫码上传支付凭证
 │   │   │   └── auth/
@@ -88,7 +92,7 @@ Malaysia_Ez_rent/
 │
 ├── docs/              # 项目文档
 │   ├── FAQ.md                     # 常见问题答疑（Supabase Auth、手机上传、Logo 部署、Memory vs Storage、账户注销、中介注册）
-│   ├── ai-architecture.md         # AI Agent 架构与后续开发指南
+│   ├── architecture.md            # 项目整体架构（含 AI Agent）
 │   ├── 前后端解释.md               # 前端与后端协作原理详解（Supabase SDK、RLS、HTTP 请求流程）
 │   └── deployment-guide.md        # 部署指南
 │
@@ -135,8 +139,11 @@ Malaysia_Ez_rent/
 | `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
 | `public/logo.png` | ✅ 完成 | 圆形图标版品牌 Logo（源文件 `QQ20260524-170137.png`），**纯静态资源，不涉及数据库** |
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
-| `login/page.tsx` | ✅ 完成 | Google OAuth + Magic Link 双登录，**图标 Logo + 产品名**，白色简洁设计，Mock/Live 自适应 |
-| `auth/callback/route.ts` | ✅ 完成 | 处理 Supabase OAuth 返回的 Code 交换 Session 回调路由 |
+| `login/page.tsx` | ✅ 完成 | 租客：Google OAuth + 邮箱密码；中介：仅邮箱密码（无 Google）；角色分流登录 |
+| `register/tenant/page.tsx` | ✅ 完成 | 租客注册（身份选择+证件上传+邮箱验证码+密码） |
+| `register/agent/page.tsx` | ✅ 完成 | 中介申请（REN+执照+邮箱验证码+密码，审批前无权限） |
+| `register/complete-profile/page.tsx` | ✅ 完成 | Google 新用户/老用户补全身份资料 |
+| `auth/callback/route.ts` | ✅ 完成 | OAuth code + 遗留 token_hash；session cookie 写入 redirect；无 role 时带 cookie 跳转 complete-profile |
 
 ### 后端 (FastAPI)
 
@@ -249,6 +256,9 @@ Malaysia_Ez_rent/
 | 87 | Guest 页登录用户仍显示侧边栏/顶栏 | `isGuest = pathname === '/guest'`；中间件 `/` 一律 → `/guest` |
 | 88 | 未登录访问 `/listings` 进度条闪一下才跳 Guest | `listings/page.tsx` 在 `!loading && !role` 时 `return null`，减少 UI 闪烁 |
 | 89 | 首次登录（Google/邮箱）需登两次或被踢回 Guest | `AuthContext` 原本只在挂载时 `getUser()` 检查一次，session cookie 未注水时 `role=null` 即被 `/listings` 重定向；改为订阅 `onAuthStateChange`（`INITIAL_SESSION`/`SIGNED_IN`/`SIGNED_OUT`），session 解析前保持 `loading=true`，竞态消除 |
+| 90 | Google 登录后无限回到 `/login` | OAuth 回调重定向 `complete-profile` 时未携带 auth cookie，session 丢失 | **已修复**：`auth/callback` 重定向时复制 session cookie 到新响应 |
+| 91 | 超管/老中介无法登录中介端 | 门户隔离移除中介 Google 登录；账号无密码；缺 `agent_profiles` 记录 | **已手动处理**：Supabase SQL 补 `role=agent`、设密码、插入 `agent_profiles` |
+| 92 | 老租客 `user_metadata.role` 为空被 middleware 拦截 | 门户隔离迁移未自动回填 role | **已手动处理**：SQL 批量补 `role=student`（非 admin_users 邮箱） |
 
 ---
 
@@ -256,7 +266,8 @@ Malaysia_Ez_rent/
 
 ### 短期（本周）
 
-- [x] **Google OAuth + Magic Link 双登录**：Supabase 配置完成，前端按钮 + 回调路由就绪
+- [x] **Google OAuth + Magic Link 双登录**：Supabase 配置完成，前端按钮 + 回调路由就绪（**2026-06-06 门户隔离后 Magic Link 登录入口已移除**）
+- [ ] **忘记密码 / 重置密码**：为仅用 Magic Link 注册、无密码且无 Google 的老租客提供邮件重置流程（见 `docs/FUTURE_IMPROVEMENTS.md` 待完成功能 #1）
 - [x] **角色区分**：admin_users 表 + RLS 策略，首页从数据库读取角色
 - [x] **超级管理员面板**：super_admin 可在前端添加/删除管理员（最多 5 人）
 - [x] **联系管理员弹窗**：从数据库读取联系方式，折叠展开 UI
@@ -2005,7 +2016,7 @@ Agent 显示友好中文错误信息：
 | `supabase/migrations/041_review_unique_per_user_unit.sql` | **新建** — 评价唯一约束 + 管理员删除权限 |
 | `RAG/malaysia_rental_data_merged.json` | **新建** — 合并后的知识库数据 |
 | `docs/technical-issues-log.md` | **新建** — 技术问题回顾 |
-| `docs/ai-architecture.md` | 新增第 22 节 |
+| `docs/architecture.md` | 新增第 22 节 |
 
 ---
 
@@ -2147,7 +2158,7 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 |------|------|
 | `backend/app/agent.py` | `assess_reasoning_effort`、`compact_tool_result`、强制收尾合成、`kb_map_candidate` 延后、`final_text_emitted`、名称匹配合并、MAX_LOOPS 6、max_completion_tokens 3072、决策题 prompt |
 | `docs/ai-agent-ui-ux-flow.md` | ReAct 循环文档更新、Bug 5–8 记录 |
-| `docs/ai-architecture.md` | §4 工具数修正为 7、§24 智能修复专节 |
+| `docs/architecture.md` | §4 工具数修正为 7、§24 智能修复专节 |
 
 ---
 
@@ -2447,4 +2458,54 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
   * 每次有新用户注销时，系统会自动扫描并清理已注销超过 7 天的记录。
   * 为了**保护中介归档的收租记录（payment_records）和租约档案（leases）不受影响**，系统在彻底删除 `public.users` 行之前，会将 `leases`、`agent_ratings` 和 `reviews` 表中指向该用户的 `tenant_id` / `user_id` 字段更新为 `null`（解耦）。
   * 接着，从 Supabase Storage 物理删除用户的身份证、护照、学生证和工作证明原图，最后从数据库中彻底抹除 `public.users` 行。
+
+---
+
+## 六十一、租客与中介端绝对隔离架构方案实施（2026-06-06）
+
+**目标：** 租客和中介完全使用独立的账户、注册和登录体系，消除"租客转中介"的交叠状态，强化隐私保护并建立健全的双端合规准入审批。
+
+### 改动
+
+- **数据库扩展（043 迁移）** — 在 `users` 表中扩展了 `identity_type` 以及多项敏感证件（国籍、IC照片、护照、工作牌）路径；创建了中介入驻申请 `agent_profiles` 表 and 注册双因子验证 `email_verifications` 表。
+- **注册分流** — 新建 `/register/tenant` 页面（租客身份校验、证件上传、邮箱验证码）以及 `/register/agent` 页面（REN 编号、执照照片、无权账户预建）；新用户 Google 登录若无 `role` 标签强制重定向到 `/register/complete-profile`。
+- **登录隔离 (`login/page.tsx`)** — 租客端支持“账号密码/Google OAuth”双重登录；中介端仅提供“账号密码”登录，并拦截未审核通过（pending/rejected）的中介账户。
+- **角色解析 (`AuthContext.tsx` + 中间件)** — 由 `admin_users` 查表法升级为读取 Supabase Auth 自带的 `user_metadata.role`，并对注册流程和回调函数进行路由白名单例外过滤。
+- **邮件服务集成** — 新建验证码发送 API 及中介审核通过/驳回自动通知接口，集成 `Resend API` 替换原有低效的站内轮询通知。
+- **审批重构** — `AdminPanel.tsx` 审核模块改用 `agent_profiles` 表，集成图片比对、状态维护和邮件触发机制。
+
+### 上线后兼容修复（同日手动处理）
+
+| 问题 | 处理 |
+|------|------|
+| Google 登录死循环回 `/login` | 修复 `auth/callback/route.ts`：重定向 `complete-profile` 时复制 session cookie |
+| 超管无法用 Google 登录中介端 | SQL：补 `role=agent`、设密码、插入 `agent_profiles`（approved） |
+| 老租客缺 `role` 被 middleware 拦截 | SQL：批量补 `user_metadata.role = 'student'` |
+
+### 遗留待办
+
+- **忘记密码 / 重置密码** — 当年仅用 Magic Link、邮箱非 Google 的老租客无密码无法登录；需在登录页增加入口 + `/reset-password` 页（详见 `docs/FUTURE_IMPROVEMENTS.md` 待完成功能 #1）
+
+---
+
+## 六十三、Google OAuth 登录死循环修复（2026-06-06）
+
+**问题：** 谷歌登录成功后，若 `user_metadata.role` 为空，回调重定向到 `/register/complete-profile` 时新建了不带 auth cookie 的响应，导致 session 丢失 → `complete-profile` 检测无用户 → 跳回 `/login` → 无限循环。
+
+**修复：** `auth/callback/route.ts` 在重定向到 `complete-profile` 时，将已写入 session 的 cookie 复制到新 redirect 响应上。
+
+**跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/register/complete-profile` → 填完资料 → `/listings`
+
+---
+
+## 六十二、租客/中介后台 Tab 导航切换卡顿性能优化（2026-06-06）
+
+**目标：** 诊断并解决大单体页面在 Next.js APP Router 下切换 Tab 功能组件时的频繁卸载挂载、CPU 计算暴涨和网络请求风暴导致的严重卡顿。
+
+### 优化手段
+
+- **持久化上下文缓存 (`AdminDataContext.tsx` / `TenantDataContext.tsx`)** — 创建了独立的全局数据 Provider 缓存层，并将其包裹在后台布局根结点。
+- **读取逻辑下推与去重** — 将 `AdminPanel` (336KB) 和 `TenantPortal` (140KB) 原有的 `useEffect` 异步并发拉取逻辑提炼到 Context Provider 层面，仅在初始化或主动变更时更新。
+- **零延迟渲染与防闪烁** — 后台子页面切路由时直接读取 Context 缓存，避免了每次重新挂载时触发 4-6 个 Supabase SQL 的网络等待，渲染时间从原来的 800ms+ 降低至毫秒级无感知切换，彻底消除了白屏和骨架屏闪烁。
+
 

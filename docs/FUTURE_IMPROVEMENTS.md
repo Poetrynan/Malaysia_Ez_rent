@@ -438,10 +438,83 @@
 - **中介账单/评分解耦 (Decoupling)**：彻底删除前自动将租约、中介评分及房源评论的外键设为 `null`，确保中介后台所有的归档租约和收租流水（payment_records）不被物理删除，历史数据完整无缺。
 - **MockParity 同步**：在前端 `AuthContext.tsx` 中同步为 LocalStorage Mock 数据库实现了一套完全相同的 7 天过期清理与租约/评分的 `null` 解耦机制。
 
+---
+
+### ✅ 36. 租客/中介门户绝对隔离
+
+**完成时间：** 2026-06-06
+
+**改动内容：**
+- 租客与中介拆分为独立注册/登录入口（`/register/tenant`、`/register/agent`）
+- 角色写入 `user_metadata.role`（`student` | `agent`），`AuthContext` 与 `middleware.ts` 按角色做路由隔离
+- 新建 `agent_profiles`、`email_verifications` 表；扩展 `users` 表证件字段
+- 租客支持邮箱+密码或 Google 登录（首次需 `/register/complete-profile` 补资料）
+- 中介仅支持邮箱+密码（审批通过后登录），不再提供 Google 按钮
+- 移除旧 Magic Link 登录入口
+
+**遗留兼容（已手动处理，见下方「已知问题」）：**
+- 老用户 `user_metadata.role` 需 SQL 批量回填
+- 超管账号需补 `agent_profiles` 记录 + 设置密码后才能走中介登录
+
+---
+
+### ✅ 37. Google OAuth 登录死循环修复
+
+**完成时间：** 2026-06-06
+
+**问题：** 谷歌登录成功后，若 `user_metadata.role` 为空，回调会 `return NextResponse.redirect('/register/complete-profile')` 新建一个**不带 auth cookie** 的响应，导致 session 丢失 → `complete-profile` 检测无用户 → 跳回 `/login` → 无限循环。
+
+**修复：** `auth/callback/route.ts` 在重定向到 `complete-profile` 时，将已写入 session 的 cookie 复制到新 redirect 响应上。
+
+**跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/register/complete-profile`（老用户/新用户补资料）→ `/listings`。
 
 ---
 
 ## 待完成功能
+
+### 🔲 1. 忘记密码 / 重置密码（Magic Link 老租客兼容）
+
+**优先级：** 高（门户隔离上线后的遗留兼容项）
+
+**背景：** 门户隔离改造后，登录页仅保留「邮箱+密码」和「Google」。当年只用 **Magic Link（邮箱链接）** 注册、且邮箱**不是 Google 账号**的老租客，既没有密码，也无法走 Google OAuth，**目前无法登录**。
+
+**受影响用户特征：**
+- 在 `auth.users` 中有账号，`provider` 为 `email`
+- `encrypted_password` 为空或未设置
+- 未绑定 Google 身份
+- `user_metadata.role` 可能已通过 SQL 回填为 `student`，但仍缺登录凭据
+
+**方案：**
+
+1. **登录页入口**
+   - 租客 tab 密码框下方添加「忘记密码？」链接
+   - 中介 tab 同步添加（中介也可能忘记注册时设的密码）
+
+2. **忘记密码流程**
+   - 用户输入注册邮箱 → 调用 `supabase.auth.resetPasswordForEmail(email, { redirectTo: '/auth/callback?next=/reset-password' })`
+   - Supabase 发送重置邮件（需在 Supabase Dashboard → Authentication → Email Templates 配置「Reset Password」模板）
+   - 用户点击邮件链接 → `/auth/callback` 换 session → 跳转 `/reset-password` 页
+
+3. **新建 `/reset-password` 页**
+   - 已登录（来自邮件链接）状态下，输入新密码 + 确认密码
+   - 调用 `supabase.auth.updateUser({ password })` 设置密码
+   - 成功后跳转 `/listings`（租客）或 `/admin/properties`（中介）
+
+4. **中间件白名单**
+   - `/reset-password` 加入 `middleware.ts` 与 `/register/*` 同级放行（需已登录 session，但允许无 `role` 的过渡态）
+
+5. **可选：登录页提示文案**
+   - 在租客登录区加一行小字：「曾用邮箱链接登录的老用户？请使用忘记密码设置新密码。」
+
+**涉及文件（预估）：**
+- `src/app/login/page.tsx` — 添加「忘记密码」链接与发起重置的轻量弹窗/子页
+- `src/app/reset-password/page.tsx` — 新建
+- `src/app/auth/callback/route.ts` — 确认 `next=/reset-password` 路径 cookie 传递正确（复用 #37 修复模式）
+- `src/middleware.ts` — 白名单
+
+**预期效果：** Magic Link 老租客通过邮件重置密码后，可用邮箱+密码正常登录，无需重新注册或绑定 Google。
+
+**临时变通（上线前）：** 开发者可在 Supabase Dashboard → Authentication → Users 中为单个用户手动设置密码，或发送 Admin 重置邮件。
 
 ---
 
@@ -450,6 +523,10 @@
 | 问题 | 原因 | 现状 / 建议 |
 |------|------|-------------|
 | Magic Link / Google 首次登录回到 `/login?error=auth_failed` 或需登两次 | PKCE cookie 时序、callback 只处理 `code` 未处理 `token_hash`、cookie 未写入 redirect 响应、**且 `AuthContext` 只在挂载时 `getUser()` 检查一次、role=null 即被 `/listings` 踢回 `/guest`** | callback 已修复双路径 + cookie 绑定；**`AuthContext` 已改为订阅 `onAuthStateChange`（`INITIAL_SESSION`/`SIGNED_IN`），session 注水前不会锁定 role=null，竞态已消除**；若仍复现，检查 Supabase Site URL、邮件链接域名与 Vercel 环境一致 |
+| Google 登录后无限回到 `/login` | 门户隔离后 `role` 为空时 callback 重定向到 `complete-profile` 但未携带 auth cookie | **已修复**（#37）：重定向时复制 session cookie |
+| 超管/老中介无法用 Google 登录中介端 | 新系统中介入口移除 Google；`role` 依赖 `user_metadata`；登录流程要求 `agent_profiles` 记录 | **已手动处理**：SQL 补 `role=agent`、设密码、插入 `agent_profiles`；长期建议 AdminPanel 增加「兼容旧超管」或统一迁移脚本 |
+| 老租客 `user_metadata.role` 为空被 middleware 拦截 | 门户隔离迁移未自动回填 role | **已手动处理**：SQL 批量补 `role=student`（非 admin_users 邮箱） |
+| Magic Link 老租客无法登录（无密码、无 Google） | 登录页移除 Magic Link，仅保留密码 + Google | **待实施**：见「待完成功能 #1 忘记密码/重置密码」；临时可在 Supabase 后台为单个用户手动设密码 |
 | 登录成功却落在 `/guest`（无侧边栏） | Google OAuth 曾用 `next=/` → 中间件 `/` → `/guest` | **已修复**：OAuth 改为 `next=/listings` |
 | `/listings` 闪一下再跳 Guest | `AuthContext` 加载中 `role=null`，`listings/page.tsx` 误判未登录 `router.replace('/guest')` | **已修复**：`AuthContext` 在 `onAuthStateChange` 解析出 session 前保持 `loading=true`，`/listings` 期间显示进度条而非误跳；未登录时 `return null` 避免闪烁 |
 | 根路径 `/` 永远进 Guest | `middleware.ts` 无条件 `pathname === '/'` → `/guest` | 设计如此（公开入口）；**勿**把 OAuth/Magic Link 的 `next` 设为 `/` |

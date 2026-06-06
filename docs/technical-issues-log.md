@@ -48,7 +48,7 @@
 ## 4. 文档和代码不一致
 
 **问题：**
-- `ai-architecture.md` 标注 `search_internal_db` 是 legacy，不暴露给 live agent
+- `architecture.md` 标注 `search_internal_db` 是 legacy，不暴露给 live agent
 - 但 `agent.py` 里实际有它的 tool 定义，Agent 可以调用
 
 **教训：** 文档要和代码同步更新，否则会误导开发判断。
