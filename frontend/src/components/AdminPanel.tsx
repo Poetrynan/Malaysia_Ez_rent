@@ -4384,15 +4384,18 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               const joinedAt = admin.created_at
                 ? new Date(admin.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                 : null;
-              const detailFields: ([string, string] | null)[] = [
-                [lang === 'zh' ? '邮箱' : 'Email', admin.email],
-                [lang === 'zh' ? '手机' : 'Phone', admin.phone],
-                ['WhatsApp', admin.whatsapp],
-                [lang === 'zh' ? '微信号' : 'WeChat ID', admin.wechat_id],
-                [lang === 'zh' ? '公司' : 'Agency', admin.agency_name],
-                [lang === 'zh' ? '职位' : 'Job Title', admin.job_title],
-                ['REN', admin.ren_number],
-                joinedAt ? [lang === 'zh' ? '加入时间' : 'Joined', joinedAt] : null,
+              const emptyDetail = lang === 'zh' ? '—' : '—';
+              const noRenDetail = lang === 'zh' ? '无 REN' : 'No REN';
+              const fmtAdminDetail = (val?: string | null) => (val && String(val).trim() ? String(val).trim() : emptyDetail);
+              const detailFields: ({ label: string; value: string; kind?: 'ren' } | null)[] = [
+                { label: lang === 'zh' ? '邮箱' : 'Email', value: fmtAdminDetail(admin.email) },
+                { label: lang === 'zh' ? '手机' : 'Phone', value: fmtAdminDetail(admin.phone) },
+                { label: 'WhatsApp', value: fmtAdminDetail(admin.whatsapp) },
+                { label: lang === 'zh' ? '微信号' : 'WeChat ID', value: fmtAdminDetail(admin.wechat_id) },
+                { label: lang === 'zh' ? '公司' : 'Agency', value: fmtAdminDetail(admin.agency_name) },
+                { label: lang === 'zh' ? '职位' : 'Job Title', value: fmtAdminDetail(admin.job_title) },
+                { label: 'REN', value: admin.ren_number?.trim() ? admin.ren_number.trim() : noRenDetail, kind: 'ren' },
+                joinedAt ? { label: lang === 'zh' ? '加入时间' : 'Joined', value: joinedAt } : null,
               ];
               const blurBackdrop: React.CSSProperties = {
                 position: 'fixed', inset: 0, zIndex: 300,
@@ -4467,43 +4470,66 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                       <div>
                         <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? '联系与资质' : 'Contact & Credentials'}</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-                          {detailFields.filter((item): item is [string, string] => !!item && !!item[1]).map(([label, val], i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                              <CheckCircle2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
-                              <div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 1 }}>{label}</div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-h)', fontWeight: 500, wordBreak: 'break-word' }}>{val}</div>
+                          {detailFields.filter((item): item is { label: string; value: string; kind?: 'ren' } => !!item).map((field, i) => {
+                            const isRen = field.kind === 'ren';
+                            const hasRen = !!admin.ren_number?.trim();
+                            const FieldIcon = isRen ? FileText : CheckCircle2;
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                                <FieldIcon size={15} style={{ color: isRen && !hasRen ? 'var(--text-muted)' : 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
+                                <div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 1 }}>{field.label}</div>
+                                  <div style={{
+                                    fontSize: '0.875rem',
+                                    color: isRen && !hasRen ? 'var(--text-muted)' : 'var(--text-h)',
+                                    fontWeight: isRen && hasRen ? 700 : 500,
+                                    fontVariantNumeric: isRen ? 'tabular-nums' : undefined,
+                                    wordBreak: 'break-word',
+                                  }}>
+                                    {field.value}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
-                      {(admin.ren_tag_url || (admin.avatar_url && !admin.avatar_url.startsWith('DELETED:')) || admin.payment_qr_code) && (
-                        <div>
-                          <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? '上传资料' : 'Uploaded Files'}</h3>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                            {admin.ren_tag_url && (
-                              <button type="button" onClick={() => setAdminImgModal(admin.ren_tag_url)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
-                                <img src={admin.ren_tag_url} alt="REN" style={{ width: 140, height: 96, objectFit: 'cover', borderRadius: 8 }} />
-                                <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>REN</div>
-                              </button>
-                            )}
-                            {admin.avatar_url && !admin.avatar_url.startsWith('DELETED:') && (
-                              <button type="button" onClick={() => setAdminImgModal(admin.avatar_url)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
-                                <img src={admin.avatar_url} alt="Avatar" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%' }} />
-                                <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>{lang === 'zh' ? '头像' : 'Avatar'}</div>
-                              </button>
-                            )}
-                            {admin.payment_qr_code && (
-                              <button type="button" onClick={() => setAdminImgModal(admin.payment_qr_code)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
-                                <img src={admin.payment_qr_code} alt="QR" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8 }} />
-                                <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>{lang === 'zh' ? '收款码' : 'Payment QR'}</div>
-                              </button>
-                            )}
-                          </div>
+                      <div>
+                        <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? '上传资料' : 'Uploaded Files'}</h3>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                          {isRenImageReady(admin.ren_tag_url) ? (
+                            <button type="button" onClick={() => setAdminImgModal(admin.ren_tag_url)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
+                              <img
+                                src={admin.ren_tag_url}
+                                alt=""
+                                onError={() => markRenImageBroken(admin.ren_tag_url)}
+                                style={{ width: 140, height: 96, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                              />
+                              <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>REN</div>
+                            </button>
+                          ) : (
+                            <RenImagePlaceholder
+                              initial={initial}
+                              variant="thumb"
+                              label={lang === 'zh' ? '未上传 REN 执照' : 'No REN tag uploaded'}
+                              sublabel={admin.ren_number?.trim() ? `REN ${admin.ren_number}` : (lang === 'zh' ? '无 REN 编号' : 'No REN number')}
+                            />
+                          )}
+                          {admin.avatar_url && !admin.avatar_url.startsWith('DELETED:') && (
+                            <button type="button" onClick={() => setAdminImgModal(admin.avatar_url)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
+                              <img src={admin.avatar_url} alt="Avatar" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%' }} />
+                              <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>{lang === 'zh' ? '头像' : 'Avatar'}</div>
+                            </button>
+                          )}
+                          {admin.payment_qr_code && (
+                            <button type="button" onClick={() => setAdminImgModal(admin.payment_qr_code)} style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}>
+                              <img src={admin.payment_qr_code} alt="QR" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8 }} />
+                              <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 6, color: 'var(--text-h)' }}>{lang === 'zh' ? '收款码' : 'Payment QR'}</div>
+                            </button>
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       {!isSuper && (
                         <button
