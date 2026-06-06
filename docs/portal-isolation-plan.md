@@ -109,6 +109,28 @@ Google 授权 → Supabase 自动创建账号
 
 ## 三、数据库设计
 
+### 3.0 新建表：`tenant_profiles`（租客资料表）
+
+```sql
+CREATE TABLE tenant_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT NOT NULL,
+  identity_type TEXT NOT NULL,  -- 'malaysian' | 'international_student' | 'international_other'
+  ic_number TEXT,               -- 马来西亚本地人 IC 号码
+  passport_number TEXT,         -- 国际人士护照号码
+  ic_photo_front_url TEXT,      -- IC 正面照片
+  ic_photo_back_url TEXT,       -- IC 反面照片
+  passport_photo_url TEXT,      -- 护照照片
+  student_id_photo_url TEXT,    -- 学生证照片（选填）
+  work_permit_photo_url TEXT,   -- 工作牌照片（选填）
+  school_name TEXT,             -- 学校名称（选填）
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
 ### 3.1 新建表：`agent_profiles`（中介资料表）
 
 ```sql
@@ -162,85 +184,125 @@ CREATE POLICY "Admins can update profiles"
 
 ## 四、前端改动详情
 
-### 4.1 新建：`/register/student/page.tsx`（学生注册页）
+### 4.1 新建：`/register/student/page.tsx`（租客注册页）
+
+**注意**：租客不只是学生，还包括马来西亚本地人、国际人士等。
 
 ```
 页面结构：
-  ┌─────────────────────────────┐
-  │  Logo + 标题                 │
-  │  "创建学生账号"               │
-  ├─────────────────────────────┤
-  │  姓名 *                     │
-  │  [________________]         │
-  │                             │
-  │  邮箱 *                     │
-  │  [________________] [发送验证码] │
-  │                             │
-  │  验证码 *                   │
-  │  [________________]         │
-  │                             │
-  │  学校名称 *                 │
-  │  [________________]         │
-  │                             │
-  │  密码 *                     │
-  │  [________________]         │
-  │                             │
-  │  确认密码 *                 │
-  │  [________________]         │
-  │                             │
-  │  [注册]                     │
-  │                             │
-  │  ───── 或 ─────             │
-  │                             │
-  │  [🔵 Google 注册]           │
-  │                             │
-  │  已有账号？去登录             │
-  └─────────────────────────────┘
+  ┌─────────────────────────────────────┐
+  │  Logo + 标题                         │
+  │  "创建租客账号"                       │
+  ├─────────────────────────────────────┤
+  │  姓名 *                              │
+  │  [________________________]          │
+  │                                      │
+  │  邮箱 *                              │
+  │  [________________________] [发送验证码]│
+  │                                      │
+  │  验证码 *                            │
+  │  [________________________]          │
+  │                                      │
+  │  身份类型 *（下拉选择）                │
+  │  [马来西亚本地人 / 国际学生 / 其他]    │
+  │                                      │
+  │  ── 马来西亚本地人 ──                 │
+  │  IC 号码 *                           │
+  │  [________________________]          │
+  │  IC 照片 *（正反面）                  │
+  │  [上传区域]                          │
+  │                                      │
+  │  ── 国际人士 ──                      │
+  │  护照号码 *                          │
+  │  [________________________]          │
+  │  护照照片 *                          │
+  │  [上传区域]                          │
+  │                                      │
+  │  ── 选填 ──                          │
+  │  学校名称                            │
+  │  [________________________]          │
+  │  学生证照片                          │
+  │  [上传区域]                          │
+  │                                      │
+  │  工作牌照片                          │
+  │  [上传区域]                          │
+  │                                      │
+  │  密码 *                              │
+  │  [________________________]          │
+  │                                      │
+  │  确认密码 *                          │
+  │  [________________________]          │
+  │                                      │
+  │  [注册]                              │
+  │                                      │
+  │  ───── 或 ─────                      │
+  │  [🔵 Google 注册]                    │
+  │                                      │
+  │  已有账号？去登录                      │
+  └─────────────────────────────────────┘
 ```
+
+**证件上传规则**：
+| 身份类型 | 必传证件 | 选传证件 |
+|----------|---------|---------|
+| 马来西亚本地人 | IC 照片（正反面） | 学生证、工作牌 |
+| 国际学生 | 护照照片 | 学生证 |
+| 其他国际人士 | 护照照片 | 工作牌 |
+
+**图片压缩**：使用现有 `compressImageFile` 工具（和中介 REN 照片一样的压缩逻辑）
 
 **注册逻辑（邮箱）**：
 ```
-1. 用户填表
+1. 用户填表 + 上传证件照片
 2. 点击"发送验证码" → 调用 /api/send-verification
 3. 用户输入验证码
 4. 点击"注册" → 调用 /api/verify-code
-5. 验证通过 → supabase.auth.signUp({
+5. 验证通过 → 压缩并上传证件照片到 Supabase Storage
+6. supabase.auth.signUp({
      email, password,
-     options: { data: { role: 'student', full_name, school } }
+     options: { data: { role: 'tenant', full_name, identity_type, ic_or_passport } }
    })
-6. 注册成功 → 跳转到 /listings
+7. 写入 tenant_profiles 表（证件信息、照片 URL）
+8. 注册成功 → 跳转到 /listings
 ```
 
 **注册逻辑（Google）**：
 ```
 1. 用户点击 Google 注册
 2. Google 授权 → Supabase 自动创建账号
-3. 跳转到"完善资料"页面（姓名、学校）
-4. 填完 → 更新 user_metadata → 跳转到 /listings
+3. 跳转到"完善资料"页面（补填所有必填信息 + 上传证件）
+4. 填完 → 写入 tenant_profiles → 更新 user_metadata → 跳转到 /listings
 ```
 
 ### 4.1.1 新建：`/register/complete-profile/page.tsx`（完善资料页 - Google 新用户）
 
-```
-页面结构：
-  ┌─────────────────────────────┐
-  │  "完善您的资料"               │
-  ├─────────────────────────────┤
-  │  姓名 *（Google 已获取，可修改）│
-  │  [________________]         │
-  │                             │
-  │  学校名称 *                 │
-  │  [________________]         │
-  │                             │
-  │  [确认]                     │
-  └─────────────────────────────┘
-```
+和上面的注册页几乎一样，只是：
+- 姓名从 Google 自动获取（可修改）
+- 邮箱从 Google 自动获取（不可修改）
+- 不需要验证码
+- 不需要设置密码（Google 登录不需要密码）
 
-**逻辑**：
-- Google 登录后检查 user_metadata.role 是否存在
-- 不存在 → 强制跳转到此页面
-- 填完 → 写入 user_metadata → 进入系统
-- 此页面无法跳过或返回
+### 4.1.2 新建 Supabase 表：`tenant_profiles`（租客资料表）
+
+```sql
+CREATE TABLE tenant_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT NOT NULL,
+  identity_type TEXT NOT NULL,  -- 'malaysian' | 'international_student' | 'international_other'
+  ic_number TEXT,               -- 马来西亚本地人的 IC 号码
+  passport_number TEXT,         -- 国际人士的护照号码
+  ic_photo_front_url TEXT,      -- IC 正面照片
+  ic_photo_back_url TEXT,       -- IC 反面照片
+  passport_photo_url TEXT,      -- 护照照片
+  student_id_photo_url TEXT,    -- 学生证照片（选填）
+  work_permit_photo_url TEXT,   -- 工作牌照片（选填）
+  school_name TEXT,             -- 学校名称（选填）
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
 ### 4.2 新建：`/register/agent/page.tsx`（中介注册页）
 
