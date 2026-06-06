@@ -5,6 +5,7 @@ import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, 
 import Dashboard from './Dashboard';
 import AgentRatingSummary from './AgentRatingSummary';
 import { useApp } from '@/lib/ThemeProvider';
+import { useAdminData } from '@/lib/AdminDataContext';
 import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
@@ -80,6 +81,19 @@ async function removeUnitMediaFiles(
 
 export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
   const { t, lang } = useApp();
+  const {
+    communities, setCommunities,
+    units, setUnits,
+    leases, setLeases,
+    interests, setInterests,
+    allUsers, setAllUsers,
+    adminIds, setAdminIds,
+    adminList, setAdminList,
+    agentRegistrations, setAgentRegistrations,
+    feedbacks, setFeedbacks,
+    isLoaded, setIsLoaded,
+  } = useAdminData();
+
   const [tab, setTab] = useState<'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'>('dashboard');
   const [propertiesView, setPropertiesView] = useState<'editor' | 'communities' | 'inventory'>('editor');
   const [editorSubTab, setEditorSubTab] = useState<'community' | 'unit'>('community');
@@ -98,7 +112,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       setTab(defaultTab);
       if (defaultTab === 'leases') {
         setLeasesView('interests');
-        loadAll();
+        if (!isLoaded) loadAll();
       } else if (defaultTab === 'admins') {
         fetchAdmins();
       } else if (defaultTab === 'feedback') {
@@ -125,9 +139,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     isDanger?: boolean;
   } | null>(null);
 
-  // ── Properties state ──
-  const [communities, setCommunities] = useState<Community[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
   const [communitySearch, setCommunitySearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [communityForm, setCommunityForm] = useState({ name: '', address: '', lat: '', lng: '', amenities: [] as string[] });
@@ -152,12 +163,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const pollIntervalRef = useRef<any>(null);
 
   // ── Leases state ──
-  const [leases, setLeases] = useState<LeaseWithMeta[]>([]);
   const [expandedLease, setExpandedLease] = useState<string | null>(null);
   const [leaseForm, setLeaseForm] = useState<LeaseForm>({ unit_id: '', tenant_id: '', start_date: '', end_date: '', monthly_rent: '', security_deposit_months: '2', utility_deposit_months: '0.5', unit_number: '' });
   interface UserProfile { id: string; full_name: string | null; phone?: string | null; }
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [adminIds, setAdminIds] = useState<string[]>([]);
 
   // ── Lease Substitution state ──
   const [substituteLease, setSubstituteLease] = useState<LeaseWithMeta | null>(null);
@@ -181,7 +189,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   const clearError = (key: string) => setFieldErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
 
   // ── Admin management state (super_admin only) ──
-  const [adminList, setAdminList] = useState<any[]>([]);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ email: '', display_name: '', phone: '', whatsapp: '', wechat_id: '' });
 
@@ -236,7 +243,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   };
 
   // ── Agent registrations state ──
-  const [agentRegistrations, setAgentRegistrations] = useState<any[]>([]);
   const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
 
   // Approve state
@@ -749,7 +755,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   }, [leases, adminRole, currentUserId]);
   const visibleLeaseIds = useMemo(() => visibleLeases.map(l => l.id), [visibleLeases]);
 
-  const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter(p => p.status === 'pending_review').length || 0), 0);
+  const pendingCount = visibleLeases.reduce((sum, l) => sum + (l.payments?.filter((p: any) => p.status === 'pending_review').length || 0), 0);
 
   const terminatedLeases = useMemo(() => visibleLeases.filter(l => l.status === 'terminated' || l.status === 'expired'), [visibleLeases]);
 
@@ -770,7 +776,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     unit_number?: string;
     unit_info?: string;
   }
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbackReply, setFeedbackReply] = useState<Record<string, string>>({});
 
   // ── Reviews Management Tab (super_admin only) ──
@@ -1130,7 +1135,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
   }, [visibleFeedbacks]);
 
   // ── Tenant interests state ──
-  const [interests, setInterests] = useState<TenantInterest[]>([]);
   const [viewingTenantProfile, setViewingTenantProfile] = useState<{ userId: string; interestId: string } | null>(null);
   const [tenantProfileData, setTenantProfileData] = useState<any>(null);
   const [tenantProfileLoading, setTenantProfileLoading] = useState(false);
@@ -1287,7 +1291,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       if (user) {
         setIsLive(true);
         setCurrentUserId(user.id);
-        loadFromSupabase(supabase);
+        if (!isLoaded) loadFromSupabase(supabase);
         // Load QR code and profile from admin_users
         let { data: adminData, error: adminErr } = await supabase.from('admin_users').select('*').eq('id', user.id).maybeSingle();
         console.log('[Admin QR & Profile Load]', { userId: user.id, adminData, adminErr: adminErr?.message });
@@ -1358,7 +1362,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     } catch {}
     setIsLive(false);
     setCurrentUserId('admin-999'); // Point to admin-999 to align with DEFAULT_ADMINS
-    loadFromLocalStorage();
+    if (!isLoaded) loadFromLocalStorage();
     const savedQR = localStorage.getItem('ez_admin_qr_code');
     if (savedQR) setAdminQR(savedQR);
     const savedProfile = localStorage.getItem('ez_admin_profile');
@@ -1562,6 +1566,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       }));
       if (interestRes.data) setInterests(interestRes.data);
       fetchFeedbacks(true);
+      setIsLoaded(true);
     } catch (e) { console.error('Failed to load from Supabase:', e); }
   };
 
@@ -1599,9 +1604,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
     })));
     setInterests(ints);
     fetchFeedbacks(false);
+    setIsLoaded(true);
   };
 
   const loadAll = () => {
+    if (isLoaded) return;
     if (isLive) {
       import('@/utils/supabase/client').then(({ createClient }) => {
         loadFromSupabase(createClient());
@@ -1835,11 +1842,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
         unitPayload.media_urls = uploadedUrls;
 
         if (isEdit) {
-          const prev = units.find(u => u.id === targetId);
-          const keptUrls = new Set(uploadedUrls.map(u => u.split('?')[0]));
+          const prev = units.find((u: any) => u.id === targetId);
+          const keptUrls = new Set(uploadedUrls.map((u: string) => u.split('?')[0]));
           const removedImagePaths = (prev?.media_urls || [])
-            .filter(u => !keptUrls.has(u.split('?')[0]))
-            .map(u => unitMediaStoragePath(u))
+            .filter((u: string) => !keptUrls.has(u.split('?')[0]))
+            .map((u: string) => unitMediaStoragePath(u))
             .filter(Boolean) as string[];
           if (removedImagePaths.length) await removeUnitMediaFiles(supabase, removedImagePaths);
           if (!mediaVideo && prev?.video_url) {
@@ -2543,10 +2550,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
             const { createClient } = await import('@/utils/supabase/client');
             const supabase = createClient();
             // Delete storage media
-            const unit = units.find(u => u.id === unitId);
+            const unit = units.find((u: any) => u.id === unitId);
             if (unit?.media_urls && unit.media_urls.length > 0) {
               const paths = unit.media_urls
-                .map(url => unitMediaStoragePath(url))
+                .map((url: string) => unitMediaStoragePath(url))
                 .filter(Boolean) as string[];
               if (paths.length > 0) await removeUnitMediaFiles(supabase, paths);
             }
@@ -2611,7 +2618,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
       if (!l.payments) return l;
       return {
         ...l,
-        payments: l.payments.map(p => {
+        payments: l.payments.map((p: any) => {
           if (p.id === paymentId) {
             return {
               ...p,
@@ -3460,8 +3467,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, maxHeight: 460, overflowY: 'auto', paddingRight: 4 }}>
             {visibleLeases.flatMap(l =>
               (l.payments || [])
-                .filter(p => p.status === 'pending_review' && p.evidence_url)
-                .map(p => {
+                .filter((p: any) => p.status === 'pending_review' && p.evidence_url)
+                .map((p: any) => {
                   const { unit, community } = resolveLeaseUnit(l, units, communities);
                   const propertyLabel = formatLeasePropertyLabel(unit, community, t('unknownUnit'), l.unit_number);
                   return (
@@ -4195,14 +4202,14 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                             {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
-                            {lang === 'zh' ? {
+                            {lang === 'zh' ? ({
                               Aircon: '空调冷气',
                               Plumbing: '水管漏水',
                               Electrical: '电路照明',
                               Furniture: '家具五金',
                               Appliance: '家用电器',
                               Others: '其他问题'
-                            }[f.category || 'Others'] : f.category}
+                            } as Record<string, string>)[f.category || 'Others'] : f.category}
                           </span>
                           <span style={{
                             fontSize: '0.65rem',
@@ -4241,7 +4248,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                         </span>
                         {f.user_phone && (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            {f.user_phone}
+                          {f.user_phone}
                           </span>
                         )}
                         {(f.unit_info || f.unit_number) && (
@@ -4254,7 +4261,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       {/* Conversation thread */}
                       {f.replies && f.replies.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, marginBottom: 12, background: 'rgba(0,0,0,0.15)', padding: 12, borderRadius: 10 }}>
-                          {f.replies.map((r, i) => {
+                          {f.replies.map((r: any, i: number) => {
                             const isAgent = r.role === 'agent';
                             return (
                               <div key={i} style={{
@@ -4304,7 +4311,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, hideT
                       {f.status !== 'resolved' && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
                           {(() => {
-                            const agentReplyCount = (f.replies || []).filter(r => r.role === 'agent').length;
+                            const agentReplyCount = (f.replies || []).filter((r: any) => r.role === 'agent').length;
                             const canReply = agentReplyCount < 3;
                             return (
                               <>

@@ -364,7 +364,10 @@ Notes:
   - Failure → `/login?error=auth_failed`
 - `mobile-upload` security relies on UUID bill IDs + limited RPC write surface + storage path policy.
 - **Agent registration flow**: user logs in → `/register-agent` → fills REN/phone/agency info → `agent_registrations` table (pending) → super admin reviews in admin panel → approve creates `admin_users` record → next login gets admin role.
-- **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to delete tenant data (users, tenant_interests, maintenance_requests, agent_registrations, admin_users, auth.users) while preserving leases and payment_records for agent's financial records.
+- **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to handle tenant deactivation. 
+  - **Day 0**: Instantly deletes auth-related rows (`tenant_interests`, `maintenance_requests`, `user_notifications`, `auth.users` row) to revoke login access immediately. The `public.users` row is kept with `avatar_url = 'DELETED:timestamp'` to retain documents (passport/IC) for 7 days as legal evidence.
+  - **Day 7+**: During subsequent account deletions, any expired deactivated users are cleaned up. The cleanup script dissociates financial/rating rows by updating `tenant_id` or `user_id` to `null` on `leases`, `agent_ratings`, and `reviews` tables (preserving the agent's archived leases, ratings, and payment records intact), deletes the student's document images from Storage, and deletes the `public.users` record completely.
+
 
 ## 8) Payment Evidence End-to-End
 

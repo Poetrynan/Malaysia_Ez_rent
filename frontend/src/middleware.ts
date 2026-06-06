@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/calculator') ||
-    pathname.startsWith('/register-agent') ||
+    pathname.startsWith('/register/') ||
     pathname.startsWith('/mobile-upload/') ||
     pathname.startsWith('/mobile-upload-property/') ||
     pathname.startsWith('/mobile-upload-qr/') ||
@@ -78,6 +78,30 @@ export async function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Role metadata check for Google/Oauth users
+  const role = user.user_metadata?.role;
+  if (!role) {
+    const completeUrl = request.nextUrl.clone();
+    completeUrl.pathname = '/register/complete-profile';
+    return NextResponse.redirect(completeUrl);
+  }
+
+  // Strict role isolation redirect
+  if (role === 'agent') {
+    if (!pathname.startsWith('/admin/')) {
+      const adminHomeUrl = request.nextUrl.clone();
+      adminHomeUrl.pathname = '/admin/properties';
+      return NextResponse.redirect(adminHomeUrl);
+    }
+  } else {
+    // Tenant
+    if (pathname.startsWith('/admin/')) {
+      const tenantHomeUrl = request.nextUrl.clone();
+      tenantHomeUrl.pathname = '/listings';
+      return NextResponse.redirect(tenantHomeUrl);
+    }
   }
 
   return response;

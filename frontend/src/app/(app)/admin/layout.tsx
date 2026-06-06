@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
+import { AdminDataProvider } from '@/lib/AdminDataContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { role, loading } = useAuth();
@@ -17,5 +18,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading) return null;
   if (role !== 'admin') return null;
 
-  return <>{children}</>;
+  return <AdminDataProvider>{children}</AdminDataProvider>;
 }
+

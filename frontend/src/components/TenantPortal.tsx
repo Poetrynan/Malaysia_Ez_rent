@@ -6,6 +6,7 @@ import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSqua
 import LeaseLedgerCard from './LeaseLedgerCard';
 import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
+import { useTenantData } from '@/lib/TenantDataContext';
 import { isMockDatabase } from '@/lib/supabase';
 
 interface Lease {
@@ -269,17 +270,34 @@ export default function TenantPortal({
 }) {
   const { t, lang } = useApp();
   const router = useRouter();
-  const [interest, setInterest] = useState<any | null>(null);
-  const [interestUnit, setInterestUnit] = useState<Unit | null>(null);
-  const [interestCommunity, setInterestCommunity] = useState<Community | null>(null);
+  const {
+    interest, setInterest,
+    interestUnit, setInterestUnit,
+    interestCommunity, setInterestCommunity,
+    lease, setLease,
+    leaseHistory, setLeaseHistory,
+    roommates, setRoommates,
+    payments, setPayments,
+    unit, setUnit,
+    community, setCommunity,
+    myFeedbacks, setMyFeedbacks,
+    feedbackUnreadCount, setFeedbackUnreadCount,
+    profileName, setProfileName,
+    profilePhone, setProfilePhone,
+    profileUnit, setProfileUnit,
+    profilePassport, setProfilePassport,
+    profileSchool, setProfileSchool,
+    profileCompany, setProfileCompany,
+    profileLocalId, setProfileLocalId,
+    profileDocUrl, setProfileDocUrl,
+    profileStudentCardUrl, setProfileStudentCardUrl,
+    isLoaded, setIsLoaded,
+    profileLoaded, setProfileLoaded,
+    clearCache,
+  } = useTenantData();
+
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [lease, setLease] = useState<Lease | null>(null);
-  const [leaseHistory, setLeaseHistory] = useState<Lease[]>([]);
-  const [roommates, setRoommates] = useState<{ id: string; tenant_id: string; tenantName: string; status: string; start_date: string; end_date: string; }[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [unit, setUnit] = useState<Unit | null>(null);
-  const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -288,35 +306,14 @@ export default function TenantPortal({
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-  const [myFeedbacks, setMyFeedbacks] = useState<{
-    id: string;
-    content: string;
-    status: string;
-    replies?: Array<{ role: 'agent' | 'student'; content: string; at: string }>;
-    created_at: string;
-    category?: string;
-    photo_url?: string | null;
-    assigned_to?: string | null;
-    unit_info?: string;
-  }[]>([]);
   const [studentReply, setStudentReply] = useState<Record<string, string>>({});
   const [showMyFeedbacks, setShowMyFeedbacks] = useState(mode === 'maintenance');
-  const [feedbackUnreadCount, setFeedbackUnreadCount] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [profilePhone, setProfilePhone] = useState('');
-  const [profileUnit, setProfileUnit] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const profileComplete = profileName.trim().length > 0;
-  const [profilePassport, setProfilePassport] = useState('');
-  const [profileSchool, setProfileSchool] = useState('');
-  const [profileCompany, setProfileCompany] = useState('');
-  const [profileLocalId, setProfileLocalId] = useState('');
-  const [profileDocUrl, setProfileDocUrl] = useState<string | null>(null);
   const [profileDocBase64, setProfileDocBase64] = useState<string | null>(null);
   const [profileDocUploading, setProfileDocUploading] = useState(false);
-  const [profileStudentCardUrl, setProfileStudentCardUrl] = useState<string | null>(null);
   const [profileStudentCardBase64, setProfileStudentCardBase64] = useState<string | null>(null);
   const [profileStudentCardUploading, setProfileStudentCardUploading] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -486,7 +483,8 @@ export default function TenantPortal({
     reader.readAsDataURL(file);
   };
 
-  const loadProfile = async () => {
+  const loadProfile = async (force = false) => {
+    if (profileLoaded && !force) return;
     let name = '';
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
@@ -532,6 +530,7 @@ export default function TenantPortal({
       } catch (e) { console.error('Load profile error:', e); }
     }
     if (!name) setShowProfile(true);
+    setProfileLoaded(true);
   };
 
   const saveProfile = async () => {
@@ -627,7 +626,11 @@ export default function TenantPortal({
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  const load = async () => {
+  const load = async (force = false) => {
+    if (isLoaded && !force) {
+      setLoading(false);
+      return;
+    }
     if (isMockDatabase) {
       const leases: Lease[] = JSON.parse(localStorage.getItem('ez_leases') || '[]');
       const allPayments: Payment[] = JSON.parse(localStorage.getItem('ez_payments') || '[]');
@@ -823,6 +826,7 @@ export default function TenantPortal({
       }
     }
     if (mode === 'maintenance') await loadMyFeedbacks();
+    setIsLoaded(true);
     setLoading(false);
   };
 
@@ -1100,7 +1104,14 @@ export default function TenantPortal({
     return () => window.removeEventListener('ez_profile_updated', handler);
   }, []);
 
-  useEffect(() => { load(); loadProfile(); }, [tick]);
+  useEffect(() => {
+    const force = tick > 0;
+    if (force) {
+      clearCache();
+    }
+    load(force);
+    loadProfile(force);
+  }, [tick]);
 
   // Realtime subscription for TenantPortal
   useEffect(() => {
@@ -1763,14 +1774,14 @@ export default function TenantPortal({
                             {new Date(f.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>
-                            {lang === 'zh' ? {
+                            {lang === 'zh' ? ({
                               Aircon: '空调冷气',
                               Plumbing: '水管漏水',
                               Electrical: '电路照明',
                               Furniture: '家具五金',
                               Appliance: '家用电器',
                               Others: '其他问题'
-                            }[f.category || 'Others'] : f.category}
+                            } as Record<string, string>)[f.category || 'Others'] : f.category}
                           </span>
                         </div>
                         <span style={{
@@ -1807,7 +1818,7 @@ export default function TenantPortal({
                       {/* Conversation thread */}
                       {f.replies && f.replies.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, background: 'rgba(0,0,0,0.1)', padding: 12, borderRadius: 10 }}>
-                          {f.replies.map((r, i) => {
+                          {f.replies.map((r: any, i: number) => {
                             const isAgent = r.role === 'agent';
                             return (
                               <div key={i} style={{
@@ -1855,8 +1866,8 @@ export default function TenantPortal({
 
                       {/* Student reply input — only when ticket is open and agent has replied */}
                       {f.status !== 'resolved' && f.replies && f.replies.length > 0 && (() => {
-                        const agentReplies = f.replies.filter(r => r.role === 'agent').length;
-                        const studentReplies = f.replies.filter(r => r.role === 'student').length;
+                        const agentReplies = f.replies.filter((r: any) => r.role === 'agent').length;
+                        const studentReplies = f.replies.filter((r: any) => r.role === 'student').length;
                         const canReply = studentReplies < agentReplies && studentReplies < 3;
                         if (!canReply) return null;
                         return (

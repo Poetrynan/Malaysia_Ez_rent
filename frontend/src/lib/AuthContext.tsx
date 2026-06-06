@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { isMockDatabase } from '@/lib/supabase';
 
 interface AuthState {
-  role: 'student' | 'admin' | null;
+  role: 'student' | 'admin' | 'agent_pending' | null;
   adminRole: 'super_admin' | 'editor' | null;
   userEmail: string;
   agentRegStatus: string | null;
@@ -16,8 +16,61 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+function purgeExpiredMockUsers() {
+  try {
+    const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const expiredUserIds: string[] = [];
+    const filteredUsers = users.filter((u: any) => {
+      if (u.avatar_url && u.avatar_url.startsWith('DELETED:')) {
+        const deletedAtStr = u.avatar_url.substring(8);
+        const deletedAt = new Date(deletedAtStr);
+        if (deletedAt < sevenDaysAgo) {
+          expiredUserIds.push(u.id);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (expiredUserIds.length > 0) {
+      localStorage.setItem('ez_users', JSON.stringify(filteredUsers));
+
+      // 1. Dissociate leases (preserve archived rent records)
+      const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+      const updatedLeases = leases.map((l: any) => 
+        expiredUserIds.includes(l.tenant_id) ? { ...l, tenant_id: null } : l
+      );
+      localStorage.setItem('ez_leases', JSON.stringify(updatedLeases));
+
+      // 2. Dissociate reviews
+      const reviews = JSON.parse(localStorage.getItem('ez_reviews') || '[]');
+      const updatedReviews = reviews.map((r: any) => 
+        expiredUserIds.includes(r.user_id) ? { ...r, user_id: null } : r
+      );
+      localStorage.setItem('ez_reviews', JSON.stringify(updatedReviews));
+
+      // 3. Dissociate agent ratings
+      const agentRatings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
+      const updatedAgentRatings = agentRatings.map((ar: any) => 
+        expiredUserIds.includes(ar.tenant_id) ? { ...ar, tenant_id: null } : ar
+      );
+      localStorage.setItem('ez_agent_ratings', JSON.stringify(updatedAgentRatings));
+
+      // 4. Delete favorites
+      const favorites = JSON.parse(localStorage.getItem('ez_favorites') || '[]');
+      const updatedFavorites = favorites.filter((f: any) => !expiredUserIds.includes(f.user_id));
+      localStorage.setItem('ez_favorites', JSON.stringify(updatedFavorites));
+    }
+  } catch (err) {
+    console.error('Error purging expired mock users:', err);
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<'student' | 'admin' | null>(null);
+  const [role, setRoleState] = useState<'student' | 'admin' | 'agent_pending' | null>(null);
   const [adminRole, setAdminRole] = useState<'super_admin' | 'editor' | null>(null);
   const [userEmail, setUserEmail] = useState('');
   const [agentRegStatus, setAgentRegStatus] = useState<string | null>(null);
@@ -25,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMockDatabase) {
+      // Periodic cleanup of expired deleted users in mock mode (7+ days)
+      purgeExpiredMockUsers();
+
       const loggedIn = localStorage.getItem('ez_logged_in');
       if (!loggedIn) {
         setLoading(false);
@@ -47,24 +103,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAdminRole(null);
       }
 
-      const finalRole: 'student' | 'admin' = isAdmin ? 'admin' : 'student';
-      localStorage.setItem('ez_user_role', finalRole);
+      let finalRole: 'student' | 'admin' | 'agent_pending' = isAdmin ? 'admin' : 'student';
+      if (!isAdmin) {
+        const regs = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+        const myReg = regs.find((r: any) => r.auth_user_id === tenantId || (r.email === email && email !== ''));
+        if (myReg) {
+          if (myReg.verification_status === 'approved') {
+            finalRole = 'admin';
+          } else {
+            finalRole = 'agent_pending';
+            setAgentRegStatus(myReg.verification_status);
+          }
+        }
+      }
+
+      localStorage.setItem('ez_user_role', finalRole === 'agent_pending' ? 'student' : finalRole); // keep backward compatibility for storage role
       setRoleState(finalRole);
       setUserEmail(email);
-      if (finalRole === 'student') {
-        const regs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-        const myReg = regs.find((r: any) => r.auth_user_id === tenantId || (r.email === email && email !== ''));
-        if (myReg) setAgentRegStatus(myReg.verification_status);
-      }
       setLoading(false);
     } else {
       let active = true;
       let unsubscribe: (() => void) | null = null;
 
       // Resolve the app role for a given authenticated user (or clear when null).
-      // Driven by onAuthStateChange so we never lock in role=null before the
-      // session cookie has hydrated (the cause of "must log in twice").
-      const resolveRole = async (user: { id: string; email?: string | null } | null) => {
+      const resolveRole = async (user: any) => {
         if (!active) return;
         if (!user) {
           setRoleState(null);
@@ -78,57 +140,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const { createClient } = await import('@/utils/supabase/client');
           const supabase = createClient();
 
-          let adminRecord: { id: string; role: string; email?: string } | null = null;
-          if (user.email) {
-            const { data: record } = await supabase
-              .from('admin_users')
-              .select('id, role, email')
-              .or(`id.eq.${user.id},email.eq.${user.email}`)
+          const userRole = user.user_metadata?.role; // 'student' | 'agent'
+
+          if (userRole === 'agent') {
+            // Check agent_profiles
+            const { data: profile, error: profileErr } = await supabase
+              .from('agent_profiles')
+              .select('verification_status')
+              .eq('auth_user_id', user.id)
               .maybeSingle();
-            if (record) {
-              adminRecord = record;
-              if (record.id !== user.id) {
-                const { error: updErr } = await supabase
-                  .from('admin_users')
-                  .update({ id: user.id })
-                  .eq('email', user.email);
-                if (!updErr) adminRecord.id = user.id;
+
+            if (profile?.verification_status === 'approved') {
+              // Get admin record
+              const { data: record } = await supabase
+                .from('admin_users')
+                .select('id, role')
+                .eq('id', user.id)
+                .maybeSingle();
+
+              if (record) {
+                setAdminRole(record.role as 'super_admin' | 'editor');
+                setRoleState('admin');
+              } else {
+                // Approved but admin_users record not fully linked yet
+                setAdminRole(null);
+                setRoleState('admin');
               }
+              setAgentRegStatus('approved');
+            } else {
+              setAdminRole(null);
+              setRoleState('agent_pending');
+              setAgentRegStatus(profile?.verification_status || 'pending');
             }
           } else {
-            const { data: record } = await supabase
-              .from('admin_users')
-              .select('id, role')
-              .eq('id', user.id)
-              .maybeSingle();
-            adminRecord = record;
+            // Default to tenant (student)
+            setAdminRole(null);
+            setRoleState('student');
+            setAgentRegStatus(null);
           }
 
-          if (!active) return;
-
-          const activeRole = adminRecord ? 'admin' : 'student';
-          setAdminRole(adminRecord ? (adminRecord.role as 'super_admin' | 'editor') : null);
-          setRoleState(activeRole);
           setUserEmail(user.email || '');
           localStorage.setItem('ez_tenant_id', user.id);
-
-          if (!adminRecord && user.email) {
-            const { data: byEmail } = await supabase
-              .from('agent_registrations')
-              .select('verification_status, email, auth_user_id')
-              .eq('email', user.email)
-              .maybeSingle();
-            if (byEmail) {
-              setAgentRegStatus(byEmail.verification_status);
-            } else {
-              const { data: byId } = await supabase
-                .from('agent_registrations')
-                .select('verification_status')
-                .eq('auth_user_id', user.id)
-                .maybeSingle();
-              if (byId && active) setAgentRegStatus(byId.verification_status);
-            }
-          }
         } catch (e) {
           console.error('[AuthContext] resolveRole error:', e);
         }
@@ -139,15 +191,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
 
-        // onAuthStateChange fires INITIAL_SESSION immediately from persisted
-        // storage (no network) and SIGNED_IN once a fresh login completes, so
-        // the session is always reflected even if cookies arrive slightly late.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_OUT') {
             resolveRole(null);
             return;
           }
-          // Defer out of the callback to avoid Supabase auth lock re-entrancy.
           setTimeout(() => resolveRole(session?.user ?? null), 0);
         });
         unsubscribe = () => subscription.unsubscribe();
@@ -182,15 +230,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isMockDatabase) {
       const tenantId = localStorage.getItem('ez_tenant_id') || 'tenant-123';
       const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
-      localStorage.setItem('ez_users', JSON.stringify(users.filter((u: any) => u.id !== tenantId)));
-      const interests = JSON.parse(localStorage.getItem('ez_interests') || '[]');
-      localStorage.setItem('ez_interests', JSON.stringify(interests.filter((i: any) => i.user_id !== tenantId)));
-      const feedbacks = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
-      localStorage.setItem('ez_feedback', JSON.stringify(feedbacks.filter((f: any) => f.user_id !== tenantId)));
-      const agentRegs = JSON.parse(localStorage.getItem('ez_agent_registrations') || '[]');
-      localStorage.setItem('ez_agent_registrations', JSON.stringify(agentRegs.filter((r: any) => r.auth_user_id !== tenantId)));
       const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
-      localStorage.setItem('ez_admins', JSON.stringify(admins.filter((a: any) => a.id !== tenantId)));
+      const isAdmin = admins.some((a: any) => a.id === tenantId);
+
+      // 1. Run cleanup for previously expired deleted mock users (7+ days)
+      purgeExpiredMockUsers();
+      const freshUsers = JSON.parse(localStorage.getItem('ez_users') || '[]');
+
+      let filteredUsers = [...freshUsers];
+
+      if (isAdmin) {
+        // Agent deactivation: delete completely immediately
+        filteredUsers = filteredUsers.filter((u: any) => u.id !== tenantId);
+        localStorage.setItem('ez_admins', JSON.stringify(admins.filter((a: any) => a.id !== tenantId)));
+        const agentRegs = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+        localStorage.setItem('ez_agent_profiles', JSON.stringify(agentRegs.filter((r: any) => r.auth_user_id !== tenantId)));
+      } else {
+        // Tenant deactivation: immediately mark user row as deleted but keep personal info/photos for 7 days
+        filteredUsers = filteredUsers.map((u: any) => {
+          if (u.id === tenantId) {
+            return {
+              ...u,
+              avatar_url: 'DELETED:' + new Date().toISOString()
+            };
+          }
+          return u;
+        });
+
+        // Delete auth-level mock data immediately
+        const interests = JSON.parse(localStorage.getItem('ez_interests') || '[]');
+        localStorage.setItem('ez_interests', JSON.stringify(interests.filter((i: any) => i.user_id !== tenantId)));
+        const feedbacks = JSON.parse(localStorage.getItem('ez_feedback') || '[]');
+        localStorage.setItem('ez_feedback', JSON.stringify(feedbacks.filter((f: any) => f.user_id !== tenantId)));
+        const notifications = JSON.parse(localStorage.getItem('ez_notifications') || '[]');
+        localStorage.setItem('ez_notifications', JSON.stringify(notifications.filter((n: any) => n.user_id !== tenantId)));
+      }
+
+      localStorage.setItem('ez_users', JSON.stringify(filteredUsers));
       localStorage.removeItem('ez_logged_in');
       localStorage.removeItem('ez_user_role');
       localStorage.removeItem('ez_tenant_id');

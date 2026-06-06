@@ -24,8 +24,8 @@ const HELLO_WORDS = [
 export default function LoginPage() {
   const { lang, setLang, theme, toggleTheme } = useApp();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [mockModal, setMockModal] = useState(false);
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -52,32 +52,133 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password.trim()) return;
     setErrorMsg(null);
     setLoading(true);
 
     if (isMockDatabase) {
-      const role = email.trim().toLowerCase() === 'admin@ezrent.my' ? 'admin' : 'student';
-      localStorage.setItem('ez_user_email', email.trim());
-      localStorage.setItem('ez_user_role', role);
-      localStorage.setItem('ez_tenant_id', role === 'admin' ? 'admin-999' : 'tenant-123');
-      setLoading(false);
-      setMagicLinkSent(true);
-      setTimeout(() => {
+      const isAgent = roleView === 'agent';
+      const emailLower = email.trim().toLowerCase();
+      
+      if (isAgent) {
+        const regs = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+        const myReg = regs.find((r: any) => r.email === emailLower);
+        const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        const isAdmin = admins.some((a: any) => a.email === emailLower);
+
+        if (myReg && myReg.verification_status !== 'approved') {
+          setLoading(false);
+          setErrorMsg(lang === 'zh' ? '您的中介申请正在审核中，请耐心等待。' : 'Your agent registration is under review. Please wait.');
+          return;
+        }
+        if (!isAdmin && !myReg) {
+          setLoading(false);
+          setErrorMsg(lang === 'zh' ? '该账号不存在，请先申请入驻。' : 'Account does not exist. Please apply first.');
+          return;
+        }
+        
+        localStorage.setItem('ez_user_email', emailLower);
+        localStorage.setItem('ez_user_role', 'admin');
+        localStorage.setItem('ez_tenant_id', isAdmin ? admins.find((a: any) => a.email === emailLower).id : (myReg.auth_user_id || 'agent-123'));
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-        window.location.href = role === 'admin' ? '/admin/properties' : '/listings';
-      }, 2000);
-      return;
+        setLoading(false);
+        window.location.href = '/admin/properties';
+        return;
+      } else {
+        const isMockAdmin = emailLower === 'admin@ezrent.my';
+        localStorage.setItem('ez_user_email', emailLower);
+        localStorage.setItem('ez_user_role', isMockAdmin ? 'admin' : 'student');
+        localStorage.setItem('ez_tenant_id', isMockAdmin ? 'admin-999' : 'tenant-123');
+        localStorage.setItem('ez_logged_in', '1');
+        document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+        setLoading(false);
+        window.location.href = isMockAdmin ? '/admin/properties' : '/listings';
+        return;
+      }
     }
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/listings` },
+      password: password.trim(),
     });
-    setLoading(false);
-    if (error) setErrorMsg(error.message); else setMagicLinkSent(true);
+
+    if (error) {
+      setLoading(false);
+      setErrorMsg(error.message);
+      return;
+    }
+
+    const user = data.user;
+    if (!user) {
+      setLoading(false);
+      setErrorMsg('No user found');
+      return;
+    }
+
+    const metadataRole = user.user_metadata?.role;
+
+    if (roleView === 'agent') {
+      if (metadataRole && metadataRole !== 'agent') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg(lang === 'zh' ? '此账号非中介账号' : 'This account is not an agent account');
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('agent_profiles')
+        .select('verification_status')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg(lang === 'zh' ? '未找到您的中介申请，请先申请入驻。' : 'No agent profile found. Please apply first.');
+        return;
+      }
+
+      if (profile.verification_status === 'pending') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg(lang === 'zh' ? '您的中介申请正在审核中，请耐心等待。' : 'Your agent registration is under review. Please wait.');
+        return;
+      }
+
+      if (profile.verification_status === 'rejected') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg(lang === 'zh' ? '很抱歉，您的中介申请未通过审核。' : 'Sorry, your agent registration was rejected.');
+        return;
+      }
+
+      document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+      setLoading(false);
+      window.location.href = '/admin/properties';
+    } else {
+      if (metadataRole && metadataRole !== 'student') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg(lang === 'zh' ? '此账号非租客账号' : 'This account is not a tenant account');
+        return;
+      }
+
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('identity_type')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+      setLoading(false);
+      if (!dbUser || !dbUser.identity_type) {
+        window.location.href = '/register/complete-profile';
+      } else {
+        window.location.href = '/listings';
+      }
+    }
   };
 
   const handleMockLogin = (role: 'student' | 'admin') => {
@@ -237,42 +338,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {magicLinkSent ? (
-          /* ── SUCCESS STATE ── */
-          <div style={{ textAlign: 'center', animation: 'scaleIn 0.3s ease' }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <CheckCircle2 size={28} style={{ color: 'var(--success)' }} />
-            </div>
-            <h3 style={{ fontSize: '1.05rem', color: 'var(--text-h)', marginBottom: 8, fontWeight: 700 }}>
-              {isMockDatabase ? (lang === 'zh' ? '登录中...' : 'Logging in...') : (lang === 'zh' ? '请检查您的邮箱' : 'Check your email')}
-            </h3>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 20 }}>
-              {isMockDatabase ? (
-                lang === 'zh' ? <>已模拟向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送登录链接</> : <>Simulated link sent to <strong style={{ color: 'var(--primary)' }}>{email}</strong></>
-              ) : (
-                lang === 'zh' ? <>我们已向 <strong style={{ color: 'var(--primary)' }}>{email}</strong> 发送了登录链接<br />请点击邮件内的链接登录</> : <>We sent a login link to <strong style={{ color: 'var(--primary)' }}>{email}</strong></>
-              )}
-            </div>
-            {!isMockDatabase && (
-              <div style={{
-                marginBottom: 16, padding: '10px 12px', borderRadius: 8,
-                background: 'var(--warning-light)', border: '1px solid var(--warning)',
-                color: 'var(--warning)', fontSize: '0.75rem', display: 'flex', gap: 8,
-                alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.4,
-              }}>
-                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                <div>
-                  {lang === 'zh' ? <><strong>收不到邮件？</strong>请检查垃圾邮件箱，或使用 Google 登录</> : <><strong>Not receiving?</strong>Check spam folder, or use Google login</>}
-                </div>
-              </div>
-            )}
-            {!isMockDatabase && (
-              <button onClick={() => setMagicLinkSent(false)} style={{ ...secondaryBtnStyle, marginBottom: 0 }}>
-                <ArrowLeft size={15} /> {lang === 'zh' ? '返回' : 'Back'}
-              </button>
-            )}
-          </div>
-        ) : roleView === 'choose' ? (
+        {roleView === 'choose' ? (
           /* ── ROLE SELECTION ── */
           <div>
             {isInAppBrowser && (
@@ -387,6 +453,16 @@ export default function LoginPage() {
                 />
               </div>
 
+              <label htmlFor="student-password" style={labelStyle}>{lang === 'zh' ? '密码' : 'Password'}</label>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <Shield size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input id="student-password" type="password" required placeholder="••••••••" value={password}
+                  onChange={e => setPassword(e.target.value)} style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
               {errorMsg && (
                 <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                   {errorMsg}
@@ -396,9 +472,25 @@ export default function LoginPage() {
               <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
                 onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)'; }}
                 onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--primary)'; }}>
-                {loading ? <Spinner /> : <><span>{lang === 'zh' ? '获取邮箱登录链接' : 'Get Magic Link'}</span><ArrowRight size={15} /></>}
+                {loading ? <Spinner /> : <><span>{lang === 'zh' ? '登录' : 'Login'}</span><ArrowRight size={15} /></>}
               </button>
             </form>
+
+            {/* Tenant Register Link */}
+            <div style={{ marginTop: 16, padding: '14px', borderRadius: 10, background: 'var(--primary-light)', border: '1px dashed var(--primary)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', marginBottom: 6 }}>
+                {lang === 'zh' ? '还没有租客账号？' : "Don't have a tenant account?"}
+              </div>
+              <a href="/register/tenant" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px',
+                borderRadius: 8, background: 'var(--primary)', color: '#fff', textDecoration: 'none',
+                fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}>
+                <User size={14} /> {lang === 'zh' ? '注册成为租客' : 'Register as Tenant'}
+              </a>
+            </div>
           </div>
         ) : (
           /* ── AGENT LOGIN ── */
@@ -417,20 +509,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Google Login */}
-            <button onClick={handleGoogleLogin} style={secondaryBtnStyle}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}>
-              <GoogleIcon /> {lang === 'zh' ? '使用 Google 账号登录' : 'Continue with Google'}
-            </button>
-
-            {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500 }}>{lang === 'zh' ? '或' : 'OR'}</span>
-              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-            </div>
-
             {/* Email form */}
             <form onSubmit={handleLogin}>
               <label htmlFor="agent-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
@@ -438,6 +516,16 @@ export default function LoginPage() {
                 <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input id="agent-email" type="email" required placeholder="name@agency.com" value={email}
                   onChange={e => setEmail(e.target.value)} style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              <label htmlFor="agent-password" style={labelStyle}>{lang === 'zh' ? '密码' : 'Password'}</label>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <Shield size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input id="agent-password" type="password" required placeholder="••••••••" value={password}
+                  onChange={e => setPassword(e.target.value)} style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
                 />
@@ -452,7 +540,7 @@ export default function LoginPage() {
               <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
                 onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)'; }}
                 onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--primary)'; }}>
-                {loading ? <Spinner /> : <><span>{lang === 'zh' ? '获取邮箱登录链接' : 'Get Magic Link'}</span><ArrowRight size={15} /></>}
+                {loading ? <Spinner /> : <><span>{lang === 'zh' ? '登录' : 'Login'}</span><ArrowRight size={15} /></>}
               </button>
             </form>
 
@@ -461,7 +549,7 @@ export default function LoginPage() {
               <div style={{ fontSize: '0.78rem', color: 'var(--text-body)', marginBottom: 6 }}>
                 {lang === 'zh' ? '还没有中介账号？' : 'Don\'t have an agent account?'}
               </div>
-              <a href="/register-agent" style={{
+              <a href="/register/agent" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px',
                 borderRadius: 8, background: 'var(--primary)', color: '#fff', textDecoration: 'none',
                 fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease',

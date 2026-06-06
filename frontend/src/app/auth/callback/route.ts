@@ -45,6 +45,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (authOk) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const role = user?.user_metadata?.role;
+    if (!role) {
+      return NextResponse.redirect(`${origin}/register/complete-profile`);
+    }
     return response;
   }
 

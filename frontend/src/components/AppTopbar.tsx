@@ -61,8 +61,8 @@ export default function AppTopbar() {
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', margin: '0 0 24px', lineHeight: 1.6 }}>
               {lang === 'zh'
-                ? '注销后，您的所有信息（包括个人信息、工单记录等）将被永久删除，此操作无法撤销。请谨慎操作！'
-                : 'All your data (profile, maintenance requests, etc.) will be permanently deleted. This action cannot be undone. Please proceed with caution!'}
+                ? '注销后，您的个人基本信息（如姓名、邮箱、电话等）及日常记录将被立即彻底清空。但为防范可能出现的房屋恶意损毁或违法犯罪行为以留作必要凭证，您的身份证/护照照片等重要证件信息将在数据库中安全留存 7 天，并于 7 天后自动被永久清空。此操作无法撤销，请谨慎操作！'
+                : 'Upon deletion, your basic personal info (name, email, phone, etc.) and history will be scrubbed immediately. However, to prevent malicious property damage or other unlawful acts, vital documents such as ID/passport photos will be securely retained for 7 days for evidence, after which they will be automatically and permanently cleared. This action cannot be undone!'}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowDeleteAccount(false)} style={{

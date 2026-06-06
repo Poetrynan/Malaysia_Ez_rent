@@ -10,7 +10,7 @@ import { usePendingCounts } from '@/lib/PendingCountsContext';
 
 export default function AppSidebar() {
   const { t, lang } = useApp();
-  const { role, adminRole, userEmail, agentRegStatus, setRole } = useAuth();
+  const { role, adminRole, userEmail, setRole } = useAuth();
   const { counts } = usePendingCounts();
   const router = useRouter();
   const pathname = usePathname();
@@ -177,26 +177,6 @@ export default function AppSidebar() {
 
       <div>
         <div className="sidebar-divider" />
-
-        {/* Agent registration status banner */}
-        {role === 'student' && agentRegStatus && (
-          <div style={{
-            margin: '0 12px 8px', padding: '8px 10px', borderRadius: 8, fontSize: '0.72rem',
-            background: agentRegStatus === 'approved' ? 'rgba(16,185,129,0.1)' : agentRegStatus === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
-            border: `1px solid ${agentRegStatus === 'approved' ? 'rgba(16,185,129,0.25)' : agentRegStatus === 'rejected' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`,
-            color: agentRegStatus === 'approved' ? 'var(--success)' : agentRegStatus === 'rejected' ? 'var(--danger)' : 'var(--warning)',
-            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <Building2 size={13} />
-            {agentRegStatus === 'approved'
-              ? (lang === 'zh' ? '中介申请已通过，请重新登录' : 'Agent approved, re-login')
-              : agentRegStatus === 'rejected'
-              ? (lang === 'zh' ? '中介申请未通过' : 'Agent application rejected')
-              : (lang === 'zh' ? '中介申请审核中' : 'Agent application pending')}
-          </div>
-        )}
-
-        {/* Role Switcher — sandbox only */}
         {isMockDatabase && (
           <div className="role-switcher">
             <span className="role-switcher-label">{t('sandboxSwitch')}</span>
