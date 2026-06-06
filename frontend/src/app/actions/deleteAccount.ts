@@ -1,7 +1,9 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+
+type ServiceClient = SupabaseClient<any, 'public', any>;
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -12,7 +14,7 @@ function parseDeletedAt(marker: string | null | undefined): Date | null {
 }
 
 async function removeStorageUrl(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: ServiceClient,
   url?: string | null,
 ) {
   if (!url) return;
@@ -28,7 +30,7 @@ async function removeStorageUrl(
 }
 
 async function purgeExpiredAgent(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: ServiceClient,
   agentId: string,
 ) {
   const { data: adminRow } = await adminClient
@@ -52,7 +54,7 @@ async function purgeExpiredAgent(
 }
 
 async function purgeExpiredTenant(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: ServiceClient,
   userId: string,
   userRow: {
     ic_photo_front_url?: string | null;

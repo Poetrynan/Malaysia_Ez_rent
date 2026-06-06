@@ -1,9 +1,11 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+type ServiceClient = SupabaseClient<any, 'public', any>;
 import { cookies } from 'next/headers';
 
-async function removeStorageUrl(adminClient: ReturnType<typeof createClient>, url?: string | null) {
+async function removeStorageUrl(adminClient: ServiceClient, url?: string | null) {
   if (!url) return;
   try {
     const cleanUrl = url.split('?')[0];
