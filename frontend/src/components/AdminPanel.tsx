@@ -392,6 +392,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
   // ── Agent registrations state ──
   const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
+  const [selectedAgentReview, setSelectedAgentReview] = useState<any | null>(null);
   const [agentReviewFilter, setAgentReviewFilter] = useState<'pending' | 'all' | 'approved' | 'rejected'>('pending');
 
   // Approve state
@@ -431,6 +432,39 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
   const getRenTagUrl = (reg: { ren_tag_image_url?: string; ren_tag_url?: string }) =>
     reg.ren_tag_image_url || reg.ren_tag_url || '';
+
+  const getReviewInitial = (reg: { full_name?: string; email?: string }) => {
+    const name = reg.full_name?.trim();
+    if (name) return name.charAt(0).toUpperCase();
+    const email = reg.email?.trim();
+    if (email) return email.charAt(0).toUpperCase();
+    return '?';
+  };
+
+  const getReviewStatusMeta = (status: string) => {
+    if (status === 'approved') {
+      return {
+        color: 'var(--success)',
+        bg: 'var(--success-light)',
+        label: lang === 'zh' ? '已通过' : 'Approved',
+        gradient: 'linear-gradient(135deg, var(--success), #047857)',
+      };
+    }
+    if (status === 'rejected') {
+      return {
+        color: 'var(--danger)',
+        bg: 'var(--danger-light)',
+        label: lang === 'zh' ? '已拒绝' : 'Rejected',
+        gradient: 'linear-gradient(135deg, #94A3B8, #64748B)',
+      };
+    }
+    return {
+      color: 'var(--warning)',
+      bg: 'var(--warning-light)',
+      label: lang === 'zh' ? '待审核' : 'Pending',
+      gradient: 'linear-gradient(135deg, var(--warning), #D97706)',
+    };
+  };
 
   const commitApproveAgentRegistration = async () => {
     if (!approveModalRecord) return;
@@ -5106,22 +5140,31 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
       {/* ── AGENT REVIEWS TAB ── */}
       {tab === 'agent-reviews' && (
-        <div>
-          {/* Image Preview Modal */}
+        <div className="listings-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {reviewImgModal && (
-            <div onClick={() => setReviewImgModal(null)} style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-              cursor: 'pointer', animation: 'scaleIn 0.2s ease',
-            }}>
+            <div
+              onClick={() => setReviewImgModal(null)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 10000,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                cursor: 'pointer', background: 'transparent',
+                backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              }}
+            >
               <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}>
-                <button onClick={() => setReviewImgModal(null)} style={{
-                  position: 'absolute', top: -12, right: -12, width: 32, height: 32,
-                  borderRadius: '50%', background: 'var(--danger)', color: '#fff',
-                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                }}><X size={16} /></button>
-                <img src={reviewImgModal} style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 8, objectFit: 'contain' }} />
+                <button
+                  type="button"
+                  onClick={() => setReviewImgModal(null)}
+                  style={{
+                    position: 'absolute', top: -12, right: -12, width: 32, height: 32,
+                    borderRadius: '50%', background: 'var(--danger)', color: '#fff',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+                <img src={reviewImgModal} alt="Preview" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain' }} />
               </div>
             </div>
           )}
@@ -5138,69 +5181,52 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               { id: 'rejected', label: lang === 'zh' ? '已拒绝' : 'Rejected' },
               { id: 'all', label: lang === 'zh' ? '全部' : 'All' },
             ];
-            const renderAgentDetailChip = (icon: React.ReactNode, label: string, value?: string | null) => (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
-                padding: '8px 10px', borderRadius: 10,
-                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-              }}>
-                <span style={{ color: 'var(--primary)', flexShrink: 0, display: 'inline-flex' }}>{icon}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-h)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</div>
-                </div>
-              </div>
-            );
+            const blurBackdrop: React.CSSProperties = {
+              position: 'fixed', inset: 0, zIndex: 300,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              background: 'transparent',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            };
 
             return (
-              <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{
-                  padding: '16px 20px',
-                  borderBottom: '1px solid var(--glass-border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
-                }}>
-                  <div>
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ShieldCheck size={17} style={{ color: 'var(--primary)' }} />
-                      {lang === 'zh' ? '中介入驻审核' : 'Agent Onboarding'}
-                      {pendingCount > 0 && (
-                        <span style={{ background: 'var(--danger)', color: 'white', fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
-                          {pendingCount}
-                        </span>
-                      )}
-                    </h3>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                      {lang === 'zh' ? '查看申请人完整资料与 REN 执照后再做决定' : 'Review full application details and REN credentials before deciding'}
-                    </p>
-                  </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.4rem', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ShieldCheck size={22} style={{ color: 'var(--primary)' }} />
+                    {lang === 'zh' ? '中介审核' : 'Agent Reviews'}
+                  </h2>
+                  {pendingCount > 0 && (
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fff', background: 'var(--danger)', padding: '3px 11px', borderRadius: 999 }}>
+                      {pendingCount} {lang === 'zh' ? '待处理' : 'pending'}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '3px 11px', borderRadius: 999 }}>
                     {filteredRegs.length} {lang === 'zh' ? '条' : 'items'}
                   </span>
                 </div>
 
-                <div style={{
-                  display: 'flex', gap: 8, padding: '12px 20px',
-                  borderBottom: '1px solid var(--glass-border)', flexWrap: 'wrap',
-                }}>
-                  {filterTabs.map(tab => {
-                    const active = agentReviewFilter === tab.id;
-                    const count = tab.id === 'all'
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {filterTabs.map(ft => {
+                    const active = agentReviewFilter === ft.id;
+                    const count = ft.id === 'all'
                       ? agentRegistrations.length
-                      : agentRegistrations.filter(r => r.verification_status === tab.id).length;
+                      : agentRegistrations.filter(r => r.verification_status === ft.id).length;
                     return (
                       <button
-                        key={tab.id}
-                        onClick={() => setAgentReviewFilter(tab.id)}
+                        key={ft.id}
+                        type="button"
+                        onClick={() => setAgentReviewFilter(ft.id)}
                         style={{
                           padding: '7px 14px', borderRadius: 999, border: '1px solid',
                           borderColor: active ? 'var(--primary)' : 'var(--glass-border)',
-                          background: active ? 'var(--primary-light)' : 'var(--glass-bg)',
+                          background: active ? 'var(--primary-light)' : 'var(--bg-surface)',
                           color: active ? 'var(--primary)' : 'var(--text-body)',
                           fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer',
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        {tab.label}
+                        {ft.label}
                         <span style={{ marginLeft: 6, opacity: 0.75 }}>{count}</span>
                       </button>
                     );
@@ -5208,110 +5234,238 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 </div>
 
                 {filteredRegs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 52, color: 'var(--text-muted)' }}>
-                    <UserPlus size={30} style={{ marginBottom: 10, opacity: 0.28 }} />
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-body)', marginBottom: 4 }}>
-                      {lang === 'zh' ? '暂无相关申请' : 'No applications in this view'}
-                    </div>
-                    <div style={{ fontSize: '0.78rem' }}>
+                  <div className="glass-card empty-state">
+                    <div className="empty-state-icon"><UserPlus size={32} /></div>
+                    <p>{lang === 'zh' ? '暂无相关申请' : 'No applications in this view'}</p>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                       {lang === 'zh' ? '新申请会出现在「待审核」列表' : 'New submissions will appear under Pending'}
-                    </div>
+                    </span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: 620, overflow: 'auto' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
                     {filteredRegs.map(reg => {
-                      const statusColor = reg.verification_status === 'approved' ? 'var(--success)' : reg.verification_status === 'rejected' ? 'var(--danger)' : 'var(--warning)';
-                      const statusBg = reg.verification_status === 'approved' ? 'var(--success-light)' : reg.verification_status === 'rejected' ? 'var(--danger-light)' : 'var(--warning-light)';
-                      const statusLabel = reg.verification_status === 'approved' ? (lang === 'zh' ? '已通过' : 'Approved') : reg.verification_status === 'rejected' ? (lang === 'zh' ? '已拒绝' : 'Rejected') : (lang === 'zh' ? '待审核' : 'Pending');
+                      const statusMeta = getReviewStatusMeta(reg.verification_status);
+                      const initial = getReviewInitial(reg);
                       const renTagUrl = getRenTagUrl(reg);
                       const submittedAt = reg.created_at
-                        ? new Date(reg.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—';
+                        ? new Date(reg.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })
+                        : null;
 
                       return (
                         <div
                           key={reg.id}
+                          onClick={() => setSelectedAgentReview(reg)}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.boxShadow = '0 12px 32px rgba(59,130,246,0.15)';
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
+                            e.currentTarget.style.boxShadow = 'var(--glass-shadow)';
+                            e.currentTarget.style.transform = 'none';
+                          }}
                           style={{
-                            padding: '18px 20px',
-                            borderBottom: '1px solid var(--glass-border)',
-                            opacity: reg.verification_status === 'rejected' ? 0.72 : 1,
-                            display: 'grid',
-                            gridTemplateColumns: 'minmax(0, 1fr) auto',
-                            gap: 16,
-                            alignItems: 'start',
+                            borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--glass-border)',
+                            boxShadow: 'var(--glass-shadow)',
+                            transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+                            opacity: reg.verification_status === 'rejected' ? 0.82 : 1,
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
-                              <div style={{
-                                width: 42, height: 42, borderRadius: 12, background: statusBg,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                              }}>
-                                <User size={18} style={{ color: statusColor }} />
-                              </div>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)' }}>{reg.full_name}</span>
-                                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: statusBg, color: statusColor }}>
-                                    {statusLabel}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-body)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <Building2 size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.agency_name}</span>
-                                </div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <Clock size={12} />
-                                  {lang === 'zh' ? '提交于' : 'Submitted'} {submittedAt}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-                              {renderAgentDetailChip(<Mail size={14} />, lang === 'zh' ? '邮箱' : 'Email', reg.email)}
-                              {renderAgentDetailChip(<Phone size={14} />, lang === 'zh' ? '手机' : 'Phone', reg.phone)}
-                              {renderAgentDetailChip(<MessageSquare size={14} />, 'WhatsApp', reg.whatsapp)}
-                              {renderAgentDetailChip(<FileText size={14} />, 'REN', reg.ren_number)}
-                            </div>
-
-                            {reg.verification_status === 'rejected' && reg.rejection_reason && (
-                              <div style={{
-                                padding: '10px 12px', borderRadius: 10,
-                                background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.18)',
-                                fontSize: '0.76rem', color: 'var(--text-body)', lineHeight: 1.5,
-                              }}>
-                                <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{lang === 'zh' ? '拒绝原因：' : 'Reason: '}</span>
-                                {reg.rejection_reason}
+                          <div style={{
+                            position: 'relative', height: 140, overflow: 'hidden',
+                            background: statusMeta.gradient,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {renTagUrl ? (
+                              <img
+                                src={renTagUrl}
+                                alt="REN tag"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88 }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: '3rem', fontWeight: 800, color: '#fff', lineHeight: 1, textShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                                {initial}
+                              </span>
+                            )}
+                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)' }} />
+                            <span style={{
+                              position: 'absolute', top: 12, right: 12,
+                              fontSize: '0.65rem', fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                              background: statusMeta.bg, color: statusMeta.color,
+                            }}>
+                              {statusMeta.label}
+                            </span>
+                            {reg.verification_status === 'pending' && (
+                              <span style={{
+                                position: 'absolute', top: 12, left: 12,
+                                width: 10, height: 10, borderRadius: '50%',
+                                background: 'var(--warning)', boxShadow: '0 0 0 3px rgba(245,158,11,0.35)',
+                              }} />
+                            )}
+                          </div>
+                          <div style={{ padding: '12px 14px' }}>
+                            <h4 style={{ fontSize: '0.9rem', lineHeight: 1.3, margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {reg.full_name}
+                            </h4>
+                            {reg.agency_name && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                                <Building2 size={11} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.agency_name}</span>
                               </div>
                             )}
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                              <Mail size={11} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.email}</span>
+                            </div>
+                            {submittedAt && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Clock size={11} style={{ flexShrink: 0 }} />
+                                <span>{submittedAt}</span>
+                              </div>
+                            )}
+                            <div style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              borderTop: '1px solid var(--glass-border)', paddingTop: 8, marginTop: 10,
+                            }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                {reg.ren_number ? `REN ${reg.ren_number}` : (lang === 'zh' ? '无 REN' : 'No REN')}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                                {lang === 'zh' ? '查看详情' : 'Details'} <ChevronRight size={12} />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                            {renTagUrl && (
-                              <button
-                                type="button"
-                                onClick={() => setReviewImgModal(renTagUrl)}
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 10, alignSelf: 'flex-start',
-                                  padding: '8px 10px', borderRadius: 12, cursor: 'pointer',
-                                  border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                                  transition: 'border-color 0.15s ease, transform 0.15s ease',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                              >
-                                <img src={renTagUrl} alt="REN tag" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
-                                <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-h)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  <Eye size={14} style={{ color: 'var(--primary)' }} />
-                                  {lang === 'zh' ? '查看 REN 执照' : 'View REN Tag'}
-                                </span>
-                              </button>
+                {selectedAgentReview && (() => {
+                  const reg = selectedAgentReview;
+                  const statusMeta = getReviewStatusMeta(reg.verification_status);
+                  const initial = getReviewInitial(reg);
+                  const renTagUrl = getRenTagUrl(reg);
+                  const submittedAt = reg.created_at
+                    ? new Date(reg.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : null;
+                  const detailFields: ([string, string] | null)[] = [
+                    [lang === 'zh' ? '邮箱' : 'Email', reg.email],
+                    [lang === 'zh' ? '手机' : 'Phone', reg.phone],
+                    ['WhatsApp', reg.whatsapp],
+                    [lang === 'zh' ? '公司' : 'Agency', reg.agency_name],
+                    ['REN', reg.ren_number],
+                    submittedAt ? [lang === 'zh' ? '提交时间' : 'Submitted', submittedAt] : null,
+                  ];
+
+                  return (
+                    <div onClick={() => setSelectedAgentReview(null)} style={blurBackdrop}>
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        className="glass-card"
+                        style={{
+                          width: '100%', maxWidth: 600, maxHeight: '88vh', overflow: 'auto',
+                          padding: 0, borderRadius: 18,
+                          boxShadow: '0 24px 48px rgba(0,0,0,0.12)',
+                          animation: 'scaleIn 0.2s ease',
+                        }}
+                      >
+                        <div style={{
+                          position: 'relative', height: 180, overflow: 'hidden', borderRadius: '18px 18px 0 0',
+                          background: statusMeta.gradient,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {renTagUrl ? (
+                            <img
+                              src={renTagUrl}
+                              alt="REN tag"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, cursor: 'zoom-in' }}
+                              onClick={() => setReviewImgModal(renTagUrl)}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '4.5rem', fontWeight: 800, color: '#fff' }}>{initial}</span>
+                          )}
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAgentReview(null)}
+                            style={{
+                              position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', border: 'none',
+                              color: 'white', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2,
+                            }}
+                          >
+                            <X size={18} />
+                          </button>
+                          <span style={{
+                            position: 'absolute', top: 16, left: 16, zIndex: 2,
+                            fontSize: '0.72rem', fontWeight: 700, padding: '4px 12px', borderRadius: 999,
+                            background: statusMeta.bg, color: statusMeta.color,
+                          }}>
+                            {statusMeta.label}
+                          </span>
+                        </div>
+
+                        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                          <div>
+                            <h2 style={{ fontSize: '1.2rem', marginBottom: 4 }}>{reg.full_name}</h2>
+                            {reg.agency_name && (
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Building2 size={13} style={{ color: 'var(--primary)' }} />
+                                {reg.agency_name}
+                              </div>
                             )}
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'stretch', minWidth: 118 }}>
+                          <div>
+                            <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? '申请资料' : 'Application Details'}</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
+                              {detailFields.filter((item): item is [string, string] => !!item && !!item[1]).map(([label, val], i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                                  <CheckCircle2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
+                                  <div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 1 }}>{label}</div>
+                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-h)', fontWeight: 500, wordBreak: 'break-word' }}>{val}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {reg.verification_status === 'rejected' && reg.rejection_reason && (
+                            <div style={{
+                              padding: '12px 14px', borderRadius: 12,
+                              background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.18)',
+                              fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5,
+                            }}>
+                              <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{lang === 'zh' ? '拒绝原因：' : 'Reason: '}</span>
+                              {reg.rejection_reason}
+                            </div>
+                          )}
+
+                          {renTagUrl && (
+                            <div>
+                              <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? 'REN 执照' : 'REN Tag'}</h3>
+                              <button
+                                type="button"
+                                onClick={() => setReviewImgModal(renTagUrl)}
+                                style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}
+                              >
+                                <img src={renTagUrl} alt="REN" style={{ width: 200, height: 130, objectFit: 'cover', borderRadius: 8 }} />
+                              </button>
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                             {reg.verification_status === 'pending' ? (
                               <>
                                 <button
+                                  type="button"
                                   onClick={() => {
+                                    setSelectedAgentReview(null);
                                     setApproveModalRecord(reg);
                                     setApproveSendUserNotif(true);
                                     setApproveSendAllBroadcast(false);
@@ -5321,17 +5475,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                                       : `Dear applicant ${reg.full_name}, your agent application has successfully passed our super administrator review.\n\nUpon your next login, your account will automatically convert to Agent status, granting you full access to the Agent Management Panel. Thank you for listing with Malaysia Ez Rent!`);
                                   }}
                                   style={{
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                    padding: '9px 14px', borderRadius: 10, border: 'none',
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    padding: '10px 18px', borderRadius: 10, border: 'none',
                                     background: 'var(--success)', color: '#fff',
-                                    fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer',
+                                    fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                                   }}
                                 >
-                                  <CheckCircle2 size={14} />
-                                  {lang === 'zh' ? '通过' : 'Approve'}
+                                  <CheckCircle2 size={15} />
+                                  {lang === 'zh' ? '通过审核' : 'Approve'}
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => {
+                                    setSelectedAgentReview(null);
                                     setRejectModalRecord(reg);
                                     setRejectReasonText('');
                                     setRejectSendUserNotif(true);
@@ -5341,51 +5497,54 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                                       : `Hello, we regret to inform you that your agent registration has been rejected due to the following reason: [Please specify reason]\n\nPlease re-upload valid REN credentials or contact admin support directly.`);
                                   }}
                                   style={{
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                    padding: '9px 14px', borderRadius: 10,
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    padding: '10px 18px', borderRadius: 10,
                                     border: '1px solid rgba(239, 68, 68, 0.35)', background: 'rgba(239, 68, 68, 0.06)',
-                                    color: 'var(--danger)', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer',
+                                    color: 'var(--danger)', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                                   }}
                                 >
-                                  <X size={14} />
-                                  {lang === 'zh' ? '拒绝' : 'Reject'}
+                                  <X size={15} />
+                                  {lang === 'zh' ? '拒绝申请' : 'Reject'}
                                 </button>
                               </>
                             ) : (
                               <button
+                                type="button"
                                 onClick={() => {
-                                  if (confirm(lang === 'zh' ? `确定删除 ${reg.full_name} 的记录？` : `Delete ${reg.full_name}?`))
+                                  if (confirm(lang === 'zh' ? `确定删除 ${reg.full_name} 的记录？` : `Delete ${reg.full_name}?`)) {
+                                    setSelectedAgentReview(null);
                                     deleteAgentRegistration(reg.id, renTagUrl);
+                                  }
                                 }}
                                 style={{
-                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                  padding: '9px 14px', borderRadius: 10,
-                                  border: '1px solid var(--glass-border)', background: 'transparent',
-                                  color: 'var(--text-muted)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                  padding: '10px 16px', borderRadius: 10,
+                                  border: '1px solid rgba(239, 68, 68, 0.35)', background: 'rgba(239, 68, 68, 0.06)',
+                                  color: 'var(--danger)', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                                 }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
                               >
-                                <Trash2 size={14} />
-                                {lang === 'zh' ? '删除' : 'Delete'}
+                                <Trash2 size={15} />
+                                {lang === 'zh' ? '删除记录' : 'Delete Record'}
                               </button>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
             );
           })()}
 
               {/* Approve Confirmation Modal */}
               {approveModalRecord && (
                 <div style={{
-                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998,
+                  position: 'fixed', inset: 0, zIndex: 9998,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-                  backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease',
+                  background: 'transparent',
+                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  animation: 'fadeIn 0.2s ease',
                 }}>
                   <div className="glass-card" style={{
                     width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
@@ -5462,9 +5621,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               {/* Reject Confirmation Modal */}
               {rejectModalRecord && (
                 <div style={{
-                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998,
+                  position: 'fixed', inset: 0, zIndex: 9998,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-                  backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease',
+                  background: 'transparent',
+                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  animation: 'fadeIn 0.2s ease',
                 }}>
                   <div className="glass-card" style={{
                     width: '100%', maxWidth: 500, padding: 24, display: 'flex', flexDirection: 'column',
