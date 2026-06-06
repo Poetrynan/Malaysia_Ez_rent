@@ -80,6 +80,84 @@ async function removeUnitMediaFiles(
   await supabase.storage.from('unit-media').remove(unique);
 }
 
+function isValidRenImageUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith('DELETED:')) return false;
+  if (trimmed.startsWith('data:image/')) return trimmed.length > 80;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'blob:';
+  } catch {
+    return false;
+  }
+}
+
+function RenImagePlaceholder({
+  initial,
+  variant,
+  label,
+  sublabel,
+}: {
+  initial: string;
+  variant: 'cover' | 'thumb' | 'preview';
+  label: string;
+  sublabel?: string;
+}) {
+  const isCover = variant === 'cover';
+  const isPreview = variant === 'preview';
+  return (
+    <div style={{
+      width: '100%', height: isCover ? '100%' : 'auto',
+      minHeight: isCover ? undefined : (variant === 'thumb' ? 130 : 280),
+      aspectRatio: isCover ? undefined : (variant === 'thumb' ? '200 / 130' : undefined),
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: isPreview ? 12 : 8, padding: isPreview ? 32 : 16,
+      background: isCover ? 'transparent' : 'var(--glass-bg)',
+      borderRadius: isCover ? 0 : 10,
+      border: isCover ? 'none' : '1px dashed var(--glass-border)',
+    }}>
+      {isCover ? (
+        <>
+          <span style={{
+            fontSize: '3rem', fontWeight: 800, color: '#fff', lineHeight: 1,
+            textShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          }}>
+            {initial}
+          </span>
+          {sublabel && (
+            <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+              {sublabel}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{
+          width: isPreview ? 64 : 48, height: isPreview ? 64 : 48, borderRadius: isPreview ? 16 : 12,
+          background: 'var(--primary-light)', color: 'var(--primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <FileText size={isPreview ? 28 : 22} />
+        </div>
+      )}
+      {!isCover && (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontSize: isPreview ? '0.95rem' : '0.72rem', fontWeight: 700, color: 'var(--text-h)',
+          }}>
+            {label}
+          </div>
+          {sublabel && (
+            <div style={{ fontSize: isPreview ? '0.82rem' : '0.68rem', color: 'var(--text-muted)', marginTop: 4 }}>
+              {sublabel}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activeTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; activeTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
   const resolvedTab = activeTab ?? defaultTab;
   const { t, lang } = useApp();
@@ -392,6 +470,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
   // ── Agent registrations state ──
   const [reviewImgModal, setReviewImgModal] = useState<string | null>(null);
+  const [reviewImgBroken, setReviewImgBroken] = useState(false);
+  const [brokenRenImageUrls, setBrokenRenImageUrls] = useState<Set<string>>(() => new Set());
   const [selectedAgentReview, setSelectedAgentReview] = useState<any | null>(null);
   const [agentReviewFilter, setAgentReviewFilter] = useState<'pending' | 'all' | 'approved' | 'rejected'>('pending');
 
@@ -430,8 +510,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
     }
   };
 
-  const getRenTagUrl = (reg: { ren_tag_image_url?: string; ren_tag_url?: string }) =>
-    reg.ren_tag_image_url || reg.ren_tag_url || '';
+  const getRenTagUrl = (reg: { ren_tag_image_url?: string; ren_tag_url?: string }) => {
+    const raw = reg.ren_tag_image_url || reg.ren_tag_url || '';
+    return isValidRenImageUrl(raw) ? raw.trim() : '';
+  };
+
+  const markRenImageBroken = (url: string) => {
+    setBrokenRenImageUrls(prev => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  };
+
+  const isRenImageReady = (url: string) => !!url && !brokenRenImageUrls.has(url);
 
   const getReviewInitial = (reg: { full_name?: string; email?: string }) => {
     const name = reg.full_name?.trim();
@@ -4572,16 +4665,36 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                           <div>
                             {renderProvisionLabel(lang === 'zh' ? '初始密码' : 'Password', true)}
                             <div style={{ position: 'relative' }}>
-                              <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                              <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.password} onChange={e => setNewAdmin(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" style={{ paddingLeft: 36, paddingRight: 36 }} />
-                              <button type="button" onClick={() => setShowNewAdminPassword(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}>
+                              <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                              <input
+                                className={`form-input form-input--masked${showNewAdminPassword ? ' revealed' : ''}`}
+                                type="text"
+                                autoComplete="new-password"
+                                value={newAdmin.password}
+                                onChange={e => setNewAdmin(f => ({ ...f, password: e.target.value }))}
+                                placeholder="••••••••"
+                                style={{ paddingLeft: 36, paddingRight: 40 }}
+                              />
+                              <button
+                                type="button"
+                                aria-label={showNewAdminPassword ? (lang === 'zh' ? '隐藏密码' : 'Hide password') : (lang === 'zh' ? '显示密码' : 'Show password')}
+                                onClick={() => setShowNewAdminPassword(v => !v)}
+                                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', padding: 4 }}
+                              >
                                 {showNewAdminPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                               </button>
                             </div>
                           </div>
                           <div>
                             {renderProvisionLabel(lang === 'zh' ? '确认密码' : 'Confirm', true)}
-                            <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.confirm_password} onChange={e => setNewAdmin(f => ({ ...f, confirm_password: e.target.value }))} placeholder="••••••••" />
+                            <input
+                              className={`form-input form-input--masked${showNewAdminPassword ? ' revealed' : ''}`}
+                              type="text"
+                              autoComplete="new-password"
+                              value={newAdmin.confirm_password}
+                              onChange={e => setNewAdmin(f => ({ ...f, confirm_password: e.target.value }))}
+                              placeholder="••••••••"
+                            />
                           </div>
                         </div>
                       </div>,
@@ -5151,12 +5264,16 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
               }}
             >
-              <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}>
+              <div
+                onClick={e => e.stopPropagation()}
+                className="glass-card"
+                style={{ position: 'relative', maxWidth: 'min(90vw, 640px)', width: '100%', padding: reviewImgBroken ? 28 : 12 }}
+              >
                 <button
                   type="button"
                   onClick={() => setReviewImgModal(null)}
                   style={{
-                    position: 'absolute', top: -12, right: -12, width: 32, height: 32,
+                    position: 'absolute', top: 12, right: 12, width: 32, height: 32,
                     borderRadius: '50%', background: 'var(--danger)', color: '#fff',
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
@@ -5164,7 +5281,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 >
                   <X size={16} />
                 </button>
-                <img src={reviewImgModal} alt="Preview" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain' }} />
+                {reviewImgBroken || !isRenImageReady(reviewImgModal) ? (
+                  <RenImagePlaceholder
+                    initial="?"
+                    variant="preview"
+                    label={lang === 'zh' ? 'REN 执照无法加载' : 'REN tag unavailable'}
+                    sublabel={lang === 'zh' ? '图片可能已失效或未上传' : 'The image may be missing or no longer accessible'}
+                  />
+                ) : (
+                  <img
+                    src={reviewImgModal}
+                    alt="REN tag preview"
+                    onError={() => setReviewImgBroken(true)}
+                    style={{ width: '100%', maxHeight: '85vh', borderRadius: 10, objectFit: 'contain', display: 'block' }}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -5279,18 +5410,22 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                             background: statusMeta.gradient,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
-                            {renTagUrl ? (
+                            {isRenImageReady(renTagUrl) ? (
                               <img
                                 src={renTagUrl}
-                                alt="REN tag"
+                                alt=""
+                                onError={() => markRenImageBroken(renTagUrl)}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88 }}
                               />
                             ) : (
-                              <span style={{ fontSize: '3rem', fontWeight: 800, color: '#fff', lineHeight: 1, textShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-                                {initial}
-                              </span>
+                              <RenImagePlaceholder
+                                initial={initial}
+                                variant="cover"
+                                label=""
+                                sublabel={reg.ren_number ? `REN ${reg.ren_number}` : undefined}
+                              />
                             )}
-                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)' }} />
+                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)', pointerEvents: 'none' }} />
                             <span style={{
                               position: 'absolute', top: 12, right: 12,
                               fontSize: '0.65rem', fontWeight: 700, padding: '3px 9px', borderRadius: 999,
@@ -5378,15 +5513,21 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                           background: statusMeta.gradient,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          {renTagUrl ? (
+                          {isRenImageReady(renTagUrl) ? (
                             <img
                               src={renTagUrl}
-                              alt="REN tag"
+                              alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, cursor: 'zoom-in' }}
-                              onClick={() => setReviewImgModal(renTagUrl)}
+                              onClick={() => { setReviewImgBroken(false); setReviewImgModal(renTagUrl); }}
+                              onError={() => markRenImageBroken(renTagUrl)}
                             />
                           ) : (
-                            <span style={{ fontSize: '4.5rem', fontWeight: 800, color: '#fff' }}>{initial}</span>
+                            <RenImagePlaceholder
+                              initial={initial}
+                              variant="cover"
+                              label=""
+                              sublabel={reg.ren_number ? `REN ${reg.ren_number}` : undefined}
+                            />
                           )}
                           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)', pointerEvents: 'none' }} />
                           <button
@@ -5446,18 +5587,30 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                             </div>
                           )}
 
-                          {renTagUrl && (
-                            <div>
-                              <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? 'REN 执照' : 'REN Tag'}</h3>
+                          <div>
+                            <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{lang === 'zh' ? 'REN 执照' : 'REN Tag'}</h3>
+                            {isRenImageReady(renTagUrl) ? (
                               <button
                                 type="button"
-                                onClick={() => setReviewImgModal(renTagUrl)}
+                                onClick={() => { setReviewImgBroken(false); setReviewImgModal(renTagUrl); }}
                                 style={{ border: '1px solid var(--glass-border)', borderRadius: 12, padding: 8, background: 'var(--glass-bg)', cursor: 'pointer' }}
                               >
-                                <img src={renTagUrl} alt="REN" style={{ width: 200, height: 130, objectFit: 'cover', borderRadius: 8 }} />
+                                <img
+                                  src={renTagUrl}
+                                  alt=""
+                                  onError={() => markRenImageBroken(renTagUrl)}
+                                  style={{ width: 200, height: 130, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                                />
                               </button>
-                            </div>
-                          )}
+                            ) : (
+                              <RenImagePlaceholder
+                                initial={initial}
+                                variant="thumb"
+                                label={lang === 'zh' ? '未上传 REN 执照' : 'REN tag not uploaded'}
+                                sublabel={reg.ren_number ? `REN ${reg.ren_number}` : (lang === 'zh' ? '申请人未提供图片' : 'Applicant did not provide an image')}
+                              />
+                            )}
+                          </div>
 
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                             {reg.verification_status === 'pending' ? (

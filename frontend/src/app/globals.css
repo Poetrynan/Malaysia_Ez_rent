@@ -401,6 +401,19 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px var(--primary-light);
 }
+/* Hide browser-native password reveal — custom Eye toggle is used instead */
+.form-input[type="password"]::-ms-reveal,
+.form-input[type="password"]::-ms-clear {
+  display: none;
+}
+.form-input.form-input--masked {
+  -webkit-text-security: disc;
+  text-security: disc;
+}
+.form-input.form-input--masked.revealed {
+  -webkit-text-security: none;
+  text-security: none;
+}
 .form-select option { background: var(--bg-surface-solid); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
