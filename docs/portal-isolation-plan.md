@@ -33,7 +33,7 @@
 | `src/app/login/page.tsx` | 登录页（有学生/中介 tab） | ✅ 重构 |
 | `src/lib/AuthContext.tsx` | 认证上下文（查 admin_users 表判断角色） | ✅ 重构 |
 | `src/middleware.ts` | 路由守卫（检查 Supabase session） | ✅ 新增注册路由白名单 |
-| `src/app/register-agent/page.tsx` | 现有中介申请页（需登录后填写） | ❌ 删除 |
+| `src/app/register-agent/page.tsx` | 现有中介申请页（无需登录） | ❌ 删除 |
 | `src/components/AdminPanel.tsx` | 中介端（有审核中介注册功能） | ✅ 改用新表 |
 | `src/app/(app)/layout.tsx` | 应用布局（侧边栏/顶栏） | ⚠️ 小改 |
 
@@ -74,7 +74,7 @@ AuthContext.resolveRole():
 ```
 Google 授权 → Supabase 自动创建账号
   → 检查 user_metadata 是否完整
-    → 不完整 → 强制跳转"完善资料"页（姓名、学校）→ 填完进入系统
+    → 不完整 → 强制跳转"完善资料"页（姓名、身份类型、IC/护照、证件照片等）→ 填完进入系统
     → 完整 → 直接进入系统
 ```
 
@@ -152,7 +152,6 @@ CREATE TABLE agent_profiles (
 
 -- 注意：auth_user_id 可以为 NULL（申请时未注册账号）
 -- 审批通过后，用户首次登录时自动关联 auth_user_id
-```
 
 -- RLS: 中介只能读自己的资料，管理员可以读所有
 ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
@@ -260,7 +259,7 @@ CREATE POLICY "Admins can update profiles"
 5. 验证通过 → 压缩并上传证件照片到 Supabase Storage
 6. supabase.auth.signUp({
      email, password,
-     options: { data: { role: 'tenant', full_name, identity_type, ic_or_passport } }
+     options: { data: { role: 'student', full_name, identity_type, ic_or_passport } }
    })
 7. 写入 tenant_profiles 表（证件信息、照片 URL）
 8. 注册成功 → 跳转到 /listings
@@ -276,33 +275,17 @@ CREATE POLICY "Admins can update profiles"
 
 ### 4.1.1 新建：`/register/complete-profile/page.tsx`（完善资料页 - Google 新用户）
 
-和上面的注册页几乎一样，只是：
-- 姓名从 Google 自动获取（可修改）
-- 邮箱从 Google 自动获取（不可修改）
-- 不需要验证码
+和租客注册页几乎一样，需要填写：
+- 姓名（从 Google 自动获取，可修改）
+- 邮箱（从 Google 自动获取，不可修改）
+- 身份类型（马来西亚本地人/国际学生/其他）
+- IC/护照号码 + 证件照片（根据身份类型）
+- 选填：学校、学生证、工作牌
+
+**区别**：
+- 不需要邮箱验证码（Google 已验证邮箱）
 - 不需要设置密码（Google 登录不需要密码）
-
-### 4.1.2 新建 Supabase 表：`tenant_profiles`（租客资料表）
-
-```sql
-CREATE TABLE tenant_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL UNIQUE,
-  full_name TEXT NOT NULL,
-  identity_type TEXT NOT NULL,  -- 'malaysian' | 'international_student' | 'international_other'
-  ic_number TEXT,               -- 马来西亚本地人的 IC 号码
-  passport_number TEXT,         -- 国际人士的护照号码
-  ic_photo_front_url TEXT,      -- IC 正面照片
-  ic_photo_back_url TEXT,       -- IC 反面照片
-  passport_photo_url TEXT,      -- 护照照片
-  student_id_photo_url TEXT,    -- 学生证照片（选填）
-  work_permit_photo_url TEXT,   -- 工作牌照片（选填）
-  school_name TEXT,             -- 学校名称（选填）
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+- 此页面无法跳过，必须填完才能进入系统
 
 ### 4.2 新建：`/register/agent/page.tsx`（中介注册页）
 
@@ -336,17 +319,13 @@ CREATE TABLE tenant_profiles (
   │  REN 执照照片 *             │
   │  [上传区域]                 │
   │                             │
-  │  密码 *                     │
-  │  [________________]         │
-  │                             │
-  │  确认密码 *                 │
-  │  [________________]         │
-  │                             │
   │  [提交申请]                 │
   │                             │
   │  已有账号？去登录             │
   └─────────────────────────────┘
 ```
+
+**注意**：中介申请时不需要设置密码。审批通过后，首次登录时才设置密码。
 
 **注册逻辑（无需登录）**：
 ```
@@ -407,13 +386,10 @@ CREATE TABLE email_verifications (
 ### 4.6 修改：`login/page.tsx`
 
 **改动**：
-- 去掉现有的 `roleView` 状态（学生/中介 tab 选择）
-- 登录页分两个 tab：
-  - **学生登录**：邮箱+密码 + Google 登录按钮
-  - **中介登录**：只有邮箱+密码，没有 Google 按钮
-- 底部增加注册链接：
-  - 学生 tab 下："还没有账号？注册" → `/register/student`
-  - 中介 tab 下："还没有账号？申请入驻" → `/register/agent`
+- 保留现有的学生/中介 tab 结构（`roleView`），但修改每个 tab 的内容
+- **学生 tab**：邮箱+密码表单 + Google 登录按钮 + "还没有账号？注册"链接
+- **中介 tab**：只有邮箱+密码表单 + "还没有账号？申请入驻"链接（无 Google 按钮）
+- 去掉现有的 Magic Link 登录方式，改为邮箱+密码
 
 **学生登录流程**：
 ```
@@ -505,13 +481,16 @@ const resolveRole = async (user) => {
 
 | 文件路径 | 类型 | 说明 |
 |----------|------|------|
-| `src/app/register/student/page.tsx` | 新建 | 学生注册页 |
-| `src/app/register/agent/page.tsx` | 新建 | 中介注册页 |
+| `src/app/register/student/page.tsx` | 新建 | 租客注册页（含证件上传） |
+| `src/app/register/agent/page.tsx` | 新建 | 中介注册页（无需密码） |
 | `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页 |
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
 | `src/app/api/send-verification/route.ts` | 新建 | 发送验证码 API |
 | `src/app/api/verify-code/route.ts` | 新建 | 校验验证码 API |
 | `src/components/VerificationInput.tsx` | 新建 | 6 位验证码输入组件 |
+| Supabase SQL | 新建 | tenant_profiles 表 |
+| Supabase SQL | 新建 | agent_profiles 表 |
+| Supabase SQL | 新建 | email_verifications 表 |
 | `docs/portal-isolation-plan.md` | 已有 | 本文档 |
 
 ---
@@ -545,16 +524,17 @@ const resolveRole = async (user) => {
 
 | 阶段 | 内容 | 时间 |
 |------|------|------|
-| 1 | 建表（agent_profiles + email_verifications） | 0.5h |
+| 1 | 建表（tenant_profiles + agent_profiles + email_verifications） | 0.5h |
 | 2 | 邮箱验证码 API（send + verify） | 2h |
-| 3 | 学生注册页 | 2h |
-| 4 | 中介注册页 | 3h |
-| 5 | AuthContext 重构 | 2h |
-| 6 | 登录页改造 | 1h |
-| 7 | AdminPanel 审核适配 | 1h |
-| 8 | 中间件 + 路由守卫 | 0.5h |
-| 9 | 测试 + 修 bug | 2h |
-| **总计** | | **~14h（2天）** |
+| 3 | 租客注册页（含证件上传+图片压缩） | 3h |
+| 4 | Google 完善资料页 | 1.5h |
+| 5 | 中介注册页 | 2h |
+| 6 | AuthContext 重构 | 2h |
+| 7 | 登录页改造（学生/中介 tab + 密码登录） | 1.5h |
+| 8 | AdminPanel 审核适配 | 1h |
+| 9 | 中间件 + 路由守卫 | 0.5h |
+| 10 | 测试 + 修 bug | 3h |
+| **总计** | | **~17h（2-3天）** |
 
 ---
 
@@ -585,16 +565,43 @@ const resolveRole = async (user) => {
 
 ## 十、测试清单
 
-- [ ] 学生注册 → 邮箱验证码 → 注册成功 → 进入租客端
-- [ ] 中介注册 → 邮箱验证码 → 注册成功 → 等待审批
-- [ ] 中介审批通过 → 登录 → 进入中介端
+### 租客注册
+- [ ] 马来西亚本地人注册（IC 号码 + IC 正反面照片）→ 成功
+- [ ] 国际学生注册（护照号码 + 护照照片）→ 成功
+- [ ] 其他国际人士注册（护照号码 + 护照照片 + 工作牌）→ 成功
+- [ ] 选填项（学校、学生证、工作牌）不填也能注册
+- [ ] 图片压缩正常（大图片被压缩后上传）
+- [ ] 邮箱验证码发送 → 输入正确 → 通过
+- [ ] 邮箱验证码过期（5分钟）→ 输入后提示过期
+- [ ] 邮箱验证码错误 → 提示错误
+
+### Google 注册
+- [ ] Google 注册 → 首次登录 → 跳转到完善资料页
+- [ ] 完善资料页：姓名自动获取、邮箱不可修改
+- [ ] 填完证件信息 → 提交 → 进入系统
+- [ ] Google 登录（已有完整资料）→ 直接进入系统
+
+### 中介申请
+- [ ] 中介申请（无需登录）→ 邮箱验证码 → 提交成功
+- [ ] 中介申请不需要设置密码
+- [ ] 同一邮箱不能重复申请
+
+### 中介审批与登录
+- [ ] 中介审批通过 → 用邮箱登录 → 引导设置密码 → 进入中介端
 - [ ] 中介审批拒绝 → 登录 → 显示拒绝提示
-- [ ] 同一邮箱不能同时注册学生和中介
+- [ ] 中介审批中 → 登录 → 显示审批中提示
+- [ ] 未申请过的邮箱 → 登录 → 提示"请先申请入驻"
+
+### 路由隔离
 - [ ] 未登录用户不能访问 /listings 和 /admin/*
 - [ ] 学生不能访问 /admin/*
 - [ ] 中介不能访问 /listings
 - [ ] Guest 页面不受影响
-- [ ] Mock 模式下注册流程正常
+
+### 其他
+- [ ] 同一邮箱不能同时注册学生和中介
+- [ ] Mock 模式下所有流程正常
+- [ ] 密码强度校验（8位+大小写+数字）
 
 ---
 
