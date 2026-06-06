@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
+import { cleanupIncompleteOAuthSignupsAction } from '@/app/actions/cleanupIncompleteSignups';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey =
@@ -45,6 +46,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (authOk) {
+    // Non-blocking purge of Google signups that expired without completing profile
+    void cleanupIncompleteOAuthSignupsAction().catch(() => {});
+
     const { data: { user } } = await supabase.auth.getUser();
     const role = user?.user_metadata?.role;
 
