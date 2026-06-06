@@ -1027,7 +1027,7 @@ newAdmin = { email, display_name, phone, whatsapp, wechat_id }
 **表单改动后**：
 ```
 ┌─────────────────────────────────────┐
-│  手动添加中介                        │
+│  手动添加中介（仅超级管理员可用）     │
 ├─────────────────────────────────────┤
 │  邮箱 *          [______________]   │
 │  显示名称        [______________]   │
@@ -1040,6 +1040,15 @@ newAdmin = { email, display_name, phone, whatsapp, wechat_id }
 │  [创建账号]                          │
 └─────────────────────────────────────┘
 ```
+
+**权限限制**：
+- 只有 `adminRole === 'super_admin'` 才能看到"手动添加中介"按钮
+- 普通中介（`editor`）看不到这个功能
+- 如果超级管理员也不方便操作，开发者可以直接在 Supabase 后台手动创建：
+  1. Authentication → Users → 新建用户（填邮箱、密码）
+  2. admin_users 表 → 插入记录（role: 'editor'）
+  3. agent_profiles 表 → 插入记录（status: 'approved'）
+  4. Storage → 上传 REN 照片 → 填入 URL
 
 ---
 
