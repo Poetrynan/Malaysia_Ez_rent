@@ -476,6 +476,12 @@ const resolveRole = async (user) => {
 
 现有的中介申请页删除，由新的 `/register/agent/page.tsx` 替代。
 
+**同时删除以下站内消息功能**（改用邮件通知）：
+- `register-agent/page.tsx` 中的 Supabase Realtime 订阅（监听审批状态变化）
+- `register-agent/page.tsx` 中的 `realtimeBanner` 状态和 UI
+- AdminPanel 中审批通过/拒绝时发送站内通知的逻辑（`ez_user_notifications`）
+- 侧边栏中的中介审批状态提醒（`agentRegStatus` 相关的 banner）
+
 ### 4.10 修改：`AdminPanel.tsx`
 
 **改动**：
