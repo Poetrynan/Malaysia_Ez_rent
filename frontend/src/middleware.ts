@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
   if (role === 'agent') {
     if (!pathname.startsWith('/admin/')) {
       const adminHomeUrl = request.nextUrl.clone();
-      adminHomeUrl.pathname = '/admin/properties';
+      adminHomeUrl.pathname = '/admin/dashboard';
       return NextResponse.redirect(adminHomeUrl);
     }
   } else {

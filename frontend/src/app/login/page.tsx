@@ -83,7 +83,7 @@ export default function LoginPage() {
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
         setLoading(false);
-        window.location.href = '/admin/properties';
+        window.location.href = '/admin/dashboard';
         return;
       } else {
         const isMockAdmin = emailLower === 'admin@ezrent.my';
@@ -93,7 +93,7 @@ export default function LoginPage() {
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
         setLoading(false);
-        window.location.href = isMockAdmin ? '/admin/properties' : '/listings';
+        window.location.href = isMockAdmin ? '/admin/dashboard' : '/listings';
         return;
       }
     }
@@ -156,7 +156,7 @@ export default function LoginPage() {
 
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
       setLoading(false);
-      window.location.href = '/admin/properties';
+      window.location.href = '/admin/dashboard';
     } else {
       if (metadataRole && metadataRole !== 'student') {
         await supabase.auth.signOut();
@@ -187,7 +187,7 @@ export default function LoginPage() {
     localStorage.setItem('ez_logged_in', '1');
     localStorage.setItem('ez_tenant_id', role === 'admin' ? 'admin-999' : 'tenant-123');
     document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-    window.location.href = role === 'admin' ? '/admin/properties' : '/listings';
+    window.location.href = role === 'admin' ? '/admin/dashboard' : '/listings';
   };
 
   const handleGoogleLogin = async () => {
@@ -201,7 +201,7 @@ export default function LoginPage() {
       localStorage.setItem('ez_tenant_id', tenantId);
       localStorage.setItem('ez_logged_in', '1');
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
-      window.location.href = isAdmin ? '/admin/properties' : '/listings';
+      window.location.href = isAdmin ? '/admin/dashboard' : '/listings';
       return;
     }
     const supabase = createClient();

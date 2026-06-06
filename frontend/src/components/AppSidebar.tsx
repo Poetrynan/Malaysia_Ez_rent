@@ -19,7 +19,7 @@ export default function AppSidebar() {
 
   const handleRoleChange = (newRole: 'student' | 'admin') => {
     setRole(newRole);
-    router.push(newRole === 'admin' ? '/admin/properties' : '/listings');
+    router.push(newRole === 'admin' ? '/admin/dashboard' : '/listings');
   };
 
   return (
