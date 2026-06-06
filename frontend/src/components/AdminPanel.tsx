@@ -4249,7 +4249,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             </div>
           )}
 
-          {/* Admin detail drawer — same pattern as listings browse */}
+          {/* Admin detail modal — centered, blur backdrop (no dimming) */}
           {selectedAdminDetail && (() => {
               const admin = selectedAdminDetail;
               const isSuper = admin.role === 'super_admin';
@@ -4267,18 +4267,28 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 ['REN', admin.ren_number],
                 joinedAt ? [lang === 'zh' ? '加入时间' : 'Joined', joinedAt] : null,
               ];
+              const blurBackdrop: React.CSSProperties = {
+                position: 'fixed', inset: 0, zIndex: 300,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                background: 'transparent',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              };
 
               return (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex' }}>
-                  <div onClick={() => setSelectedAdminDetail(null)} style={{ flex: 1, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
-                  <div style={{
-                    width: 'min(640px, 95vw)', height: '100vh', overflowY: 'auto',
-                    background: 'var(--bg-surface-solid)', borderLeft: '1px solid var(--glass-border)',
-                    boxShadow: '-20px 0 60px rgba(0,0,0,0.4)',
-                    animation: 'slideInRight 0.3s cubic-bezier(0.16,1,0.3,1)',
-                  }}>
+                <div onClick={() => setSelectedAdminDetail(null)} style={blurBackdrop}>
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    className="glass-card"
+                    style={{
+                      width: '100%', maxWidth: 600, maxHeight: '88vh', overflow: 'auto',
+                      padding: 0, borderRadius: 18,
+                      boxShadow: '0 24px 48px rgba(0,0,0,0.12)',
+                      animation: 'scaleIn 0.2s ease',
+                    }}
+                  >
                     <div style={{
-                      position: 'relative', height: 220, overflow: 'hidden',
+                      position: 'relative', height: 180, overflow: 'hidden', borderRadius: '18px 18px 0 0',
                       background: isSuper
                         ? 'linear-gradient(135deg, var(--accent), var(--warning))'
                         : 'linear-gradient(135deg, var(--primary), #0B4A6F)',
@@ -4316,7 +4326,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                       </span>
                     </div>
 
-                    <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
                       <div>
                         <h2 style={{ fontSize: '1.2rem', marginBottom: 4 }}>{admin.display_name || admin.email}</h2>
                         {admin.agency_name && (
@@ -4396,9 +4406,10 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               <div
                 onClick={() => setAdminImgModal(null)}
                 style={{
-                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10000,
+                  position: 'fixed', inset: 0, zIndex: 10000,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-                  cursor: 'pointer',
+                  cursor: 'pointer', background: 'transparent',
+                  backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 }}
               >
                 <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}>
@@ -4419,7 +4430,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               </div>
             )}
 
-          {/* Provision agent drawer */}
+          {/* Provision agent modal — centered, blur backdrop */}
           {showAddAdmin && (() => {
             const closeProvisionModal = () => {
               if (addingAdmin) return;
@@ -4455,15 +4466,24 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             );
 
             return (
-              <div style={{ position: 'fixed', inset: 0, zIndex: 301, display: 'flex' }}>
-                <div onClick={closeProvisionModal} style={{ flex: 1, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
+              <div
+                onClick={closeProvisionModal}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 301,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                  background: 'transparent',
+                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                }}
+              >
                 <div
+                  onClick={e => e.stopPropagation()}
+                  className="glass-card"
                   style={{
-                    width: 'min(720px, 95vw)', height: '100vh', overflowY: 'auto',
-                    background: 'var(--bg-surface-solid)', borderLeft: '1px solid var(--glass-border)',
-                    boxShadow: '-20px 0 60px rgba(0,0,0,0.4)',
-                    animation: 'slideInRight 0.3s cubic-bezier(0.16,1,0.3,1)',
+                    width: '100%', maxWidth: 720, maxHeight: '90vh',
                     display: 'flex', flexDirection: 'column',
+                    padding: 0, borderRadius: 18, overflow: 'hidden',
+                    boxShadow: '0 24px 48px rgba(0,0,0,0.12)',
+                    animation: 'scaleIn 0.2s ease',
                   }}
                 >
                   <div style={{
