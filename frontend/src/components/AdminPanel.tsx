@@ -5191,7 +5191,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             <button
               className="btn btn-primary"
               onClick={handleSaveProfile}
-              style={{ marginTop: 24, width: '100%', maxWidth: 280, padding: '12px' }}
+              style={{ display: 'block', margin: '24px auto 0', width: '100%', maxWidth: 280, padding: '12px' }}
             >
               {lang === 'zh' ? '保存个人资料' : 'Save Profile'}
             </button>
