@@ -63,11 +63,34 @@ AuthContext.resolveRole():
 
 ## 二、目标架构
 
+### 登录方式决策（2026-06-06 讨论确定）
+
+| 角色 | 注册 | 登录 | Google 登录 |
+|------|------|------|------------|
+| 学生 | 邮箱+密码+填表+验证码 | 邮箱+密码 **或** Google | ✅ 首次需完善资料 |
+| 中介 | 填表申请（无需密码） | 邮箱+密码（审批通过后） | ❌ 不提供 |
+
+**学生 Google 登录流程**：
+```
+Google 授权 → Supabase 自动创建账号
+  → 检查 user_metadata 是否完整
+    → 不完整 → 强制跳转"完善资料"页（姓名、学校）→ 填完进入系统
+    → 完整 → 直接进入系统
+```
+
+**中介为什么不能用 Google**：
+- 中介需要提交 REN 牌照等资料，Google 登录无法收集
+- 中介必须走完整申请流程，审批通过后才能登录
+- 登录页只提供邮箱+密码，没有 Google 按钮
+
 ### 新流程
 
 ```
-学生注册 → /register/student → 填表 → 邮箱验证码 → 注册成功 → 永远是学生 → /listings
-中介注册 → /register/agent   → 填表 → 邮箱验证码 → 注册成功 → 等审批 → 审批通过 → /admin/*
+学生注册 → /register/student → 填表 → 发验证码 → 验证通过 → 设置密码 → 注册完成 → /listings
+学生登录 → 邮箱+密码 或 Google（首次需完善资料）
+
+中介申请 → /register/agent → 填表+邮箱验证 → 提交 → 等审批
+中介登录 → 审批通过 → 用邮箱+密码登录 → /admin/*
 
 两个独立入口，两个独立账号，互不相通。
 ```
@@ -167,11 +190,15 @@ CREATE POLICY "Admins can update profiles"
   │                             │
   │  [注册]                     │
   │                             │
+  │  ───── 或 ─────             │
+  │                             │
+  │  [🔵 Google 注册]           │
+  │                             │
   │  已有账号？去登录             │
   └─────────────────────────────┘
 ```
 
-**注册逻辑**：
+**注册逻辑（邮箱）**：
 ```
 1. 用户填表
 2. 点击"发送验证码" → 调用 /api/send-verification
@@ -183,6 +210,37 @@ CREATE POLICY "Admins can update profiles"
    })
 6. 注册成功 → 跳转到 /listings
 ```
+
+**注册逻辑（Google）**：
+```
+1. 用户点击 Google 注册
+2. Google 授权 → Supabase 自动创建账号
+3. 跳转到"完善资料"页面（姓名、学校）
+4. 填完 → 更新 user_metadata → 跳转到 /listings
+```
+
+### 4.1.1 新建：`/register/complete-profile/page.tsx`（完善资料页 - Google 新用户）
+
+```
+页面结构：
+  ┌─────────────────────────────┐
+  │  "完善您的资料"               │
+  ├─────────────────────────────┤
+  │  姓名 *（Google 已获取，可修改）│
+  │  [________________]         │
+  │                             │
+  │  学校名称 *                 │
+  │  [________________]         │
+  │                             │
+  │  [确认]                     │
+  └─────────────────────────────┘
+```
+
+**逻辑**：
+- Google 登录后检查 user_metadata.role 是否存在
+- 不存在 → 强制跳转到此页面
+- 填完 → 写入 user_metadata → 进入系统
+- 此页面无法跳过或返回
 
 ### 4.2 新建：`/register/agent/page.tsx`（中介注册页）
 
@@ -287,11 +345,30 @@ CREATE TABLE email_verifications (
 ### 4.6 修改：`login/page.tsx`
 
 **改动**：
-- 去掉 `roleView` 状态（学生/中介 tab 选择）
-- 登录页只保留一个统一的登录表单（邮箱 + 密码）
-- 底部增加两个注册链接：
-  - "还没有学生账号？注册" → `/register/student`
-  - "中介入驻" → `/register/agent`（无需登录，直接跳转）
+- 去掉现有的 `roleView` 状态（学生/中介 tab 选择）
+- 登录页分两个 tab：
+  - **学生登录**：邮箱+密码 + Google 登录按钮
+  - **中介登录**：只有邮箱+密码，没有 Google 按钮
+- 底部增加注册链接：
+  - 学生 tab 下："还没有账号？注册" → `/register/student`
+  - 中介 tab 下："还没有账号？申请入驻" → `/register/agent`
+
+**学生登录流程**：
+```
+邮箱+密码 → supabase.auth.signInWithPassword → 成功 → 检查 role → /listings
+Google → supabase.auth.signInWithOAuth → 成功 → 检查 user_metadata →
+  → 有 role → /listings
+  → 无 role → /register/complete-profile（完善资料）
+```
+
+**中介登录流程**：
+```
+邮箱+密码 → supabase.auth.signInWithPassword → 成功 → 检查 agent_profiles →
+  → approved → 查 admin_users → /admin/*
+  → pending → 提示"审批中"
+  → rejected → 提示"申请未通过"
+  → 不存在 → 提示"请先申请入驻"
+```
 
 **中介首次登录逻辑**：
 - 审批通过的中介首次登录时，如果还没有 Supabase 账号 → 引导设置密码 → 自动创建账号
@@ -346,8 +423,9 @@ const resolveRole = async (user) => {
 ### 4.8 修改：`middleware.ts`
 
 **改动**：
-- 注册路由加入白名单：`/register/student`、`/register/agent`
+- 注册路由加入白名单：`/register/student`、`/register/agent`、`/register/complete-profile`
 - `/api/*` 路由放行（API 不需要认证）
+- 中介登录后检测 agent_profiles 状态，未审批的不能进入 /admin/*
 
 ### 4.9 删除：`register-agent/page.tsx`
 
@@ -367,6 +445,7 @@ const resolveRole = async (user) => {
 |----------|------|------|
 | `src/app/register/student/page.tsx` | 新建 | 学生注册页 |
 | `src/app/register/agent/page.tsx` | 新建 | 中介注册页 |
+| `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页 |
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
 | `src/app/api/send-verification/route.ts` | 新建 | 发送验证码 API |
 | `src/app/api/verify-code/route.ts` | 新建 | 校验验证码 API |
