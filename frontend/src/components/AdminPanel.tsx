@@ -4897,7 +4897,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
       {/* ── PROFILE TAB ── */}
       {tab === 'profile' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640, width: '100%', margin: '0 auto' }}>
           <div className="glass-card" style={{ width: '100%' }}>
             <h3 style={{ fontSize: '1.05rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Edit3 size={18} style={{ color: 'var(--primary)' }} />
@@ -4974,7 +4974,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, maxWidth: 520 }}>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '显示名称 / 姓名' : 'Display Name / Name'}</label>
                   <input
@@ -4998,7 +4998,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12, maxWidth: 520 }}>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '联系电话' : 'Contact Phone'}</label>
                   <input
@@ -5022,7 +5022,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12, maxWidth: 520 }}>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '微信号 (WeChat ID)' : 'WeChat ID'}</label>
                   <input
@@ -5052,18 +5052,19 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               <h4 style={{ fontSize: '0.88rem', color: 'var(--primary)', marginBottom: 12 }}>
                 {lang === 'zh' ? '2. 所属代理公司信息' : '2. Real Estate Agency Info'}
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label>{lang === 'zh' ? '公司名称' : 'Agency Company Name'}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={myProfile.agency_name}
-                    onChange={e => setMyProfile(prev => ({ ...prev, agency_name: e.target.value }))}
-                    placeholder="VIVAHOMES REALTY SDN. BHD"
-                  />
-                </div>
+              <div className="form-group">
+                <label>{lang === 'zh' ? '公司名称' : 'Agency Company Name'}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={myProfile.agency_name}
+                  onChange={e => setMyProfile(prev => ({ ...prev, agency_name: e.target.value }))}
+                  placeholder="VIVAHOMES REALTY SDN. BHD"
+                  style={{ maxWidth: 480 }}
+                />
+              </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12, maxWidth: 400 }}>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '执照编号' : 'License / REN Number'}</label>
                   <input
@@ -5115,7 +5116,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                   value={myProfile.agency_address}
                   onChange={e => setMyProfile(prev => ({ ...prev, agency_address: e.target.value }))}
                   placeholder={lang === 'zh' ? '公司完整的办公地址' : 'Full office address of the agency'}
-                  style={{ resize: 'vertical' }}
+                  style={{ resize: 'vertical', maxWidth: 520 }}
                 />
               </div>
             </div>
@@ -5134,11 +5135,11 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                   value={myProfile.bio}
                   onChange={e => setMyProfile(prev => ({ ...prev, bio: e.target.value }))}
                   placeholder={lang === 'zh' ? '简单介绍您的租客服务特色，帮助租客建立信任。' : 'Introduce yourself and your specialization to tenants.'}
-                  style={{ resize: 'vertical' }}
+                  style={{ resize: 'vertical', maxWidth: 520 }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 100px)', gap: 12, marginTop: 12 }}>
                 <div className="form-group">
                   <label>{lang === 'zh' ? '从业年限 (年)' : 'Experience (Years)'}</label>
                   <input
@@ -5170,6 +5171,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                   value={myProfile.area_expertise}
                   onChange={e => setMyProfile(prev => ({ ...prev, area_expertise: e.target.value }))}
                   placeholder="Bandar Sunway, Subang Jaya, Petaling Jaya"
+                  style={{ maxWidth: 520 }}
                 />
               </div>
 
@@ -5181,6 +5183,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                   value={myProfile.property_types}
                   onChange={e => setMyProfile(prev => ({ ...prev, property_types: e.target.value }))}
                   placeholder="Condo, Apartment, Room, Studio"
+                  style={{ maxWidth: 520 }}
                 />
               </div>
             </div>
@@ -5188,7 +5191,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             <button
               className="btn btn-primary"
               onClick={handleSaveProfile}
-              style={{ marginTop: 24, width: '100%', padding: '12px' }}
+              style={{ marginTop: 24, width: '100%', maxWidth: 280, padding: '12px' }}
             >
               {lang === 'zh' ? '保存个人资料' : 'Save Profile'}
             </button>
