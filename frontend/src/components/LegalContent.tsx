@@ -52,7 +52,7 @@ function TermsContent({ lang }: { lang: string }) {
       </Section>
 
       <Section title="2. 账户注册与安全">
-        <p>2.1 本平台支持 Google OAuth 和 Magic Link（邮箱验证码）两种登录方式。注册即自动创建您的账户。</p>
+        <p>2.1 本平台支持 Google OAuth 和邮箱密码两种登录方式。注册时需通过邮箱验证码验证您的邮箱地址，验证成功后即自动创建您的账户。</p>
         <p>2.2 您有责任妥善保管您的账户凭证。因您自身原因导致的账户被盗用或密码泄露，本平台不承担责任。</p>
         <p>2.3 中介用户需通过独立的注册流程，提交有效 REN（Real Estate Negotiator）牌照编号及相关证件，经超级管理员审核通过后方可获得中介权限。</p>
         <p>2.4 本平台保留对涉嫌违规账户进行暂停或永久封禁的权利。</p>
@@ -117,7 +117,7 @@ function TermsContent({ lang }: { lang: string }) {
       </Section>
 
       <Section title="2. Account Registration &amp; Security">
-        <p>2.1 The Platform supports Google OAuth and Magic Link (email verification code) login methods. Registration automatically creates your account.</p>
+        <p>2.1 The Platform supports Google OAuth and email/password login methods. During registration, your email address is verified via a one-time verification code. Your account is created automatically upon successful verification.</p>
         <p>2.2 You are responsible for safeguarding your account credentials. The Platform is not liable for unauthorized access caused by your own negligence.</p>
         <p>2.3 Agent users must complete a separate registration process, submitting a valid REN (Real Estate Negotiator) license number and relevant credentials. Agent privileges are granted only after review and approval by a Super Admin.</p>
         <p>2.4 The Platform reserves the right to suspend or permanently ban accounts suspected of violations.</p>
@@ -185,7 +185,7 @@ function PrivacyContent({ lang }: { lang: string }) {
 
       <Section title="2. 我们收集的信息">
         <p><strong>2.0 游客浏览：</strong>未登录用户可以浏览房源信息。游客浏览不会被记录个人信息，浏览行为不会与任何个人身份关联。</p>
-        <p><strong>2.1 账户信息：</strong>通过 Google OAuth 或 Magic Link 注册时，我们会获取您的邮箱地址和显示名称。</p>
+        <p><strong>2.1 账户信息：</strong>通过 Google OAuth 注册时，我们会获取您的邮箱地址和显示名称；通过邮箱密码注册时，我们会获取您的邮箱地址。</p>
         <p><strong>2.2 个人资料信息：</strong>您在个人资料页主动填写的姓名、电话号码、学校/公司名称、护照号码或马来西亚身份证号码（IC）、单元号（由中介在创建租约时填入）。</p>
         <p><strong>2.3 证件照片：</strong>您上传的身份证件照片（护照/IC）和学生证照片，用于中介审核租约资格。</p>
         <p><strong>2.4 租赁相关信息：</strong>您提交的租房意向、租约信息（起止日期、租金、押金）、每月付款记录及支付凭证（转账截图）。</p>
@@ -273,7 +273,7 @@ function PrivacyContent({ lang }: { lang: string }) {
 
       <Section title="2. Information We Collect">
         <p><strong>2.0 Guest Browsing:</strong> Unregistered users may browse property listings as guests. Guest browsing is not recorded and is not associated with any personal identity.</p>
-        <p><strong>2.1 Account Information:</strong> When you register via Google OAuth or Magic Link, we obtain your email address and display name.</p>
+        <p><strong>2.1 Account Information:</strong> When you register via Google OAuth, we obtain your email address and display name. When you register via email/password, we obtain your email address.</p>
         <p><strong>2.2 Profile Information:</strong> Information you voluntarily provide on your profile page, including name, phone number, school/company name, passport number or Malaysian IC number, and unit number (set by your agent when creating a lease).</p>
         <p><strong>2.3 Credential Photos:</strong> ID document photos (passport/IC) and student card photos you upload for agent lease qualification review.</p>
         <p><strong>2.4 Rental-Related Information:</strong> Rental interests you submit, lease details (start/end dates, rent, deposits), monthly payment records, and payment evidence (transfer screenshots).</p>
