@@ -109,27 +109,26 @@ Google 授权 → Supabase 自动创建账号
 
 ## 三、数据库设计
 
-### 3.0 新建表：`tenant_profiles`（租客资料表）
+### 3.0 扩展现有表：`users`（租客证件资料）
+
+**不需要新建 `tenant_profiles` 表**，直接在现有 `users` 表上新增字段：
 
 ```sql
-CREATE TABLE tenant_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL UNIQUE,
-  full_name TEXT NOT NULL,
-  identity_type TEXT NOT NULL,  -- 'malaysian' | 'international_student' | 'international_other'
-  ic_number TEXT,               -- 马来西亚本地人 IC 号码
-  passport_number TEXT,         -- 国际人士护照号码
-  ic_photo_front_url TEXT,      -- IC 正面照片
-  ic_photo_back_url TEXT,       -- IC 反面照片
-  passport_photo_url TEXT,      -- 护照照片
-  student_id_photo_url TEXT,    -- 学生证照片（选填）
-  work_permit_photo_url TEXT,   -- 工作牌照片（选填）
-  school_name TEXT,             -- 学校名称（选填）
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS identity_type VARCHAR(30)
+  CHECK (identity_type IN ('malaysian', 'international_student', 'international_other'));
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ic_photo_front_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ic_photo_back_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS passport_photo_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_permit_photo_url TEXT;
 ```
+
+**现有 `users` 表已有字段**（可直接复用）：
+- `passport_number` → 护照号码
+- `local_id_number` → IC 号码
+- `school` → 学校名称
+- `student_card_url` → 学生证照片
+- `document_url` → 通用证件照片
 
 ### 3.1 新建表：`agent_profiles`（中介资料表）
 
@@ -259,18 +258,19 @@ CREATE POLICY "Admins can update profiles"
 5. 验证通过 → 压缩并上传证件照片到 Supabase Storage
 6. supabase.auth.signUp({
      email, password,
-     options: { data: { role: 'student', full_name, identity_type, ic_or_passport } }
+     options: { data: { role: 'student', full_name, identity_type } }
    })
-7. 写入 tenant_profiles 表（证件信息、照片 URL）
-8. 注册成功 → 跳转到 /listings
+7. 触发器自动创建 public.users 记录
+8. 更新 users 表：填入证件信息、照片 URL（identity_type, local_id_number/passport_number, ic_photo_front_url 等）
+9. 注册成功 → 跳转到 /listings
 ```
 
 **注册逻辑（Google）**：
 ```
 1. 用户点击 Google 注册
-2. Google 授权 → Supabase 自动创建账号
+2. Google 授权 → Supabase 自动创建账号 → 触发器自动创建 public.users 记录
 3. 跳转到"完善资料"页面（补填所有必填信息 + 上传证件）
-4. 填完 → 写入 tenant_profiles → 更新 user_metadata → 跳转到 /listings
+4. 填完 → 更新 users 表（证件信息、照片 URL）→ 更新 user_metadata → 跳转到 /listings
 ```
 
 ### 4.1.1 新建：`/register/complete-profile/page.tsx`（完善资料页 - Google 新用户）
@@ -536,42 +536,95 @@ const resolveRole = async (user) => {
 | `src/app/api/send-rejection-email/route.ts` | 新建 | 审批拒绝通知邮件 API（Resend） |
 | `src/components/VerificationInput.tsx` | 新建 | 6 位验证码输入组件 |
 
-### 5.2 新建 Supabase 表
+### 5.2 Supabase 表处理
+
+**新建表**：
 
 | 表名 | 说明 | 关联 |
 |------|------|------|
-| `tenant_profiles` | 租客证件资料 | `auth_user_id → auth.users.id` |
 | `agent_profiles` | 中介申请资料 | `auth_user_id → auth.users.id`（可 NULL） |
 | `email_verifications` | 邮箱验证码 | 无外键，按 email 查询 |
 
+**删除的表**：
+无。`agent_registrations` 保留但不再使用。
+
+**扩展现有表**：
+
+| 表名 | 新增字段 | 说明 |
+|------|---------|------|
+| `users` | `identity_type` | 身份类型（malaysian/international_student/international_other） |
+| `users` | `ic_photo_front_url` | IC 正面照片 URL |
+| `users` | `ic_photo_back_url` | IC 反面照片 URL |
+| `users` | `passport_photo_url` | 护照照片 URL |
+| `users` | `work_permit_photo_url` | 工作牌照片 URL（选填） |
+
+**不需要新建 `tenant_profiles` 表**：`users` 表已有 `passport_number`、`local_id_number`、`school`、`company`、`student_card_url`、`document_url` 等字段，直接复用。
+
 ### 5.2.1 现有表结构参考
 
-**`admin_users` 表**（手动创建，无 migration）：
+**`users` 表**（已有证件相关字段）：
 ```
 id UUID (关联 auth.users.id)
-email TEXT
-role TEXT ('super_admin' | 'editor')
-display_name TEXT
-phone TEXT
-whatsapp TEXT
-wechat_id TEXT
-ren_number TEXT          -- 迁移 030 新增
-ren_tag_url TEXT         -- 迁移 030 新增
+phone VARCHAR UNIQUE
+full_name VARCHAR
+avatar_url TEXT
+email VARCHAR
+passport_number VARCHAR        -- ✅ 已有
+school VARCHAR                 -- ✅ 已有
+company VARCHAR                -- ✅ 已有
+local_id_number VARCHAR        -- ✅ 已有（IC 号码）
+document_url TEXT              -- ✅ 已有
+student_card_url TEXT          -- ✅ 已有
+created_at TIMESTAMPTZ
+unit_number VARCHAR
+
+需要新增：
+identity_type VARCHAR         -- 'malaysian' | 'international_student' | 'international_other'
+ic_photo_front_url TEXT       -- IC 正面照片
+ic_photo_back_url TEXT        -- IC 反面照片
+passport_photo_url TEXT       -- 护照照片
+work_permit_photo_url TEXT    -- 工作牌照片（选填）
+```
+
+**`admin_users` 表**：
+```
+id UUID (关联 auth.users.id)
+email VARCHAR NOT NULL UNIQUE
+role VARCHAR DEFAULT 'editor' (CHECK: super_admin/editor)
+display_name VARCHAR
+phone VARCHAR
+whatsapp VARCHAR
+wechat_id VARCHAR
+avatar_url TEXT
+job_title VARCHAR DEFAULT 'Real Estate Negotiator'
+agency_name VARCHAR DEFAULT 'Malaysia Ez Rent'
+agency_license VARCHAR
+agency_address TEXT
+bio TEXT
+experience_years INTEGER DEFAULT 0
+experience_months INTEGER DEFAULT 0
+area_expertise ARRAY
+property_types ARRAY
+facebook_url TEXT
+website_url TEXT
+ren_number VARCHAR             -- ✅ 已有
+ren_tag_url TEXT               -- ✅ 已有
+payment_qr_code TEXT
 created_at TIMESTAMPTZ
 ```
 
-**`agent_registrations` 表**（迁移 022 创建）：
+**`agent_registrations` 表**（将被 `agent_profiles` 替代）：
 ```
 id UUID
 auth_user_id UUID (可 NULL)
-email VARCHAR(255) NOT NULL
-full_name VARCHAR(100) NOT NULL
-phone VARCHAR(20) NOT NULL (约束: ^601[0-9]{8,9}$)
-whatsapp VARCHAR(20) (约束: ^601[0-9]{8,9}$)
-agency_name VARCHAR(120) NOT NULL
-ren_number VARCHAR(20) NOT NULL (约束: ^REN[0-9]{4,7}$)
+email VARCHAR NOT NULL DEFAULT ''
+full_name VARCHAR NOT NULL
+phone VARCHAR NOT NULL (约束: ^601[0-9]{8,9}$)
+whatsapp VARCHAR (约束: ^601[0-9]{8,9}$)
+agency_name VARCHAR NOT NULL
+ren_number VARCHAR NOT NULL (约束: ^REN[0-9]{4,7}$)
 ren_tag_image_url TEXT NOT NULL
-verification_status VARCHAR(20) DEFAULT 'pending' (CHECK: pending/approved/rejected/suspended/banned)
+verification_status VARCHAR DEFAULT 'pending' (CHECK: pending/approved/rejected/suspended/banned)
 rejection_reason TEXT
 metadata JSONB
 created_at TIMESTAMPTZ
@@ -580,23 +633,15 @@ reviewed_at TIMESTAMPTZ
 reviewed_by UUID
 ```
 
-**`user_notifications` 表**（迁移 028 创建）：
+**`user_notifications` 表**：
 ```
 id UUID
 user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 title TEXT NOT NULL
 content TEXT NOT NULL
-type VARCHAR(50) DEFAULT 'system' (CHECK: system/announcement/update/bonus/agent_status)
+type VARCHAR DEFAULT 'system' (CHECK: system/announcement/update/bonus/agent_status)
 is_read BOOLEAN DEFAULT false
 created_at TIMESTAMPTZ
-```
-
-**`users` 表**（手动创建）：
-```
-id UUID (关联 auth.users.id)
-full_name TEXT
-avatar_url TEXT
-email TEXT
 ```
 
 **重要触发器**（迁移 036）：
@@ -605,7 +650,9 @@ email TEXT
 -- 1. 创建 public.users 记录
 -- 2. 如果 email 在 admin_users 中存在，自动关联 auth_user_id
 -- 3. 如果关联成功，自动插入 user_notifications（type='agent_status'）
--- ⚠️ 这个触发器在新系统中需要修改或删除
+-- ⚠️ 这个触发器在新系统中需要修改：
+--    - 删除插入 user_notifications 的逻辑（改用邮件通知）
+--    - 保留创建 public.users 和关联 admin_users 的逻辑
 ```
 
 ### 5.3 新建 Supabase Storage 路径
