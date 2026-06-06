@@ -431,6 +431,7 @@ Unified **document rules** for all tenants. Two **entry paths** (different UIs):
 - `token_hash` + `type` → `verifyOtp` (legacy email link, kept for backward compat)
 - Session cookies **must** be copied onto every redirect response (including `/profile` identity completion)
 - If `role` or `identity_type` missing after OAuth → redirect `/profile` **with cookies** (fixed 2026-06-06: previously dropped session → infinite login loop)
+- On successful OAuth, fires **non-blocking** `cleanupIncompleteOAuthSignupsAction()` to purge other users' expired incomplete signups (does not block login)
 - Login flows use `next=/listings` (never `next=/` — middleware sends `/` to `/guest`)
 - Failure → `/login?error=auth_failed`
 
@@ -448,6 +449,13 @@ Unified **document rules** for all tenants. Two **entry paths** (different UIs):
 - **Account deletion**: Server Action (`frontend/src/app/actions/deleteAccount.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` to handle tenant deactivation. 
   - **Day 0**: Instantly deletes auth-related rows (`tenant_interests`, `maintenance_requests`, `user_notifications`, `auth.users` row) to revoke login access immediately. The `public.users` row is kept with `avatar_url = 'DELETED:timestamp'` to retain documents (passport/IC) for 7 days as legal evidence.
   - **Day 7+**: During subsequent account deletions, any expired deactivated users are cleaned up. The cleanup script dissociates financial/rating rows by updating `tenant_id` or `user_id` to `null` on `leases`, `agent_ratings`, and `reviews` tables (preserving the agent's archived leases, ratings, and payment records intact), deletes the student's document images from Storage, and deletes the `public.users` record completely.
+- **Incomplete Google OAuth signup cleanup** (2026-06-06): Server Action `frontend/src/app/actions/cleanupIncompleteSignups.ts` permanently removes abandoned **Google login + never saved profile** accounts to avoid orphaned `auth.users` / `public.users` rows.
+  - **Eligible:** `identity_type` IS NULL, `public.users.created_at` older than **30 minutes**, OAuth provider `google`, not in `admin_users`, no rows in `leases` / `tenant_interests` / `maintenance_requests`.
+  - **Not eligible:** email-registered tenants, legacy tenants with business data, agents, anyone who saved `identity_type` on `/profile`.
+  - **Mid-session:** does **not** check active session — a user still on `/profile` after 30 minutes since first Google signup can be deleted; next request may fail auth until they sign in again (new account).
+  - **SQL:** `find_stale_incomplete_oauth_signups(stale_minutes)` in migration `045_cleanup_incomplete_oauth_signups.sql`.
+  - **Triggers:** (1) Vercel Cron `GET /api/cron/cleanup-incomplete-signups` every **30 minutes** (`frontend/vercel.json`); (2) opportunistic run on each successful `auth/callback` (Google login).
+  - **Deploy notes:** requires migration `045` + `SUPABASE_SERVICE_ROLE_KEY`. **`CRON_SECRET` is optional for platform use** — without it, cron returns 401 and scheduled cleanup is skipped; login-time opportunistic cleanup still runs when migration + service key are present. Set `CRON_SECRET` in Vercel when ready to enable cron (Vercel sends `Authorization: Bearer <CRON_SECRET>`).
 
 
 ## 8) Payment Evidence End-to-End

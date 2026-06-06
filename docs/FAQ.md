@@ -1258,6 +1258,48 @@ PropertyListings → Whole Unit 详情
 
 ---
 
+### Q: Google 登录了但没填完表，账号会一直占着数据库吗？
+
+**A:** 不会无限占着。系统会**自动清理**「Google 登录 + 从未在 `/profile` 保存成功」的过期账号。
+
+**什么叫「中间态」？**
+
+- 已有 Supabase 登录会话（`auth.users`）
+- 触发器已建 `public.users` 行（通常只有姓名、邮箱、头像）
+- `identity_type` 仍为空（没点保存，或保存未成功）
+- 产品路径：**登录后补资料** → `/profile`，不是 `/register/tenant`
+
+**清理规则（须同时满足）：**
+
+| 条件 | 说明 |
+|------|------|
+| Google OAuth | 只清 Google 登录账号，不动邮箱注册、老租客 |
+| `identity_type` 为空 | 从未完成身份验证保存 |
+| 建号超过 **30 分钟** | 按 `public.users.created_at` 计算，**不是**「最后一次操作」 |
+| 无业务数据 | 无租约、意向、报修 |
+| 非中介 | 不在 `admin_users` |
+
+**正在 `/profile` 填表也会被清吗？**
+
+会。清理**不区分**是否在填表、是否仍登录；满 30 分钟且未保存成功就可能被删。浏览器 cookie 可能短暂还在，刷新或保存时会失败，需用同一 Google 重新登录（会建新号）。
+
+**什么时候执行清理？**
+
+1. **Vercel 定时任务**：每 30 分钟调用 `/api/cron/cleanup-incomplete-signups`
+2. **Google 登录回调**：每次有人 Google 登录成功时，异步顺手清一批（不阻塞登录）
+
+**部署与鉴权：**
+
+| 配置项 | 是否必须 | 说明 |
+|--------|----------|------|
+| 迁移 `045_cleanup_incomplete_oauth_signups.sql` | ✅ 要跑清理 | 否则 RPC 不存在，清理静默失败 |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ 已有则够用 | 与账户注销等 Server Action 共用 |
+| `CRON_SECRET` | ❌ **可不先配** | 不配时定时任务返回 401，**不影响平台正常使用**；登录、浏览、填表不受影响。配好后定时清理才生效 |
+
+**相关代码：** `cleanupIncompleteSignups.ts`、`api/cron/cleanup-incomplete-signups/route.ts`、`auth/callback/route.ts`、`vercel.json`
+
+---
+
 ### Q: 什么是"路由"？工单是怎么自动发给对应中介的？
 
 **A:** "路由"就是"把东西送到对的人手里"，跟快递员根据地址送包裹是一个道理。

@@ -419,6 +419,7 @@ Storage Bucket：
 | `028_user_inbox_notifications.sql` | **收件箱系统**：创建 `user_notifications` 系统公告/消息通知表，添加 RLS 权限控制与未读统计 |
 | `029_update_admin_limits.sql` | **管理员上限优化**：重构限制 super_admin≤5 的触发器及邮箱自动关联逻辑 |
 | `030_agent_registration_cleanup.sql` | **中介审核清退规则**：添加中介注册申请记录删除 RLS 策略，并在审核拒绝或删除账号时同步执行物理数据清除 |
+| `045_cleanup_incomplete_oauth_signups.sql` | **Google 未完成补资料自动清理**：RPC `find_stale_incomplete_oauth_signups`；30 分钟内未保存 `identity_type` 的 Google OAuth 账号可被 Server Action 物理删除 |
 | `031_agent_pre_approval_notification.sql` | **离线审核通知触发器**：升级 handle_new_auth_user 触发器，在离线通过的中介后续完成系统首注登录时，自动补投”审核通过”系统通知消息 |
 | `032_lease_unit_number.sql` | **租约单元号 + 自动过期**：leases 加 unit_number；合约离开 active 时清空 users.unit_number 触发器；expire_ended_leases() 自动过期函数 |
 
