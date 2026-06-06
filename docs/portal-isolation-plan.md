@@ -347,6 +347,21 @@ CREATE POLICY "Admins can update profiles"
 4. 填完 → 更新 users 表（证件信息、照片 URL）→ 更新 user_metadata → 跳转到 /listings
 ```
 
+**已注册但未完整填写的用户**：
+```
+场景：
+  - 旧系统用户（迁移前注册，没有证件信息）
+  - Google 注册后跳过了完善资料（理论上不允许，但以防万一）
+  - 邮箱注册后未上传证件
+
+处理：
+  1. 用户登录 → AuthContext 检查 users.identity_type 是否为空
+  2. 为空 → 弹出 IdentityPromptModal（补填弹窗）
+  3. 用户点击"立即填写" → 跳转到补填页面（类似 complete-profile）
+  4. 填完 → 更新 users 表 → 不再弹出
+  5. 点击"稍后提醒" → 关闭弹窗，记录次数（最多 3 次）
+```
+
 ### 4.1.1 新建：`/register/complete-profile/page.tsx`（完善资料页 - Google 新用户）
 
 和租客注册页的第二步一样（分步选择身份），顶部显示敏感信息说明。
