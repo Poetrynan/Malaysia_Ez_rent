@@ -223,7 +223,7 @@ SSE 流式返回:
 
 | 表名 | 说明 |
 |------|------|
-| `users` | 租客用户（护照/IC、学校、公司、证件照） |
+| `users` | 租客用户（`identity_type`、护照/IC、分身份证件 URL、学校、公司） |
 | `admin_users` | 管理员/中介（角色、收款码、REN牌照） |
 | `communities` | 小区/公寓（GPS 坐标、配套设施） |
 | `units` | 房源（房型、租金、状态、pgvector 向量） |

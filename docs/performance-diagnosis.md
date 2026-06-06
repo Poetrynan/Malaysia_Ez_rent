@@ -23,8 +23,9 @@
 | ✅ 删房源即时 UI | 删除成功后本地 `setUnits` / `setLeases` / `setInterests` 过滤，并 `refreshListingsCache({ force: true })` 同步租客端列表缓存 | `AdminPanel.tsx` |
 | ✅ P0-2 内部 tab 冗余请求 | 移除内部 tab 栏 onClick 中的 `loadAll(true)`、`fetchFeedbacks()`、`fetchAllReviews()`；数据由 `resolvedTab` effect 首次加载 + 增删改后 `loadAll(true)` 保证新鲜度 | `AdminPanel.tsx` |
 | ✅ P2-3 ReviewSystem 批量查询 | 评价列表改为一次 `users.in('id', userIds)` 批量取姓名，不再每条 review 单独查询 | `ReviewSystem.tsx` |
+| ✅ 中介房源浏览独立化 | `AdminListingsBrowse` 替代 `PropertyListings readOnly`；不加载收藏/意向/合租 state | `AdminListingsBrowse.tsx`, `AdminShell.tsx` |
 
-**说明：** 中介「房源浏览」（`/admin/listings`）和「消息」（`/admin/inbox`）仍是独立组件，切到这两页时 `AdminPanel` 会卸载；但「房源浏览」已受益于 `ListingsDataContext` 缓存。
+**说明：** 中介「房源浏览」（`/admin/listings`）使用独立轻量组件 `AdminListingsBrowse`（不再复用 `PropertyListings readOnly`）；「消息」（`/admin/inbox`）仍是独立组件。切到这两页时 `AdminPanel` 会卸载，但房源浏览已受益于 `ListingsDataContext` 缓存且不再加载租客意向/收藏逻辑。
 
 ---
 
@@ -34,7 +35,7 @@
 |--------|------|------|----------|------|
 | 🔴 P0 | AdminPanel 每次路由切换完整重新挂载 | ✅ 已修复（主 tab） | 管理员 dashboard/properties/leases 等 | `AdminShell.tsx` |
 | 🔴 P0 | Tab click handler 重复请求数据 | ✅ 已修复 | 内部 tab 栏（`hideTabBar` 后日常不走） | `AdminPanel.tsx` |
-| — | 房源列表每次进入重新请求 + 转圈 | ✅ 已修复 | 租客 `/listings`、中介 `/admin/listings`、游客 `/guest` | `ListingsDataContext.tsx` |
+| — | 房源列表每次进入重新请求 + 转圈 | ✅ 已修复 | 租客 `/listings`、中介 `/admin/listings`（`AdminListingsBrowse`）、游客 `/guest` | `ListingsDataContext.tsx` |
 | 🟠 P1 | 组件过大（5,800+ 行 + 50+ useState） | ❌ 未做 | AdminPanel 整体重渲染 | `AdminPanel.tsx` |
 | 🟠 P1 | TenantPortal 路由切换重新挂载 | ❌ 未做 | 租客 my-lease / maintenance / profile | `TenantPortal.tsx` |
 | 🟡 P2 | Context Provider 未 memoize | ❌ 未做 | 全应用 | `ThemeProvider.tsx`, `AuthContext.tsx` |

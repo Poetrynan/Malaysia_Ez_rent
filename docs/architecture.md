@@ -41,7 +41,7 @@ Malaysia_Ez_rent/
 │   │   │       ├── dashboard/page.tsx  # /admin/dashboard
 │   │   │       ├── properties/page.tsx # /admin/properties
 │   │   │       ├── leases/page.tsx     # /admin/leases
-│   │   │       ├── listings/page.tsx   # /admin/listings (read-only)
+│   │   │       ├── listings/page.tsx   # /admin/listings → AdminListingsBrowse
 │   │   │       ├── admins/page.tsx     # /admin/admins (super_admin only)
 │   │   │       ├── feedback/page.tsx   # /admin/feedback
 │   │   │       ├── agent-reviews/      # /admin/agent-reviews (super_admin only)
@@ -51,16 +51,19 @@ Malaysia_Ez_rent/
 │   │   ├── login/page.tsx              # Tenant: Google + email/password; Agent: email/password only
 │   │   ├── register/tenant/page.tsx    # Tenant registration (identity docs + email verification)
 │   │   ├── register/agent/page.tsx     # Agent application (REN + password + email verification)
-│   │   ├── register/complete-profile/  # Google new users / legacy users without identity_type
+│   │   ├── register/complete-profile/  # Legacy wizard (default identity completion → /profile)
 │   │   ├── auth/callback/route.ts      # OAuth code + legacy token_hash → session + redirect
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
 │   │   ├── AppSidebar.tsx              # sidebar (useRouter navigation, usePathname active state)
 │   │   ├── AppTopbar.tsx               # topbar (theme/lang toggles, logout)
-│   │   ├── AdminPageWrapper.tsx        # admin page wrapper (defaultTab → AdminPanel)
-│   │   ├── PropertyListings.tsx        # 房源列表 + 详情 + 收藏 + 评价
+│   │   ├── AdminShell.tsx              # 中介路由壳：pathname → activeTab，单实例 AdminPanel
+│   │   ├── AdminListingsBrowse.tsx     # 中介「房源浏览」轻量组件（无租客意向/收藏逻辑）
+│   │   ├── PropertyListings.tsx        # 租客房源列表 + 详情 + 收藏 + 合租意向
 │   │   ├── AIChat.tsx                  # AI 对话界面
-│   │   ├── TenantPortal.tsx            # 租客门户（租约 + 报修 + 个人资料）
+│   │   ├── TenantPortal.tsx            # 租客门户（租约 + 报修 + 个人资料 + 身份验证）
+│   │   ├── TenantIdentityGate.tsx      # 客户端身份门禁（无 identity_type → /profile）
+│   │   ├── TenantIdentityWarningModal.tsx  # 「我要租」前资料不全提醒 Modal
 │   │   ├── LeaseLedgerCard.tsx         # 缴租台账
 │   │   ├── Dashboard.tsx               # 数据看板（折线图 + 饼图）
 │   │   ├── AdminPanel.tsx              # 管理后台
@@ -70,6 +73,10 @@ Malaysia_Ez_rent/
 │   ├── src/lib/
 │   │   ├── AuthContext.tsx              # auth state provider (role, adminRole, logout, deleteAccount)
 │   │   ├── PendingCountsContext.tsx     # pending counts provider (badges sync across routes)
+│   │   ├── ListingsDataContext.tsx      # 房源列表 SWR 内存缓存（租客/中介浏览共享）
+│   │   ├── TenantDataContext.tsx        # 租客门户跨 tab 数据（租约/报修/资料）
+│   │   ├── tenantIdentityUtils.ts       # 身份资料完整性检测（共享逻辑）
+│   │   ├── listingDisplayUtils.ts       # 房源图片/中介标签展示工具
 │   │   ├── supabase.ts                 # real/mock switch + mock impl
 │   │   ├── numberInput.ts              # nonNegativeInputValue / nonNegativeNumber
 │   │   ├── i18n.ts                     # zh/en; payment: bank transfer / WeChat / Alipay
@@ -107,17 +114,20 @@ Malaysia_Ez_rent/
   - Persists across route changes because the layout (with sidebar) stays mounted.
 
 - `frontend/src/app/(app)/layout.tsx`
-  - App shell layout: `AuthProvider` → `PendingCountsProvider` → sidebar + topbar + `{children}`.
+  - App shell layout: `AuthProvider` → `PendingCountsProvider` → `TenantDataProvider` → `ListingsDataProvider` → sidebar + topbar + `TenantIdentityGate` → `{children}`.
   - Shows loading spinner while auth is initializing.
   - Renders agent registration status banners (pending/approved/rejected) for student role.
+
+- `frontend/src/app/(app)/admin/layout.tsx`
+  - Renders `AdminShell` only (single `AdminPanel` instance for dashboard/properties/leases/…; `/admin/listings` and `/admin/inbox` swap to dedicated components).
 
 - `frontend/src/components/AppSidebar.tsx`
   - Extracted from old `page.tsx`. Uses `useRouter().push('/...')` for navigation, `usePathname()` for active state.
   - Reads from `useAuth()` and `usePendingCounts()` for role/counts.
 
 - `frontend/src/app/(app)/listings/page.tsx`
-  - **Public page** — accessible without login. Unauthenticated users see `PropertyListings readOnly` with a login prompt banner.
-  - Authenticated students see full `PropertyListings`. Admins see read-only.
+  - **Authenticated tenant route** (live middleware blocks unauthenticated → `/login`).
+  - Renders full `PropertyListings` (favorites, express interest, co-rent). Public unauthenticated browsing is on **`/guest`** (`PropertyListings guestMode`).
 
 - `frontend/src/lib/supabase.ts`
   - Auto-detects real vs mock mode by env presence.
@@ -129,10 +139,14 @@ Malaysia_Ez_rent/
 - `PropertyListings.tsx`: listing/filter/detail (contact details isolated by `agent_id`) + **Whole Unit co-renting** (submit/cancel interest via RPC, public interest list, occupancy counter includes `interested` + `confirmed`); scrolls inside `.main-content`; image lightbox + video modal. Supports switching between Grid View (with compact card layout) and List View (using the `PropertyRow` component) via filter bar toggles. Uses `MapAndCard.tsx`. **`loadListings()` / `loadAdmins()`** with error UI, retry, and reload on `SIGNED_IN` / `INITIAL_SESSION`. Listing cards show **`getListingAgentLabel()`** (e.g. `中介：name`) so duplicate rows are distinguishable. Student unit detail shows **「所属中介：」** + agent card (no redundant “contact admin” CTA). **Agent profile modal**: strict `getUnitsForAgent(agentId, units)` (`agent_id` match only, typed `UnitWithCommunity[]`); WhatsApp/WeChat icons with **「暂无」** when empty; rent filter inputs use `agentPriceInputStyle`. Enquiry form shows `currentEnquiryUnit.community?.name` (requires joined community on agent units). **Active lease integration**: queries `leases` table for the authenticated user (`myLeasedUnitIds`), hiding the "我要租" button for their active leased rooms, displaying "您已承租此房源" (You are currently renting this room), and strictly blocking new interest expressions or合租加入 if they already have an active lease contract. **Toast notification system**: replaces persistent drawer-level cancellation status banners with temporary, auto-clearing Toast alerts styled with a premium glassmorphic frosted glass design (`var(--glass-bg)`, `backdrop-filter: blur(16px)`, border-glow and custom colored shadows per type) across both student and admin views. **Cancel interest flow**: both co-renting (Whole Unit) and single renting rooms/studios expose exactly one cancel interest button (next to the main action for room/studio; inside the roommate list card for Whole Unit) and native alert/confirm popups are replaced with a state-driven glassmorphism Modal dialog. **WeChat Icon**: updated to standard 24x24 dual speech bubble SVG path to fix the half-missing visual bug. **Progress Bar**: unified `ProgressFlow` component with loop-extending line animation and pulsing glow dot, utilizing a mathematically uniform `flex: 1` layout (nodes at `12.5%`, `37.5%`, `62.5%`, `87.5%` center coordinates) and `marginLeft: -3px` half-width dot offset to guarantee perfect center alignment regardless of length or locale. **Lease Termination**: integrated state sync between units, leases, and tenant interests to ensure UI resets correctly after termination. clipping.
 - `MapAndCard.tsx`: Google Maps Embed container. By default, displays a single Place pin of the room. Allows the student to input any custom starting point (origin) to dynamically draw the commute route and switch transport modes (drive, transit, walk). **Integrates Google Places Autocomplete to auto-suggest landmarks, universities, and malls in Malaysia, with a local mock fallback. The route calculation is triggered automatically upon selecting an autocomplete suggestion or pressing enter, removing the need for a separate "Calculate" button.**
 - `AIChat.tsx`: SSE chat UX; renders reasoning/tool steps and final response. **Uses a useEffect observing language state `lang`/`t` to dynamically update and translate the first greeting message when the locale changes.** Removed all `simulateOffline` mock simulated fallbacks; always connects directly to the real API and displays translation-friendly connection error cards inside the chat bubble upon failure. Send local memory conversation history to the backend for state context memory.
-- `StudentPortal.tsx`: lease summary, payment progress, feedback box. **Refactored to support a `mode` parameter (`lease` or `maintenance`) allowing the "My Tenancy" and "Maintenance Center" tabs to display in separate top-level pages. Historical requests toggle button includes an expand/collapse Chevron indicator. Supports secure lease termination via the `tenant_terminate_lease` RPC (migration 018). Added `onUnreadFeedbackCountChange` callback to notify parent layout about unread work orders. The toggle button displays unread replies count wrapped in a red badge circle, resolving the stale React state calculation bug by evaluating newly-fetched arrays directly.**
+- `TenantPortal.tsx`: lease summary, payment progress, feedback, **identity verification** (`mode='profile'`). Supports `mode` parameter (`lease` | `maintenance` | `profile`) for separate top-level routes. Profile mode: identity type selector (Malaysian / international student / international other) + required documents on save; unified UI for new and legacy tenants. Supports secure lease termination via `tenant_terminate_lease` RPC (018). `onUnreadFeedbackCountChange` for maintenance badge sync.
 - `LeaseLedgerCard.tsx`: monthly ledger + payment modal + QR generation. **Month 1** → listing agent QR; **month 2+** → landlord QR / bank info (`013`). Payment copy: **bank transfer, WeChat, or Alipay** (no specific bank brand).
 
 ### Admin path
+
+- `AdminShell.tsx` + `admin/layout.tsx`: maps `pathname` → `AdminPanel activeTab`; avoids remounting ~5,800-line `AdminPanel` on dashboard/properties/leases tab switches. `/admin/listings` renders **`AdminListingsBrowse`** (not `PropertyListings`); `/admin/inbox` renders `Inbox`.
+
+- `AdminListingsBrowse.tsx`: lightweight browse-only view (filters, grid/list, detail drawer). No favorites, express interest, co-rent, or enquiry form. Shares `ListingsDataContext` cache with tenant listings.
 
 - `AdminPanel.tsx` includes:
   - Calculates dynamic red notification badges for pending actions (unreviewed payments, pending interests, unreplied feedbacks) and bubbles them up to `page.tsx`. Agent isolation strictly applied.
@@ -178,9 +192,11 @@ Malaysia_Ez_rent/
 - Mock mode: local comparison `end_date < today` + `localStorage` write.
 
 **Tenant profile impact:**
-- `profileComplete` only requires `profileName` (not `unit_number`).
+- `profileComplete` (maintenance/feedback gate) only requires `profileName` (not `unit_number` or identity docs).
+- **Identity verification** (2026-06-06): `/profile` save requires `identity_type` + documents per type (IC front/back or passport photo). Login gate requires `identity_type` before accessing other tenant routes.
 - Save function does **not** write `unit_number` to `users` table (it's lease-managed).
 - On profile load, `unit_number` is fetched from the active lease; falls back to `users.unit_number` if no active lease.
+- **Express interest (soft check)**: `PropertyListings` calls `tenantIdentityUtils` before submit; incomplete docs → `TenantIdentityWarningModal` (user may still proceed).
 
 **Payment review:** `formatLeasePropertyLabel()` includes `unit_number` as `#unit_number` suffix (e.g. `Sunway · (Master Room) #A-12-3`). Shown in review cards, review modal, ledger, and settlement areas.
 
@@ -269,7 +285,7 @@ Malaysia_Ez_rent/
 
 ### Key tables
 
-- `users`: tenant profile (full_name, phone, unit_number, passport_number, school, company, local_id_number, document_url)
+- `users`: tenant profile (`identity_type`, `full_name`, `phone`, `unit_number`, `passport_number`, `school`, `company`, `local_id_number`, `ic_photo_front_url`, `ic_photo_back_url`, `passport_photo_url`, `student_card_url`, `work_permit_photo_url`, legacy `document_url`)
 - `admin_users`: admin identity/role/payment QR metadata
 - `agent_registrations`: agent applications with approval workflow (pending/approved/rejected/suspended/banned)
 - `communities`: housing communities
@@ -342,7 +358,7 @@ Notes:
 - `020_anon_property_upload.sql` adds tables and storage permissions for anonymous mobile upload of property pictures to the `property/` folder inside `unit-media`.
 - `021_user_unit_number.sql` adds `unit_number VARCHAR(50)` to `users` for room identification in feedback.
 - `022_agent_registrations.sql` creates `agent_registrations` table for self-service agent application with approval workflow. Includes `normalize_my_phone()` and `normalize_ren()` functions, CHECK constraints, RLS policies, and Storage policy for `ren-tags/` folder.
-- `023_user_profile_extended.sql` adds `passport_number`, `school`, `company`, `local_id_number`, `document_url` to `users` for extended tenant profiles.
+- `023_user_profile_extended.sql` adds `passport_number`, `school`, `company`, `local_id_number`, `document_url` to `users` (superseded for identity flow by `043` — see §7).
 - `024_maintenance_conversation.sql` alters `maintenance_requests` to support structured `replies` JSONB array instead of a single string `admin_reply` field and drops `rating`.
 - `025_fix_missing_public_users.sql` rebuilds the `handle_new_auth_user` trigger and backfills missing records from `auth.users` to `public.users` to fix work order tenant names displaying as UUIDs.
 
@@ -361,7 +377,7 @@ Tenant and agent are **separate account systems**. Role is stored in Supabase Au
 **Registration routes:**
 - `/register/tenant` — email verification + password + identity documents
 - `/register/agent` — REN + password + email verification (account created, no access until approved)
-- `/register/complete-profile` — Google new users or legacy users missing `identity_type`
+- `/register/complete-profile` — legacy standalone flow (kept for compatibility; default redirect is now `/profile`)
 
 **Legacy migration (manual SQL, one-time):**
 - Backfill `user_metadata.role = 'student'` for old tenants without role
@@ -375,16 +391,46 @@ Tenant and agent are **separate account systems**. Role is stored in Supabase Au
 - `/guest` is public (no auth)
 - `/login`, `/auth/*`, `/calculator`, `/register/*`, `/mobile-upload/*` — always allowed
 - **Live mode**: other routes require Supabase SSR session; unauthenticated → `/login`
-- **Role gate**: if logged in but `user_metadata.role` is missing → `/register/complete-profile`
+- **Identity gate (tenant)**: if `user_metadata.role` is missing **or** `users.identity_type` is empty → `/profile` only (complete identity + documents)
 - **Strict isolation**: `student` cannot access `/admin/*`; `agent` cannot access tenant routes (middleware redirects)
+- **Express interest (soft)**: incomplete identity docs → `TenantIdentityWarningModal` before submit (user may still proceed)
 - **Mock mode**: client-side `AuthContext` handles role; middleware passes through (except `/` → `/guest`)
+
+### Tenant identity verification (three layers, 2026-06-06)
+
+Unified **document rules** for all tenants. Two **entry paths** (different UIs): new users register at `/register/tenant`; legacy / incomplete users are sent to `/profile` after login. **After entering the tenant portal**, everyone uses the same `/profile` page for personal info (new users see pre-filled data).
+
+| Layer | Trigger | Behavior |
+|-------|---------|----------|
+| 1. Login gate (hard) | `role` or `identity_type` empty | Redirect to `/profile` only (`middleware`, `login`, `auth/callback`, `TenantIdentityGate`) |
+| 2. Profile save (hard) | User clicks Save on `/profile` | Must select identity type + upload required docs (IC front/back or passport page) |
+| 3. Express interest (soft) | User clicks「我要租」with incomplete docs | `TenantIdentityWarningModal` lists missing items; user may「去完善资料」or「仍要提交」 |
+
+**Document rules by `identity_type`:**
+
+| Type | Required | Optional |
+|------|----------|----------|
+| `malaysian` | 12-digit IC, IC front + back photos | — |
+| `international_student` | Passport number, passport photo page | Student card / offer letter |
+| `international_other` | Passport number, passport photo page | Work permit / visa |
+
+**Storage paths:** `tenant-docs/ic/`, `tenant-docs/passport/`, `tenant-docs/student-id/`, `tenant-docs/work-permit/` under bucket `unit-media`.
+
+**Shared code:** `lib/tenantIdentityUtils.ts` (`hasTenantIdentityType`, `isTenantIdentityFullyComplete`, `getTenantIdentityMissingItems`).
+
+**Entry paths (do not conflate):**
+- **New registration:** `/register/tenant` — wizard with email verification + password + documents (not `/profile`).
+- **Post-login completion:** `/profile` — default redirect when `role` or `identity_type` missing (replaces `complete-profile` as default).
+- **In-app personal info:** `/profile` — same UI for all tenants once inside the app.
+
+**Legacy note:** `/register/complete-profile` remains as optional standalone wizard; not the default redirect.
 
 ### Auth callback (`auth/callback/route.ts`)
 
 - `code` → `exchangeCodeForSession` (Google OAuth / PKCE)
 - `token_hash` + `type` → `verifyOtp` (legacy email link, kept for backward compat)
-- Session cookies **must** be copied onto every redirect response (including `complete-profile`)
-- If `role` missing after OAuth → redirect `/register/complete-profile` **with cookies** (fixed 2026-06-06: previously dropped session → infinite login loop)
+- Session cookies **must** be copied onto every redirect response (including `/profile` identity completion)
+- If `role` or `identity_type` missing after OAuth → redirect `/profile` **with cookies** (fixed 2026-06-06: previously dropped session → infinite login loop)
 - Login flows use `next=/listings` (never `next=/` — middleware sends `/` to `/guest`)
 - Failure → `/login?error=auth_failed`
 
@@ -658,11 +704,17 @@ User: "从公司到um要多久"
 - Email verification → `signUp` with `user_metadata: { role: 'agent' }` → `agent_profiles` (pending).
 - Replaces old `/register-agent` page.
 
-### Complete Profile (`register/complete-profile/page.tsx`)
+### Tenant Profile Identity (`profile` → `TenantPortal` mode=`profile`)
 
-- For Google OAuth users without `role`, or legacy users missing `identity_type`.
-- Same identity/doc flow as tenant registration (no email verification, no password).
-- On submit: `updateUser({ data: { role: 'student', identity_type, full_name } })` + upsert `users` table.
+- **Unified UI** for new and legacy tenants after entering the tenant portal.
+- Identity type selector (Malaysian / international student / international other) + required documents on save.
+- Login gate: tenants without `identity_type` are redirected to `/profile` (middleware + `TenantIdentityGate`).
+- On save: `updateUser({ data: { role: 'student', identity_type, full_name } })` + upsert `users` with `ic_photo_*` / `passport_photo_url`.
+
+### Complete Profile (`register/complete-profile/page.tsx`) — legacy
+
+- Standalone wizard kept for backward compatibility; **default system redirect is `/profile`** since 2026-06-06.
+- Same identity/doc rules as registration (no email verification, no password).
 
 ### Approval Flow (`AdminPanel.tsx`)
 
@@ -695,15 +747,23 @@ Dashboard | Properties | Leases | Admins | Feedback | Agent Reviews | Profile
 - **Payment Settings** moved from top-level tab into Leases sub-tab (between Overview and Review).
 - **Agent Reviews** tab: registration cards redesigned with section layout (header/info-grid/image/actions), delete button for all statuses (pending/approved/rejected).
 - **Property Editor**: Sectioned with icons (🏠 Basic Info / 💰 Pricing / 📱 Payment / 📷 Media). Required fields marked with red asterisk. Image upload enforced (block save if no images).
-- **Property Browsing**: Admin/agent sidebar has "Browse Listings" entry showing `PropertyListings` in read-only mode (no interest/enquiry buttons). Shows agent name on each card for competition visibility.
+- **Property Browsing**: Admin sidebar "Browse Listings" (`/admin/listings`) uses **`AdminListingsBrowse`** — dedicated lightweight component, not `PropertyListings`.
 
-## 17) PropertyListings Component
+## 17) Listings Components
 
-- Accepts `readOnly` prop (default `false`).
-- When `readOnly=true`: hides "Express Interest" button, enquiry form, and cancel-interest button.
-- Agent label displayed on every card via `getListingAgentLabel(unit, admins, lang)` — reads from `admin_users` table (RLS allows public SELECT).
-- Admin/agent browse view uses `<PropertyListings readOnly />`.
-- Tenant view uses `<PropertyListings />` (full functionality, zero impact).
+### `PropertyListings.tsx` (tenant + guest)
+
+- Props: `guestMode` only (no `readOnly` — removed 2026-06-06).
+- Tenant authenticated view: favorites, express interest, co-rent, enquiry, agent profile modal.
+- Guest view (`/guest`): `guestMode` hides tenant-only actions; shows login CTA.
+- Data via `ListingsDataContext` (SWR cache). Agent label via `getListingAgentLabel()` from `listingDisplayUtils.ts`.
+- Before express interest: `tenantIdentityUtils.isTenantIdentityFullyComplete()` → `TenantIdentityWarningModal` if incomplete (soft, non-blocking).
+
+### `AdminListingsBrowse.tsx` (admin browse)
+
+- Used only at `/admin/listings` via `AdminShell`.
+- Filters (all/available), grid/list, simplified detail drawer, admin info banner.
+- No tenant auth, favorites, interests, or co-rent state — ~400 lines vs full `PropertyListings`.
  
  
 ## 18) UI & Visual Optimizations (visual_ux_pro_max)
@@ -721,10 +781,11 @@ Dashboard | Properties | Leases | Admins | Feedback | Agent Reviews | Profile
 - Traditional tabular rows replaced with WhatsApp/iMessage styled speech bubble chat logs.
 - Left/Right alignment depending on the role (`agent` vs `student`), with custom border, padding, and subtle shadows.
 
-### Student Profile completion indicator & privacy lockout banner (`StudentPortal.tsx`)
-- Lock banner: Safe padlock indicating data encryption under strict PostgreSQL RLS policies.
-- Progress bar: Computes completeness percent dynamically based on filled inputs, presenting a 6px linear-gradient slider.
-- Upload frame: Enhanced document camera drop slot layout mimicking mobile camera portals.
+### Tenant Profile identity & completion (`TenantPortal.tsx` mode=`profile`)
+- **Identity verification block**: three identity types + conditional IC/passport fields and document uploads (required on save).
+- Lock banner: data encryption under RLS policies.
+- Progress bar: completeness % including identity type and documents.
+- Login gate banner when `identity_type` is missing.
 
 ## 19) React Performance & Render Loop Prevention (page.tsx)
 
@@ -1123,14 +1184,14 @@ middleware: / → /guest (always)
   ├── /listings    (auth required in live mode; client redirects !role → /guest)
   ├── /chat        (auth required)
   ├── /my-lease    (auth required)
-  ├── /profile     (auth required)
+  ├── /profile     (auth required; identity completion target for new/legacy tenants)
   ├── /maintenance (auth required)
   ├── /inbox       (auth required)
   └── /admin/layout.tsx (admin guard)
       ├── /admin/dashboard
       ├── /admin/properties
       ├── /admin/leases
-      ├── /admin/listings (read-only)
+      ├── /admin/listings (AdminListingsBrowse)
       ├── /admin/admins (super_admin only)
       ├── /admin/feedback
       ├── /admin/agent-reviews (super_admin only)
@@ -1147,7 +1208,10 @@ middleware: / → /guest (always)
 | `PendingCountsContext` | Shared badge counts (leases, feedback, agentReviews, unreadInbox). Syncs sidebar badges across routes. |
 | `AppSidebar` | Extracted sidebar. Uses `useRouter().push()` and `usePathname()` for navigation. |
 | `AppTopbar` | Extracted topbar (theme/lang toggles, logout). |
-| `AdminPageWrapper` | Thin wrapper that maps route → AdminPanel `defaultTab` prop. |
+| `AdminShell` | Admin layout router: single `AdminPanel` + `AdminListingsBrowse` / `Inbox` by pathname. |
+| `ListingsDataContext` | In-memory listings cache; shared by tenant `PropertyListings` and `AdminListingsBrowse`. |
+| `TenantIdentityGate` | Client-side redirect to `/profile` when `identity_type` missing (mock + live backup). |
+| `tenantIdentityUtils` | Shared completeness check for identity docs; used by profile save and express-interest modal. |
 
 ### Public vs Authenticated Browsing
 
@@ -1205,9 +1269,10 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 
 | Issue | Cause | Mitigation / status |
 |-------|-------|---------------------|
-| Google login infinite loop back to `/login` | OAuth callback redirected to `complete-profile` without copying auth cookies | **Fixed** (2026-06-06): copy session cookies onto `complete-profile` redirect |
+| Google login infinite loop back to `/login` | OAuth callback redirected to identity completion without copying auth cookies | **Fixed** (2026-06-06): copy session cookies onto `/profile` redirect |
 | Super admin / legacy agent locked out | Portal isolation removed Google for agents; no password; missing `agent_profiles` | **Manually fixed**: SQL backfill `role=agent`, set password, insert `agent_profiles` |
 | Old tenants missing `user_metadata.role` | Migration did not auto-backfill | **Manually fixed**: SQL batch `role=student` for non-admin emails |
+| Old tenants with `role` but no `identity_type` bypassed doc upload | Middleware only checked `role`; profile docs were optional (023) | **Fixed** (2026-06-06): unified gate → `/profile`; save requires identity + documents |
 | Legacy Magic Link users cannot log in | Login page removed Magic Link; only password + Google | **Pending**: forgot-password / reset-password — see `FUTURE_IMPROVEMENTS.md` §待完成功能 #1 |
 | Magic Link / Google first login → `auth_failed` or double login | PKCE/cookie timing; `AuthContext` race | **Fixed**: callback dual-path + `onAuthStateChange`; verify Supabase Site URL matches deployment domain |
 | Logged-in user lands on `/guest` | OAuth used `next=/` → middleware `/` → `/guest` | **Fixed**: login page uses `next=/listings` |

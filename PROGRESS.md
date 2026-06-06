@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
 > 最后更新：2026-06-06 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询**
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询 · AdminListingsBrowse 管理员浏览独立化 · 租客身份验证三层统一（登录门禁 + 资料保存 + 租房意向 Modal）**
 
 
 
@@ -144,8 +144,12 @@ Malaysia_Ez_rent/
 | `login/page.tsx` | ✅ 完成 | 租客：Google OAuth + 邮箱密码；中介：仅邮箱密码；**`name` + `autocomplete` 支持浏览器记住密码/自动填充** |
 | `register/tenant/page.tsx` | ✅ 完成 | 租客注册（身份+证件+验证码+密码）；**`autocomplete="new-password"`** |
 | `register/agent/page.tsx` | ✅ 完成 | 中介申请（REN+执照+验证码+密码）；**`autocomplete="new-password"`** |
-| `register/complete-profile/page.tsx` | ✅ 完成 | Google 新用户/老用户补全身份资料 |
-| `auth/callback/route.ts` | ✅ 完成 | OAuth code + 遗留 token_hash；session cookie 写入 redirect；无 role 时带 cookie 跳转 complete-profile |
+| `register/complete-profile/page.tsx` | ✅ 保留 | 独立补资料向导（兼容）；**系统默认重定向已改为 `/profile`** |
+| `profile/page.tsx` → `TenantPortal` | ✅ 完成 | 新/老租客统一个人信息页；身份三选一 + 分身份证件必传（第六十四节） |
+| `AdminListingsBrowse.tsx` | ✅ 完成 | 中介「房源浏览」轻量独立组件，替代 `PropertyListings readOnly` |
+| `TenantIdentityGate.tsx` | ✅ 完成 | 客户端身份门禁（沙盒 + 双保险） |
+| `TenantIdentityWarningModal.tsx` | ✅ 完成 | 「我要租」前资料不全软性提醒 Modal |
+| `auth/callback/route.ts` | ✅ 完成 | OAuth code + token_hash；无 role/identity_type 时带 cookie 跳转 `/profile` |
 
 ### 后端 (FastAPI)
 
@@ -1200,6 +1204,8 @@ status = left（软删除）；数字归零；**无需管理员拒绝**
 - 第四区：保存按钮
 
 **i18n 新增键：** `profileExtraHint`、`profileIdHint`、`profilePassport`、`profileSchool`、`profileCompany`、`profileLocalId`、`profileDocument`、`profileDocumentDesc`、`profileDocumentUpload` 等中英双语翻译
+
+> **2026-06-06 后续（第六十四节）：** 上述「选填 / 至少填一项」规则已被**身份验证三层统一**取代；`/profile` 现含身份三选一 + 分身份证件必传。详见 `docs/FAQ.md`。
 
 ---
 
@@ -2475,7 +2481,7 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 ### 改动
 
 - **数据库扩展（043 迁移）** — 在 `users` 表中扩展了 `identity_type` 以及多项敏感证件（国籍、IC照片、护照、工作牌）路径；创建了中介入驻申请 `agent_profiles` 表 and 注册双因子验证 `email_verifications` 表。
-- **注册分流** — 新建 `/register/tenant` 页面（租客身份校验、证件上传、邮箱验证码）以及 `/register/agent` 页面（REN 编号、执照照片、无权账户预建）；新用户 Google 登录若无 `role` 标签强制重定向到 `/register/complete-profile`。
+- **注册分流** — 新建 `/register/tenant` 页面（租客身份校验、证件上传、邮箱验证码）以及 `/register/agent` 页面（REN 编号、执照照片、无权账户预建）；无 `role` / 无 `identity_type` 时重定向到 `/profile` 补资料（`complete-profile` 保留兼容）。
 - **登录隔离 (`login/page.tsx`)** — 租客端支持“账号密码/Google OAuth”双重登录；中介端仅提供“账号密码”登录，并拦截未审核通过（pending/rejected）的中介账户。
 - **角色解析 (`AuthContext.tsx` + 中间件)** — 由 `admin_users` 查表法升级为读取 Supabase Auth 自带的 `user_metadata.role`，并对注册流程和回调函数进行路由白名单例外过滤。
 - **邮件服务集成** — 新建验证码发送 API 及中介审核通过/驳回自动通知接口，集成 `Resend API` 替换原有低效的站内轮询通知。
@@ -2525,4 +2531,44 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 **修复：** `auth/callback/route.ts` 在重定向到 `complete-profile` 时，将已写入 session 的 cookie 复制到新 redirect 响应上。
 
 **跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/register/complete-profile` → 填完资料 → `/listings`
+
+> **2026-06-06 后续更新（见第六十四节）：** 补资料统一改到 `/profile`；`complete-profile` 保留兼容但不再作为默认重定向目标。
+
+---
+
+## 六十四、租客身份验证统一 + 管理员房源浏览独立化（2026-06-06）
+
+**目标：** 统一实名规则；登录后补资料入口改为 `/profile`；**进入租客端后**新/老租客共用同一 `/profile` 个人信息界面（注册仍走 `/register/tenant`，UI 与 `/profile` 不同）；管理员浏览不再复用 `PropertyListings readOnly`。
+
+### 租客身份验证（三层）
+
+| 层级 | 机制 | 硬性/软性 |
+|------|------|-----------|
+| 1. 登录门禁 | `identity_type` 或 `role` 为空 → 仅可访问 `/profile` | **硬性** |
+| 2. 保存资料 | `/profile` 按身份类型校验 IC/护照号 + 必传证件照片 | **硬性** |
+| 3. 表达租房意向 | 资料不齐全时弹 Modal 提醒，可「仍要提交」 | **软性** |
+
+**拦截点：** `middleware.ts`、`login/page.tsx`、`auth/callback/route.ts`、`TenantIdentityGate`（沙盒 + 客户端双保险）
+
+**涉及文件：**
+- `TenantPortal.tsx` — 个人信息页增加身份三选一 + 分身份证件上传（与注册规则一致）
+- `lib/tenantIdentityUtils.ts` — 完整性检测共享逻辑
+- `components/TenantIdentityGate.tsx` — 客户端身份门禁
+- `components/TenantIdentityWarningModal.tsx` — 「我要租」前提醒 Modal
+- `PropertyListings.tsx` — 提交意向前调用完整性检测
+
+**两条路径（勿混淆）：**
+- **新租客注册** → `/register/tenant`（独立向导：邮箱验证、密码、分步上传证件）→ 完成后进租客端
+- **老租客 / 登录后缺资料** → 被拦到 `/profile` 补填（无注册向导）
+
+**进入租客端之后：** 双方打开的都是同一 `/profile` 页面；新租客注册数据会预填，老租客首次多为空白。
+
+### 管理员房源浏览独立组件
+
+- 新建 `AdminListingsBrowse.tsx`（~400 行）：筛选、网格/列表、详情预览；无收藏/意向/合租/咨询表单
+- `AdminShell` 改用 `AdminListingsBrowse`，不再 `PropertyListings readOnly`
+- `PropertyListings.tsx` 移除全部 `readOnly` 分支
+- `lib/listingDisplayUtils.ts` — 共享 `getUnitImages` 等展示工具
+
+**文档同步：** `docs/FAQ.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/architecture.md`、`docs/performance-diagnosis.md`
 

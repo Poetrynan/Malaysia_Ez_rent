@@ -448,7 +448,7 @@
 - 租客与中介拆分为独立注册/登录入口（`/register/tenant`、`/register/agent`）
 - 角色写入 `user_metadata.role`（`student` | `agent`），`AuthContext` 与 `middleware.ts` 按角色做路由隔离
 - 新建 `agent_profiles`、`email_verifications` 表；扩展 `users` 表证件字段
-- 租客支持邮箱+密码或 Google 登录（首次需 `/register/complete-profile` 补资料）
+- 租客支持邮箱+密码或 Google 登录（首次需在 `/profile` 补身份资料；`/register/complete-profile` 保留兼容）
 - 中介仅支持邮箱+密码（审批通过后登录），不再提供 Google 按钮
 - 移除旧 Magic Link 登录入口
 
@@ -462,11 +462,13 @@
 
 **完成时间：** 2026-06-06
 
-**问题：** 谷歌登录成功后，若 `user_metadata.role` 为空，回调会 `return NextResponse.redirect('/register/complete-profile')` 新建一个**不带 auth cookie** 的响应，导致 session 丢失 → `complete-profile` 检测无用户 → 跳回 `/login` → 无限循环。
+**问题：** 谷歌登录成功后，若 `user_metadata.role` 为空，回调重定向补资料页时新建了**不带 auth cookie** 的响应，导致 session 丢失 → 检测无用户 → 跳回 `/login` → 无限循环。
 
-**修复：** `auth/callback/route.ts` 在重定向到 `complete-profile` 时，将已写入 session 的 cookie 复制到新 redirect 响应上。
+**修复：** `auth/callback/route.ts` 在重定向时，将已写入 session 的 cookie 复制到新 redirect 响应上。补资料目标现为 `/profile`（#42）。
 
-**跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/register/complete-profile`（老用户/新用户补资料）→ `/listings`。
+**跳转链（修复后）：** Google 授权 → `/auth/callback`（cookie 保留）→ `/profile`（补身份资料）→ `/listings`。
+
+> 注：2026-06-06 后续已将默认补资料页从 `complete-profile` 统一到 `/profile`（见 #42）。
 
 ---
 
@@ -536,6 +538,41 @@
 
 ---
 
+### ✅ 42. 租客身份验证三层统一
+
+**完成时间：** 2026-06-06
+
+**背景：** 早期 `023` 个人信息页证件为选填；门户隔离后注册页有强制证件，但老租客可绕过。登录后补资料入口从 `complete-profile` 统一到 `/profile`；**进入租客端后**新/老租客共用同一 `/profile`（新注册仍走 `/register/tenant`，UI 与 `/profile` 不同）。
+
+**已实施：**
+
+| 层级 | 行为 |
+|------|------|
+| 登录门禁（硬） | 无 `role` 或无 `identity_type` → 只能访问 `/profile` |
+| 保存资料（硬） | `/profile` 必选身份 + 按类型必传证件（IC 正反面或护照照片页） |
+| 表达意向（软） | 资料不齐全 → Modal 列出缺失项；可「去完善」或「仍要提交」 |
+
+**涉及文件：** `TenantPortal.tsx`, `tenantIdentityUtils.ts`, `TenantIdentityGate.tsx`, `TenantIdentityWarningModal.tsx`, `middleware.ts`, `login/page.tsx`, `auth/callback/route.ts`, `PropertyListings.tsx`, `(app)/layout.tsx`
+
+**登录后补资料重定向：** 密码登录、OAuth 回调、中间件在缺 `role`/`identity_type` 时 → `/profile`（非新租客注册；注册仍用 `/register/tenant`）。`complete-profile` 保留兼容，非默认入口。
+
+**FAQ：** 见 `docs/FAQ.md`「租客身份验证有哪些要求？」
+
+---
+
+### ✅ 43. 管理员房源浏览独立组件（AdminListingsBrowse）
+
+**完成时间：** 2026-06-06
+
+**问题：** `/admin/listings` 复用 `PropertyListings readOnly`，仍加载租客意向/收藏/合租等逻辑，仅 UI 隐藏。
+
+**改动：**
+- 新建 `AdminListingsBrowse.tsx` — 轻量浏览（筛选、网格/列表、详情预览）
+- `AdminShell` 改用新组件；`PropertyListings` 移除全部 `readOnly` 分支
+- `lib/listingDisplayUtils.ts` — 共享图片/中介标签工具
+
+---
+
 ## 待完成功能
 
 ### 🔲 1. 忘记密码 / 重置密码（Magic Link 老租客兼容）
@@ -589,9 +626,10 @@
 | 问题 | 原因 | 现状 / 建议 |
 |------|------|-------------|
 | Magic Link / Google 首次登录回到 `/login?error=auth_failed` 或需登两次 | PKCE cookie 时序、callback 只处理 `code` 未处理 `token_hash`、cookie 未写入 redirect 响应、**且 `AuthContext` 只在挂载时 `getUser()` 检查一次、role=null 即被 `/listings` 踢回 `/guest`** | callback 已修复双路径 + cookie 绑定；**`AuthContext` 已改为订阅 `onAuthStateChange`（`INITIAL_SESSION`/`SIGNED_IN`），session 注水前不会锁定 role=null，竞态已消除**；若仍复现，检查 Supabase Site URL、邮件链接域名与 Vercel 环境一致 |
-| Google 登录后无限回到 `/login` | 门户隔离后 `role` 为空时 callback 重定向到 `complete-profile` 但未携带 auth cookie | **已修复**（#37）：重定向时复制 session cookie |
+| Google 登录后无限回到 `/login` | 门户隔离后 `role` 为空时 callback 重定向补资料页但未携带 auth cookie | **已修复**（#37）：重定向时复制 session cookie |
 | 超管/老中介无法用 Google 登录中介端 | 新系统中介入口移除 Google；`role` 依赖 `user_metadata`；登录流程要求 `agent_profiles` 记录 | **已手动处理**：SQL 补 `role=agent`、设密码、插入 `agent_profiles`；长期建议 AdminPanel 增加「兼容旧超管」或统一迁移脚本 |
 | 老租客 `user_metadata.role` 为空被 middleware 拦截 | 门户隔离迁移未自动回填 role | **已手动处理**：SQL 批量补 `role=student`（非 admin_users 邮箱） |
+| 老租客有 `role` 但无 `identity_type` 可绕过补资料 | 中间件只查 `role`、个人信息页证件曾为选填 | **已修复**（#42）：统一门禁 → `/profile`；保存时强制证件 |
 | Magic Link 老租客无法登录（无密码、无 Google） | 登录页移除 Magic Link，仅保留密码 + Google | **待实施**：见「待完成功能 #1 忘记密码/重置密码」；临时可在 Supabase 后台为单个用户手动设密码 |
 | 登录成功却落在 `/guest`（无侧边栏） | Google OAuth 曾用 `next=/` → 中间件 `/` → `/guest` | **已修复**：OAuth 改为 `next=/listings` |
 | `/listings` 闪一下再跳 Guest | `AuthContext` 加载中 `role=null`，`listings/page.tsx` 误判未登录 `router.replace('/guest')` | **已修复**：`AuthContext` 在 `onAuthStateChange` 解析出 session 前保持 `loading=true`，`/listings` 期间显示进度条而非误跳；未登录时 `return null` 避免闪烁 |

@@ -2,7 +2,22 @@
 
 > **目标**：租客和中介是两个完全独立的系统，一个账号只能是一种角色，不存在"租客转中介"的中间状态。
 >
-> **状态**：📋 规划中（2026-06-06）
+> **状态**：✅ 已实施（2026-06-06）
+
+**2026-06-06 实施说明（相对本文初稿，注意区分两条路径）：**
+
+| 场景 | 页面 | UI 是否相同 |
+|------|------|-------------|
+| **新租客注册**（从未有过账号） | `/register/tenant` | ❌ 独立注册向导（邮箱验证 + 密码 + 分步证件） |
+| **登录后补资料**（老租客 / Google 首次缺 `role` 或 `identity_type`） | `/profile` | — |
+| **进入租客端后的个人信息**（注册完或补完资料之后） | `/profile` | ✅ 新/老租客同一界面；新租客数据预填，老租客首次多为空白 |
+
+- 登录后补资料的默认重定向目标为 **`/profile`**（不再默认跳 `/register/complete-profile`）；`complete-profile` 页面保留作兼容入口。
+- **不是**把新租客注册也搬到 `/profile`——注册仍走 `/register/tenant`。
+- 证件规则已统一为**按身份类型必传**（非早期 023 的选填模式）。
+- 「我要租」前增加软性 Modal 提醒（`TenantIdentityWarningModal`），不阻断提交。
+
+详见 `PROGRESS.md` 第六十四节、`docs/FAQ.md`。
 
 ---
 
@@ -514,7 +529,7 @@ CREATE TABLE email_verifications (
 邮箱+密码 → supabase.auth.signInWithPassword → 成功 → 检查 role → /listings
 Google → supabase.auth.signInWithOAuth → 成功 → 检查 user_metadata →
   → 有 role → /listings
-  → 无 role → /register/complete-profile（完善资料）
+  → 无 role / 无 identity_type → /profile（完善身份资料）
 ```
 
 **中介登录流程**：
@@ -804,7 +819,7 @@ created_at TIMESTAMPTZ
      - `pending` → `setRoleState(null)`, `setAgentPending(true)`
      - `rejected` → `setRoleState(null)`, 显示拒绝提示
   3. 如果 `role === 'student'`：`setRoleState('student')`
-  4. 如果没有 role（Google 新用户）：`setRoleState(null)`, 重定向到 `/register/complete-profile`
+  4. 如果没有 role 或 identity_type（Google 新用户/老租客）：重定向到 `/profile`
 - 删除 `agentRegStatus` 相关逻辑
 - Mock 模式同步更新
 
@@ -867,7 +882,7 @@ created_at TIMESTAMPTZ
 
 **改动**：
 - OAuth 回调后，检查 `user.user_metadata.role` 是否存在
-- 如果没有 role（Google 新用户）→ 重定向到 `/register/complete-profile`（替代 `/listings`）
+- 如果没有 role 或 identity_type → 重定向到 `/profile`（替代 `/listings`）
 - 如果有 role → 保持现有逻辑重定向到 `/listings`
 
 #### `src/app/actions/deleteAccount.ts`
