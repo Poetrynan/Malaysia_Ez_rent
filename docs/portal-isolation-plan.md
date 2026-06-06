@@ -480,7 +480,37 @@ const resolveRole = async (user) => {
 
 **改动**：
 - 中介审核功能改为读取 `agent_profiles` 表
-- 审批通过后：将中介信息插入 `admin_users` 表（和现在逻辑一致）
+- 审批通过后：
+  1. 将中介信息插入 `admin_users` 表
+  2. 调用 `/api/send-approval-email` 发送审批通过通知邮件
+- 审批拒绝后：
+  1. 调用 `/api/send-rejection-email` 发送审批拒绝通知邮件
+
+### 4.11 新建：`/api/send-approval-email/route.ts`
+
+```
+功能：审批通过后通知中介
+输入：{ email: string, full_name: string }
+邮件内容：
+  标题：您的中介申请已通过 - Malaysia Ez Rent
+  正文：
+    {full_name}，您好！
+    您的中介申请已通过审核。
+    现在可以使用邮箱和密码登录中介管理后台：{login_url}
+```
+
+### 4.12 新建：`/api/send-rejection-email/route.ts`
+
+```
+功能：审批拒绝后通知中介
+输入：{ email: string, full_name: string }
+邮件内容：
+  标题：中介申请审核结果 - Malaysia Ez Rent
+  正文：
+    {full_name}，您好！
+    很抱歉，您的中介申请未通过审核。
+    如有疑问请联系管理员。
+```
 
 ---
 
@@ -494,6 +524,8 @@ const resolveRole = async (user) => {
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
 | `src/app/api/send-verification/route.ts` | 新建 | 发送验证码 API |
 | `src/app/api/verify-code/route.ts` | 新建 | 校验验证码 API |
+| `src/app/api/send-approval-email/route.ts` | 新建 | 审批通过通知邮件 API |
+| `src/app/api/send-rejection-email/route.ts` | 新建 | 审批拒绝通知邮件 API |
 | `src/components/VerificationInput.tsx` | 新建 | 6 位验证码输入组件 |
 | Supabase SQL | 新建 | tenant_profiles 表 |
 | Supabase SQL | 新建 | agent_profiles 表 |
