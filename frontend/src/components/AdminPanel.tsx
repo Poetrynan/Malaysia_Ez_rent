@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone, Loader2, Star, Mail } from 'lucide-react';
+import { Building2, PlusCircle, FileText, ChevronDown, ChevronUp, CheckCircle2, XCircle, ImagePlus, Video, X, Image, QrCode, Users, Trash2, UserPlus, Clock, Eye, EyeOff, MessageSquare, Send, Edit3, User, Wrench, Copy, RefreshCw, AlertTriangle, Dumbbell, Waves, Shirt, BookOpen, ParkingCircle, ShieldCheck, Wifi, Store, Camera, BarChart3, Home, DollarSign, Phone, Loader2, Star, Mail, Upload, Lock } from 'lucide-react';
 import Dashboard from './Dashboard';
 import AgentRatingSummary from './AgentRatingSummary';
 import { useApp } from '@/lib/ThemeProvider';
 import { useAdminData } from '@/lib/AdminDataContext';
 import { useListingsData } from '@/lib/ListingsDataContext';
-import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
+import { compressImageFile, compressImageToDataUrl, compressDataUrl, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET, REN_TAG_PRESET } from '@/utils/compressImage';
 import { compressVideoFile, UNIT_VIDEO_PRESET } from '@/utils/compressVideo';
 import { nonNegativeInputValue, nonNegativeNumber } from '@/lib/numberInput';
 import { isMockDatabase } from '@/lib/supabase';
@@ -193,54 +193,187 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
   // ── Admin management state (super_admin only) ──
   const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ email: '', display_name: '', phone: '', whatsapp: '', wechat_id: '' });
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [showNewAdminPassword, setShowNewAdminPassword] = useState(false);
+  const [newAdminRenTagImage, setNewAdminRenTagImage] = useState<string | null>(null);
+  const [newAdminRenTagFile, setNewAdminRenTagFile] = useState<File | null>(null);
+  const emptyNewAdmin = {
+    email: '', display_name: '', phone: '', whatsapp: '', wechat_id: '',
+    agency_name: '', ren_number: '', password: '', confirm_password: '',
+  };
+  const [newAdmin, setNewAdmin] = useState(emptyNewAdmin);
+
+  const normalizeAgentPhone = (raw: string): string | null => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    let normalized = digits;
+    if (normalized.startsWith('60')) normalized = normalized.substring(2);
+    if (normalized.startsWith('0')) normalized = normalized.substring(1);
+    if (!/^1[0-9]{8,9}$/.test(normalized)) return null;
+    return '60' + normalized;
+  };
+
+  const normalizeAgentRen = (raw: string): string | null => {
+    const cleaned = raw.trim().toUpperCase().replace(/[-\s]/g, '');
+    if (!/^REN[0-9]{4,7}$/.test(cleaned)) return null;
+    return cleaned;
+  };
+
+  const resetNewAdminForm = () => {
+    setNewAdmin(emptyNewAdmin);
+    setNewAdminRenTagImage(null);
+    setNewAdminRenTagFile(null);
+    setShowNewAdminPassword(false);
+  };
+
+  const handleNewAdminRenTagSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showToast(lang === 'zh' ? '只支持 JPG/PNG/WEBP 格式图片' : 'Only JPG/PNG/WEBP images are accepted', 'error');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast(lang === 'zh' ? '图片大小不能超过 8MB' : 'Image size must be under 8MB', 'error');
+      return;
+    }
+    setNewAdminRenTagFile(file);
+    try {
+      const b64 = await compressImageToDataUrl(file, REN_TAG_PRESET);
+      setNewAdminRenTagImage(b64);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (ev) => setNewAdminRenTagImage(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const fetchAdmins = async () => {
     try {
       const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data } = await supabase.from('admin_users').select('*').order('created_at');
-      if (data) setAdminList(data);
+      if (data) {
+        setAdminList(data.filter((a) => !a.avatar_url?.startsWith('DELETED:')));
+      }
     } catch {}
   };
 
   const handleAddAdmin = async () => {
-    if (!newAdmin.email.trim()) { showToast('请填写邮箱', 'error'); return; }
-    if (!newAdmin.phone && !newAdmin.whatsapp && !newAdmin.wechat_id) { showToast('至少填写一种联系方式', 'error'); return; }
+    const email = newAdmin.email.toLowerCase().trim();
+    const fullName = newAdmin.display_name.trim() || email.split('@')[0];
+    const phone = normalizeAgentPhone(newAdmin.phone);
+    const whatsapp = newAdmin.whatsapp.trim() ? normalizeAgentPhone(newAdmin.whatsapp) : null;
+    const renNumber = normalizeAgentRen(newAdmin.ren_number);
+
+    if (!email.includes('@')) { showToast(lang === 'zh' ? '请填写有效邮箱' : 'Please enter a valid email', 'error'); return; }
+    if (!fullName) { showToast(lang === 'zh' ? '请填写显示名称' : 'Please enter display name', 'error'); return; }
+    if (!phone) { showToast(lang === 'zh' ? '手机号格式不正确' : 'Invalid phone number', 'error'); return; }
+    if (newAdmin.whatsapp.trim() && !whatsapp) { showToast(lang === 'zh' ? 'WhatsApp 格式不正确' : 'Invalid WhatsApp number', 'error'); return; }
+    if (!newAdmin.agency_name.trim()) { showToast(lang === 'zh' ? '请填写公司名称' : 'Please enter agency name', 'error'); return; }
+    if (!renNumber) { showToast(lang === 'zh' ? 'REN 编号格式不正确' : 'Invalid REN number', 'error'); return; }
+    if (!newAdminRenTagImage) { showToast(lang === 'zh' ? '请上传 REN 执照照片' : 'Please upload REN tag image', 'error'); return; }
+    if (newAdmin.password.length < 6) { showToast(lang === 'zh' ? '密码至少 6 位' : 'Password must be at least 6 characters', 'error'); return; }
+    if (newAdmin.password !== newAdmin.confirm_password) { showToast(lang === 'zh' ? '两次密码不一致' : 'Passwords do not match', 'error'); return; }
+
+    setAddingAdmin(true);
     try {
-      const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      const { error } = await supabase.from('admin_users').insert({
-        id: crypto.randomUUID(),
-        email: newAdmin.email.trim(),
-        display_name: newAdmin.display_name.trim() || newAdmin.email.split('@')[0],
-        phone: newAdmin.phone.trim() || null,
-        whatsapp: newAdmin.whatsapp.trim() || null,
-        wechat_id: newAdmin.wechat_id.trim() || null,
-        role: 'editor',
-      });
-      if (error) { showToast(error.message, 'error'); return; }
-      showToast('添加成功', 'success');
-      setNewAdmin({ email: '', display_name: '', phone: '', whatsapp: '', wechat_id: '' });
+      if (!isLive) {
+        const mockId = `agent-mock-${Date.now()}`;
+        const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+        admins.push({
+          id: mockId,
+          email,
+          display_name: fullName,
+          phone,
+          whatsapp,
+          wechat_id: newAdmin.wechat_id.trim() || null,
+          role: 'editor',
+          agency_name: newAdmin.agency_name.trim(),
+          job_title: 'Real Estate Negotiator',
+          ren_number: renNumber,
+          ren_tag_url: newAdminRenTagImage,
+        });
+        localStorage.setItem('ez_admins', JSON.stringify(admins));
+
+        const profiles = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+        profiles.push({
+          id: `profile-${Date.now()}`,
+          auth_user_id: mockId,
+          email,
+          full_name: fullName,
+          phone,
+          whatsapp,
+          agency_name: newAdmin.agency_name.trim(),
+          ren_number: renNumber,
+          ren_tag_image_url: newAdminRenTagImage,
+          verification_status: 'approved',
+          created_at: new Date().toISOString(),
+        });
+        localStorage.setItem('ez_agent_profiles', JSON.stringify(profiles));
+      } else {
+        const { createAgentAccountAction } = await import('@/app/actions/createAgentAccount');
+        const result = await createAgentAccountAction({
+          email,
+          password: newAdmin.password,
+          full_name: fullName,
+          phone,
+          whatsapp,
+          wechat_id: newAdmin.wechat_id.trim() || null,
+          agency_name: newAdmin.agency_name.trim(),
+          ren_number: renNumber,
+          ren_tag_base64: newAdminRenTagImage,
+        });
+        if (!result.success) {
+          showToast(result.error || (lang === 'zh' ? '创建失败' : 'Creation failed'), 'error');
+          return;
+        }
+      }
+
+      showToast(lang === 'zh' ? '中介账号已开通' : 'Agent account provisioned', 'success');
+      resetNewAdminForm();
       setShowAddAdmin(false);
       fetchAdmins();
-    } catch (e: any) { showToast(e.message, 'error'); }
+      fetchAgentRegistrations();
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : (lang === 'zh' ? '创建失败' : 'Creation failed');
+      showToast(message, 'error');
+    } finally {
+      setAddingAdmin(false);
+    }
   };
 
-  const handleDeleteAdmin = (id: string) => {
+  const handleDeleteAdmin = (id: string, displayName?: string) => {
     setGenericConfirm({
-      title: lang === 'zh' ? '确认删除中介' : 'Delete Agent',
-      message: lang === 'zh' ? '确定删除该中介？此操作无法撤销。' : 'Are you sure you want to delete this agent? This action cannot be undone.',
+      title: lang === 'zh' ? '确认移除中介' : 'Remove Agent',
+      message: lang === 'zh'
+        ? `确定彻底移除 ${displayName || '该中介'}？将同步删除其登录账号、入驻资料与 REN 文件，且无法撤销。`
+        : `Permanently remove ${displayName || 'this agent'}? Their login, agent profile, and REN files will all be deleted. This cannot be undone.`,
       isDanger: true,
       onConfirm: async () => {
         try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { error } = await supabase.from('admin_users').delete().eq('id', id);
-          if (error) { showToast(error.message, 'error'); return; }
-          showToast('已删除', 'success');
+          if (!isLive) {
+            const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+            localStorage.setItem('ez_admins', JSON.stringify(admins.filter((a: { id: string }) => a.id !== id)));
+            const profiles = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+            localStorage.setItem('ez_agent_profiles', JSON.stringify(profiles.filter((p: { auth_user_id: string }) => p.auth_user_id !== id)));
+            const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+            localStorage.setItem('ez_users', JSON.stringify(users.filter((u: { id: string }) => u.id !== id)));
+          } else {
+            const { deleteAgentBySuperAdminAction } = await import('@/app/actions/deleteAgentBySuperAdmin');
+            const result = await deleteAgentBySuperAdminAction(id);
+            if (!result.success) {
+              showToast(result.error || (lang === 'zh' ? '删除失败' : 'Delete failed'), 'error');
+              return;
+            }
+          }
+          showToast(lang === 'zh' ? '中介已彻底移除' : 'Agent removed completely', 'success');
           fetchAdmins();
-        } catch (e: any) { showToast(e.message, 'error'); }
+          fetchAgentRegistrations();
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : (lang === 'zh' ? '删除失败' : 'Delete failed');
+          showToast(message, 'error');
+        }
       }
     });
   };
@@ -3977,66 +4110,150 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                   {lang === 'zh' ? '中介与管理员管理' : 'Agents & Admins'}
                 </span>
               </h3>
-              <button onClick={() => setShowAddAdmin(!showAddAdmin)} style={{
+              <button onClick={() => { setShowAddAdmin(v => !v); if (showAddAdmin) resetNewAdminForm(); }} style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                borderRadius: 8, border: 'none', background: 'var(--primary)',
+                borderRadius: 10, border: 'none', background: 'var(--primary)',
                 color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}>
-                <UserPlus size={14} /> {lang === 'zh' ? '添加中介' : 'Add Agent'}
+                <UserPlus size={14} /> {lang === 'zh' ? '开通中介账号' : 'Provision Agent'}
               </button>
             </div>
 
-            {/* Add admin form */}
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.55 }}>
+              {lang === 'zh'
+                ? '相当于在 Supabase 后台手动开户：创建登录账号、中介资料与已通过审核记录，供集体管理。'
+                : 'Same as manual Supabase provisioning: auth account, admin record, and pre-approved agent profile.'}
+            </p>
+
             {showAddAdmin && (
               <div style={{
                 padding: 20,
-                borderRadius: 12,
-                background: 'var(--primary-light)',
+                borderRadius: 14,
+                background: 'var(--glass-bg)',
                 border: '1px solid var(--glass-border)',
                 marginBottom: 20,
                 boxShadow: 'var(--glass-shadow)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 18,
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
-                      {lang === 'zh' ? '邮箱 *' : 'Email *'}
-                    </label>
-                    <input className="form-input" value={newAdmin.email} onChange={e => setNewAdmin(f => ({ ...f, email: e.target.value }))} placeholder="admin@gmail.com" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShieldCheck size={16} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)' }}>
+                    {lang === 'zh' ? '手动开通中介（预置已通过）' : 'Manual agent provisioning (pre-approved)'}
+                  </span>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
+                    {lang === 'zh' ? '登录凭证' : 'LOGIN CREDENTIALS'}
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
-                      {lang === 'zh' ? '显示名称' : 'Display Name'}
-                    </label>
-                    <input className="form-input" value={newAdmin.display_name} onChange={e => setNewAdmin(f => ({ ...f, display_name: e.target.value }))} placeholder="张房东" />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
-                      {lang === 'zh' ? '电话' : 'Phone'}
-                    </label>
-                    <input className="form-input" value={newAdmin.phone} onChange={e => setNewAdmin(f => ({ ...f, phone: e.target.value }))} placeholder="+6012-345 6789" />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
-                      WhatsApp
-                    </label>
-                    <input className="form-input" value={newAdmin.whatsapp} onChange={e => setNewAdmin(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+6012-345 6789" />
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>
-                      {lang === 'zh' ? '微信号' : 'WeChat ID'}
-                    </label>
-                    <input className="form-input" value={newAdmin.wechat_id} onChange={e => setNewAdmin(f => ({ ...f, wechat_id: e.target.value }))} placeholder="wechat_id" />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '邮箱 *' : 'Email *'}</label>
+                      <input className="form-input" value={newAdmin.email} onChange={e => setNewAdmin(f => ({ ...f, email: e.target.value }))} placeholder="agent@agency.com" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '初始密码 *' : 'Initial password *'}</label>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.password} onChange={e => setNewAdmin(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" style={{ paddingLeft: 36, paddingRight: 36 }} />
+                        <button type="button" onClick={() => setShowNewAdminPassword(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}>
+                          {showNewAdminPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '确认密码 *' : 'Confirm password *'}</label>
+                      <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.confirm_password} onChange={e => setNewAdmin(f => ({ ...f, confirm_password: e.target.value }))} placeholder="••••••••" />
+                    </div>
                   </div>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                  {lang === 'zh' ? '电话、WhatsApp、微信号至少填一项' : 'Please provide at least one contact: Phone, WhatsApp, or WeChat ID'}
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
+                    {lang === 'zh' ? '基本资料' : 'PROFILE'}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '显示名称 *' : 'Display name *'}</label>
+                      <input className="form-input" value={newAdmin.display_name} onChange={e => setNewAdmin(f => ({ ...f, display_name: e.target.value }))} placeholder={lang === 'zh' ? '张中介' : 'Agent name'} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '公司名称 *' : 'Agency name *'}</label>
+                      <input className="form-input" value={newAdmin.agency_name} onChange={e => setNewAdmin(f => ({ ...f, agency_name: e.target.value }))} placeholder="ABC Realty Sdn Bhd" />
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={handleAddAdmin} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
-                    {lang === 'zh' ? '确认添加' : 'Confirm'}
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
+                    {lang === 'zh' ? '联系方式' : 'CONTACT'}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '手机 *' : 'Phone *'}</label>
+                      <input className="form-input" value={newAdmin.phone} onChange={e => setNewAdmin(f => ({ ...f, phone: e.target.value }))} placeholder="+6012-345 6789" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>WhatsApp</label>
+                      <input className="form-input" value={newAdmin.whatsapp} onChange={e => setNewAdmin(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+6012-345 6789" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '微信号' : 'WeChat ID'}</label>
+                      <input className="form-input" value={newAdmin.wechat_id} onChange={e => setNewAdmin(f => ({ ...f, wechat_id: e.target.value }))} placeholder="wechat_id" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
+                    {lang === 'zh' ? 'REN 资质' : 'REN CREDENTIALS'}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? 'REN 编号 *' : 'REN number *'}</label>
+                      <input className="form-input" value={newAdmin.ren_number} onChange={e => setNewAdmin(f => ({ ...f, ren_number: e.target.value.toUpperCase() }))} placeholder="REN12345" />
+                    </div>
+                  </div>
+                  <label style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    padding: 18, borderRadius: 12, cursor: 'pointer',
+                    border: `1px dashed ${newAdminRenTagImage ? 'var(--primary)' : 'var(--glass-border)'}`,
+                    background: newAdminRenTagImage ? 'var(--primary-light)' : 'var(--bg-hover)',
+                    transition: 'all 0.15s ease',
+                  }}>
+                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleNewAdminRenTagSelect} style={{ display: 'none' }} />
+                    {newAdminRenTagImage ? (
+                      <img src={newAdminRenTagImage} alt="REN preview" style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                    ) : (
+                      <Upload size={18} style={{ color: 'var(--primary)' }} />
+                    )}
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                      {newAdminRenTagImage
+                        ? (lang === 'zh' ? '点击更换 REN 执照照片' : 'Click to replace REN tag photo')
+                        : (lang === 'zh' ? '上传 REN 执照照片 *' : 'Upload REN tag photo *')}
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button onClick={handleAddAdmin} disabled={addingAdmin} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 20px', borderRadius: 10, border: 'none',
+                    background: 'var(--primary)', color: '#fff',
+                    fontSize: '0.84rem', fontWeight: 700, cursor: addingAdmin ? 'wait' : 'pointer',
+                    opacity: addingAdmin ? 0.7 : 1,
+                  }}>
+                    {addingAdmin ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={15} />}
+                    {lang === 'zh' ? '确认开通' : 'Provision account'}
                   </button>
-                  <button onClick={() => setShowAddAdmin(false)} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
+                  <button onClick={() => { resetNewAdminForm(); setShowAddAdmin(false); }} disabled={addingAdmin} style={{
+                    padding: '10px 20px', borderRadius: 10,
+                    border: '1px solid var(--glass-border)', background: 'transparent',
+                    color: 'var(--text-body)', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer',
+                  }}>
                     {lang === 'zh' ? '取消' : 'Cancel'}
                   </button>
                 </div>
@@ -4186,7 +4403,7 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
 
                     {/* Delete action */}
                     {!isSuper && (
-                      <button onClick={() => handleDeleteAdmin(admin.id)} style={{
+                      <button onClick={() => handleDeleteAdmin(admin.id, admin.display_name || admin.email)} style={{
                         background: 'var(--danger-light)',
                         border: '1px solid transparent',
                         color: 'var(--danger)',

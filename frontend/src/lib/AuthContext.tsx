@@ -18,15 +18,39 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 
 function purgeExpiredMockUsers() {
   try {
-    const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
+
+    const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+    const expiredAgentIds: string[] = [];
+    const keptAdmins = admins.filter((a: any) => {
+      if (a.avatar_url?.startsWith('DELETED:')) {
+        const deletedAt = new Date(a.avatar_url.slice(8));
+        if (deletedAt < sevenDaysAgo) {
+          expiredAgentIds.push(a.id);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (expiredAgentIds.length > 0) {
+      localStorage.setItem('ez_admins', JSON.stringify(keptAdmins));
+      const profiles = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
+      localStorage.setItem('ez_agent_profiles', JSON.stringify(
+        profiles.filter((p: any) => !expiredAgentIds.includes(p.auth_user_id)),
+      ));
+      const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
+      localStorage.setItem('ez_users', JSON.stringify(
+        users.filter((u: any) => !expiredAgentIds.includes(u.id)),
+      ));
+    }
+
+    const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
     const expiredUserIds: string[] = [];
     const filteredUsers = users.filter((u: any) => {
-      if (u.avatar_url && u.avatar_url.startsWith('DELETED:')) {
-        const deletedAtStr = u.avatar_url.substring(8);
-        const deletedAt = new Date(deletedAtStr);
+      if (u.avatar_url?.startsWith('DELETED:')) {
+        const deletedAt = new Date(u.avatar_url.slice(8));
         if (deletedAt < sevenDaysAgo) {
           expiredUserIds.push(u.id);
           return false;
@@ -38,31 +62,25 @@ function purgeExpiredMockUsers() {
     if (expiredUserIds.length > 0) {
       localStorage.setItem('ez_users', JSON.stringify(filteredUsers));
 
-      // 1. Dissociate leases (preserve archived rent records)
       const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
-      const updatedLeases = leases.map((l: any) => 
-        expiredUserIds.includes(l.tenant_id) ? { ...l, tenant_id: null } : l
-      );
-      localStorage.setItem('ez_leases', JSON.stringify(updatedLeases));
+      localStorage.setItem('ez_leases', JSON.stringify(
+        leases.map((l: any) => expiredUserIds.includes(l.tenant_id) ? { ...l, tenant_id: null } : l),
+      ));
 
-      // 2. Dissociate reviews
       const reviews = JSON.parse(localStorage.getItem('ez_reviews') || '[]');
-      const updatedReviews = reviews.map((r: any) => 
-        expiredUserIds.includes(r.user_id) ? { ...r, user_id: null } : r
-      );
-      localStorage.setItem('ez_reviews', JSON.stringify(updatedReviews));
+      localStorage.setItem('ez_reviews', JSON.stringify(
+        reviews.map((r: any) => expiredUserIds.includes(r.user_id) ? { ...r, user_id: null } : r),
+      ));
 
-      // 3. Dissociate agent ratings
       const agentRatings = JSON.parse(localStorage.getItem('ez_agent_ratings') || '[]');
-      const updatedAgentRatings = agentRatings.map((ar: any) => 
-        expiredUserIds.includes(ar.tenant_id) ? { ...ar, tenant_id: null } : ar
-      );
-      localStorage.setItem('ez_agent_ratings', JSON.stringify(updatedAgentRatings));
+      localStorage.setItem('ez_agent_ratings', JSON.stringify(
+        agentRatings.map((ar: any) => expiredUserIds.includes(ar.tenant_id) ? { ...ar, tenant_id: null } : ar),
+      ));
 
-      // 4. Delete favorites
       const favorites = JSON.parse(localStorage.getItem('ez_favorites') || '[]');
-      const updatedFavorites = favorites.filter((f: any) => !expiredUserIds.includes(f.user_id));
-      localStorage.setItem('ez_favorites', JSON.stringify(updatedFavorites));
+      localStorage.setItem('ez_favorites', JSON.stringify(
+        favorites.filter((f: any) => !expiredUserIds.includes(f.user_id)),
+      ));
     }
   } catch (err) {
     console.error('Error purging expired mock users:', err);
@@ -240,11 +258,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let filteredUsers = [...freshUsers];
 
       if (isAdmin) {
-        // Agent deactivation: delete completely immediately
-        filteredUsers = filteredUsers.filter((u: any) => u.id !== tenantId);
-        localStorage.setItem('ez_admins', JSON.stringify(admins.filter((a: any) => a.id !== tenantId)));
+        const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
+        const unitIds = units.filter((u: any) => u.agent_id === tenantId).map((u: any) => u.id);
+        if (unitIds.length > 0) {
+          const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
+          const hasActive = leases.some((l: any) => l.status === 'active' && unitIds.includes(l.unit_id));
+          if (hasActive) {
+            window.alert('您还有未到期的活跃租约，无法注销。请先等待所有租约到期或完成结算后再注销。');
+            return;
+          }
+        }
+
+        const deletedMarker = 'DELETED:' + new Date().toISOString();
+        localStorage.setItem('ez_admins', JSON.stringify(admins.map((a: any) =>
+          a.id === tenantId ? { ...a, avatar_url: deletedMarker } : a,
+        )));
         const agentRegs = JSON.parse(localStorage.getItem('ez_agent_profiles') || '[]');
-        localStorage.setItem('ez_agent_profiles', JSON.stringify(agentRegs.filter((r: any) => r.auth_user_id !== tenantId)));
+        localStorage.setItem('ez_agent_profiles', JSON.stringify(agentRegs.map((r: any) =>
+          r.auth_user_id === tenantId
+            ? { ...r, verification_status: 'rejected', rejection_reason: deletedMarker }
+            : r,
+        )));
+        filteredUsers = filteredUsers.map((u: any) =>
+          u.id === tenantId ? { ...u, avatar_url: deletedMarker } : u,
+        );
+        const notifications = JSON.parse(localStorage.getItem('ez_notifications') || '[]');
+        localStorage.setItem('ez_notifications', JSON.stringify(
+          notifications.filter((n: any) => n.user_id !== tenantId),
+        ));
       } else {
         // Tenant deactivation: immediately mark user row as deleted but keep personal info/photos for 7 days
         filteredUsers = filteredUsers.map((u: any) => {
@@ -274,7 +315,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       const { deleteAccountAction } = await import('@/app/actions/deleteAccount');
       const result = await deleteAccountAction();
-      if (!result.success) console.error('Delete account failed:', result.error);
+      if (!result.success) {
+        window.alert(result.error || 'Delete account failed');
+        return;
+      }
       const { createClient } = await import('@/utils/supabase/client');
       await createClient().auth.signOut();
       localStorage.clear();

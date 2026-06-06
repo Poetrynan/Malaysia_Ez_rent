@@ -8,7 +8,8 @@ import { useAuth } from '@/lib/AuthContext';
 
 export default function AppTopbar() {
   const { t, lang, setLang, theme, toggleTheme } = useApp();
-  const { logout, deleteAccount } = useAuth();
+  const { logout, deleteAccount, role } = useAuth();
+  const isAgentAccount = role === 'admin';
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   return (
@@ -60,9 +61,13 @@ export default function AppTopbar() {
               <UserX size={18} /> {lang === 'zh' ? '确认注销账户' : 'Confirm Account Deletion'}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', margin: '0 0 24px', lineHeight: 1.6 }}>
-              {lang === 'zh'
-                ? '注销后，您的个人基本信息（如姓名、邮箱、电话等）及日常记录将被立即彻底清空。但为防范可能出现的房屋恶意损毁或违法犯罪行为以留作必要凭证，您的身份证/护照照片等重要证件信息将在数据库中安全留存 7 天，并于 7 天后自动被永久清空。此操作无法撤销，请谨慎操作！'
-                : 'Upon deletion, your basic personal info (name, email, phone, etc.) and history will be scrubbed immediately. However, to prevent malicious property damage or other unlawful acts, vital documents such as ID/passport photos will be securely retained for 7 days for evidence, after which they will be automatically and permanently cleared. This action cannot be undone!'}
+              {isAgentAccount
+                ? (lang === 'zh'
+                  ? '注销后您的登录将立即失效，日常通知记录会清空。若您名下仍有活跃租约，系统将拒绝注销。为防范可能的违法犯罪行为，您的 REN 执照、公司资料等关键信息将在数据库中安全留存 7 天，期满自动永久删除。租约与财务台账会保留作业务凭证。此操作无法撤销！'
+                  : 'Your login will be revoked immediately and inbox alerts will be cleared. If you still have active leases, deletion will be blocked. To guard against unlawful acts, REN credentials and agency records are retained securely for 7 days, then permanently purged. Lease and finance archives remain for business evidence. This cannot be undone!')
+                : (lang === 'zh'
+                  ? '注销后，您的个人基本信息（如姓名、邮箱、电话等）及日常记录将被立即彻底清空。但为防范可能出现的房屋恶意损毁或违法犯罪行为以留作必要凭证，您的身份证/护照照片等重要证件信息将在数据库中安全留存 7 天，并于 7 天后自动被永久清空。此操作无法撤销，请谨慎操作！'
+                  : 'Upon deletion, your basic personal info (name, email, phone, etc.) and history will be scrubbed immediately. However, to prevent malicious property damage or other unlawful acts, vital documents such as ID/passport photos will be securely retained for 7 days for evidence, after which they will be automatically and permanently cleared. This action cannot be undone!')}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowDeleteAccount(false)} style={{
