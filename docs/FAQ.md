@@ -1490,7 +1490,7 @@ frontend/src/app/
 **现已优化（2026-06-06）：**
 - **`ListingsDataContext`**：首次加载后数据留在浏览器内存；切走再回来**先显示上次缓存**，后台静默刷新；点「刷新」才强制全量拉取。
 - **中介端 `AdminShell`**：dashboard / 房源管理 / 租约等主 tab 切换时 `AdminPanel` **不再整页重挂载**。
-- **子视图按需渲染**：房源管理的库存表、新增表单只有切到对应子 tab 才挂载。
+- **房源子视图保留 DOM**：库存表、新增表单用 `display:none` 隐藏，切换子 tab 时**不丢失未保存的编辑内容**。
 
 详见 `docs/performance-diagnosis.md`。
 

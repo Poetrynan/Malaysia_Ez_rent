@@ -515,7 +515,7 @@
 |--------|------|------|
 | 房源列表 Context 缓存 | `ListingsDataContext`：首次加载后内存保留；切回 tab **先显示缓存**，后台静默刷新；点「刷新」才 `force` 全量拉取 | `ListingsDataContext.tsx`, `PropertyListings.tsx`, `(app)/layout.tsx` |
 | 中介 AdminPanel 单实例 | `AdminShell` 挂 `admin/layout.tsx`，`pathname` → `activeTab`；dashboard/properties/leases 等切换时 **不重挂载** 5,800 行组件 | `AdminShell.tsx`, `admin/layout.tsx`, `admin/*/page.tsx` |
-| 房源子视图按需渲染 | 库存表、新增房源大表单改为 `{condition && (...)}`，未激活子 tab 不挂载 DOM | `AdminPanel.tsx` |
+| 房源子视图 `display:none` | 库存表、新增表单保留 DOM 用 `display:none` 隐藏（切换子 tab **不丢未保存表单**；按需挂载已回退） | `AdminPanel.tsx` |
 | `loadAll(force)` | 首次 `isLoaded` 挡重复；增删改后 `loadAll(true)` | `AdminPanel.tsx` |
 
 **资源影响：** 主要占用浏览器内存；同会话 Supabase 读次数**减少**；Vercel / Render 无影响。详见 `docs/performance-diagnosis.md`。

@@ -128,7 +128,7 @@ Malaysia_Ez_rent/
 | `MapAndCard.tsx` | ✅ 完成 | 房源卡片 + SVG 动画通勤路线，3 种交通模式切换，**支持谷歌地址自动联想建议与 Mock 降级兜底** |
 | `LeaseLedgerCard.tsx` | ✅ 完成 | 12 个月台账格（按 billing_month 排序）+ 支付弹窗区分：**首月+押金交中介，后续月租交房东（含房东银行账户及动态 QR）**。若房东未提供信息，则显示明确的**“房东暂未上传”警告**，避免误导学生支付给中介，每账单唯一上传凭证二维码，已缴费不可点击 |
 | `StudentPortal.tsx` | ✅ 完成 | 圆形 SVG 租约倒计时环，押金明细（从数据库读取月数），下一笔待缴，账单按月份排序，已缴费不可点击，提取房东收款信息，**重构支持 mode 属性以实现“我的租约”与“维修反馈”双 tab 的物理分离隔离，且历史工单列表支持 Chevron 展开折叠指示器；新增“终止租约 (Terminate Lease)”功能，集成 018 RPC 后端并包含押金扣除中英双语警告弹窗** |
-| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（红点 + Agent 隔离）；房东银行/QR（013）；**复制挂牌**；**删除凭证/房源/删图同步 Storage**；**删房源乐观更新 UI + `loadAll(true)`**；**房源子视图按需渲染**（库存表/新增表单）；**`loadAll(force)`**；内部 tab 冗余请求已清理；**Toast 磨砂玻璃动效** |
+| `AdminPanel.tsx` | ✅ 完成 | 二级Tab（红点 + Agent 隔离）；房东银行/QR（013）；**复制挂牌**；**删除凭证/房源/删图同步 Storage**；**删房源乐观更新 UI + `loadAll(true)`**；房源子视图 `display:none`（保留未保存表单）；**`loadAll(force)`**；内部 tab 冗余请求已清理；**Toast 磨砂玻璃动效** |
 | `AdminShell.tsx` | ✅ 完成 | 中介 layout 单例路由：`pathname` → `activeTab`，避免 AdminPanel 每次路由切换整页重挂载；`/admin/listings`、`/admin/inbox` 独立渲染 |
 | `ListingsDataContext.tsx` | ✅ 完成 | 房源列表 SWR 缓存：切 tab 先显示缓存、后台静默刷新；手动「刷新」`force` 全量拉取；覆盖租客/中介浏览/游客 |
 | `mobile-upload/[id]/page.tsx` | ✅ 完成 | 手机匿名上传支付凭证（RPC），上传前压缩，Storage `evidence/` 路径 |
@@ -2505,7 +2505,7 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 |------|------|------|
 | 房源列表缓存 | `ListingsDataContext`：首次加载后内存保留；切回 tab 先显示缓存、后台静默刷新；「刷新」按钮 `force` 全量拉取 | `ListingsDataContext.tsx`, `PropertyListings.tsx`, `(app)/layout.tsx` |
 | 中介单实例 | `AdminShell` 挂 `admin/layout`；`pathname` → `activeTab`；dashboard/properties/leases 等切换不重挂载 `AdminPanel` | `AdminShell.tsx`, `admin/layout.tsx` |
-| 子视图按需渲染 | 库存表、新增房源表单仅切到对应子 tab 时挂载 | `AdminPanel.tsx` |
+| 房源子视图 `display:none` | 库存表、新增表单保留 DOM（切换子 tab 不丢未保存内容；按需挂载已回退） | `AdminPanel.tsx` |
 | 删房源即时 UI | 乐观 `setUnits` / `setLeases` / `setInterests` + `loadAll(true)` + `refreshListingsCache` | `AdminPanel.tsx` |
 | `loadAll(force)` | 增删改后 `loadAll(true)`；首次仍 `isLoaded` 挡重复全量拉取 | `AdminPanel.tsx` |
 | P0-2 收尾 | 移除内部 tab onClick 冗余 `loadAll` / `fetchFeedbacks` / `fetchAllReviews` | `AdminPanel.tsx` |

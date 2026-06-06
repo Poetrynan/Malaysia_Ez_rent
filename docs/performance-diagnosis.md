@@ -18,7 +18,7 @@
 |----|----------|----------|
 | ✅ 中介 AdminPanel 单实例 | `AdminShell` 挂在 `admin/layout.tsx`，根据 `pathname` 切换 `activeTab`；dashboard / properties / leases 等主 tab 切换时 **不再整页重挂载** | `AdminShell.tsx`, `admin/layout.tsx`, `AdminPanel.tsx` |
 | ✅ 房源列表 Context 缓存 | `ListingsDataContext`：首次加载后数据保留在内存；切 tab 回来 **先显示缓存**，后台静默刷新；点「刷新」才强制全量拉取 | `ListingsDataContext.tsx`, `PropertyListings.tsx`, `(app)/layout.tsx` |
-| ✅ 房源子视图按需渲染 | 「已登记房源库」表格、「新增房源」大表单改为 `{condition && (...)}`，**只有切到对应子 tab 才挂载** | `AdminPanel.tsx` |
+| ✅ 房源子视图 `display:none` | 库存表、新增表单用 `display:none` 隐藏（保留 DOM，**切换子 tab 不丢未保存表单**；曾试验按需挂载已回退） | `AdminPanel.tsx` |
 | ✅ `loadAll(force)` | 增删改后 `loadAll(true)` 强制刷新；首次加载仍用 `isLoaded` 避免重复全量请求 | `AdminPanel.tsx` |
 | ✅ 删房源即时 UI | 删除成功后本地 `setUnits` / `setLeases` / `setInterests` 过滤，并 `refreshListingsCache({ force: true })` 同步租客端列表缓存 | `AdminPanel.tsx` |
 | ✅ P0-2 内部 tab 冗余请求 | 移除内部 tab 栏 onClick 中的 `loadAll(true)`、`fetchFeedbacks()`、`fetchAllReviews()`；数据由 `resolvedTab` effect 首次加载 + 增删改后 `loadAll(true)` 保证新鲜度 | `AdminPanel.tsx` |
@@ -81,13 +81,13 @@
 
 ---
 
-### ✅ 房源子视图按需渲染（已实施，方向与 P1-1 建议不同）
+### ✅ 房源子视图保留 DOM（`display:none`，已回退按需挂载）
 
-**原做法：** 库存表、新增房源表单用 `display: none` 隐藏，DOM 仍在，首次进「房源管理」即付出渲染成本。
+**原做法：** 库存表、新增房源表单用 `display: none` 隐藏，DOM 仍在。
 
-**已实施方案：** `{propertiesView === 'inventory' && (...)}` 与 `{propertiesView === 'editor' && editorSubTab === 'unit' && (...)}`，未激活子视图不挂载。
+**曾试验：** 按需挂载 `{condition && (...)}` 以减少首次渲染——切换子 tab 会卸载表单，**未保存内容丢失**。
 
-**取舍：** 与「非活跃 tab 保留 DOM（`display:none`）」相反——按需渲染省首次成本，切换子 tab 时需重新挂载（房源量不大时体感可接受）。
+**当前方案（2026-06-06 回退）：** 恢复 `display:none`。优先保证中介在「编辑/发布 ↔ 已登记房源库」之间反复切换时，未保存的表单内容不丢失。
 
 ---
 

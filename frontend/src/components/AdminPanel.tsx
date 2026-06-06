@@ -2985,9 +2985,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             </div>
           )}
 
-          {/* Add unit — mount only when the sub-tab is active */}
-          {propertiesView === 'editor' && editorSubTab === 'unit' && (
-          <div id="add-unit-form-section" className="glass-card" style={{ maxWidth: 720, width: '100%', margin: '0 auto' }}>
+          {/* Add unit — keep in DOM (display:none) so switching sub-tabs preserves unsaved form state */}
+          <div id="add-unit-form-section" className="glass-card" style={{ display: (propertiesView === 'editor' && editorSubTab === 'unit') ? 'block' : 'none', maxWidth: 720, width: '100%', margin: '0 auto' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingUnitId ? (
                 <>
@@ -3282,11 +3281,9 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               </button>
             )}
           </div>
-          )}
 
-          {/* Inventory Table — mount only when the inventory sub-tab is active */}
-          {propertiesView === 'inventory' && (
-          <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
+          {/* Inventory Table — keep in DOM (display:none) for consistent sub-tab switching */}
+          <div className="glass-card" style={{ gridColumn: '1 / -1', display: propertiesView === 'inventory' ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: 12 }}>{t('inventoryTitle')}</h3>
             <div className="data-table-container" style={{ maxHeight: 420, overflow: 'auto' }}>
               <table className="data-table">
@@ -3360,7 +3357,6 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
               </table>
             </div>
           </div>
-          )}
         </div>
       )}
 
