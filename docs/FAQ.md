@@ -1304,8 +1304,8 @@ PropertyListings → Whole Unit 详情
 
 **什么时候执行清理？**
 
-1. **Vercel 定时任务**：每 30 分钟调用 `/api/cron/cleanup-incomplete-signups`
-2. **Google 登录回调**：每次有人 Google 登录成功时，异步顺手清一批（不阻塞登录）
+1. **Google 登录回调**（主要）：每次有人 Google 登录成功时，异步顺手清一批（不阻塞登录）
+2. **Vercel 定时任务**（兜底）：每天 04:00 调用 `/api/cron/cleanup-incomplete-signups`（Hobby 免费版 Cron 最短间隔为每天 1 次）
 
 **部署与鉴权：**
 
@@ -1325,7 +1325,7 @@ PropertyListings → Whole Unit 详情
 
 | 定时任务 | 路径 | 频率 | 清理对象 |
 |----------|------|------|----------|
-| OAuth 中间态清理 | `/api/cron/cleanup-incomplete-signups` | 每 30 分钟 | 30 分钟未补资料的 Google 登录孤儿账号 |
+| OAuth 中间态清理 | `/api/cron/cleanup-incomplete-signups` | 每天 04:00（+ 每次 Google 登录回调） | 建号超过 30 分钟且未补资料的 Google 孤儿账号 |
 | 注销账户到期清理 | `/api/cron/cleanup-expired-deleted-accounts` | 每天 03:00 | 注销超过 7 天的租客/中介留存记录 |
 
 两个接口均校验 `Authorization: Bearer <CRON_SECRET>`，未配置或不匹配则返回 **401**，不执行任何删除。

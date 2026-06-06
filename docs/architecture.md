@@ -460,7 +460,7 @@ Unified **document rules** for all tenants. Two **entry paths** (different UIs):
   - **Not eligible:** email-registered tenants, legacy tenants with business data, agents, anyone who saved `identity_type` on `/profile`.
   - **Mid-session:** does **not** check active session — a user still on `/profile` after 30 minutes since first Google signup can be deleted; next request may fail auth until they sign in again (new account).
   - **SQL:** `find_stale_incomplete_oauth_signups(stale_minutes)` in migration `045_cleanup_incomplete_oauth_signups.sql`.
-  - **Triggers:** (1) Vercel Cron `GET /api/cron/cleanup-incomplete-signups` every **30 minutes** (`frontend/vercel.json`); (2) opportunistic run on each successful `auth/callback` (Google login).
+  - **Triggers:** (1) Vercel Cron `GET /api/cron/cleanup-incomplete-signups` **once daily at 04:00** (`frontend/vercel.json`; Hobby plan minimum interval is once/day); (2) **primary timely path:** opportunistic run on each successful `auth/callback` (Google login).
   - **Deploy notes:** requires migration `045` + `SUPABASE_SERVICE_ROLE_KEY`. **`CRON_SECRET` is optional for platform use** — without it, cron returns 401 and scheduled cleanup is skipped; login-time opportunistic cleanup still runs when migration + service key are present. Set `CRON_SECRET` in Vercel when ready to enable cron (Vercel sends `Authorization: Bearer <CRON_SECRET>`).
 
 
