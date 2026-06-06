@@ -327,17 +327,18 @@ CREATE POLICY "Admins can update profiles"
 
 **注意**：中介申请时不需要设置密码。审批通过后，首次登录时才设置密码。
 
-**注册逻辑（无需登录，无需密码）**：
+**注册逻辑（无需登录，需设密码）**：
 ```
-1. 用户填表（不需要登录，任何人都可以申请）
+1. 用户填表 + 设置密码（不需要登录，任何人都可以申请）
 2. 点击"发送验证码" → 调用 /api/send-verification
 3. 用户输入验证码
 4. 点击"提交申请" → 调用 /api/verify-code
-5. 验证通过 → 写入 agent_profiles 表（status: 'pending'），暂不创建 Supabase 账号
-6. 提示"申请已提交，等待审批"
+5. 验证通过 → supabase.auth.signUp() 创建账号（无权限）
+6. 写入 agent_profiles 表（status: 'pending'）
+7. 提示"申请已提交，等待审批"
 ```
 
-**注意**：中介申请时不设密码、不创建账号。审批通过后的登录流程见下方"中介首次登录逻辑"。
+**注意**：中介申请时就创建账号，但没有权限。审批通过后获得权限，直接登录。
 
 ### 4.3 新建：`/api/send-verification/route.ts`
 
@@ -407,29 +408,16 @@ Google → supabase.auth.signInWithOAuth → 成功 → 检查 user_metadata →
   → 不存在 → 提示"请先申请入驻"
 ```
 
-**中介首次登录逻辑（审批通过后）**：
+**中介登录逻辑**：
 ```
-1. 中介去登录页，输入邮箱，点击"登录"
-2. 系统检测：邮箱在 agent_profiles 表且 status = 'approved'
-3. 但该邮箱没有 Supabase 账号（申请时未创建）
-4. 跳转到"设置密码"页面：
-   ┌─────────────────────────────┐
-   │  "您的申请已通过！"          │
-   │  "请设置密码以激活账号"      │
-   ├─────────────────────────────┤
-   │  密码 *                     │
-   │  [________________]         │
-   │  确认密码 *                 │
-   │  [________________]         │
-   │  [激活账号并登录]            │
-   └─────────────────────────────┘
-5. 设置密码 → supabase.auth.signUp() 创建账号
-6. 写入 admin_users 表（权限）
-7. 关联 agent_profiles.auth_user_id
-8. 自动登录 → 跳转到 /admin/*
+邮箱+密码 → supabase.auth.signInWithPassword → 成功 → 检查 agent_profiles →
+  → approved → 查 admin_users → /admin/*
+  → pending → 提示"您的申请正在审核中"
+  → rejected → 提示"该账号不存在或申请未通过"
+  → 不存在 → 提示"该账号不存在或申请未通过"
 ```
 
-**已有账号的中介**：直接输入邮箱+密码登录 → 跳转到 /admin/*
+**注意**：审批通过后，管理员在 AdminPanel 将中介信息插入 `admin_users` 表。中介再次登录时，AuthContext 检测到 `admin_users` 记录，直接进入中介端。
 
 ### 4.7 修改：`AuthContext.tsx`
 
@@ -480,7 +468,7 @@ const resolveRole = async (user) => {
 ### 4.8 修改：`middleware.ts`
 
 **改动**：
-- 注册路由加入白名单：`/register/tenant`、`/register/agent`、`/register/complete-profile`、`/register/set-password`
+- 注册路由加入白名单：`/register/tenant`、`/register/agent`、`/register/complete-profile`
 - `/api/*` 路由放行（API 不需要认证）
 - 中介登录后检测 agent_profiles 状态，未审批的不能进入 /admin/*
 
@@ -503,7 +491,6 @@ const resolveRole = async (user) => {
 | `src/app/register/tenant/page.tsx` | 新建 | 租客注册页（含证件上传） |
 | `src/app/register/agent/page.tsx` | 新建 | 中介注册页（无需密码） |
 | `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页 |
-| `src/app/register/set-password/page.tsx` | 新建 | 中介审批通过后设置密码页 |
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
 | `src/app/api/send-verification/route.ts` | 新建 | 发送验证码 API |
 | `src/app/api/verify-code/route.ts` | 新建 | 校验验证码 API |
