@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-06-06 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + Magic Link · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询 · AdminListingsBrowse 管理员浏览独立化 · 租客身份验证三层统一（登录门禁 + 资料保存 + 租房意向 Modal）**
+> 最后更新：2026-06-07 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + 邮箱密码 + OTP 验证码 · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询 · AdminListingsBrowse 管理员浏览独立化 · 租客身份验证三层统一（登录门禁 + 资料保存 + 租房意向 Modal）**
 
 
 
@@ -15,7 +15,7 @@ Malaysia_Ez_rent/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── page.tsx          # 根入口 → redirect('/listings')
-│   │   │   ├── layout.tsx        # SEO metadata + favicon（/logo.png），Google Fonts，Google Maps Script
+│   │   │   ├── layout.tsx        # SEO metadata + favicon（/favicon.png），Google Fonts，Google Maps Script
 │   │   │   ├── globals.css       # 全局 CSS 变量、动画、组件样式（含 Logo / Toast 动画）
 │   │   │   ├── (app)/            # 应用路由组（不出现 URL 中）
 │   │   │   │   ├── layout.tsx    # 应用主布局：AuthProvider + PendingCountsProvider + 侧边栏 + 顶栏
@@ -138,7 +138,7 @@ Malaysia_Ez_rent/
 | `i18n.ts` | ✅ 完成 | 中英双语；缴租/上传凭证支持 **银行转账、微信、支付宝**（不写具体银行品牌） |
 | `supabase.ts` | ✅ 完成 | 双模式客户端（真实 Supabase SDK / LocalStorage Mock）|
 | `globals.css` | ✅ 完成 | 设计 Token；**`app-container` 100vh + `.main-content` 滚动**；Logo / Toast 动画 |
-| `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/logo.png`** |
+| `layout.tsx` | ✅ 完成 | Google Fonts 通过 `<link>` 加载；**favicon 指向 `/favicon.png`** |
 | `public/logo.png` | ✅ 完成 | 圆形图标版品牌 Logo（源文件 `QQ20260524-170137.png`），**纯静态资源，不涉及数据库** |
 | `next.config.ts` | ✅ 完成 | `allowedDevOrigins` 配置，解决跨域 HMR 警告 |
 | `login/page.tsx` | ✅ 完成 | 租客：Google OAuth + 邮箱密码；中介：仅邮箱密码；**`name` + `autocomplete` 支持浏览器记住密码/自动填充** |
@@ -277,7 +277,7 @@ Malaysia_Ez_rent/
 
 ### 短期（本周）
 
-- [x] **Google OAuth + Magic Link 双登录**：Supabase 配置完成，前端按钮 + 回调路由就绪（**2026-06-06 门户隔离后 Magic Link 登录入口已移除**）
+- [x] **Google OAuth + 邮箱密码 + OTP 验证码 双登录**：Supabase 配置完成，前端按钮 + 回调路由就绪（**2026-06-06 门户隔离后 Magic Link 登录入口已移除**）
 - [ ] **忘记密码 / 重置密码**：为仅用 Magic Link 注册、无密码且无 Google 的老租客提供邮件重置流程（见 `docs/FUTURE_IMPROVEMENTS.md` 待完成功能 #1）
 - [x] **角色区分**：admin_users 表 + RLS 策略，首页从数据库读取角色
 - [x] **超级管理员面板**：super_admin 可在前端添加/删除管理员（最多 5 人）
@@ -753,7 +753,7 @@ Storage 占用：Dashboard → Storage → `unit-media`，可删测试文件。
 - 侧边栏：`page.tsx` — 52×52 图标 + `appName` / `appTagline` 文字
 - 登录页：`login/page.tsx` — 88×88 图标 + 产品名
 - 手机上传页：`mobile-upload/[id]/page.tsx` — 72×72 图标
-- 浏览器标签：`layout.tsx` → `icons: { icon: "/logo.png" }`
+- 浏览器标签：`layout.tsx` → `icons: { icon: "/favicon.png" }`
 
 ### 是否需要同步数据库？
 
@@ -2602,4 +2602,26 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 ### 文档同步
 
 `docs/architecture.md`、`docs/FAQ.md`、`docs/agent-deletion-considerations.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/portal-isolation-plan.md`
+
+---
+
+## 四十六、Favicon 统一、中介登录跳转、法律内容修正 (2026-06-07)
+
+**目标：** 统一全站 favicon 为自定义图标；中介登录后默认进入 Dashboard；更新法律文档中过时的登录方式描述。
+
+### 改动
+
+| 文件 | 内容 |
+|------|------|
+| `layout.tsx` | favicon 从 `/logo.png` 改为 `/favicon.png`（自定义图标） |
+| `public/favicon.png` | 新增 favicon 文件（复制自 `image.png`） |
+| `public/favicon.ico` | 删除旧的 Vercel 默认 favicon |
+| `login/page.tsx` | 中介登录后跳转从 `/admin/properties` 改为 `/admin/dashboard` |
+| `middleware.ts` | Agent 隔离跳转目标改为 `/admin/dashboard` |
+| `AppSidebar.tsx` | 角色切换跳转目标改为 `/admin/dashboard` |
+| `LegalContent.tsx` | 服务条款和隐私政策中 4 处 "Magic Link" 更新为 "邮箱密码 + OTP 验证码" |
+
+### 文档同步
+
+`PROGRESS.md`（状态行更新：Magic Link → 邮箱密码 + OTP 验证码）
 
