@@ -520,35 +520,195 @@ const resolveRole = async (user) => {
 
 ---
 
-## 五、新增文件清单
+## 五、完整改动清单
+
+### 5.1 新建文件
 
 | 文件路径 | 类型 | 说明 |
 |----------|------|------|
-| `src/app/register/tenant/page.tsx` | 新建 | 租客注册页（含证件上传） |
-| `src/app/register/agent/page.tsx` | 新建 | 中介注册页（无需密码） |
-| `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页 |
+| `src/app/register/tenant/page.tsx` | 新建 | 租客注册页（含证件上传+图片压缩） |
+| `src/app/register/agent/page.tsx` | 新建 | 中介注册页（填表+设密码+REN照片） |
+| `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页（补填证件） |
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
-| `src/app/api/send-verification/route.ts` | 新建 | 发送验证码 API |
+| `src/app/api/send-verification/route.ts` | 新建 | 发送邮箱验证码 API（Resend） |
 | `src/app/api/verify-code/route.ts` | 新建 | 校验验证码 API |
-| `src/app/api/send-approval-email/route.ts` | 新建 | 审批通过通知邮件 API |
-| `src/app/api/send-rejection-email/route.ts` | 新建 | 审批拒绝通知邮件 API |
+| `src/app/api/send-approval-email/route.ts` | 新建 | 审批通过通知邮件 API（Resend） |
+| `src/app/api/send-rejection-email/route.ts` | 新建 | 审批拒绝通知邮件 API（Resend） |
 | `src/components/VerificationInput.tsx` | 新建 | 6 位验证码输入组件 |
-| Supabase SQL | 新建 | tenant_profiles 表 |
-| Supabase SQL | 新建 | agent_profiles 表 |
-| Supabase SQL | 新建 | email_verifications 表 |
-| `docs/portal-isolation-plan.md` | 已有 | 本文档 |
 
----
+### 5.2 新建 Supabase 表
 
-## 六、修改文件清单
+| 表名 | 说明 | 关联 |
+|------|------|------|
+| `tenant_profiles` | 租客证件资料 | `auth_user_id → auth.users.id` |
+| `agent_profiles` | 中介申请资料 | `auth_user_id → auth.users.id`（可 NULL） |
+| `email_verifications` | 邮箱验证码 | 无外键，按 email 查询 |
 
-| 文件路径 | 改动 |
+### 5.3 新建 Supabase Storage 路径
+
+| 路径 | 说明 |
+|------|------|
+| `tenant-docs/ic/{user_id}-front.jpg` | 租客 IC 正面照片 |
+| `tenant-docs/ic/{user_id}-back.jpg` | 租客 IC 反面照片 |
+| `tenant-docs/passport/{user_id}.jpg` | 租客护照照片 |
+| `tenant-docs/student-id/{user_id}.jpg` | 租客学生证照片（选填） |
+| `tenant-docs/work-permit/{user_id}.jpg` | 租客工作牌照片（选填） |
+
+### 5.4 新建 Resend 邮件模板（环境变量配置，Render）
+
+| 环境变量 | 说明 |
 |----------|------|
-| `src/app/login/page.tsx` | 去掉角色 tab，加注册链接 |
-| `src/lib/AuthContext.tsx` | 角色判断改为查 user_metadata |
-| `src/middleware.ts` | 注册路由加入白名单 |
-| `src/components/AdminPanel.tsx` | 审核功能改用 agent_profiles 表 |
-| `src/app/register-agent/page.tsx` | 删除（被新页面替代） |
+| `RESEND_API_KEY` | Resend API Key |
+| `RESEND_FROM_EMAIL` | 发件人邮箱（如 `noreply@ezrent.my`） |
+
+### 5.5 修改文件详情
+
+#### `src/lib/AuthContext.tsx`
+
+**改动**：
+- 接口新增 `agentPending: boolean` 状态（替代 `agentRegStatus`）
+- `resolveRole()` 改为：
+  1. 读取 `user.user_metadata.role`（`'student'` | `'agent'`）
+  2. 如果 `role === 'agent'`：查 `agent_profiles` 表的 `verification_status`
+     - `approved` → 查 `admin_users` 获取权限 → `setRoleState('admin')`
+     - `pending` → `setRoleState(null)`, `setAgentPending(true)`
+     - `rejected` → `setRoleState(null)`, 显示拒绝提示
+  3. 如果 `role === 'student'`：`setRoleState('student')`
+  4. 如果没有 role（Google 新用户）：`setRoleState(null)`, 重定向到 `/register/complete-profile`
+- 删除 `agentRegStatus` 相关逻辑
+- Mock 模式同步更新
+
+#### `src/app/login/page.tsx`
+
+**改动**：
+- 保留 `roleView` 结构（`'choose'` / `'student'` / `'agent'`）
+- **student tab**：
+  - 改为邮箱+密码表单（替代 Magic Link）
+  - 保留 Google 登录按钮
+  - 底部加"还没有账号？注册" → `/register/tenant`
+- **agent tab**：
+  - 只有邮箱+密码表单
+  - 去掉 Google 登录按钮
+  - 底部加"还没有账号？申请入驻" → `/register/agent`
+- Mock 模式保留现有逻辑
+
+#### `src/middleware.ts`
+
+**改动**：
+- 白名单新增：`/register/tenant`、`/register/agent`、`/register/complete-profile`
+- 其余不变
+
+#### `src/components/AdminPanel.tsx`
+
+**改动**：
+- `fetchAgentRegistrations()`：改读 `agent_profiles` 表（替代 `agent_registrations`）
+- `commitApproveAgentRegistration()`：
+  - 保留插入 `admin_users` 逻辑
+  - 删除插入 `user_notifications` 逻辑（改用邮件）
+  - 新增调用 `/api/send-approval-email` 发送通知邮件
+  - 更新 `agent_profiles.verification_status = 'approved'`（替代删除记录）
+- `commitRejectAgentRegistration()`：
+  - 更新 `agent_profiles.verification_status = 'rejected'`
+  - 删除插入 `user_notifications` 逻辑
+  - 新增调用 `/api/send-rejection-email` 发送通知邮件
+- `deleteAgentRegistration()`：改删 `agent_profiles` 记录
+- 删除现有的 Realtime 订阅相关代码
+
+#### `src/components/AppSidebar.tsx`
+
+**改动**：
+- 删除 `agentRegStatus` 相关代码（第 13 行解构，第 182-197 行 banner）
+- 侧边栏不再显示审批状态（改用邮件通知）
+
+#### `src/app/(app)/layout.tsx`
+
+**改动**：
+- 删除 `agentRegStatus === 'pending'` 滚动横幅（第 38-61 行）
+- 删除 `agentRegStatus === 'approved'` 成功横幅（第 63-83 行）
+- 删除 `agentRegStatus === 'rejected'` 错误横幅（第 84-104 行）
+- 删除 `agentRegStatus` 从 `useAuth()` 解构
+
+#### `src/app/register-agent/page.tsx`
+
+**删除**：被 `src/app/register/agent/page.tsx` 替代
+
+#### `src/app/auth/callback/route.ts`
+
+**改动**：
+- OAuth 回调后，检查 `user.user_metadata.role` 是否存在
+- 如果没有 role（Google 新用户）→ 重定向到 `/register/complete-profile`（替代 `/listings`）
+- 如果有 role → 保持现有逻辑重定向到 `/listings`
+
+#### `src/app/actions/deleteAccount.ts`
+
+**改动**：
+- 删除从 `agent_registrations` 表删除的逻辑
+- 新增从 `tenant_profiles` 表删除的逻辑
+- 新增从 `agent_profiles` 表删除的逻辑
+
+#### `src/lib/supabase.ts`（Mock 模式）
+
+**改动**：
+- Mock localStorage keys 新增：`ez_tenant_profiles`、`ez_agent_profiles`、`ez_email_verifications`
+- 删除：`ez_agent_registrations`（被 `ez_agent_profiles` 替代）
+- Mock auth 新增：`signUp` 方法（支持邮箱+密码注册）
+
+#### `src/utils/compressImage.ts`
+
+**无需修改**：现有 `REN_TAG_PRESET` 可复用，新增证件照片压缩预设（如需要）
+
+#### `src/components/Inbox.tsx`
+
+**改动**：
+- 如果引用了 `agent_registrations` 相关的通知类型，需要更新或删除
+
+#### `src/lib/PendingCountsContext.tsx`
+
+**改动**：
+- `agentReviews` 计数逻辑改为查 `agent_profiles` 表（替代 `agent_registrations`）
+
+#### `src/app/(app)/admin/layout.tsx`
+
+**无需修改**：现有 `role !== 'admin'` 守卫逻辑仍然有效
+
+### 5.6 不需要修改的文件
+
+| 文件 | 原因 |
+|------|------|
+| `src/components/PropertyListings.tsx` | 只查 `units`、`communities`、`favorites`，不涉及 auth |
+| `src/components/TenantPortal.tsx` | 只查租约、支付记录，不涉及 auth |
+| `src/components/FavoritesManager.tsx` | 只查 `favorites` 表 |
+| `src/components/AgentRating.tsx` | 只查 `agent_ratings` 表 |
+| `src/components/AdminPageWrapper.tsx` | 路由逻辑不变 |
+| `src/utils/supabase/client.ts` | Supabase 客户端不变 |
+| `src/utils/supabase/server.ts` | Supabase 服务端客户端不变 |
+| `src/utils/compressImage.ts` | 压缩工具不变 |
+| `src/components/LegalContent.tsx` | 法律条款内容不变 |
+
+### 5.7 现有 Supabase 表（不需要修改）
+
+| 表名 | 说明 |
+|------|------|
+| `admin_users` | 管理员/中介权限表（保持不变） |
+| `agent_ratings` | 中介评分（保持不变） |
+| `communities` | 小区信息（保持不变） |
+| `favorites` | 收藏（保持不变） |
+| `leases` | 租约（保持不变） |
+| `lease_transfers` | 租约转让（保持不变） |
+| `maintenance_requests` | 维修工单（保持不变） |
+| `mobile_upload_sessions` | 手机上传会话（保持不变） |
+| `payment_records` | 支付记录（保持不变） |
+| `reviews` | 评价（保持不变） |
+| `tenant_interests` | 租客意向（保持不变） |
+| `units` | 房源（保持不变） |
+| `user_notifications` | 站内通知（保持不变，但中介审批不再使用） |
+| `users` | 用户信息（保持不变） |
+
+### 5.8 需要迁移的旧表
+
+| 旧表 | 处理 |
+|------|------|
+| `agent_registrations` | 保留但不再使用，数据可迁移到 `agent_profiles` |
 
 ---
 
