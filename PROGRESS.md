@@ -2574,3 +2574,32 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 
 **文档同步：** `docs/FAQ.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/architecture.md`、`docs/performance-diagnosis.md`
 
+---
+
+## 六十五、中介自助注销 7 天留存 + 超管移除双轨策略（2026-06-06）
+
+**目标：** 中介自助注销与超级管理员强制移除采用不同策略；中介手上有活跃租约时禁止注销；REN/公司资料保留 7 天防犯罪取证。
+
+### 双轨对比
+
+| 路径 | 文件 | 活跃租约 | REN 资料 | 登录 |
+|------|------|----------|----------|------|
+| 中介自助注销 | `deleteAccount.ts` | 有则拒绝 | 保留 7 天 | Day 0 吊销 |
+| 超管移除 | `deleteAgentBySuperAdmin.ts` | 有则拒绝 | 立即删除 | 立即吊销 |
+| 租客自助注销 | `deleteAccount.ts` | — | 证件保留 7 天 | Day 0 吊销 |
+
+### 改动
+
+| 文件 | 内容 |
+|------|------|
+| `deleteAccount.ts` | 中介分支改为软删除（`DELETED:时间戳` 标记）；扩展 `cleanupExpiredDeletedAccountsAction()` 支持中介 7 天到期清理 |
+| `api/cron/cleanup-expired-deleted-accounts/route.ts` | 新增每日 03:00 定时清理（`CRON_SECRET` 鉴权） |
+| `vercel.json` | 注册新 Cron 路径 |
+| `AuthContext.tsx` | Mock 模式同步：活跃租约拦截 + 中介 7 天软删除 + 到期清理 |
+| `AppTopbar.tsx` | 中介/租客注销弹窗文案分角色展示 |
+| `AdminPanel.tsx` | 过滤 `DELETED:` 标记的已注销中介 |
+
+### 文档同步
+
+`docs/architecture.md`、`docs/FAQ.md`、`docs/agent-deletion-considerations.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/portal-isolation-plan.md`
+

@@ -1165,24 +1165,43 @@ PropertyListings → Whole Unit 详情
    * 彻底解决了中英文不同字符宽度导致的进度流失与流光呼吸光点偏移问题。
 
 ### Q: 注销账户后，数据库里的数据会清干净吗？
-**A:** **会。** 注销账户时，系统通过 Server Action（`deleteAccountAction`）彻底清理所有租客相关的数据行：
+**A:** 取决于**角色**和**谁发起注销**，分三条路径：
 
-| 表 | 操作 | 说明 |
-|---|---|---|
-| `users` | 删除 | 个人信息（姓名、手机、护照号等） |
-| `admin_users` | 删除 | 管理员/中介角色记录 |
-| `agent_registrations` | 删除 | 中介申请记录 |
-| `tenant_interests` | 删除 | 所有租房意向 |
-| `maintenance_requests` | 删除 | 所有维修工单 |
-| `auth.users` | 删除 | 认证记录（通过 service role key） |
-| `leases` | **保留** | 租约合同，中介的台账需要 |
-| `payment_records` | **保留** | 缴租记录，中介的审计需要 |
+#### 1. 租客自助注销（顶栏「注销账号」）
 
-**为什么保留租约和账单？** 因为这些是中介（Agent）的财务归档记录。租客走了，但中介的台账不能丢。
+| 时机 | 操作 |
+|------|------|
+| **Day 0（立即）** | 删除 `tenant_interests`、`maintenance_requests`、`user_notifications`、`auth.users`（立即无法登录） |
+| **Day 0（保留）** | `public.users` 行打上 `avatar_url = 'DELETED:时间戳'`，证件照/护照号等**保留 7 天**作法律取证 |
+| **Day 7+** | 自动清理：解耦 `leases` / `agent_ratings` / `reviews`（`tenant_id`/`user_id` → `null`），删除 Storage 证件图，删除 `public.users` |
+| **始终保留** | `leases`、`payment_records`（中介财务台账不受影响） |
 
-**注销后能重新注册吗？** 能。用同一个邮箱重新登录（Google/Magic Link），系统会创建新的 auth 用户，所有数据从头开始。
+#### 2. 中介自助注销（顶栏「注销账号」）
 
-**技术实现：** 前端调用 Server Action（`frontend/src/app/actions/deleteAccount.ts`），服务端用 `SUPABASE_SERVICE_ROLE_KEY` 创建管理员客户端来删除 auth.users。密钥只存在 Vercel 环境变量里，前端看不到。
+| 条件 | 行为 |
+|------|------|
+| 名下有**活跃租约** | **拒绝注销** |
+| 无活跃租约 | 立即吊销登录（删 `auth.users`），清空通知 |
+| **Day 0（保留）** | REN 执照、公司资料等打上 `DELETED:时间戳` 标记，**保留 7 天**防犯罪取证 |
+| **Day 7+** | 自动清理：删除 `agent_profiles`、`admin_users`、`users` 及 REN 图片 |
+| **始终保留** | 历史租约、缴租记录（业务凭证） |
+
+#### 3. 超级管理员移除中介（管理后台）
+
+- **立即彻底删除** `agent_profiles`、`admin_users`、`users`、REN 图片、`auth.users`
+- **不走 7 天留存**（与中介自助注销不同）
+- 同样有活跃租约时**拒绝删除**
+
+**注销后能重新注册吗？** 能。用同一个邮箱重新登录，系统会创建新的 auth 用户，所有数据从头开始。
+
+**技术实现：**
+- 自助注销：`frontend/src/app/actions/deleteAccount.ts`（`deleteAccountAction`）
+- 超管移除：`frontend/src/app/actions/deleteAgentBySuperAdmin.ts`
+- 服务端均用 `SUPABASE_SERVICE_ROLE_KEY` 提权操作，密钥只存在 Vercel 环境变量里
+
+**7 天到期清理怎么触发？**
+1. 每次有人注销时顺带扫一遍过期记录
+2. Vercel 定时任务：每天 03:00 调用 `/api/cron/cleanup-expired-deleted-accounts`（需配置 `CRON_SECRET` 鉴权，不配则返回 401、定时清理不执行，不影响平台正常使用）
 
 ### Q: SUPABASE_SERVICE_ROLE_KEY 配在哪里？
 **A:** 配在 **Vercel**（不是 Render）。
@@ -1297,6 +1316,23 @@ PropertyListings → Whole Unit 详情
 | `CRON_SECRET` | ❌ **可不先配** | 不配时定时任务返回 401，**不影响平台正常使用**；登录、浏览、填表不受影响。配好后定时清理才生效 |
 
 **相关代码：** `cleanupIncompleteSignups.ts`、`api/cron/cleanup-incomplete-signups/route.ts`、`auth/callback/route.ts`、`vercel.json`
+
+---
+
+### Q: 注销账户 7 天后的自动清理定时任务也要鉴权吗？
+
+**A:** **要。** 与 OAuth 中间态清理共用同一套 `CRON_SECRET` 机制。
+
+| 定时任务 | 路径 | 频率 | 清理对象 |
+|----------|------|------|----------|
+| OAuth 中间态清理 | `/api/cron/cleanup-incomplete-signups` | 每 30 分钟 | 30 分钟未补资料的 Google 登录孤儿账号 |
+| 注销账户到期清理 | `/api/cron/cleanup-expired-deleted-accounts` | 每天 03:00 | 注销超过 7 天的租客/中介留存记录 |
+
+两个接口均校验 `Authorization: Bearer <CRON_SECRET>`，未配置或不匹配则返回 **401**，不执行任何删除。
+
+**额外兜底：** 每次用户自助注销（`deleteAccountAction`）时，也会顺带调用 `cleanupExpiredDeletedAccountsAction()` 扫描过期记录，不依赖定时任务也能逐步清理。
+
+**相关代码：** `deleteAccount.ts`、`api/cron/cleanup-expired-deleted-accounts/route.ts`、`vercel.json`
 
 ---
 

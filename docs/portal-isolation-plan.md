@@ -898,10 +898,11 @@ created_at TIMESTAMPTZ
 
 #### `src/app/actions/deleteAccount.ts`
 
-**改动**：
-- 删除从 `agent_registrations` 表删除的逻辑
-- 新增从 `agent_profiles` 表删除的逻辑
-- `users` 表已有删除逻辑（通过 `ON DELETE CASCADE`），无需额外处理
+**改动（自助注销，双轨逻辑）**：
+- **租客**：Day 0 删 `auth.users` + 日常数据，证件保留 7 天；Day 7+ 解耦租约/评分后删 `users` 及 Storage 证件图
+- **中介自助注销**：有活跃租约则拒绝；无活跃租约时 Day 0 吊销登录，在 `users` / `admin_users` / `agent_profiles` 打 `DELETED:时间戳` 标记保留 REN 资料 7 天；Day 7+ 永久删除
+- **超管移除**（`deleteAgentBySuperAdmin.ts`）：立即彻底删除，不走 7 天留存
+- **定时清理**：`cleanupExpiredDeletedAccountsAction()` + Cron `/api/cron/cleanup-expired-deleted-accounts`（需 `CRON_SECRET`）
 
 #### `src/lib/supabase.ts`（Mock 模式）
 
