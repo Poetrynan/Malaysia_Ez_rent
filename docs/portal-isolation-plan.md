@@ -583,32 +583,59 @@ const resolveRole = async (user) => {
 
 ---
 
-## 九、风险与注意事项
+## 九、开发者手动创建账号（开绿灯）
 
-### 9.1 向后兼容
+开发者可以为朋友、熟人在数据库后台直接创建账号，跳过注册和审批流程。
+
+### 9.0.1 创建租客账号
+
+```
+1. Supabase Auth → 新建用户（填邮箱、密码）
+2. user_metadata → 设置 { role: 'student', full_name: '...', identity_type: '...' }
+3. Supabase Storage → 上传证件照片（朋友通过 WhatsApp/微信发送）
+4. tenant_profiles 表 → 插入记录，填入照片 URL
+```
+
+### 9.0.2 创建中介账号
+
+```
+1. Supabase Auth → 新建用户（填邮箱、密码）
+2. user_metadata → 设置 { role: 'agent', full_name: '...' }
+3. Supabase Storage → 上传 REN 执照照片（朋友通过 WhatsApp/微信发送）
+4. agent_profiles 表 → 插入记录（status: 'approved'），填入照片 URL
+5. admin_users 表 → 插入记录（权限）
+```
+
+**注意**：照片必须上传，不能留空。保持数据完整性。
+
+---
+
+## 十、风险与注意事项
+
+### 10.1 向后兼容
 
 - 现有已注册用户（通过 Supabase Magic Link 登录的）需要迁移
 - 建议：给现有用户的 `user_metadata` 补充 `role: 'student'` 字段（保持租客身份）
 - 现有 `admin_users` 表中的中介账号需要补充 `agent_profiles` 记录
 
-### 9.2 Mock 模式
+### 10.2 Mock 模式
 
 - Mock 模式下邮箱验证码用 localStorage 模拟
 - 注册信息存入 localStorage 对应 key
 
-### 9.3 邮箱唯一性
+### 10.3 邮箱唯一性
 
 - 一个邮箱只能注册一个角色（学生 OR 中介）
 - 注册时检查邮箱是否已存在于 Supabase Auth
 
-### 9.4 密码安全
+### 10.4 密码安全
 
 - 密码最少 8 位，包含大小写字母和数字
 - 使用 Supabase Auth 的密码策略
 
 ---
 
-## 十、测试清单
+## 十一、测试清单
 
 ### 租客注册
 - [ ] 马来西亚本地人注册（IC 号码 + IC 正反面照片）→ 成功
