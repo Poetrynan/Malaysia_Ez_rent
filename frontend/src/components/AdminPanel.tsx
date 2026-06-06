@@ -4114,164 +4114,40 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
       {/* ── ADMINS TAB (super_admin only) ── */}
       {tab === 'admins' && adminRole === 'super_admin' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                <Users size={16} style={{ color: 'var(--primary)' }} />
-                <span style={{ color: 'var(--text-h)', fontWeight: 700 }}>
-                  {lang === 'zh' ? '中介与管理员管理' : 'Agents & Admins'}
-                </span>
-              </h3>
-              <button onClick={() => { setShowAddAdmin(v => !v); if (showAddAdmin) resetNewAdminForm(); }} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                borderRadius: 10, border: 'none', background: 'var(--primary)',
-                color: 'white', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}>
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--glass-border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+            }}>
+              <div>
+                <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                  <Users size={17} style={{ color: 'var(--primary)' }} />
+                  <span style={{ color: 'var(--text-h)', fontWeight: 700 }}>
+                    {lang === 'zh' ? '中介与管理员管理' : 'Agents & Admins'}
+                  </span>
+                </h3>
+                <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                  {lang === 'zh' ? '管理已开通的中介账号，支持手动预置开户' : 'Manage provisioned agents and manual onboarding'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddAdmin(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',
+                  borderRadius: 10, border: 'none', background: 'var(--primary)',
+                  color: 'white', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                  boxShadow: '0 4px 14px var(--primary-glow)', transition: 'transform 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
                 <UserPlus size={14} /> {lang === 'zh' ? '开通中介账号' : 'Provision Agent'}
               </button>
             </div>
 
-            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.55 }}>
-              {lang === 'zh'
-                ? '相当于在 Supabase 后台手动开户：创建登录账号、中介资料与已通过审核记录，供集体管理。'
-                : 'Same as manual Supabase provisioning: auth account, admin record, and pre-approved agent profile.'}
-            </p>
-
-            {showAddAdmin && (
-              <div style={{
-                padding: 20,
-                borderRadius: 14,
-                background: 'var(--glass-bg)',
-                border: '1px solid var(--glass-border)',
-                marginBottom: 20,
-                boxShadow: 'var(--glass-shadow)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 18,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ShieldCheck size={16} style={{ color: 'var(--primary)' }} />
-                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-h)' }}>
-                    {lang === 'zh' ? '手动开通中介（预置已通过）' : 'Manual agent provisioning (pre-approved)'}
-                  </span>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
-                    {lang === 'zh' ? '登录凭证' : 'LOGIN CREDENTIALS'}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '邮箱 *' : 'Email *'}</label>
-                      <input className="form-input" value={newAdmin.email} onChange={e => setNewAdmin(f => ({ ...f, email: e.target.value }))} placeholder="agent@agency.com" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '初始密码 *' : 'Initial password *'}</label>
-                      <div style={{ position: 'relative' }}>
-                        <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.password} onChange={e => setNewAdmin(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" style={{ paddingLeft: 36, paddingRight: 36 }} />
-                        <button type="button" onClick={() => setShowNewAdminPassword(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}>
-                          {showNewAdminPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '确认密码 *' : 'Confirm password *'}</label>
-                      <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.confirm_password} onChange={e => setNewAdmin(f => ({ ...f, confirm_password: e.target.value }))} placeholder="••••••••" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
-                    {lang === 'zh' ? '基本资料' : 'PROFILE'}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '显示名称 *' : 'Display name *'}</label>
-                      <input className="form-input" value={newAdmin.display_name} onChange={e => setNewAdmin(f => ({ ...f, display_name: e.target.value }))} placeholder={lang === 'zh' ? '张中介' : 'Agent name'} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '公司名称 *' : 'Agency name *'}</label>
-                      <input className="form-input" value={newAdmin.agency_name} onChange={e => setNewAdmin(f => ({ ...f, agency_name: e.target.value }))} placeholder="ABC Realty Sdn Bhd" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
-                    {lang === 'zh' ? '联系方式' : 'CONTACT'}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '手机 *' : 'Phone *'}</label>
-                      <input className="form-input" value={newAdmin.phone} onChange={e => setNewAdmin(f => ({ ...f, phone: e.target.value }))} placeholder="+6012-345 6789" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>WhatsApp</label>
-                      <input className="form-input" value={newAdmin.whatsapp} onChange={e => setNewAdmin(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+6012-345 6789" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? '微信号' : 'WeChat ID'}</label>
-                      <input className="form-input" value={newAdmin.wechat_id} onChange={e => setNewAdmin(f => ({ ...f, wechat_id: e.target.value }))} placeholder="wechat_id" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.04em' }}>
-                    {lang === 'zh' ? 'REN 资质' : 'REN CREDENTIALS'}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 4, display: 'block' }}>{lang === 'zh' ? 'REN 编号 *' : 'REN number *'}</label>
-                      <input className="form-input" value={newAdmin.ren_number} onChange={e => setNewAdmin(f => ({ ...f, ren_number: e.target.value.toUpperCase() }))} placeholder="REN12345" />
-                    </div>
-                  </div>
-                  <label style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: 18, borderRadius: 12, cursor: 'pointer',
-                    border: `1px dashed ${newAdminRenTagImage ? 'var(--primary)' : 'var(--glass-border)'}`,
-                    background: newAdminRenTagImage ? 'var(--primary-light)' : 'var(--bg-hover)',
-                    transition: 'all 0.15s ease',
-                  }}>
-                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleNewAdminRenTagSelect} style={{ display: 'none' }} />
-                    {newAdminRenTagImage ? (
-                      <img src={newAdminRenTagImage} alt="REN preview" style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
-                    ) : (
-                      <Upload size={18} style={{ color: 'var(--primary)' }} />
-                    )}
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-h)' }}>
-                      {newAdminRenTagImage
-                        ? (lang === 'zh' ? '点击更换 REN 执照照片' : 'Click to replace REN tag photo')
-                        : (lang === 'zh' ? '上传 REN 执照照片 *' : 'Upload REN tag photo *')}
-                    </span>
-                  </label>
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button onClick={handleAddAdmin} disabled={addingAdmin} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '10px 20px', borderRadius: 10, border: 'none',
-                    background: 'var(--primary)', color: '#fff',
-                    fontSize: '0.84rem', fontWeight: 700, cursor: addingAdmin ? 'wait' : 'pointer',
-                    opacity: addingAdmin ? 0.7 : 1,
-                  }}>
-                    {addingAdmin ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={15} />}
-                    {lang === 'zh' ? '确认开通' : 'Provision account'}
-                  </button>
-                  <button onClick={() => { resetNewAdminForm(); setShowAddAdmin(false); }} disabled={addingAdmin} style={{
-                    padding: '10px 20px', borderRadius: 10,
-                    border: '1px solid var(--glass-border)', background: 'transparent',
-                    color: 'var(--text-body)', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer',
-                  }}>
-                    {lang === 'zh' ? '取消' : 'Cancel'}
-                  </button>
-                </div>
-              </div>
-            )}
-
+            <div style={{ padding: '16px 20px 20px' }}>
             {/* Admin grid */}
             {adminList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
@@ -4659,7 +4535,247 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
                 </div>
               </div>
             )}
+            </div>
           </div>
+
+          {/* Provision agent modal */}
+          {showAddAdmin && (() => {
+            const closeProvisionModal = () => {
+              if (addingAdmin) return;
+              resetNewAdminForm();
+              setShowAddAdmin(false);
+            };
+            const renderProvisionLabel = (text: string, required?: boolean) => (
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-body)', fontWeight: 600, marginBottom: 6, display: 'block' }}>
+                {text}{required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
+              </label>
+            );
+            const renderProvisionSection = (step: number, title: string, desc: string, children: React.ReactNode) => (
+              <div style={{
+                padding: '16px 18px', borderRadius: 14,
+                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.78rem', fontWeight: 800,
+                  }}>
+                    {step}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-h)' }}>{title}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
+                  </div>
+                </div>
+                {children}
+              </div>
+            );
+
+            return (
+              <div
+                onClick={closeProvisionModal}
+                style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9997,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                  animation: 'scaleIn 0.2s ease',
+                }}
+              >
+                <div
+                  onClick={e => e.stopPropagation()}
+                  className="glass-card"
+                  style={{
+                    width: '100%', maxWidth: 720, maxHeight: '90vh',
+                    display: 'flex', flexDirection: 'column',
+                    padding: 0, borderRadius: 18, overflow: 'hidden',
+                  }}
+                >
+                  <div style={{
+                    padding: '18px 22px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    background: 'linear-gradient(135deg, var(--primary-light), transparent)',
+                  }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                      background: 'var(--primary)', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 14px var(--primary-glow)',
+                    }}>
+                      <ShieldCheck size={22} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)' }}>
+                        {lang === 'zh' ? '手动开通中介' : 'Provision Agent Account'}
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {lang === 'zh'
+                          ? '创建登录账号并预置为已通过审核，REN 执照仍必填'
+                          : 'Create login credentials with pre-approved status; REN tag still required'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeProvisionModal}
+                      disabled={addingAdmin}
+                      style={{
+                        width: 34, height: 34, borderRadius: 10, border: '1px solid var(--glass-border)',
+                        background: 'var(--bg-surface-solid)', color: 'var(--text-muted)', cursor: addingAdmin ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: addingAdmin ? 0.5 : 1,
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '18px 22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {renderProvisionSection(
+                      1,
+                      lang === 'zh' ? '登录凭证' : 'Login credentials',
+                      lang === 'zh' ? '用于中介端邮箱密码登录' : 'Used for agent portal email + password login',
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? '邮箱' : 'Email', true)}
+                          <input className="form-input" value={newAdmin.email} onChange={e => setNewAdmin(f => ({ ...f, email: e.target.value }))} placeholder="agent@agency.com" />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                          <div>
+                            {renderProvisionLabel(lang === 'zh' ? '初始密码' : 'Password', true)}
+                            <div style={{ position: 'relative' }}>
+                              <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                              <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.password} onChange={e => setNewAdmin(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" style={{ paddingLeft: 36, paddingRight: 36 }} />
+                              <button type="button" onClick={() => setShowNewAdminPassword(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}>
+                                {showNewAdminPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            {renderProvisionLabel(lang === 'zh' ? '确认密码' : 'Confirm', true)}
+                            <input className="form-input" type={showNewAdminPassword ? 'text' : 'password'} value={newAdmin.confirm_password} onChange={e => setNewAdmin(f => ({ ...f, confirm_password: e.target.value }))} placeholder="••••••••" />
+                          </div>
+                        </div>
+                      </div>,
+                    )}
+
+                    {renderProvisionSection(
+                      2,
+                      lang === 'zh' ? '基本资料' : 'Profile',
+                      lang === 'zh' ? '展示在管理后台与租客端的中介信息' : 'Shown in admin panel and tenant-facing pages',
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? '显示名称' : 'Display name', true)}
+                          <input className="form-input" value={newAdmin.display_name} onChange={e => setNewAdmin(f => ({ ...f, display_name: e.target.value }))} placeholder={lang === 'zh' ? '张中介' : 'Agent name'} />
+                        </div>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? '公司名称' : 'Agency', true)}
+                          <input className="form-input" value={newAdmin.agency_name} onChange={e => setNewAdmin(f => ({ ...f, agency_name: e.target.value }))} placeholder="ABC Realty Sdn Bhd" />
+                        </div>
+                      </div>,
+                    )}
+
+                    {renderProvisionSection(
+                      3,
+                      lang === 'zh' ? '联系方式' : 'Contact',
+                      lang === 'zh' ? '手机必填；WhatsApp / 微信选填' : 'Phone required; WhatsApp / WeChat optional',
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? '手机' : 'Phone', true)}
+                          <input className="form-input" value={newAdmin.phone} onChange={e => setNewAdmin(f => ({ ...f, phone: e.target.value }))} placeholder="+6012-345 6789" />
+                        </div>
+                        <div>
+                          {renderProvisionLabel('WhatsApp')}
+                          <input className="form-input" value={newAdmin.whatsapp} onChange={e => setNewAdmin(f => ({ ...f, whatsapp: e.target.value }))} placeholder="+6012-345 6789" />
+                        </div>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? '微信号' : 'WeChat')}
+                          <input className="form-input" value={newAdmin.wechat_id} onChange={e => setNewAdmin(f => ({ ...f, wechat_id: e.target.value }))} placeholder="wechat_id" />
+                        </div>
+                      </div>,
+                    )}
+
+                    {renderProvisionSection(
+                      4,
+                      lang === 'zh' ? 'REN 资质' : 'REN credentials',
+                      lang === 'zh' ? '合规要求：编号与执照照片缺一不可' : 'Compliance: REN number and tag photo are both required',
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, alignItems: 'start' }}>
+                        <div>
+                          {renderProvisionLabel(lang === 'zh' ? 'REN 编号' : 'REN number', true)}
+                          <input className="form-input" value={newAdmin.ren_number} onChange={e => setNewAdmin(f => ({ ...f, ren_number: e.target.value.toUpperCase() }))} placeholder="REN12345" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.03em' }} />
+                          <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.45 }}>
+                            {lang === 'zh' ? '格式：REN + 4–7 位数字，如 REN12345' : 'Format: REN + 4–7 digits, e.g. REN12345'}
+                          </p>
+                        </div>
+                        <label style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+                          minHeight: 140, padding: 14, borderRadius: 12, cursor: 'pointer', textAlign: 'center',
+                          border: `2px dashed ${newAdminRenTagImage ? 'var(--primary)' : 'var(--glass-border)'}`,
+                          background: newAdminRenTagImage ? 'var(--primary-light)' : 'var(--bg-hover)',
+                          transition: 'border-color 0.15s ease, background 0.15s ease',
+                        }}>
+                          <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleNewAdminRenTagSelect} style={{ display: 'none' }} />
+                          {newAdminRenTagImage ? (
+                            <img src={newAdminRenTagImage} alt="REN preview" style={{ width: '100%', maxWidth: 160, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--glass-border)' }} />
+                          ) : (
+                            <div style={{
+                              width: 48, height: 48, borderRadius: 12,
+                              background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <Camera size={22} style={{ color: 'var(--primary)' }} />
+                            </div>
+                          )}
+                          <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-h)', lineHeight: 1.4 }}>
+                            {newAdminRenTagImage
+                              ? (lang === 'zh' ? '点击更换执照' : 'Tap to replace')
+                              : (lang === 'zh' ? '上传 REN 执照' : 'Upload REN tag')}
+                          </span>
+                        </label>
+                      </div>,
+                    )}
+                  </div>
+
+                  <div style={{
+                    padding: '14px 22px 18px',
+                    borderTop: '1px solid var(--glass-border)',
+                    display: 'flex', gap: 10, justifyContent: 'flex-end',
+                    background: 'var(--bg-surface-solid)',
+                  }}>
+                    <button
+                      type="button"
+                      onClick={closeProvisionModal}
+                      disabled={addingAdmin}
+                      style={{
+                        padding: '10px 18px', borderRadius: 10,
+                        border: '1px solid var(--glass-border)', background: 'transparent',
+                        color: 'var(--text-body)', fontSize: '0.84rem', fontWeight: 600,
+                        cursor: addingAdmin ? 'not-allowed' : 'pointer', opacity: addingAdmin ? 0.6 : 1,
+                      }}
+                    >
+                      {lang === 'zh' ? '取消' : 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddAdmin}
+                      disabled={addingAdmin}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '10px 22px', borderRadius: 10, border: 'none',
+                        background: 'var(--primary)', color: '#fff',
+                        fontSize: '0.84rem', fontWeight: 700,
+                        cursor: addingAdmin ? 'wait' : 'pointer',
+                        opacity: addingAdmin ? 0.75 : 1,
+                        boxShadow: '0 4px 14px var(--primary-glow)',
+                      }}
+                    >
+                      {addingAdmin ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={15} />}
+                      {lang === 'zh' ? '确认开通' : 'Provision account'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
