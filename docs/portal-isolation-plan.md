@@ -544,6 +544,70 @@ const resolveRole = async (user) => {
 | `agent_profiles` | 中介申请资料 | `auth_user_id → auth.users.id`（可 NULL） |
 | `email_verifications` | 邮箱验证码 | 无外键，按 email 查询 |
 
+### 5.2.1 现有表结构参考
+
+**`admin_users` 表**（手动创建，无 migration）：
+```
+id UUID (关联 auth.users.id)
+email TEXT
+role TEXT ('super_admin' | 'editor')
+display_name TEXT
+phone TEXT
+whatsapp TEXT
+wechat_id TEXT
+ren_number TEXT          -- 迁移 030 新增
+ren_tag_url TEXT         -- 迁移 030 新增
+created_at TIMESTAMPTZ
+```
+
+**`agent_registrations` 表**（迁移 022 创建）：
+```
+id UUID
+auth_user_id UUID (可 NULL)
+email VARCHAR(255) NOT NULL
+full_name VARCHAR(100) NOT NULL
+phone VARCHAR(20) NOT NULL (约束: ^601[0-9]{8,9}$)
+whatsapp VARCHAR(20) (约束: ^601[0-9]{8,9}$)
+agency_name VARCHAR(120) NOT NULL
+ren_number VARCHAR(20) NOT NULL (约束: ^REN[0-9]{4,7}$)
+ren_tag_image_url TEXT NOT NULL
+verification_status VARCHAR(20) DEFAULT 'pending' (CHECK: pending/approved/rejected/suspended/banned)
+rejection_reason TEXT
+metadata JSONB
+created_at TIMESTAMPTZ
+updated_at TIMESTAMPTZ
+reviewed_at TIMESTAMPTZ
+reviewed_by UUID
+```
+
+**`user_notifications` 表**（迁移 028 创建）：
+```
+id UUID
+user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+title TEXT NOT NULL
+content TEXT NOT NULL
+type VARCHAR(50) DEFAULT 'system' (CHECK: system/announcement/update/bonus/agent_status)
+is_read BOOLEAN DEFAULT false
+created_at TIMESTAMPTZ
+```
+
+**`users` 表**（手动创建）：
+```
+id UUID (关联 auth.users.id)
+full_name TEXT
+avatar_url TEXT
+email TEXT
+```
+
+**重要触发器**（迁移 036）：
+```sql
+-- 当新用户通过 Supabase Auth 注册时自动触发：
+-- 1. 创建 public.users 记录
+-- 2. 如果 email 在 admin_users 中存在，自动关联 auth_user_id
+-- 3. 如果关联成功，自动插入 user_notifications（type='agent_status'）
+-- ⚠️ 这个触发器在新系统中需要修改或删除
+```
+
 ### 5.3 新建 Supabase Storage 路径
 
 | 路径 | 说明 |
@@ -652,6 +716,14 @@ const resolveRole = async (user) => {
 - Mock localStorage keys 新增：`ez_tenant_profiles`、`ez_agent_profiles`、`ez_email_verifications`
 - 删除：`ez_agent_registrations`（被 `ez_agent_profiles` 替代）
 - Mock auth 新增：`signUp` 方法（支持邮箱+密码注册）
+
+#### Supabase 触发器 `on_auth_user_created`（迁移 036）
+
+**改动**：
+- 删除自动插入 `user_notifications`（agent_status）的逻辑（改用邮件通知）
+- 保留自动创建 `public.users` 记录的逻辑
+- 保留自动关联 `admin_users` 的逻辑（审批通过后，中介首次登录时自动关联）
+- 新增：如果 `user_metadata.role = 'student'`，自动创建 `tenant_profiles` 记录（可选）
 
 #### `src/utils/compressImage.ts`
 
