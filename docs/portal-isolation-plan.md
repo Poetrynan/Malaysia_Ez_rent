@@ -1,6 +1,6 @@
-# 学生端 / 中介端 绝对隔离实施方案
+# 租客端 / 中介端 绝对隔离实施方案
 
-> **目标**：学生和中介是两个完全独立的系统，一个账号只能是一种角色，不存在"租客转中介"的中间状态。
+> **目标**：租客和中介是两个完全独立的系统，一个账号只能是一种角色，不存在"租客转中介"的中间状态。
 >
 > **状态**：📋 规划中（2026-06-06）
 
@@ -12,15 +12,15 @@
 
 ```
 现状流程：
-  1. 没有学生注册页，直接通过 Magic Link（邮箱链接）或 Google 登录
+  1. 没有租客注册页，直接通过 Magic Link（邮箱链接）或 Google 登录
   2. 登录后根据 admin_users 表判断角色：有记录 → 中介端，无记录 → 租客端
   3. 中介申请页（/register-agent）不需要登录，任何人可填表提交
-  4. 学生也可以从租客端侧边栏申请当中介
+  4. 租客也可以从租客端侧边栏申请当中介
   5. 审批通过后需要重新登录，系统才重新检查 admin_users 表
 
 问题：
-  1. 没有正式的注册流程，学生和中介共用同一个登录入口
-  2. 一个账号可能在两种角色之间切换（学生申请当中介）
+  1. 没有正式的注册流程，租客和中介共用同一个登录入口
+  2. 一个账号可能在两种角色之间切换（租客申请当中介）
   3. 审批通过后需要重新登录才能切换到中介端
   4. agentRegStatus 状态管理复杂
   5. 中介申请时不需要登录，但审批通过后需要登录，流程不连贯
@@ -30,7 +30,7 @@
 
 | 文件 | 作用 | 需要改动 |
 |------|------|----------|
-| `src/app/login/page.tsx` | 登录页（有学生/中介 tab） | ✅ 重构 |
+| `src/app/login/page.tsx` | 登录页（有租客/中介 tab） | ✅ 重构 |
 | `src/lib/AuthContext.tsx` | 认证上下文（查 admin_users 表判断角色） | ✅ 重构 |
 | `src/middleware.ts` | 路由守卫（检查 Supabase session） | ✅ 新增注册路由白名单 |
 | `src/app/register-agent/page.tsx` | 现有中介申请页（无需登录） | ❌ 删除 |
@@ -48,7 +48,7 @@
 AuthContext.resolveRole():
   → 查 admin_users 表（id = user.id 或 email = user.email）
   → 有记录 → role = 'admin'（中介）→ 跳转 /admin/*
-  → 无记录 → role = 'student'（学生）→ 跳转 /listings
+  → 无记录 → role = 'student'（租客）→ 跳转 /listings
   → 查 agent_registrations 表获取 agentRegStatus（审批状态）
 
 中介申请流程（/register-agent）：
@@ -67,10 +67,10 @@ AuthContext.resolveRole():
 
 | 角色 | 注册 | 登录 | Google 登录 |
 |------|------|------|------------|
-| 学生 | 邮箱+密码+填表+验证码 | 邮箱+密码 **或** Google | ✅ 首次需完善资料 |
+| 租客 | 邮箱+密码+填表+验证码 | 邮箱+密码 **或** Google | ✅ 首次需完善资料 |
 | 中介 | 填表申请（无需密码） | 邮箱+密码（审批通过后） | ❌ 不提供 |
 
-**学生 Google 登录流程**：
+**租客 Google 登录流程**：
 ```
 Google 授权 → Supabase 自动创建账号
   → 检查 user_metadata 是否完整
@@ -86,8 +86,8 @@ Google 授权 → Supabase 自动创建账号
 ### 新流程
 
 ```
-学生注册 → /register/student → 填表 → 发验证码 → 验证通过 → 设置密码 → 注册完成 → /listings
-学生登录 → 邮箱+密码 或 Google（首次需完善资料）
+租客注册 → /register/tenant → 填表 → 发验证码 → 验证通过 → 设置密码 → 注册完成 → /listings
+租客登录 → 邮箱+密码 或 Google（首次需完善资料）
 
 中介申请 → /register/agent → 填表+邮箱验证 → 提交 → 等审批
 中介登录 → 审批通过 → 用邮箱+密码登录 → /admin/*
@@ -183,7 +183,7 @@ CREATE POLICY "Admins can update profiles"
 
 ## 四、前端改动详情
 
-### 4.1 新建：`/register/student/page.tsx`（租客注册页）
+### 4.1 新建：`/register/tenant/page.tsx`（租客注册页）
 
 **注意**：租客不只是学生，还包括马来西亚本地人、国际人士等。
 
@@ -386,12 +386,12 @@ CREATE TABLE email_verifications (
 ### 4.6 修改：`login/page.tsx`
 
 **改动**：
-- 保留现有的学生/中介 tab 结构（`roleView`），但修改每个 tab 的内容
-- **学生 tab**：邮箱+密码表单 + Google 登录按钮 + "还没有账号？注册"链接
+- 保留现有的租客/中介 tab 结构（`roleView`），但修改每个 tab 的内容
+- **租客 tab**：邮箱+密码表单 + Google 登录按钮 + "还没有账号？注册"链接
 - **中介 tab**：只有邮箱+密码表单 + "还没有账号？申请入驻"链接（无 Google 按钮）
 - 去掉现有的 Magic Link 登录方式，改为邮箱+密码
 
-**学生登录流程**：
+**租客登录流程**：
 ```
 邮箱+密码 → supabase.auth.signInWithPassword → 成功 → 检查 role → /listings
 Google → supabase.auth.signInWithOAuth → 成功 → 检查 user_metadata →
@@ -439,7 +439,7 @@ const resolveRole = async (user) => {
       setAgentRegStatus(data?.verification_status);
     }
   } else {
-    // 学生
+    // 租客
     setRoleState('student');
   }
 };
@@ -449,7 +449,7 @@ const resolveRole = async (user) => {
 | 状态 | 含义 | 跳转 |
 |------|------|------|
 | `null` | 未登录 | /guest |
-| `'student'` | 学生 | /listings |
+| `'student'` | 租客 | /listings |
 | `'admin'` | 中介（已审批，已有账号） | /admin/* |
 
 **中介审批流程**：
@@ -461,7 +461,7 @@ const resolveRole = async (user) => {
 ### 4.8 修改：`middleware.ts`
 
 **改动**：
-- 注册路由加入白名单：`/register/student`、`/register/agent`、`/register/complete-profile`
+- 注册路由加入白名单：`/register/tenant`、`/register/agent`、`/register/complete-profile`
 - `/api/*` 路由放行（API 不需要认证）
 - 中介登录后检测 agent_profiles 状态，未审批的不能进入 /admin/*
 
@@ -481,7 +481,7 @@ const resolveRole = async (user) => {
 
 | 文件路径 | 类型 | 说明 |
 |----------|------|------|
-| `src/app/register/student/page.tsx` | 新建 | 租客注册页（含证件上传） |
+| `src/app/register/tenant/page.tsx` | 新建 | 租客注册页（含证件上传） |
 | `src/app/register/agent/page.tsx` | 新建 | 中介注册页（无需密码） |
 | `src/app/register/complete-profile/page.tsx` | 新建 | Google 新用户完善资料页 |
 | `src/app/register/layout.tsx` | 新建 | 注册页布局（共享样式） |
@@ -543,7 +543,7 @@ const resolveRole = async (user) => {
 ### 9.1 向后兼容
 
 - 现有已注册用户（通过 Supabase Magic Link 登录的）需要迁移
-- 建议：给现有用户的 `user_metadata` 补充 `role: 'student'` 字段
+- 建议：给现有用户的 `user_metadata` 补充 `role: 'student'` 字段（保持租客身份）
 - 现有 `admin_users` 表中的中介账号需要补充 `agent_profiles` 记录
 
 ### 9.2 Mock 模式
