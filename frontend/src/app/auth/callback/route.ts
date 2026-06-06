@@ -50,31 +50,21 @@ export async function GET(request: NextRequest) {
     void cleanupIncompleteOAuthSignupsAction().catch(() => {});
 
     const { data: { user } } = await supabase.auth.getUser();
-    const role = user?.user_metadata?.role;
 
-    // New Google users (and legacy users without a role) must finish profile
-    // completion first. We MUST carry the freshly-set auth cookies onto this
-    // redirect — otherwise the session is dropped and complete-profile bounces
-    // the user back to /login, causing an infinite Google login loop.
-    if (!role) {
+    // DB is source of truth for identity completion (legacy tenants may lack role in metadata).
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('identity_type')
+      .eq('id', user!.id)
+      .maybeSingle();
+    const identityType = dbUser?.identity_type || user?.user_metadata?.identity_type;
+
+    if (!identityType) {
+      // Must carry freshly-set auth cookies onto redirect — otherwise session is
+      // dropped and profile completion bounces back to /login (Google login loop).
       const profileResponse = NextResponse.redirect(`${origin}/profile`);
       response.cookies.getAll().forEach((cookie) => profileResponse.cookies.set(cookie));
       return profileResponse;
-    }
-
-    // Tenant with role but missing identity_type → /profile
-    if (role === 'student') {
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('identity_type')
-        .eq('id', user!.id)
-        .maybeSingle();
-      const identityType = dbUser?.identity_type || user?.user_metadata?.identity_type;
-      if (!identityType) {
-        const profileResponse = NextResponse.redirect(`${origin}/profile`);
-        response.cookies.getAll().forEach((cookie) => profileResponse.cookies.set(cookie));
-        return profileResponse;
-      }
     }
 
     return response;

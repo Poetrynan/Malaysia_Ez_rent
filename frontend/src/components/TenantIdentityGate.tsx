@@ -20,6 +20,7 @@ export default function TenantIdentityGate({ children }: { children: React.React
       return;
     }
 
+    setGateLoading(true);
     let cancelled = false;
 
     (async () => {
@@ -37,11 +38,6 @@ export default function TenantIdentityGate({ children }: { children: React.React
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
-
-          if (!user.user_metadata?.role) {
-            router.replace('/profile');
-            return;
-          }
 
           const { data } = await supabase
             .from('users')

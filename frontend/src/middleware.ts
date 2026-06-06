@@ -98,11 +98,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(tenantHomeUrl);
     }
 
-    // Unified identity gate: no role or no identity_type → complete on /profile
+    // Unified identity gate: missing identity_type → complete on /profile
+    // DB is source of truth (legacy tenants may lack user_metadata.role).
     if (!pathname.startsWith('/profile')) {
       let identityType: string | null | undefined = user.user_metadata?.identity_type;
 
-      if (role === 'student' && supabase) {
+      if (supabase) {
         try {
           const { data: dbUser } = await supabase
             .from('users')
@@ -113,7 +114,7 @@ export async function middleware(request: NextRequest) {
         } catch {}
       }
 
-      if (!role || !identityType) {
+      if (!identityType) {
         const profileUrl = request.nextUrl.clone();
         profileUrl.pathname = '/profile';
         return NextResponse.redirect(profileUrl);
