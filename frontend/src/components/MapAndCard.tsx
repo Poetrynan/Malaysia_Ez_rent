@@ -22,6 +22,7 @@ interface MapAndCardProps {
   tenant_rating?: { overall: number; safety: number; cleanliness: number; value_for_money: number };
   description?: string;
   property_type?: string;
+  auto_load?: boolean;
 }
 
 const MOCK_PLACES = [
@@ -38,7 +39,8 @@ export default function MapAndCard({
   destination_name, destination_lat, destination_lng,
   rent, room_type,
   is_knowledge_base, community_name, university_name,
-  price_range, tenant_rating, description, property_type
+  price_range, tenant_rating, description, property_type,
+  auto_load
 }: MapAndCardProps) {
   const { t, lang } = useApp();
   const [commuteMode, setCommuteMode] = useState<'driving' | 'walking' | 'transit'>('driving');
@@ -46,8 +48,8 @@ export default function MapAndCard({
   // If destination props are provided (commute case), show route directly
   const isCommuteMode = !!(destination_name && destination_lat && destination_lng);
   const isKBMode = !!is_knowledge_base;
-  // Room listing mode: map only loads on user click (saves API quota)
-  const [roomMapLoaded, setRoomMapLoaded] = useState(false);
+  // Room listing mode: map only loads on user click (saves API quota) unless auto_load or is_knowledge_base is true
+  const [roomMapLoaded, setRoomMapLoaded] = useState(!!(auto_load || is_knowledge_base));
 
   // Start point (origin) states — only used in non-commute (room listing) mode
   const [customStart, setCustomStart] = useState<string>('');
@@ -124,16 +126,30 @@ export default function MapAndCard({
   let mapUrl = '';
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
   const modeParam = commuteMode === 'transit' ? 'transit' : commuteMode === 'walking' ? 'walking' : 'driving';
+  const legacyModeParam = commuteMode === 'transit' ? 'r' : commuteMode === 'walking' ? 'w' : 'd';
 
-  if (isCommuteMode && destination_lat && destination_lng) {
-    // Commute mode: show route from origin to destination directly
-    mapUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin_lat},${origin_lng}&destination=${destination_lat},${destination_lng}&mode=${modeParam}`;
-  } else if (activeStart) {
-    // Room listing mode with user-entered start point
-    mapUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${encodeURIComponent(activeStart.name)}&destination=${origin_lat},${origin_lng}&mode=${modeParam}`;
+  // Smart fail-safe: if API key is missing, empty, or placeholder/dummy, use keyless maps embed URLs
+  const useKeyless = !apiKey || apiKey.includes('YOUR_') || apiKey.length < 10;
+
+  if (useKeyless) {
+    if (isCommuteMode && destination_lat && destination_lng) {
+      mapUrl = `https://maps.google.com/maps?saddr=${origin_lat},${origin_lng}&daddr=${destination_lat},${destination_lng}&dirflg=${legacyModeParam}&output=embed`;
+    } else if (activeStart) {
+      mapUrl = `https://maps.google.com/maps?saddr=${encodeURIComponent(activeStart.name)}&daddr=${origin_lat},${origin_lng}&dirflg=${legacyModeParam}&output=embed`;
+    } else {
+      mapUrl = `https://maps.google.com/maps?q=${origin_lat},${origin_lng}&z=16&output=embed`;
+    }
   } else {
-    // Room listing mode: show single location marker
-    mapUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${origin_lat},${origin_lng}&zoom=16`;
+    if (isCommuteMode && destination_lat && destination_lng) {
+      // Commute mode: show route from origin to destination directly
+      mapUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin_lat},${origin_lng}&destination=${destination_lat},${destination_lng}&mode=${modeParam}`;
+    } else if (activeStart) {
+      // Room listing mode with user-entered start point
+      mapUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${encodeURIComponent(activeStart.name)}&destination=${origin_lat},${origin_lng}&mode=${modeParam}`;
+    } else {
+      // Room listing mode: show single location marker
+      mapUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${origin_lat},${origin_lng}&zoom=16`;
+    }
   }
 
   return (

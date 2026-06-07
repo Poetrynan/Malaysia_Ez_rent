@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, MapPin, Bed, Bath, DollarSign, Building2, X, ChevronRight,
-  CheckCircle2, Video, Grid, List, User, Calendar, RefreshCw,
+  CheckCircle2, Video, Grid, List, User, Calendar, RefreshCw, Tag,
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 import { useApp } from '@/lib/ThemeProvider';
@@ -323,20 +323,24 @@ export default function AdminListingsBrowse() {
                 <h3 style={{ fontSize: '1rem', marginBottom: 14 }}>{t('detailProperty')}</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
                   {([
-                    [t('detailType'), selected.room_type],
-                    [t('detailRent'), `RM ${selected.rent.toLocaleString()}/mo`],
-                    [t('detailBedrooms'), `${selected.bedrooms || 1} ${t('bedroomsUnit')}`],
-                    [t('detailBathrooms'), `${selected.bathrooms || 1} ${t('bathroomsUnit')}`],
-                    [t('detailCommunity'), selected.community?.name || '—'],
-                    [t('detailStatus'), selected.status === 'available' ? t('available') : t('rented')],
-                    selected.available_from ? [lang === 'zh' ? '可入住日期' : 'Available From', new Date(selected.available_from).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })] : null,
-                    [t('detailAddress'), selected.community?.address || '—'],
-                  ] as ([string, string] | null)[]).filter((item): item is [string, string] => item !== null).map(([label, val], i) => (
+                    { label: t('detailType'), val: selected.room_type, icon: <Grid size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: t('detailRent'), val: `RM ${selected.rent.toLocaleString()}/mo`, icon: <DollarSign size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: t('detailBedrooms'), val: `${selected.bedrooms || 1} ${t('bedroomsUnit')}`, icon: <Bed size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: t('detailBathrooms'), val: `${selected.bathrooms || 1} ${t('bathroomsUnit')}`, icon: <Bath size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: t('detailCommunity'), val: selected.community?.name || '—', icon: <Building2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: t('detailStatus'), val: selected.status === 'available' ? t('available') : t('rented'), icon: <Tag size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    selected.available_from ? {
+                      label: lang === 'zh' ? '可入住日期' : 'Available From',
+                      val: new Date(selected.available_from).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                      icon: <Calendar size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
+                    } : null,
+                    { label: t('detailAddress'), val: selected.community?.address || '—', icon: <MapPin size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                  ] as any[]).filter(Boolean).map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                      <CheckCircle2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
+                      {item.icon}
                       <div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 1 }}>{label}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-h)', fontWeight: 500 }}>{val}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 1 }}>{item.label}</div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-h)', fontWeight: 500 }}>{item.val}</div>
                       </div>
                     </div>
                   ))}

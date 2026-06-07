@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
+export type IdentityType = 'malaysian' | 'international_student' | 'international_other';
+
 interface TenantDataContextType {
   interest: any | null;
   setInterest: React.Dispatch<React.SetStateAction<any | null>>;
@@ -43,6 +45,16 @@ interface TenantDataContextType {
   setProfileDocUrl: React.Dispatch<React.SetStateAction<string | null>>;
   profileStudentCardUrl: string | null;
   setProfileStudentCardUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  profileIdentityType: IdentityType | null;
+  setProfileIdentityType: React.Dispatch<React.SetStateAction<IdentityType | null>>;
+  icFrontUrl: string | null;
+  setIcFrontUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  icBackUrl: string | null;
+  setIcBackUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  passportPhotoUrl: string | null;
+  setPassportPhotoUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  workPermitUrl: string | null;
+  setWorkPermitUrl: React.Dispatch<React.SetStateAction<string | null>>;
   isLoaded: boolean;
   setIsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
   profileLoaded: boolean;
@@ -75,6 +87,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [profileLocalId, setProfileLocalId] = useState('');
   const [profileDocUrl, setProfileDocUrl] = useState<string | null>(null);
   const [profileStudentCardUrl, setProfileStudentCardUrl] = useState<string | null>(null);
+  const [profileIdentityType, setProfileIdentityType] = useState<IdentityType | null>(null);
+  const [icFrontUrl, setIcFrontUrl] = useState<string | null>(null);
+  const [icBackUrl, setIcBackUrl] = useState<string | null>(null);
+  const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
+  const [workPermitUrl, setWorkPermitUrl] = useState<string | null>(null);
 
   // Load flags
   const [isLoaded, setIsLoaded] = useState(false);
@@ -83,6 +100,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const clearCache = useCallback(() => {
     setIsLoaded(false);
     setProfileLoaded(false);
+    setProfileIdentityType(null);
+    setIcFrontUrl(null);
+    setIcBackUrl(null);
+    setPassportPhotoUrl(null);
+    setWorkPermitUrl(null);
   }, []);
 
   return (
@@ -128,6 +150,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         setProfileDocUrl,
         profileStudentCardUrl,
         setProfileStudentCardUrl,
+        profileIdentityType,
+        setProfileIdentityType,
+        icFrontUrl,
+        setIcFrontUrl,
+        icBackUrl,
+        setIcBackUrl,
+        passportPhotoUrl,
+        setPassportPhotoUrl,
+        workPermitUrl,
+        setWorkPermitUrl,
         isLoaded,
         setIsLoaded,
         profileLoaded,
@@ -147,3 +179,4 @@ export function useTenantData() {
   }
   return context;
 }
+

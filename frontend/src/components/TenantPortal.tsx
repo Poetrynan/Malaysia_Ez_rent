@@ -6,7 +6,7 @@ import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSqua
 import LeaseLedgerCard from './LeaseLedgerCard';
 import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
-import { useTenantData } from '@/lib/TenantDataContext';
+import { useTenantData, IdentityType } from '@/lib/TenantDataContext';
 import { isMockDatabase } from '@/lib/supabase';
 
 interface Lease {
@@ -25,8 +25,6 @@ interface Payment {
 }
 interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; available_from?: string | null; }
 interface Community { id: string; name: string; }
-
-type IdentityType = 'malaysian' | 'international_student' | 'international_other';
 
 const IDENTITY_OPTIONS: { id: IdentityType; labelZh: string; labelEn: string }[] = [
   { id: 'malaysian', labelZh: '🇲🇾 马来西亚本地人', labelEn: 'Malaysian Citizen' },
@@ -299,6 +297,11 @@ export default function TenantPortal({
     profileLocalId, setProfileLocalId,
     profileDocUrl, setProfileDocUrl,
     profileStudentCardUrl, setProfileStudentCardUrl,
+    profileIdentityType, setProfileIdentityType,
+    icFrontUrl, setIcFrontUrl,
+    icBackUrl, setIcBackUrl,
+    passportPhotoUrl, setPassportPhotoUrl,
+    workPermitUrl, setWorkPermitUrl,
     isLoaded, setIsLoaded,
     profileLoaded, setProfileLoaded,
     clearCache,
@@ -324,11 +327,6 @@ export default function TenantPortal({
   const [profileDocUploading, setProfileDocUploading] = useState(false);
   const [profileStudentCardBase64, setProfileStudentCardBase64] = useState<string | null>(null);
   const [profileStudentCardUploading, setProfileStudentCardUploading] = useState(false);
-  const [profileIdentityType, setProfileIdentityType] = useState<IdentityType | null>(null);
-  const [icFrontUrl, setIcFrontUrl] = useState<string | null>(null);
-  const [icBackUrl, setIcBackUrl] = useState<string | null>(null);
-  const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
-  const [workPermitUrl, setWorkPermitUrl] = useState<string | null>(null);
   const [icFrontFile, setIcFrontFile] = useState<File | null>(null);
   const [icBackFile, setIcBackFile] = useState<File | null>(null);
   const [passportFile, setPassportFile] = useState<File | null>(null);

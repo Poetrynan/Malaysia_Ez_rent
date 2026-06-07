@@ -915,7 +915,8 @@ async def live_agent_stream(
                             "price_range": item.get("price_range"),
                             "tenant_rating": item.get("tenant_rating"),
                             "description": item.get("description"),
-                            "is_knowledge_base": True
+                            "is_knowledge_base": True,
+                            "auto_load": True
                         }
                     })
 
@@ -933,7 +934,8 @@ async def live_agent_stream(
                             "origin_lng": origin_lng,
                             "rent": float(best_match.get("rent") or 0),
                             "room_type": best_match.get("room_type") or "",
-                            "unit_id": best_match.get("id")
+                            "unit_id": best_match.get("id"),
+                            "auto_load": True
                         }
                     })
 
@@ -944,7 +946,8 @@ async def live_agent_stream(
                     "origin_lng": float(result_data.get("origin_lng") or 101.60977),
                     "destination_name": result_data.get("destination_name") or result_data.get("university") or "Destination",
                     "destination_lat": float(result_data.get("destination_lat") or 3.0645),
-                    "destination_lng": float(result_data.get("destination_lng") or 101.6000)
+                    "destination_lng": float(result_data.get("destination_lng") or 101.6000),
+                    "auto_load": True
                 }
                 # Merge community info from knowledge base ONLY when it refers to the
                 # same place as the commute origin. Otherwise we'd label a route from
