@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { lang, setLang, theme, toggleTheme } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mockModal, setMockModal] = useState(false);
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
@@ -49,6 +50,27 @@ export default function LoginPage() {
       }
     }
   }, []);
+
+  // Load saved credentials on mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem('ez_remember_credentials');
+    if (saved) {
+      try {
+        const { email: savedEmail, password: savedPassword } = JSON.parse(saved);
+        setEmail(savedEmail || '');
+        setPassword(savedPassword || '');
+        setRememberMe(true);
+      } catch {}
+    }
+  }, []);
+
+  const saveRememberCredentials = () => {
+    if (rememberMe) {
+      localStorage.setItem('ez_remember_credentials', JSON.stringify({ email: email.trim(), password: password.trim() }));
+    } else {
+      localStorage.removeItem('ez_remember_credentials');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +104,7 @@ export default function LoginPage() {
         localStorage.setItem('ez_tenant_id', isAdmin ? admins.find((a: any) => a.email === emailLower).id : (myReg.auth_user_id || 'agent-123'));
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+        saveRememberCredentials();
         setLoading(false);
         window.location.href = '/admin/dashboard';
         return;
@@ -92,6 +115,7 @@ export default function LoginPage() {
         localStorage.setItem('ez_tenant_id', isMockAdmin ? 'admin-999' : 'tenant-123');
         localStorage.setItem('ez_logged_in', '1');
         document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+        saveRememberCredentials();
         setLoading(false);
         window.location.href = isMockAdmin ? '/admin/dashboard' : '/listings';
         return;
@@ -106,14 +130,25 @@ export default function LoginPage() {
 
     if (error) {
       setLoading(false);
-      setErrorMsg(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes('invalid login credentials') || msg.includes('invalid_credentials')) {
+        setErrorMsg(lang === 'zh' ? '邮箱或密码错误，请检查后重试。' : 'Incorrect email or password. Please check and try again.');
+      } else if (msg.includes('email not confirmed') || msg.includes('not confirmed')) {
+        setErrorMsg(lang === 'zh' ? '邮箱尚未验证，请先前往邮箱完成验证。' : 'Email not verified. Please check your inbox to verify.');
+      } else if (msg.includes('too many requests') || msg.includes('rate limit')) {
+        setErrorMsg(lang === 'zh' ? '登录尝试次数过多，请稍后再试。' : 'Too many login attempts. Please try again later.');
+      } else if (msg.includes('user not found')) {
+        setErrorMsg(lang === 'zh' ? '该账号不存在，请检查邮箱地址或先注册。' : 'Account not found. Please check your email or register first.');
+      } else {
+        setErrorMsg(lang === 'zh' ? `登录失败：${error.message}` : `Login failed: ${error.message}`);
+      }
       return;
     }
 
     const user = data.user;
     if (!user) {
       setLoading(false);
-      setErrorMsg('No user found');
+      setErrorMsg(lang === 'zh' ? '未找到用户信息，请重试。' : 'No user found. Please try again.');
       return;
     }
 
@@ -155,6 +190,7 @@ export default function LoginPage() {
       }
 
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+      saveRememberCredentials();
       setLoading(false);
       window.location.href = '/admin/dashboard';
     } else {
@@ -172,6 +208,7 @@ export default function LoginPage() {
         .maybeSingle();
 
       document.cookie = "ez_logged_in=1; path=/; max-age=31536000";
+      saveRememberCredentials();
       setLoading(false);
       if (!dbUser || !dbUser.identity_type) {
         window.location.href = '/profile';
@@ -463,6 +500,15 @@ export default function LoginPage() {
                 />
               </div>
 
+              {/* Remember Me */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 14, userSelect: 'none' as const }}>
+                <input type="checkbox" id="student-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
+                  {lang === 'zh' ? '记住密码' : 'Remember me'}
+                </span>
+              </label>
+
               {errorMsg && (
                 <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
                   {errorMsg}
@@ -530,6 +576,15 @@ export default function LoginPage() {
                   onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
                 />
               </div>
+
+              {/* Remember Me */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 14, userSelect: 'none' as const }}>
+                <input type="checkbox" id="agent-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
+                  {lang === 'zh' ? '记住密码' : 'Remember me'}
+                </span>
+              </label>
 
               {errorMsg && (
                 <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
