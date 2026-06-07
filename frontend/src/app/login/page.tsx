@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
 import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
-import { Robot, ShieldCheck, Lightning, SealCheck, Camera, CurrencyCircleDollar, UserCircle, Buildings } from '@phosphor-icons/react';
+import { Robot, ShieldCheck, Lightning, SealCheck, Camera, CurrencyCircleDollar, UserCircle, Buildings, User } from '@phosphor-icons/react';
 import { useApp } from '@/lib/ThemeProvider';
 import LegalContent from '@/components/LegalContent';
 

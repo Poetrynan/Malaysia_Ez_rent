@@ -2031,44 +2031,61 @@ export default function TenantPortal({
 
                       {/* Conversation thread */}
                       {f.replies && f.replies.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, background: 'rgba(0,0,0,0.1)', padding: 12, borderRadius: 10 }}>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          marginTop: 12,
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid var(--glass-border)',
+                          padding: 14,
+                          borderRadius: 12
+                        }}>
                           {f.replies.map((r: any, i: number) => {
                             const isAgent = r.role === 'agent';
                             return (
                               <div key={i} style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                alignSelf: isAgent ? 'flex-start' : 'flex-end',
-                                maxWidth: '85%',
-                                gap: 3
+                                gap: 6,
+                                paddingBottom: i < f.replies.length - 1 ? 12 : 0,
+                                borderBottom: i < f.replies.length - 1 ? '1px solid var(--glass-border)' : 'none'
                               }}>
                                 <div style={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: 6,
-                                  alignSelf: isAgent ? 'flex-start' : 'flex-end',
-                                  fontSize: '0.68rem',
-                                  color: 'var(--text-muted)',
-                                  padding: '0 4px'
+                                  justifyContent: 'space-between',
+                                  fontSize: '0.74rem',
+                                  color: 'var(--text-muted)'
                                 }}>
-                                  <span style={{ fontWeight: 700, color: isAgent ? 'var(--primary)' : 'var(--success)' }}>
-                                    {isAgent ? (lang === 'zh' ? '中介' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
-                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{
+                                      fontWeight: 700,
+                                      color: isAgent ? 'var(--primary)' : 'var(--success)',
+                                      background: isAgent ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                      padding: '2px 6px',
+                                      borderRadius: 4,
+                                      fontSize: '0.68rem'
+                                    }}>
+                                      {isAgent ? (lang === 'zh' ? '中介' : 'Agent') : (lang === 'zh' ? '我' : 'Me')}
+                                    </span>
+                                  </div>
                                   <span>
-                                    {new Date(r.at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(r.at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
                                   </span>
                                 </div>
                                 <div style={{
-                                  padding: '10px 14px',
-                                  borderRadius: isAgent ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-                                  background: isAgent ? 'var(--bg-surface-solid)' : 'var(--primary)',
-                                  color: isAgent ? 'var(--text-body)' : 'white',
-                                  border: isAgent ? '1px solid var(--border)' : 'none',
-                                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                                  fontSize: '0.8rem',
+                                  fontSize: '0.82rem',
+                                  color: 'var(--text-body)',
                                   whiteSpace: 'pre-wrap',
                                   wordBreak: 'break-word',
-                                  lineHeight: 1.45
+                                  lineHeight: 1.5,
+                                  paddingLeft: 2
                                 }}>
                                   {r.content}
                                 </div>
