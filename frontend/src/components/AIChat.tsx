@@ -452,10 +452,8 @@ export default function AIChat() {
       <div className="manus-scroll">
         {/* Welcome */}
         {messages.length === 0 && (
-          <div className="manus-welcome">
-            <Bot size={48} style={{ color: 'var(--primary)' }} />
-            <h2>{t('chatAgentName')}</h2>
-            <p>{t('chatWelcome')}</p>
+          <div className="manus-welcome" style={{ paddingTop: '32px' }}>
+            <p style={{ whiteSpace: 'pre-line', lineHeight: '1.7', textAlign: 'center', fontSize: '0.92rem' }}>{t('chatWelcome')}</p>
             <div className="quick-prompts">
               {(lang === 'zh' ? [
                 { icon: '🚇', text: '从 Sunway Geo 到 Monash 大学要多久？' },

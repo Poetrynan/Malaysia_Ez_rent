@@ -33,7 +33,7 @@ export const translations = {
     liveMode: '数据库已连通 (云端实时数据库)',
 
     // AI Chat
-    chatWelcome: '您好！我是您的 AI 租房与生活助手。我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
+    chatWelcome: '您好！我是您的 AI 租房与生活助手。\n我可以帮您测算交通通勤时间、查询最新令吉汇率、大马节假日或解答当地生活指南。',
     chatPlaceholder: '输入地址测算通勤、询问汇率、查放假、吉隆坡生活指南…',
     chatSend: '发送',
     chatAgentName: '租房 AI 助手',
@@ -399,7 +399,7 @@ export const translations = {
     sandboxMode: 'Database Connected (Local Mock)',
     liveMode: 'Database Connected (Cloud Live)',
 
-    chatWelcome: "Hi! I'm your Malaysia Housing AI Assistant. I can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer rental life guides.",
+    chatWelcome: "Hi! I'm your Malaysia Housing AI Assistant.\nI can calculate commute times, check MYR exchange rates, Malaysian holidays, or answer rental life guides.",
     chatPlaceholder: 'Ask about commute route, currency, holidays, or life in KL…',
     chatSend: 'Send',
     chatAgentName: 'AI Assistant',
