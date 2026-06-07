@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
-import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard, ShieldCheck, Camera, BadgeDollarSign, Brain, Sparkles } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
+import { Robot, ShieldCheck, Lightning, SealCheck, Camera, CurrencyCircleDollar } from '@phosphor-icons/react';
 import { useApp } from '@/lib/ThemeProvider';
 import LegalContent from '@/components/LegalContent';
 
@@ -319,15 +320,15 @@ export default function LoginPage() {
               ? '马来西亚留学生专属的 AI 智能租房平台——找房、签约、缴费、报修，一站式安全完成。'
               : 'The AI-powered rental platform built for students in Malaysia — search, sign, pay and maintain, all in one secure place.'}
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {[
-              { Icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', dzh: '告诉 AI 你的预算和位置，秒推合适房源', den: 'Tell AI your budget & location, get instant matches' },
-              { Icon: ShieldCheck, zh: '平台全程保障', en: 'Fully Protected', dzh: '实名认证中介、正规租约、资金可追溯', den: 'Verified agents, real leases, traceable payments' },
-              { Icon: Sparkles, zh: '一站式服务', en: 'All-in-One', dzh: '找房、签约、缴费、报修全部在线搞定', den: 'Search, sign, pay & maintain — all online' },
+              { Icon: Robot, zh: 'AI 智能找房', en: 'AI-Powered Search', dzh: '告诉 AI 你的预算和位置，秒推合适房源', den: 'Tell AI your budget & location, get instant matches', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+              { Icon: ShieldCheck, zh: '平台全程保障', en: 'Fully Protected', dzh: '实名认证中介、正规租约、资金可追溯', den: 'Verified agents, real leases, traceable payments', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+              { Icon: Lightning, zh: '一站式服务', en: 'All-in-One', dzh: '找房、签约、缴费、报修全部在线搞定', den: 'Search, sign, pay & maintain — all online', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
             ].map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <s.Icon size={20} style={{ color: '#fff' }} />
+                <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 14, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.2s ease' }}>
+                  <s.Icon size={24} weight="duotone" style={{ color: s.color }} />
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-h)' }}>{lang === 'zh' ? s.zh : s.en}</div>
@@ -363,12 +364,12 @@ export default function LoginPage() {
           {/* Trust pills — consistent with the landing page */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 14 }}>
             {[
-              { Icon: ShieldCheck, zh: '实名认证', en: 'Verified' },
+              { Icon: SealCheck, zh: '实名认证', en: 'Verified' },
               { Icon: Camera, zh: '真实房源', en: 'Real Photos' },
-              { Icon: BadgeDollarSign, zh: '资金安全', en: 'Secure' },
+              { Icon: CurrencyCircleDollar, zh: '资金安全', en: 'Secure' },
             ].map((p, i) => (
               <span key={i} className="guest-trust-pill" style={{ padding: '5px 11px', fontSize: '0.72rem' }}>
-                <p.Icon size={12} style={{ color: 'var(--primary)' }} />
+                <p.Icon size={13} weight="duotone" style={{ color: 'var(--primary)' }} />
                 {lang === 'zh' ? p.zh : p.en}
               </span>
             ))}
