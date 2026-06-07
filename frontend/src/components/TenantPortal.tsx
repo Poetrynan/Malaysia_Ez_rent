@@ -267,6 +267,60 @@ function HistoryPaymentGrid({ leaseId, startDate, endDate, lang }: { leaseId: st
   );
 }
 
+const TenantSkeleton = ({ mode, lang }: { mode: 'lease' | 'maintenance' | 'profile'; lang: string }) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.3s ease', width: '100%' }}>
+      {mode === 'lease' && (
+        <>
+          {/* Header Card Shimmer */}
+          <div className="shimmer" style={{ height: 96, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          {/* Progress Shimmer */}
+          <div className="shimmer" style={{ height: 64, borderRadius: 12, border: '1px solid var(--glass-border)' }} />
+          {/* Info Grid Shimmer */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+            <div className="shimmer" style={{ height: 260, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            <div className="shimmer" style={{ height: 260, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          </div>
+          {/* Ledger Table Shimmer */}
+          <div className="shimmer" style={{ height: 220, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+        </>
+      )}
+
+      {mode === 'maintenance' && (
+        <>
+          {/* Submit card shimmer */}
+          <div className="shimmer" style={{ height: 180, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          {/* List header shimmer */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="shimmer" style={{ width: 120, height: 24, borderRadius: 6 }} />
+            <div className="shimmer" style={{ width: 80, height: 20, borderRadius: 6 }} />
+          </div>
+          {/* Items shimmer */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="shimmer" style={{ height: 110, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {mode === 'profile' && (
+        <>
+          {/* Progress bar shimmer */}
+          <div className="shimmer" style={{ height: 32, borderRadius: 10, border: '1px solid var(--glass-border)' }} />
+          {/* Profile card shimmer */}
+          <div className="shimmer" style={{ height: 320, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          {/* Identity docs upload grid shimmer */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="shimmer" style={{ height: 180, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            <div className="shimmer" style={{ height: 180, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export default function TenantPortal({
   mode = 'lease', 
   onUnreadFeedbackCountChange 
@@ -309,7 +363,7 @@ export default function TenantPortal({
 
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isLoaded || !profileLoaded);
   const [tick, setTick] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -996,7 +1050,7 @@ export default function TenantPortal({
         setRoommates([]);
       }
     }
-    if (mode === 'maintenance') await loadMyFeedbacks();
+    await loadMyFeedbacks();
     setIsLoaded(true);
     setLoading(false);
   };
@@ -1276,12 +1330,16 @@ export default function TenantPortal({
   }, []);
 
   useEffect(() => {
-    const force = tick > 0;
-    if (force) {
-      clearCache();
-    }
-    load(force);
-    loadProfile(force);
+    (async () => {
+      const force = tick > 0;
+      if (force) {
+        clearCache();
+      }
+      await Promise.all([
+        load(force),
+        loadProfile(force)
+      ]);
+    })();
   }, [tick]);
 
   // Realtime subscription for TenantPortal
@@ -1332,7 +1390,7 @@ export default function TenantPortal({
     };
   }, []);
 
-  if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>{t('loadingApp')}</div>;
+  if (loading) return <TenantSkeleton mode={mode} lang={lang} />;
 
   const renderToast = toastMsg && (
     <div style={{

@@ -158,6 +158,75 @@ function RenImagePlaceholder({
   );
 }
 
+const AdminSkeleton = ({ tab, lang }: { tab: string; lang: string }) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.3s ease', width: '100%' }}>
+      {tab === 'dashboard' && (
+        <>
+          {/* Overview Stats Cards Shimmer */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="shimmer" style={{ height: 110, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            ))}
+          </div>
+          {/* Row 2: Charts and recent interests */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, minHeight: 340 }}>
+            <div className="shimmer" style={{ borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            <div className="shimmer" style={{ borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+          </div>
+          {/* Row 3: Recent listings */}
+          <div className="shimmer" style={{ height: 260, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+        </>
+      )}
+
+      {tab === 'properties' && (
+        <>
+          {/* Subtab buttons and action bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+            <div className="shimmer" style={{ width: 280, height: 36, borderRadius: 8 }} />
+            <div className="shimmer" style={{ width: 120, height: 36, borderRadius: 8 }} />
+          </div>
+          {/* Table Shimmer */}
+          <div className="shimmer" style={{ height: 480, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+        </>
+      )}
+
+      {tab === 'leases' && (
+        <>
+          {/* Action header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+            <div className="shimmer" style={{ width: 240, height: 36, borderRadius: 8 }} />
+            <div className="shimmer" style={{ width: 140, height: 36, borderRadius: 8 }} />
+          </div>
+          {/* Leases cards grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="shimmer" style={{ height: 160, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === 'feedback' && (
+        <>
+          {/* Filter options */}
+          <div className="shimmer" style={{ width: '100%', height: 48, borderRadius: 12 }} />
+          {/* Tickets list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="shimmer" style={{ height: 110, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {(tab === 'admins' || tab === 'reviews' || tab === 'agent-reviews' || tab === 'profile') && (
+        <div className="shimmer" style={{ height: 420, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+      )}
+    </div>
+  );
+};
+
 export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activeTab, hideTabBar = false, onPendingCountsChange, onTabChange }: { adminRole: 'super_admin' | 'editor' | null; defaultTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; activeTab?: 'dashboard' | 'properties' | 'leases' | 'admins' | 'feedback' | 'agent-reviews' | 'reviews' | 'profile'; hideTabBar?: boolean; onPendingCountsChange?: (leasesCount: number, feedbackCount: number, agentReviewsCount: number) => void; onTabChange?: (tab: string) => void; }) {
   const resolvedTab = activeTab ?? defaultTab;
   const { t, lang } = useApp();
@@ -3086,8 +3155,12 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
         </div>
       )}
 
-      {/* ── DASHBOARD TAB ── */}
-      {tab === 'dashboard' && (
+      {!isLoaded ? (
+        <AdminSkeleton tab={tab} lang={lang} />
+      ) : (
+        <>
+          {/* ── DASHBOARD TAB ── */}
+          {tab === 'dashboard' && (
         <Dashboard
           units={units}
           leases={leases}
@@ -6209,6 +6282,8 @@ export default function AdminPanel({ adminRole: propAdminRole, defaultTab, activ
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
       </div>
 
