@@ -1050,7 +1050,6 @@ export default function TenantPortal({
         setRoommates([]);
       }
     }
-    await loadMyFeedbacks();
     setIsLoaded(true);
     setLoading(false);
   };
@@ -1092,52 +1091,38 @@ export default function TenantPortal({
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('maintenance_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+        const { data } = await supabase
+          .from('maintenance_requests')
+          .select(`
+            *,
+            leases (
+              unit_number,
+              units (
+                room_type,
+                communities (
+                  name
+                )
+              )
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
         if (data) {
-          // Load user details
-          const { data: u } = await supabase.from('users').select('unit_number').eq('id', user.id).maybeSingle();
-
-          // Load lease chain for unit_info (community + room type)
-          const leaseIds = [...new Set(data.map((f: any) => f.lease_id).filter(Boolean))];
-          const { getLeaseEnrichmentData } = await import('@/app/actions/leaseEnrichment');
-          const res = await getLeaseEnrichmentData(leaseIds, [user.id]);
-
-          const leaseByIdMap = new Map<string, any>();
-          let activeLease: any = null;
-          const unitMap = new Map<string, any>();
-          const commMap = new Map<string, any>();
-
-          if (res.success) {
-            const allLeases = res.leases || [];
-            allLeases.forEach((l: any) => {
-              leaseByIdMap.set(l.id, l);
-              if (l.status === 'active') activeLease = l;
-            });
-            (res.units || []).forEach((un: any) => unitMap.set(un.id, un));
-            (res.communities || []).forEach((c: any) => commMap.set(c.id, c));
-          } else {
-            console.error('Lease enrichment server action failed:', res.error);
-          }
-
           const normalized = data.map((f: any) => {
             let replies = f.replies;
             if (!replies && f.admin_reply) {
               replies = [{ role: 'agent', content: f.admin_reply, at: f.resolved_at || f.updated_at || f.created_at }];
             }
 
-            // Resolve unit_info from lease chain
-            const lease = leaseByIdMap.get(f.lease_id) || activeLease;
+            // Resolve unit_info from joined leases relation
             let unitInfo = '';
+            const lease = f.leases;
             if (lease) {
-              const unit = unitMap.get(lease.unit_id);
-              if (unit) {
-                const comm = commMap.get(unit.community_id);
-                const parts = [comm?.name, unit.room_type, u?.unit_number || unit.unit_number].filter(Boolean);
-                if (parts.length) unitInfo = parts.join(' · ');
-              }
-            }
-            if (!unitInfo && u?.unit_number) {
-              unitInfo = u.unit_number;
+              const unitObj = lease.units;
+              const comm = unitObj?.communities;
+              const parts = [comm?.name, unitObj?.room_type, lease.unit_number].filter(Boolean);
+              if (parts.length) unitInfo = parts.join(' · ');
             }
 
             return { ...f, replies: replies || [], unit_info: unitInfo || undefined };
@@ -1337,7 +1322,8 @@ export default function TenantPortal({
       }
       await Promise.all([
         load(force),
-        loadProfile(force)
+        loadProfile(force),
+        loadMyFeedbacks()
       ]);
     })();
   }, [tick]);
