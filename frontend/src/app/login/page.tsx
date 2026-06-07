@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { isMockDatabase } from '@/lib/supabase';
-import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, User, Building2, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
-import { Robot, ShieldCheck, Lightning, SealCheck, Camera, CurrencyCircleDollar } from '@phosphor-icons/react';
+import { Mail, CheckCircle2, ArrowRight, Sun, Moon, Globe, AlertTriangle, Home, ArrowLeft, Shield, Clock, CreditCard } from 'lucide-react';
+import { Robot, ShieldCheck, Lightning, SealCheck, Camera, CurrencyCircleDollar, UserCircle, Buildings } from '@phosphor-icons/react';
 import { useApp } from '@/lib/ThemeProvider';
 import LegalContent from '@/components/LegalContent';
 
@@ -405,8 +405,8 @@ export default function LoginPage() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <User size={20} style={{ color: '#fff' }} />
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <UserCircle size={24} weight="duotone" style={{ color: '#6366f1' }} />
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
@@ -426,8 +426,8 @@ export default function LoginPage() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'var(--primary-light)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--bg-surface-solid)'; }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Building2 size={20} style={{ color: '#fff' }} />
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Buildings size={24} weight="duotone" style={{ color: '#10b981' }} />
               </div>
               <div style={{ textAlign: 'left', flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-h)' }}>
@@ -457,8 +457,8 @@ export default function LoginPage() {
             </button>
 
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-                <User size={22} style={{ color: '#fff' }} />
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <UserCircle size={26} weight="duotone" style={{ color: '#6366f1' }} />
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
                 {lang === 'zh' ? '租客登录' : 'Tenant Login'}
@@ -535,7 +535,7 @@ export default function LoginPage() {
               }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}>
-                <User size={14} /> {lang === 'zh' ? '注册成为租客' : 'Register as Tenant'}
+                <UserCircle size={14} weight="duotone" style={{ color: '#fff' }} /> {lang === 'zh' ? '注册成为租客' : 'Register as Tenant'}
               </a>
             </div>
           </div>
@@ -548,8 +548,8 @@ export default function LoginPage() {
             </button>
 
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', boxShadow: '0 6px 16px -6px var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-                <Building2 size={22} style={{ color: '#fff' }} />
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <Buildings size={26} weight="duotone" style={{ color: '#10b981' }} />
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
                 {lang === 'zh' ? '中介登录' : 'Agent Login'}

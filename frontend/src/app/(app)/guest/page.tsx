@@ -6,18 +6,19 @@ import LegalContent from '@/components/LegalContent';
 import { useApp } from '@/lib/ThemeProvider';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { LogIn, Brain, Sparkles, ChevronRight, Search, FileText, KeyRound, Globe, ArrowRight, ShieldCheck, Camera, BadgeDollarSign, RefreshCw, Star, Quote } from 'lucide-react';
+import { LogIn, ChevronRight, Globe, ArrowRight, Star, Quote } from 'lucide-react';
+import { Robot, ShieldCheck, Lightning, MagnifyingGlass, FileText, Key, SealCheck, Camera, CurrencyCircleDollar, ArrowsClockwise, Sparkle } from '@phosphor-icons/react';
 
 const FEATURES = [
-  { icon: Brain, zh: 'AI 智能找房', en: 'AI-Powered Search', descZh: '告诉 AI 你的需求，智能推荐最适合的房源和小区', descEn: 'Tell AI your needs, get smart recommendations for the best properties' },
-  { icon: ShieldCheck, zh: '平台保障', en: 'Secure Platform', descZh: '正规中介认证，租约合同保障，资金安全可追溯', descEn: 'Verified agents, lease contracts, traceable payments' },
-  { icon: Sparkles, zh: '一站式服务', en: 'All-in-One Service', descZh: '找房、签约、缴费、报修，全部在线完成', descEn: 'Search, sign, pay, and maintain — all online' },
+  { icon: Robot, zh: 'AI 智能找房', en: 'AI-Powered Search', descZh: '告诉 AI 你的需求，智能推荐最适合的房源和小区', descEn: 'Tell AI your needs, get smart recommendations for the best properties', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  { icon: ShieldCheck, zh: '平台保障', en: 'Secure Platform', descZh: '正规中介认证，租约合同保障，资金安全可追溯', descEn: 'Verified agents, lease contracts, traceable payments', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { icon: Lightning, zh: '一站式服务', en: 'All-in-One Service', descZh: '找房、签约、缴费、报修，全部在线完成', descEn: 'Search, sign, pay, and maintain — all online', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
 ];
 
 const STEPS = [
-  { icon: Search, num: '01', zh: '搜索房源', en: 'Search Properties', descZh: '按位置、房型、预算筛选，或让 AI 帮你推荐', descEn: 'Filter by location, type, budget, or let AI recommend' },
-  { icon: FileText, num: '02', zh: '表达意向', en: 'Express Interest', descZh: '登录后收藏心仪房源，一键表达租房意向', descEn: 'Login to save favorites and express your interest' },
-  { icon: KeyRound, num: '03', zh: '签约入住', en: 'Sign & Move In', descZh: '中介确认后在线签约，安全便捷完成入住', descEn: 'Agent confirms, sign online, move in securely' },
+  { icon: MagnifyingGlass, num: '01', zh: '搜索房源', en: 'Search Properties', descZh: '按位置、房型、预算筛选，或让 AI 帮你推荐', descEn: 'Filter by location, type, budget, or let AI recommend', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { icon: FileText, num: '02', zh: '表达意向', en: 'Express Interest', descZh: '登录后收藏心仪房源，一键表达租房意向', descEn: 'Login to save favorites and express your interest', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  { icon: Key, num: '03', zh: '签约入住', en: 'Sign & Move In', descZh: '中介确认后在线签约，安全便捷完成入住', descEn: 'Agent confirms, sign online, move in securely', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
 ];
 
 // Multilingual "hello" words with artistic styling
@@ -173,12 +174,12 @@ export default function GuestPage() {
           {/* Trust pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 36 }}>
             {[
-              { Icon: ShieldCheck, zh: '实名认证中介', en: 'Verified Agents' },
+              { Icon: SealCheck, zh: '实名认证中介', en: 'Verified Agents' },
               { Icon: Camera, zh: '真实房源照片', en: 'Real Photos' },
-              { Icon: BadgeDollarSign, zh: '资金安全可追溯', en: 'Secure Payments' },
+              { Icon: CurrencyCircleDollar, zh: '资金安全可追溯', en: 'Secure Payments' },
             ].map((p, i) => (
               <span key={i} className="guest-trust-pill">
-                <p.Icon size={14} style={{ color: 'var(--primary)' }} />
+                <p.Icon size={15} weight="duotone" style={{ color: 'var(--primary)' }} />
                 {lang === 'zh' ? p.zh : p.en}
               </span>
             ))}
@@ -195,7 +196,7 @@ export default function GuestPage() {
               </CtaButton>
             )}
             <a href="#listings" className="guest-ghost-btn">
-              <Search size={16} />{lang === 'zh' ? '浏览房源' : 'Browse Listings'}
+              <MagnifyingGlass size={16} weight="duotone" />{lang === 'zh' ? '浏览房源' : 'Browse Listings'}
             </a>
           </div>
         </div>
@@ -213,8 +214,8 @@ export default function GuestPage() {
           {FEATURES.map((f, i) => (
             <Reveal key={i} delay={i * 90}>
               <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, height: '100%' }}>
-                <div className="guest-feature-icon">
-                  <f.icon size={24} />
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <f.icon size={26} weight="duotone" style={{ color: f.color }} />
                 </div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>{lang === 'zh' ? f.zh : f.en}</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? f.descZh : f.descEn}</p>
@@ -233,8 +234,8 @@ export default function GuestPage() {
             <Reveal key={i} delay={i * 90}>
               <div className="glass-card" style={{ padding: '28px 22px', textAlign: 'center', borderRadius: 16, position: 'relative', height: '100%' }}>
                 <div style={{ position: 'absolute', top: 14, right: 16, fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)', opacity: 0.14, lineHeight: 1, fontFamily: 'var(--font-display)' }}>{s.num}</div>
-                <div className="guest-feature-icon">
-                  <s.icon size={24} />
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <s.icon size={26} weight="duotone" style={{ color: s.color }} />
                 </div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 8px' }}>{lang === 'zh' ? s.zh : s.en}</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? s.descZh : s.descEn}</p>
@@ -263,15 +264,15 @@ export default function GuestPage() {
           </Reveal>
           <div className="guest-grid-4">
             {[
-              { Icon: ShieldCheck, title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' } },
-              { Icon: Camera, title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在"照骗"和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' } },
-              { Icon: BadgeDollarSign, title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' } },
-              { Icon: RefreshCw, title: { zh: '房源实时更新', en: 'Real-Time Listings' }, desc: { zh: '中介更新房源后即时反映，价格、状态始终最新', en: 'Listings update instantly when agents make changes — always current' } },
+              { Icon: SealCheck, title: { zh: '实名认证中介', en: 'Verified Agents' }, desc: { zh: '每位中介都经过 REN 牌照核验，身份可追溯', en: 'Every agent is verified with REN license, fully traceable' }, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+              { Icon: Camera, title: { zh: '真实房源照片', en: 'Real Photos Only' }, desc: { zh: '照片来自中介实拍，不存在“照骗”和 AI 生成图', en: 'Photos taken by agents on-site, no AI-generated fakes' }, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+              { Icon: CurrencyCircleDollar, title: { zh: '透明定价', en: 'Transparent Pricing' }, desc: { zh: '同一房源不会出现十几个不同价格，标价即实价', en: 'No price manipulation — what you see is what you pay' }, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+              { Icon: ArrowsClockwise, title: { zh: '房源实时更新', en: 'Real-Time Listings' }, desc: { zh: '中介更新房源后即时反映，价格、状态始终最新', en: 'Listings update instantly when agents make changes — always current' }, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
             ].map((item, i) => (
               <Reveal key={i} delay={i * 80}>
                 <div className="glass-card" style={{ padding: '26px 18px', borderRadius: 16, textAlign: 'center', height: '100%' }}>
-                  <div className="guest-feature-icon" style={{ width: 46, height: 46 }}>
-                    <item.Icon size={22} />
+                  <div style={{ width: 50, height: 50, borderRadius: 16, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                    <item.Icon size={24} weight="duotone" style={{ color: item.color }} />
                   </div>
                   <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-h)', margin: '0 0 6px' }}>{lang === 'zh' ? item.title.zh : item.title.en}</h3>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>{lang === 'zh' ? item.desc.zh : item.desc.en}</p>
@@ -327,7 +328,7 @@ export default function GuestPage() {
       <section style={{ padding: '72px 24px 80px' }}>
         <Reveal style={{ maxWidth: 900, margin: '0 auto' }}>
           <div className="guest-cta-card">
-            <Sparkles size={28} style={{ color: 'var(--primary)', marginBottom: 14 }} />
+            <Sparkle size={28} weight="duotone" style={{ color: 'var(--primary)', marginBottom: 14 }} />
             <h2 style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2rem)', fontWeight: 800, color: 'var(--text-h)', margin: '0 0 12px' }}>
               {role ? (lang === 'zh' ? '欢迎回来！' : 'Welcome Back!') : (lang === 'zh' ? '准备好开始了吗？' : 'Ready to Get Started?')}
             </h2>
