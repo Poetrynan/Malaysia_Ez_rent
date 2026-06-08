@@ -1317,3 +1317,26 @@ To resolve page lag and avoid losing active conversation state when users switch
 - **GlobalChatState**: A singleton state store managed outside the React component lifecycle.
 - **Asynchronous Execution**: The chat message stream and response generation continue running in the background when the `AIChat` component unmounts. Results are safely appended and synchronized to `localStorage` without rendering overhead.
 - **State Synchronization**: Re-entering the AI assistant tab dynamically re-subscribes to `GlobalChatState`, instantly restoring the conversation history and active generation stream.
+
+## 23) Tenant Portal & Tab Transition Performance Optimization (2026-06-08)
+
+To resolve the loading delays, flashing double indicators (Spinner followed by Skeleton), and screen freezing when tenants switch between portal tabs or perform initial mount:
+- **TenantIdentityGate Session Cache**: Modified `TenantIdentityGate.tsx` to read the globally cached `profileIdentityType` from `TenantDataContext`. Subsequent page transitions are bypassed instantly inside the React lifecycle, completely eliminating redundant Supabase database network roundtrips and avoiding spinner flashes.
+- **PostgREST Join Query Optimization**: Replaced 4 sequential database/Server Action requests in `loadMyFeedbacks()` with a single nested select query:
+  ```typescript
+  supabase.from('maintenance_requests').select('*, leases(unit_number, units(room_type, communities(name)))')
+  ```
+  This retrieves all relational data (room type, community name, unit number) in a single request.
+- **Parallel Mount Initialization**: Optimized the initialization `useEffect` inside `TenantPortal.tsx` to execute `load()`, `loadProfile()`, and `loadMyFeedbacks()` in parallel via `Promise.all`, trimming approximately 800ms of cumulative network latency.
+- **Glassmorphic Skeleton Screens**: Developed `TenantSkeleton` and `AdminSkeleton` with unified `.shimmer` glow swipe animation to provide smooth visual buffers during genuine data fetches instead of blank screens or simple "Loading..." text.
+
+## 24) Same-Community Room List Redesign & Reviews Sync (2026-06-08)
+
+To optimize the screen space and detail view interaction when tenants, admins, or guest users browse properties in the same community:
+- **Redesigned Related Room Blocks**: Replaced the long horizontal rows in the related listings section under the details drawer with compact grid blocks (max 5 items, flex: `1 1 calc(20% - 8px)`). Each block features a thumbnail image, room type, and price (RM X) on a glassmorphic background with a translateY hover effect.
+- **"View More" (查看更多) Link & Modal**: Added a "View More" hyperlink text next to the section title. Hovering provides a subtle underline effect. Clicking it opens a modal listing all units within the same community, highlighting the current active room with a "Current" badge.
+- **Admin Listings Details Synchronization**: Enhanced `AdminListingsBrowse.tsx` to align with the tenant/guest features. It now includes the redesigned same-community grid blocks, the "View More" modal, and the `ReviewSystem` comments section.
+- **Review System Skeleton Placeholder**: Integrated skeleton loading blocks inside the review system (including the admin view) to prevent content shifting when switching between units.
+- **All-Portal Synchronisation Principle**: Any layout or feature update related to property listings must be synchronized across all portals (Tenant/Guest `PropertyListings.tsx` and Agent/Admin `AdminListingsBrowse.tsx`) to maintain visual and functional consistency. However, role-specific buttons and details are conditionally hidden (e.g., agents/admins do not see tenant action buttons like "我要租" or "Express Interest", keeping the admin panel action-clean).
+
+

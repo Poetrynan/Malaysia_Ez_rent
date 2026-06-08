@@ -379,6 +379,7 @@ export default function PropertyListings({ guestMode = false }: { guestMode?: bo
   const [videoOpen, setVideoOpen] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [showAllCommunityUnits, setShowAllCommunityUnits] = useState(false);
   const filteredAdmins = useMemo(() => {
     if (!selected?.agent_id) return admins;
     const match = admins.filter(a => a.id === selected.agent_id);
@@ -657,6 +658,7 @@ export default function PropertyListings({ guestMode = false }: { guestMode?: bo
     setLightboxOpen(false);
     setVideoOpen(false);
     setImgIdx(0);
+    setShowAllCommunityUnits(false);
   };
 
   const openLightbox = (index: number) => {
@@ -1578,19 +1580,71 @@ export default function PropertyListings({ guestMode = false }: { guestMode?: bo
               {/* More units in same community */}
               {sameCommUnits.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', marginBottom: 12 }}>{t('detailMoreUnits')}</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {sameCommUnits.slice(0, 4).map(u => (
-                      <div key={u.id} onClick={() => { setSelected(u); setImgIdx(0); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', cursor: 'pointer', transition: 'all 0.2s' }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}>
-                        <img src={getUnitImages(u.id, u.media_urls)[0]} alt="" style={{ width: 56, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-h)' }}>{u.room_type}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>RM {u.rent.toLocaleString()}{t('perMonth')}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--text-h)' }}>{t('detailMoreUnits')}</h3>
+                    <span
+                      onClick={() => setShowAllCommunityUnits(true)}
+                      style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: 'var(--primary)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.textDecoration = 'underline';
+                        e.currentTarget.style.opacity = '0.85';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.textDecoration = 'none';
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      {lang === 'zh' ? '查看更多' : 'View More'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {sameCommUnits.slice(0, 5).map(u => (
+                      <div
+                        key={u.id}
+                        onClick={() => { setSelected(u); setImgIdx(0); }}
+                        style={{
+                          flex: '1 1 calc(20% - 8px)',
+                          minWidth: '76px',
+                          maxWidth: '108px',
+                          borderRadius: 8,
+                          border: '1px solid var(--glass-border)',
+                          background: 'var(--glass-bg)',
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(59,130,246,0.1)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = 'var(--glass-border)';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <img
+                          src={getUnitImages(u.id, u.media_urls)[0]}
+                          alt=""
+                          style={{ width: '100%', height: 48, objectFit: 'cover' }}
+                        />
+                        <div style={{ padding: '4px 6px', display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'center', minWidth: 0 }}>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-h)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.room_type}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                            RM {u.rent.toLocaleString()}
+                          </span>
                         </div>
-                        <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
                       </div>
                     ))}
                   </div>
@@ -2519,6 +2573,103 @@ export default function PropertyListings({ guestMode = false }: { guestMode?: bo
               >
                 {lang === 'zh' ? '确定' : 'Confirm'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Same Community Units Modal ── */}
+      {showAllCommunityUnits && selected && (
+        <div
+          onClick={() => setShowAllCommunityUnits(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1100,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="glass-card"
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              animation: 'slideUp 0.25s ease-out',
+              borderRadius: 'var(--radius-lg)',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: 0 }}>
+                {lang === 'zh' ? `同小区所有房源 (${sameCommUnits.length + 1})` : `All rooms in community (${sameCommUnits.length + 1})`}
+              </h3>
+              <button
+                onClick={() => setShowAllCommunityUnits(false)}
+                className="ctrl-btn"
+                style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[selected, ...sameCommUnits].filter(Boolean).map(u => (
+                <div
+                  key={u.id}
+                  onClick={() => {
+                    setSelected(u);
+                    setImgIdx(0);
+                    setShowAllCommunityUnits(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: `1px solid ${selected?.id === u.id ? 'var(--primary)' : 'var(--glass-border)'}`,
+                    background: selected?.id === u.id ? 'var(--primary-light)' : 'var(--glass-bg)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    if (selected?.id !== u.id) e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onMouseLeave={e => {
+                    if (selected?.id !== u.id) e.currentTarget.style.borderColor = 'var(--glass-border)';
+                  }}
+                >
+                  <img
+                    src={getUnitImages(u.id, u.media_urls)[0]}
+                    alt=""
+                    style={{ width: 56, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {u.room_type}
+                      {selected?.id === u.id && (
+                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: 'white', padding: '1px 5px', borderRadius: 4 }}>
+                          {lang === 'zh' ? '当前' : 'Current'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>RM {u.rent.toLocaleString()}{t('perMonth')}</div>
+                  </div>
+                  <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
+                </div>
+              ))}
             </div>
           </div>
         </div>
