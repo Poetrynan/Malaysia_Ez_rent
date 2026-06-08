@@ -1632,16 +1632,50 @@ export default function TenantPortal({
           };
           const progressPercentage = calculateProfileProgress();
           return (
-            <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
+            <div className="glass-card" style={{ maxWidth: '800px', width: '100%', margin: '0 auto' }}>
               <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
                 <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
               </h4>
 
               {!profileIdentityType && (
-                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', marginBottom: 16, fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
-                  {lang === 'zh'
-                    ? '请先选择身份类型并上传对应证件，完成后方可使用房源浏览、租约等功能。'
-                    : 'Please select your identity type and upload required documents before using listings and lease features.'}
+                <div style={{
+                  padding: '20px 24px',
+                  borderRadius: 16,
+                  background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(217, 119, 6, 0.04) 100%)',
+                  borderLeft: '4px solid var(--primary)',
+                  borderTop: '1px solid var(--glass-border)',
+                  borderRight: '1px solid var(--glass-border)',
+                  borderBottom: '1px solid var(--glass-border)',
+                  marginBottom: 24,
+                  boxShadow: '0 4px 20px rgba(13, 148, 136, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+                    <h5 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>👋</span> {lang === 'zh' ? '欢迎来到 Malaysia Ez Rent！' : 'Welcome to Malaysia Ez Rent!'}
+                    </h5>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      background: 'var(--accent-light)',
+                      color: 'var(--accent)',
+                      border: '1px solid rgba(217, 119, 6, 0.2)',
+                    }}>
+                      ⚠️ {lang === 'zh' ? '待身份验证' : 'Verification Required'}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-body)', lineHeight: 1.6 }}>
+                    {lang === 'zh' ? (
+                      <>
+                        为了保障您的租房安全并开启选房签约，<strong>请先在下方选择您的身份类型并上传对应证件</strong>。完成认证后，系统将自动为您解锁<strong>房源浏览、看房申请、意向金支付及电子租约签署</strong>等完整功能。
+                      </>
+                    ) : (
+                      <>
+                        To secure your rental process, <strong>please first select your identity type and upload the required documents below</strong>. Once verified, you will unlock full access to <strong>listings browsing, viewings request, payments, and digital signing of lease contracts</strong>.
+                      </>
+                    )}
+                  </p>
                 </div>
               )}
 
