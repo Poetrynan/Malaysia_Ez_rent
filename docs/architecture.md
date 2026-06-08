@@ -1358,6 +1358,23 @@ Tool call cards in the AI Chat interface must **never** expose raw tool output (
 1. **RAG/internal data**: `search_knowledge_base` returns proprietary community profiles (prices, ratings, pros/cons). Showing raw JSON gives away the database for free.
 2. **External listings**: `search_external_listings` returns URLs, phone numbers, and platform names (PropertyGuru, Mudah, etc.). This violates the "no external links or agent phone numbers" system prompt rule and gives free advertising to competitors.
 
+### Data Flow (unchanged by this refactor)
+
+```
+Backend tool execution → returns full JSON
+    ↓
+SSE event (tool_result) → sends full JSON to frontend
+    ↓
+Frontend tc.result → stores full JSON (unchanged)
+    ↓
+Three paths:
+    ├── ① Tool card preview (renderToolResult) → safe summary only (CHANGED)
+    ├── ② Raw JSON panel → removed, not displayed (CHANGED)
+    └── ③ LLM final answer → generated from full JSON, quality unaffected (UNCHANGED)
+```
+
+The refactor only affects what users see in the UI (paths ①②). Backend data flow (SSE) and LLM reasoning quality (path ③) are completely unaffected.
+
 ### Implementation
 
 - `sanitizeExternalListingText()` strips URLs, phone numbers, and platform brand names from any text before display.

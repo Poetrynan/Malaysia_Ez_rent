@@ -2729,6 +2729,23 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 | `get_malaysia_holidays` | 假期列表 | ❌ 隐藏 |
 | 其他工具 | 简要文本摘要 | ❌ 隐藏 |
 
+### 完整数据链路（改动前后一致）
+
+```
+后端工具执行 → 返回完整 JSON
+    ↓
+SSE 事件（tool_result）→ 发送完整 JSON 到前端
+    ↓
+前端 tc.result → 存储完整 JSON（未改动）
+    ↓
+分三条路径：
+    ├── ① 工具卡预览 renderToolResult() → 只显示安全摘要（本次改动）
+    ├── ② 原始 JSON 面板 → 已删除，不展示（本次改动）
+    └── ③ LLM 最终回答 → 基于完整 JSON 生成，质量不受影响（未改动）
+```
+
+**关键结论：** 改动仅影响用户肉眼可见的 UI 层（路径 ①②），后端数据流（SSE）和 LLM 推理质量（路径 ③）完全不受影响。
+
 ### 代码改动
 
 **文件：** `frontend/src/components/AIChat.tsx`
