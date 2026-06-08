@@ -20,6 +20,15 @@
 12. [终端风格控制台与实时连接状态指示 (Mac Console Pattern & Alive Breathe Indicator)](#12-终端风格控制台与实时连接状态指示-mac-console-pattern--alive-breathe-indicator)
 13. [气泡聊天工单对话系统 (Bubble Chat Order System)](#13-气泡聊天工单对话系统-bubble-chat-order-system)
 14. [页面性能与 React 渲染闭环优化 (Page Performance & React Render Loop Optimization)](#14-页面性能与-react-渲染闭环优化-page-performance--react-render-loop-optimization)
+15. [同小区房源小方块化与“查看更多”弹出模态框 (Same-Community Cards & Modal Overlay)](#15-同小区房源小方块化与查看更多弹出模态框-same-community-cards--modal-overlay)
+16. [全端列表与详情同步及角色功能隔离原则 (All-Portal Sync & Role-based Isolation)](#16-全端列表与详情同步及角色功能隔离原则-all-portal-sync--role-based-isolation)
+17. [评论区及异步加载骨架屏占位防抖机制 (Skeleton Shimmer Placements)](#17-评论区及异步加载骨架屏占位防抖机制-skeleton-shimmer-placements)
+18. [Phosphor Duotone 图标库视觉升级与品牌统一 (Phosphor Duotone Icons & Brand Cohesion)](#18-phosphor-duotone-图标库视觉升级与品牌统一-phosphor-duotone-icons--brand-cohesion)
+19. [地图无密匙智能降级与防错机制 (Keyless Map Smart Fallback & Fail-Safe)](#19-地图无密匙智能降级与防错机制-keyless-map-smart-fallback--fail-safe)
+20. [租客身份验证缓存无感通行 (Tenant Identity Caching & Smooth Nav Bypass)](#20-租客身份验证缓存无感通行-tenant-identity-caching--smooth-nav-bypass)
+21. [记住密码与表单自动填充支持 (Remember Me & Autocomplete Integration)](#21-记住密码与表单自动填充支持-remember-me--autocomplete-integration)
+22. [AI 聊天 Tab 切换后台持久化与零卡顿 (AI Chat State Preservation & Latency-Free Tabs)](#22-ai-聊天-tab-切换后台持久化与零卡顿-ai-chat-state-preservation--latency-free-tabs)
+23. [高级磨砂玻璃微光 Toast 动效 (Glassmorphic Shimmering Toast)](#23-高级磨砂玻璃微光-toast-动效-glassmorphic-shimmering-toast)
 
 ---
 
@@ -395,7 +404,100 @@ const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCoun
 
 ---
 
-## 总结（更新于 2026-05-31）
+## 15. 同小区房源小方块化与“查看更多”弹出模态框 (Same-Community Cards & Modal Overlay)
+
+对于辅助推荐或关联维度的列表（如“同小区的其他房间”），如果使用整行布局，会极度挤占核心详情抽屉 of 纵向空间，增加用户的滑动负担。
+
+### 设计原则
+* **紧凑方块平铺化**：将列表项改造为 $1 \times 1$ 紧凑的小方块网格。方块高度控制在 $48\text{px}$ 左右，仅保留封面缩略图、房型简称 and 价格，最多平铺 5 个。
+* **渐进式“查看更多”**：限制方块数量上限。对超出限制的房源，提供清晰的超链接引导，点击后在当前页面渲染包含全局模糊背板（`backdrop-filter: blur(6px)`）的 Modal Overlay 进行弹窗滚动展示。
+* **当前浏览态聚焦 (Active Anchor)**：在弹窗列表中，针对当前正在浏览的房源锚点，应配以“当前 / Current”高对比度徽章，帮助用户在切换时建立明确的空间与层级坐标。
+
+---
+
+## 16. 全端列表与详情同步及角色功能隔离原则 (All-Portal Sync & Role-based Isolation)
+
+多端共享的数据模型（例如房源 Listings 详细规格）如果各端展现逻辑不一致，会导致用户与中介在信息对齐时产生偏差。
+
+### 设计原则
+* **展示逻辑百分百对齐 (UI/Data Alignment)**：针对房源详情、面积大小、历史评价，无论在租客端（`PropertyListings.tsx`）、中介浏览端（`AdminListingsBrowse.tsx`）还是游客端，其 UI 层级与渲染数据必须同步更新。
+* **操作与角色权限隔离 (Action Privilege Isolation)**：在视觉统一的前提下，根据当前会话角色（Session role）动态隐藏或禁用与其身份冲突的动作按钮。
+  * **中介控制台**：无缝同步同小区对比与评论板块，但绝对隐藏“我要租”、“申请合租”等与其管理员身份相悖的交易交互。
+  * **租客控制台**：严格剔除管理属性（如“删除评价”特权、后台统计、房源所有权映射）。
+
+---
+
+## 17. 评论区及异步加载骨架屏占位防抖机制 (Skeleton Shimmer Placements)
+
+当组件在进行异步网络请求（如切换房源拉取评价数据）时，如果不做任何视觉占位，会因页面局部高度塌陷产生剧烈的抖动。
+
+### 设计原则
+* **物理高度等比例占位 (Layout Height Anchoring)**：骨架图组件（`Skeleton Card/List`）的渲染框体、圆角与行高必须与最终真实渲染的数据卡片完全一致，确保内容加载前后，页面盒模型的物理占位尺寸恒定。
+* **平滑闪烁无感过渡 (Smooth Shimmer Swipe)**：骨架屏必须配以微弱的、循环的线性渐变位移动画（如 `.shimmer` 扫描条效果，倾斜 $45^\circ$ 自左向右匀速扫过），相比纯色块，其更能有效打消用户的等待焦虑。
+
+---
+
+## 18. Phosphor Duotone 图标库视觉升级与品牌统一 (Phosphor Duotone Icons & Brand Cohesion)
+
+为了强化品牌视觉质感并提升用户的信任心理，界面中的核心图标一律从细线轮廓型 Lucide 图标库升级为更加饱满、层次更强的 Phosphor duotone（双色调）图标。
+
+### 设计原则
+* **背景半透明填充**：双色调图标在主色线条基础上，自带一层 10%-12% 不透明度的半透明填充色块。这种柔和的色阶过度使得扁平的界面立刻产生立体微立体感，减少冷冰冰的线框感。
+* **高频信任区域首选**：在首屏服务介绍、登录入口选择及关键信任标识（如“实名认证”、“资金安全”、“真实房源”）上，必须强制使用 duotone 风格，形成高度一致的品牌调性。
+
+---
+
+## 19. 地图无密匙智能降级与防错机制 (Keyless Map Smart Fallback & Fail-Safe)
+
+当系统运行在本地沙盒、API key 配置出错或遇到谷歌地图配额耗尽等异常情况时，地图模块不应抛出不可读的 API 鉴权红屏或空白排版，而是应当实现无感自动降级。
+
+### 设计原则
+* **无密匙环境检测**：在组件（如 `MapAndCard`）渲染前，对传入的 API key 进行可选值分析。如 key 缺失、为空、或匹配 dummy 值（如包含 `YOUR_` 前缀且长度不足），立即激活降级机制。
+* **免签标准嵌入**：降级后自动采用不需要 API Key 的 Google Maps 经典 iframe 参数化路由（`https://maps.google.com/maps?q=...&output=embed`）进行通勤和位置预览，避免系统因外部依赖环境的不可控性导致局部排版崩溃。
+
+---
+
+## 20. 租客身份验证缓存无感通行 (Tenant Identity Caching & Smooth Nav Bypass)
+
+频繁的数据库鉴权拉取会导致用户在使用 SPA 单页应用时产生明显的交互顿挫和闪烁感。对于需要进行身份分类校验（本地人/留学生）的场景，采用本地状态缓存。
+
+### 设计原则
+* **全局上下文挂载**：在 `TenantDataContext` 中全局维系一份从 Supabase 登录 session 中获取的身份状态缓存 `profileIdentityType`。
+* **即时无感通行**：拦截守卫 `TenantIdentityGate` 首次查询后，后续路由切换和敏感按钮拦截将百分百从本地内存中读取，直接通过，消除所有因后台接口请求滞后带来的 Spinner 菊花闪现和白屏顿挫。
+
+---
+
+## 21. 记住密码与表单自动填充支持 (Remember Me & Autocomplete Integration)
+
+为了优化登录和注册流程，减少用户手输密码与验证码的频次，系统表单需深度适配主流浏览器的内置凭据管理器。
+
+### 设计原则
+* **严格表单语义属性**：所有密码、邮箱及新密码注册的 input 标签，必须设置完全正确的 HTML 语义属性：`name`、`type` 及 `autocomplete`（如 `username`、`current-password`、`new-password`）。
+* **自动填充与拦截避免**：避免使用自定义的模拟 placeholder 和过于复杂的动态事件拦截密码输入。配合加密安全的“记住密码”本地暂存，帮助 Safari、Chrome 及第三方凭据管理工具实现一键安全填充。
+
+---
+
+## 22. AI 聊天 Tab 切换后台持久化与零卡顿 (AI Chat State Preservation & Latency-Free Tabs)
+
+AI 对话是平台最核心的技术特色，用户常需在浏览房源列表和与 AI 对话之间来回对比。
+
+### 设计原则
+* **内存状态常驻**：AI 助手的聊天状态（包括对话历史数组、流式输出接收状态、当前输入框未发送的草稿等）在用户切离路由时，不应随组件 unmount 而被销毁，应当存留在全局状态或使用 DOM CSS 隐藏显示策略（保持渲染实例挂载）。
+* **零延迟无感切回**：当用户从房源详情切回 AI 聊天时，窗口直接呈现切离前的完整状态，无任何白屏加载，保障多任务交叉决策的丝滑感。
+
+---
+
+## 23. 高级磨砂玻璃微光 Toast 动效 (Glassmorphic Shimmering Toast)
+
+系统内的微小瞬时成功或警告反馈，不宜使用阻断性的 Alert 弹窗或简陋的纯黑浮层，而是使用完美契合奢华玻璃拟态主题的 Toast。
+
+### 设计原则
+* **磨砂玻璃微光感**：使用高斯模糊 `backdrop-filter: blur(12px)` 与极其透亮的发光半透明边框，并在卡片内部增加一条倾斜的平滑移动微光扫描条动画（Shimmer sweep），模拟精致实体玻璃质感。
+* **阻尼回弹滑入**：采用 `cubic-bezier` 的自定义回弹贝塞尔曲线让 Toast 从顶部优雅滑入，降低动作反馈的心智压迫。
+
+---
+
+## 总结（更新于 2026-06-08）
 
 高级的 UI 往往不是靠堆砌花哨的特效，而是体现在对**对比度**、**点击热区**、**动效细节**、**进度可视化**、**网络响应性**与**操作心智成本**的极致打磨上。后续开发时请牢记：
 1. 重要的可交互元素，**绝不使用无背景的微小文字链接**。
@@ -404,7 +506,7 @@ const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCoun
 4. 任何媒体文件上传，**在网络发送前必须完成客户端静默压缩**。
 5. 所有的联系界面，**严禁外链站外平台，全部设计为站内复制闭环**。
 6. **进度流程必须有动态反馈**，线条延伸、光点引导、节点动画缺一不可。
-7. **进度节点的落点公式与布局必须采用数学均分 (Mathematical Equidistribution) 方式**：为避免不同语言文本长度引起 flex 节点宽度不一致而产生偏差，每个节点应使用统一的 `flex: 1` 占位，使 4 个节点的圆心完美对齐在 `12.5%`、`37.5%`、`62.5%` 和 `87.5%`。呼吸光点应用 `marginLeft: -3px`（半宽度偏移）进行中心对齐校准，杜绝过冲、偏离与多语言溢出。
+7. **进度节点的落点公式与布局必须采用数学均分 (Mathematical Equidistribution) 方式**：每个节点应使用统一的 `flex: 1` 占位，使 4 个节点的圆心完美对齐在 `12.5%`、`37.5%`、`62.5%` 和 `87.5%`。呼吸光点应用 `marginLeft: -3px`（半宽度偏移）进行中心对齐校准，杜绝过冲、偏离与多语言溢出。
 8. **多源数据加载严禁串行**，必须使用 Promise.all 并行化或嵌套 SELECT 联表以降低网络延迟。
 9. **所有动画必须支持 `prefers-reduced-motion`**，尊重用户的可访问性设置。
 10. **唯一生效租约限制（一人一房原则）**：在用户有任何生效的租约合同（`myLeasedUnitIds.length > 0`）时，任何在其他房源下的意向表达与合租加入均应当做强阻断校验，提醒并拦截，防止一人租多房逻辑冲突。
@@ -415,4 +517,13 @@ const handlePendingCountsChange = useCallback((leasesCount: number, feedbackCoun
 15. **资料完善度百分比滑条**：在表单头部增加进度指示器，根据输入框填写的数量动态计算百分比（0%-100%），通过 6px 高度的彩色渐变滑条实时同步并辅以动效。
 16. **拍照框组件**：替代传统的原生上传按钮，将其设计为带虚线边框、相机图标及明确多语言提示的框体。当悬浮时提供虚线颜色变化。
 17. **React 状态流与渲染闭环优化**：当在父组件中向可能在 `useEffect` 中被引用的子组件传递更新回调时，必须使用 `useCallback` 记忆化，并在父组件的 `setState` 更新器中执行相同值检测阻断，杜绝产生死循环渲染 (Infinite Render Loop)。
+18. **关联列表精简化与大弹窗 Modal 融合**：辅助信息（如小区其它房间）采用精致的 $1 \times 1$ 卡片化展示（限制最多 5 个），超出部分以微动效超链接引导，弹窗中锚定当前房源，建立清晰的空间视觉坐标。
+19. **全端列表同步与操作权限强隔离**：跨端共用界面（房源列表、评论区）核心布局和字段逻辑强制全端同步，操作权限根据会话身份（租客/中介）进行百分之百物理隔离，杜绝越权或动作冲突。
+20. **骨架屏防抖与扫描扫描淡入动效**：数据异步更新前必须配置物理高度 1:1 的骨架占位屏，加入 $45^\circ$ 平滑渐变移动扫描动画，解决内容加载时页面物理塌陷和剧烈抖动问题。
+21. **全系统强制升级为 Phosphor Duotone 双色调图标规范**：使关键视觉触点拥有立体分层的填充层次，增加品牌高档 SaaS 质感。
+22. **通勤地图服务 API 异常零密匙自动降级**：实现 API 状态自检测，静默切换至 keyless 经典地图组件，保证本地沙盒或异常下的正常排版呈现。
+23. **身份拦截全局缓存通行设计**：将拉取的用户身份缓存至 Context 中并支持免打库校验，从根本上解决 Tab 导航切换时的页面 Spinner 闪烁。
+24. **表单组件无障碍自动填充兼容**：利用标准 HTML 表单属性，实现 Safari、Chrome 等原生凭证以及记住密码机制的完全兼容，提升首关登录速度。
+25. **AI 聊天历史会话与输入状态后台驻留**：路由切离时后台持久化状态与实例，解决用户二次进入时的卡顿与文本草稿丢失问题。
+26. **高感知磨砂玻璃微光 Toast 反馈**：所有的瞬时反馈一律采用 `backdrop-filter: blur(12px)` + 微光扫描（Shimmer sweep）的浮窗，并使用回弹贝塞尔阻尼动效，彻底杜绝生硬死板的默认提醒。
 
