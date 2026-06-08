@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Trash2, StopCircle } from 'lucide-react';
+import { Send, Bot, User, CheckCircle, XCircle, Clock, Trash2, StopCircle } from 'lucide-react';
 import MapAndCard from './MapAndCard';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import { useApp } from '@/lib/ThemeProvider';
@@ -34,6 +34,19 @@ const toolIcon = (name: string) =>
   : name.includes('currency') ? '💱'
   : name.includes('holiday') ? '📅'
   : '⚙️';
+
+/** Strip URLs, phone numbers, and platform brand names from external listing text */
+const sanitizeExternalListingText = (text: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/https?:\/\/[^\s,;)]+/gi, '')          // http/https URLs
+    .replace(/www\.[^\s,;)]+/gi, '')                // www. URLs
+    .replace(/\+?60[\d\s\-]{8,13}/g, '')            // +60 / 60xxx phone numbers
+    .replace(/\b0[1-9][\d\s\-]{7,10}\b/g, '')      // 017-xxx local phone numbers
+    .replace(/(?:propertyguru|mudah|iproperty|facebook|carousell|speedrent)\b/gi, '') // platform names
+    .replace(/\s{2,}/g, ' ')                         // collapse whitespace
+    .trim();
+};
 
 /** Human-readable tool result — shown by default, no click required */
 const renderToolResult = (name: string, result: any): React.ReactNode => {
@@ -78,7 +91,7 @@ const renderToolResult = (name: string, result: any): React.ReactNode => {
   if (name === 'search_knowledge_base' && Array.isArray(result)) {
     return (
       <div className="manus-tool-preview">
-        <div className="manus-tool-preview-title">找到 {result.length} 个小区</div>
+        <div className="manus-tool-preview-title">🔍 已检索内部数据库 · 找到 {result.length} 个小区</div>
         <ul className="manus-tool-preview-list">
           {result.slice(0, 5).map((item: any, i: number) => (
             <li key={i}>
@@ -94,6 +107,28 @@ const renderToolResult = (name: string, result: any): React.ReactNode => {
 
   if (name === 'get_web_realtime_info' && typeof result === 'string') {
     return <div className="manus-tool-preview"><p className="manus-tool-preview-text">{result.slice(0, 500)}{result.length > 500 ? '…' : ''}</p></div>;
+  }
+
+  // search_external_listings — show listing titles + prices only; URLs / phone numbers / raw JSON are never displayed
+  if (name === 'search_external_listings' && typeof result === 'object') {
+    if (!result.success) {
+      return <div className="manus-tool-preview"><div className="manus-tool-preview-row">⚠️ 未找到相关外部房源</div></div>;
+    }
+    const listings = result.listings || [];
+    const count = result.total_results ?? listings.length;
+    return (
+      <div className="manus-tool-preview">
+        <div className="manus-tool-preview-title">🔍 已搜索外部平台 · 找到 {count} 条房源</div>
+        <ul className="manus-tool-preview-list">
+          {listings.slice(0, 5).map((item: any, i: number) => (
+            <li key={i}>
+              <strong>{sanitizeExternalListingText(item.title)}</strong>
+              {item.price_myr ? ` · RM${item.price_myr}` : ''}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   }
 
   if (typeof result === 'string') {
@@ -443,7 +478,6 @@ export default function AIChat() {
   const [isGenerating, setIsGenerating] = useState(chatState.isGenerating);
   const [elapsed, setElapsed] = useState(chatState.elapsed);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
-  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [expandedThoughts, setExpandedThoughts] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -552,11 +586,6 @@ export default function AIChat() {
     setHistoryOpen(false);
   };
 
-  const toggleTool = (id: string) => setExpandedTools(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
 
   const handleStop = () => {
     chatState.stopGeneration();
@@ -727,7 +756,7 @@ export default function AIChat() {
                   {/* Tool cards */}
                   {m.tools.map(tc => (
                     <div key={tc.id} className={`manus-tool-card ${tc.status}`}>
-                      <div className="manus-tool-header" onClick={() => tc.status === 'done' && toggleTool(tc.id)}>
+                      <div className="manus-tool-header">
                         <span className="manus-tool-icon">{toolIcon(tc.name)}</span>
                         <span className="manus-tool-name">{tc.name}</span>
                         <span className={`manus-tool-status ${tc.status}`}>
@@ -735,11 +764,7 @@ export default function AIChat() {
                           {tc.status === 'done' && <CheckCircle size={14} />}
                           {tc.status === 'error' && <XCircle size={14} />}
                         </span>
-                        {tc.status === 'done' && tc.result && (
-                          <span className="manus-tool-toggle" title="查看原始数据">
-                            {expandedTools.has(tc.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                          </span>
-                        )}
+                        {/* Raw JSON toggle removed — never show raw data to users */}
                       </div>
                       <div className="manus-tool-args">
                         {Object.entries(tc.args).map(([k, v]) => (
@@ -752,13 +777,7 @@ export default function AIChat() {
                           {renderToolResult(tc.name, tc.result)}
                         </div>
                       )}
-                      {/* Optional: raw JSON for power users */}
-                      {expandedTools.has(tc.id) && tc.result && (
-                        <div className="manus-tool-output">
-                          <div className="manus-tool-output-label">原始数据</div>
-                          <pre>{typeof tc.result === 'object' ? JSON.stringify(tc.result, null, 2) : String(tc.result)}</pre>
-                        </div>
-                      )}
+                      {/* Raw JSON panel removed — data stays internal, only renderToolResult() previews are shown */}
                     </div>
                   ))}
 

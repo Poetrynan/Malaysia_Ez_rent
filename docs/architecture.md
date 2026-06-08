@@ -1347,4 +1347,32 @@ To resolve layout issues on the tenant personal information page (excessively wi
 - **Dynamic Progress Bar Gradient Calibration**: The color transition of the completeness progress bar has been updated so that it completes at a healthy emerald green (`var(--success)`) instead of warning orange/yellow when completeness reaches 100%.
 - **Onboarding Greeting & Verification Banner**: A new glassmorphic onboarding welcome banner has been introduced at the top of the profile card when `identity_type` is not yet selected. It displays a warm welcome (`👋 Welcome to Malaysia Ez Rent!`) along with a warning badge (`⚠️ Identity Verification Pending`). It details the security encryption context and provides a clear call to action regarding the need for identity documents to unlock all app functionalities (listings browsing, lease management, etc.).
 
+## 26) AI Tool Card Data Leakage Prevention (2026-06-08)
+
+### Design Principle
+
+Tool call cards in the AI Chat interface must **never** expose raw tool output (JSON, URLs, phone numbers, platform names) to users. The card only communicates **what the AI did** (searched database / searched external platforms) and **how many results were found**. Actual listing details are presented by the LLM in its final text answer, following the system prompt rules.
+
+### Why
+
+1. **RAG/internal data**: `search_knowledge_base` returns proprietary community profiles (prices, ratings, pros/cons). Showing raw JSON gives away the database for free.
+2. **External listings**: `search_external_listings` returns URLs, phone numbers, and platform names (PropertyGuru, Mudah, etc.). This violates the "no external links or agent phone numbers" system prompt rule and gives free advertising to competitors.
+
+### Implementation
+
+- `sanitizeExternalListingText()` strips URLs, phone numbers, and platform brand names from any text before display.
+- `search_external_listings` preview: title + price only (no URLs, snippets, or platform names).
+- `search_knowledge_base` preview: community name + price + rating (internal data intended for user display).
+- Raw JSON expand button and panel: **removed for all tools** — `expandedTools` state, `toggleTool` function, and Chevron icons deleted.
+
+### Key Distinction from General-Purpose Agents
+
+General-purpose agents (like Manus) show tool results to build trust. This project is different: its business goal is to sell its own listings, not to give free advertising to external platforms or expose proprietary data. Therefore, all raw tool data is hidden from the UI.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/AIChat.tsx` | `sanitizeExternalListingText()`, `search_external_listings` preview, raw JSON panel removal, `expandedTools`/`toggleTool` cleanup |
+
 

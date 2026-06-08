@@ -871,3 +871,48 @@ setMessages(prev => [...prev,
 | `frontend/src/components/AIChat.tsx` | 聊天主组件、SSE 解析、渲染逻辑 |
 | `frontend/src/components/MapAndCard.tsx` | 地图/卡片组件（3 种模式） |
 | `frontend/src/app/globals.css` | 全部样式、动画、主题 |
+
+---
+
+## 十三、工具卡片数据防泄露重构（2026-06-08）
+
+> 本节为增量变更，记录在原有 Tool Cards 渲染逻辑（§4.3）基础上的修改。原有设计保留不变，供通用 Agent 项目复用。
+
+### 背景
+
+原版设计中，工具卡片提供展开按钮（`▸`）可查看完整原始 JSON。这对通用 Agent（如 Manus）是合理的，但对本项目存在数据泄露风险：
+
+1. **RAG 数据库泄露**：`search_knowledge_base` 的原始 JSON 包含小区名、价格、评分、优缺点等，等于把自有数据库免费暴露给用户。
+2. **外部平台导流泄露**：`search_external_listings` 的原始 JSON 包含 URL、电话号码、平台名称（PropertyGuru、Mudah 等），违反系统 prompt 中"禁止给出外部链接和中介电话"的规则。
+
+### 设计原则
+
+工具卡片只告诉用户 **"AI 做了什么事"** 和 **"找到了多少结果"**。具体房源信息由 LLM 在最终回答中呈现。原始数据对用户完全不可见。
+
+### 代码改动（`AIChat.tsx`）
+
+| 改动 | 说明 |
+|------|------|
+| 新增 `sanitizeExternalListingText()` | 正则清理 URL、马来西亚电话号码、平台品牌名 |
+| 新增 `search_external_listings` 专用预览 | 成功："🔍 已搜索外部平台 · 找到 N 条房源" + 房源标题 + 价格（经清理）；失败："⚠️ 未找到相关外部房源" |
+| 移除展开按钮和原始数据面板 | `expandedTools` 状态、`toggleTool` 函数、Chevron 图标、原始 JSON 面板全部删除，适用于**所有工具** |
+| 清理未使用 import | 移除 `ChevronDown`、`ChevronRight` |
+
+### `search_external_listings` 清理规则
+
+| 清理项 | 正则 |
+|--------|------|
+| http/https URL | `https?:\/\/[^\s,;)]+` |
+| www URL | `www\.[^\s,;)]+` |
+| 国际电话 | `\+?60[\d\s\-]{8,13}` |
+| 本地电话 | `\b0[1-9][\d\s\-]{7,10}\b` |
+| 平台名 | `propertyguru\|mudah\|iproperty\|facebook\|carousell\|speedrent` |
+
+### 与通用 Agent 设计的对比
+
+| 维度 | 通用 Agent（Manus） | 本项目 |
+|------|-------------------|--------|
+| RAG 原始数据 | 不展示（任何 Agent 都不会 dump RAG） | 同左 |
+| 外部搜索结果 | 可展示增强可信度 | **隐藏**（保护自家房源、不给竞品导流） |
+| 原始 JSON 面板 | 可选展示 | **完全移除** |
+| 工具卡内容 | 搜索过程 + 结果详情 | 仅搜索概要 |
