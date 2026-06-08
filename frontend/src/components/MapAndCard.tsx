@@ -45,6 +45,19 @@ export default function MapAndCard({
   const { t, lang } = useApp();
   const [commuteMode, setCommuteMode] = useState<'driving' | 'walking' | 'transit'>('driving');
 
+  // Debug log to verify props
+  React.useEffect(() => {
+    if (is_knowledge_base && community_name) {
+      console.log(`[MapAndCard] Rendering KB card:`, {
+        community_name,
+        origin_lat,
+        origin_lng,
+        price_range,
+        description: description?.substring(0, 50)
+      });
+    }
+  }, [is_knowledge_base, community_name, origin_lat, origin_lng]);
+
   // If destination props are provided (commute case), show route directly
   const isCommuteMode = !!(destination_name && destination_lat && destination_lng);
   const isKBMode = !!is_knowledge_base;

@@ -780,7 +780,7 @@ export default function AIChat() {
                   {m.contentStarted && m.uiComponents.length > 0 && (
                     <div className="manus-ui-components">
                       {m.uiComponents.map((item, i) => (
-                        <div key={i} className="manus-ui-wrapper">
+                        <div key={`ui-${m.id}-${i}-${item.props?.community_name || item.props?.origin_name || i}`} className="manus-ui-wrapper">
                           {item.component === 'MapAndCard' && <MapAndCard {...item.props} />}
                           {item.component === 'LeaseLedgerCard' && <LeaseLedgerCard {...item.props} onPaymentUpdated={() => {}} />}
                         </div>

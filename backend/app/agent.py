@@ -903,21 +903,24 @@ async def live_agent_stream(
                     if name.lower() in seen_names:
                         continue
                     seen_names.add(name.lower())
+                    card_props = {
+                        "origin_name": name,
+                        "origin_lat": float(item["latitude"]),
+                        "origin_lng": float(item["longitude"]),
+                        "community_name": name,
+                        "university_name": item.get("university_name"),
+                        "price_range": item.get("price_range"),
+                        "tenant_rating": item.get("tenant_rating"),
+                        "description": item.get("description"),
+                        "is_knowledge_base": True,
+                        "auto_load": True
+                    }
+                    # Debug log to track card data
+                    print(f"[KB Card] Creating card for {name}: lat={card_props['origin_lat']}, lng={card_props['origin_lng']}")
                     kb_card_candidates.append({
                         "type": "ui_component",
                         "component": "MapAndCard",
-                        "props": {
-                            "origin_name": name,
-                            "origin_lat": float(item["latitude"]),
-                            "origin_lng": float(item["longitude"]),
-                            "community_name": name,
-                            "university_name": item.get("university_name"),
-                            "price_range": item.get("price_range"),
-                            "tenant_rating": item.get("tenant_rating"),
-                            "description": item.get("description"),
-                            "is_knowledge_base": True,
-                            "auto_load": True
-                        }
+                        "props": card_props
                     })
 
             if tool_name == "search_internal_db" and isinstance(result_data, list) and len(result_data) > 0:
@@ -1055,12 +1058,15 @@ async def live_agent_stream(
         if not name or name.lower() in commute_card_names:
             continue
         if name.lower() in answer_lower:
+            print(f"[KB Card Selected] {name}: lat={cand['props']['origin_lat']}, lng={cand['props']['origin_lng']}")
             pending_ui_components.append(cand)
             shown += 1
     # Fallback: model flagged housing (show_map) but no name matched in the answer.
     if shown == 0 and kb_show_map and not has_commute and kb_card_candidates:
         first = kb_card_candidates[0]
-        if (first["props"].get("community_name") or "").strip().lower() not in commute_card_names:
+        first_name = (first["props"].get("community_name") or "").strip()
+        if first_name.lower() not in commute_card_names:
+            print(f"[KB Card Fallback] Showing first card: {first_name}: lat={first['props']['origin_lat']}, lng={first['props']['origin_lng']}")
             pending_ui_components.append(first)
 
     # Honest last-resort message — only when no real answer was produced.
@@ -1074,6 +1080,12 @@ async def live_agent_stream(
 
     # Emit all collected UI components AFTER the text (maps, cards, etc.)
     for comp in pending_ui_components:
+        if comp.get("component") == "MapAndCard":
+            props = comp.get("props", {})
+            comp_name = props.get("community_name") or props.get("origin_name")
+            comp_lat = props.get("origin_lat")
+            comp_lng = props.get("origin_lng")
+            print(f"[Emit UI Component] MapAndCard for {comp_name}: lat={comp_lat}, lng={comp_lng}")
         yield sse_event(comp)
         await asyncio.sleep(0.3)
 
