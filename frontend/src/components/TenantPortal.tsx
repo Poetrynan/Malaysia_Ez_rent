@@ -305,17 +305,34 @@ const TenantSkeleton = ({ mode, lang }: { mode: 'lease' | 'maintenance' | 'profi
       )}
 
       {mode === 'profile' && (
-        <>
+        <div className="glass-card" style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Title Shimmer */}
+          <div className="shimmer" style={{ width: 140, height: 24, borderRadius: 6 }} />
+          
+          {/* Onboarding Welcome Banner Shimmer */}
+          <div className="shimmer" style={{ height: 110, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+
           {/* Progress bar shimmer */}
-          <div className="shimmer" style={{ height: 32, borderRadius: 10, border: '1px solid var(--glass-border)' }} />
-          {/* Profile card shimmer */}
-          <div className="shimmer" style={{ height: 320, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
-          {/* Identity docs upload grid shimmer */}
+          <div className="shimmer" style={{ height: 48, borderRadius: 12, border: '1px solid var(--glass-border)' }} />
+          
+          {/* Privacy Banner Shimmer */}
+          <div className="shimmer" style={{ height: 56, borderRadius: 12, border: '1px solid var(--glass-border)' }} />
+
+          {/* Form input fields shimmer */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div className="shimmer" style={{ height: 180, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
-            <div className="shimmer" style={{ height: 180, borderRadius: 16, border: '1px solid var(--glass-border)' }} />
+            <div className="shimmer" style={{ height: 56, borderRadius: 8 }} />
+            <div className="shimmer" style={{ height: 56, borderRadius: 8 }} />
+            <div className="shimmer" style={{ height: 56, borderRadius: 8 }} />
+            <div className="shimmer" style={{ height: 56, borderRadius: 8 }} />
           </div>
-        </>
+
+          {/* Identity type select grid shimmer */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 12 }}>
+            <div className="shimmer" style={{ height: 80, borderRadius: 12 }} />
+            <div className="shimmer" style={{ height: 80, borderRadius: 12 }} />
+            <div className="shimmer" style={{ height: 80, borderRadius: 12 }} />
+          </div>
+        </div>
       )}
     </div>
   );

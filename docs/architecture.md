@@ -1339,4 +1339,12 @@ To optimize the screen space and detail view interaction when tenants, admins, o
 - **Review System Skeleton Placeholder**: Integrated skeleton loading blocks inside the review system (including the admin view) to prevent content shifting when switching between units.
 - **All-Portal Synchronisation Principle**: Any layout or feature update related to property listings must be synchronized across all portals (Tenant/Guest `PropertyListings.tsx` and Agent/Admin `AdminListingsBrowse.tsx`) to maintain visual and functional consistency. However, role-specific buttons and details are conditionally hidden (e.g., agents/admins do not see tenant action buttons like "我要租" or "Express Interest", keeping the admin panel action-clean).
 
+## 25) Tenant Profile UI/UX Optimization & Onboarding Banner (2026-06-08)
+
+To resolve layout issues on the tenant personal information page (excessively wide layout inputs and selection cards, and confusing progress bar color at 100% completion) and to enhance the onboarding experience for new tenants:
+- **Card Centering & Max-Width Limit**: The main glassmorphic form card is constrained to a maximum width of `800px` and centered with `margin: 0 auto`. This avoids excessive horizontal stretching of form inputs and selection cards on wide screen monitors.
+- **3-Column Grid for Identity Selector**: The single-column list of large card items has been redesigned into a responsive 3-column grid layout. The text emojis (which are rendered inconsistently across operating systems like Windows) are replaced with clean, professional SVG icons (`CreditCard`, `GraduationCap`, `Globe` from `lucide-react`).
+- **Dynamic Progress Bar Gradient Calibration**: The color transition of the completeness progress bar has been updated so that it completes at a healthy emerald green (`var(--success)`) instead of warning orange/yellow when completeness reaches 100%.
+- **Onboarding Greeting & Verification Banner**: A new glassmorphic onboarding welcome banner has been introduced at the top of the profile card when `identity_type` is not yet selected. It displays a warm welcome (`👋 Welcome to Malaysia Ez Rent!`) along with a warning badge (`⚠️ Identity Verification Pending`). It details the security encryption context and provides a clear call to action regarding the need for identity documents to unlock all app functionalities (listings browsing, lease management, etc.).
+
 

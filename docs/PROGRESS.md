@@ -146,7 +146,7 @@ Malaysia_Ez_rent/
 | `register/tenant/page.tsx` | ✅ 完成 | 租客注册（身份+证件+验证码+密码）；**`autocomplete="new-password"`** |
 | `register/agent/page.tsx` | ✅ 完成 | 中介申请（REN+执照+验证码+密码）；**`autocomplete="new-password"`** |
 | `register/complete-profile/page.tsx` | ✅ 保留 | 独立补资料向导（兼容）；**系统默认重定向已改为 `/profile`** |
-| `profile/page.tsx` → `TenantPortal` | ✅ 完成 | 新/老租客统一个人信息页；身份三选一 + 分身份证件必传（第六十四节） |
+| `profile/page.tsx` → `TenantPortal` | ✅ 完成 | 新/老租客个人设置重构：卡片居中限宽 800px，自适应 3 列网格身份卡片配矢量 SVG 图标，百分满格进度条绿色渐变，新增 Onboarding 迎新引导与强制验证，同步重构同比例个人信息骨架屏 Shimmer |
 | `AdminListingsBrowse.tsx` | ✅ 完成 | 中介「房源浏览」轻量独立组件，替代 `PropertyListings readOnly` |
 | `TenantIdentityGate.tsx` | ✅ 完成 | 客户端身份门禁（沙盒 + 双保险） |
 | `TenantIdentityWarningModal.tsx` | ✅ 完成 | 「我要租」前资料不全软性提醒 Modal |
