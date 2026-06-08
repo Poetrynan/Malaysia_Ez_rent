@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star, Search, Upload } from 'lucide-react';
+import { Home, Calendar, CreditCard, AlertCircle, TrendingUp, Clock, MessageSquare, X, Send, User, Save, ChevronDown, ChevronUp, Camera, Users, Trash2, CheckCircle2, XCircle, AlertTriangle, Star, Search, Upload, Globe, GraduationCap } from 'lucide-react';
 import LeaseLedgerCard from './LeaseLedgerCard';
 import AgentRating from './AgentRating';
 import { useApp } from '@/lib/ThemeProvider';
@@ -26,10 +26,10 @@ interface Payment {
 interface Unit { id: string; community_id: string; room_type: string; status?: string; agent_id?: string | null; landlord_qr_code?: string | null; landlord_bank_info?: string | null; available_from?: string | null; }
 interface Community { id: string; name: string; }
 
-const IDENTITY_OPTIONS: { id: IdentityType; labelZh: string; labelEn: string }[] = [
-  { id: 'malaysian', labelZh: '🇲🇾 马来西亚本地人', labelEn: 'Malaysian Citizen' },
-  { id: 'international_student', labelZh: '🌍 国际留学生', labelEn: 'International Student' },
-  { id: 'international_other', labelZh: '🌐 其他外籍人士', labelEn: 'International Other' },
+const IDENTITY_OPTIONS: { id: IdentityType; labelZh: string; labelEn: string; icon: React.ComponentType<any> }[] = [
+  { id: 'malaysian', labelZh: '马来西亚本地人', labelEn: 'Malaysian Citizen', icon: CreditCard },
+  { id: 'international_student', labelZh: '国际留学生', labelEn: 'International Student', icon: GraduationCap },
+  { id: 'international_other', labelZh: '其他外籍人士', labelEn: 'International Other', icon: Globe },
 ];
 
 const ProgressFlow = ({ isAgreed, isActive, lang }: { isAgreed: boolean; isActive: boolean; lang: string }) => {
@@ -1632,7 +1632,7 @@ export default function TenantPortal({
           };
           const progressPercentage = calculateProfileProgress();
           return (
-            <div className="glass-card">
+            <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
               <h4 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 20px' }}>
                 <User size={18} style={{ color: 'var(--primary)' }} /> {t('myProfile')}
               </h4>
@@ -1659,7 +1659,7 @@ export default function TenantPortal({
                   <div style={{
                     height: '100%',
                     width: `${progressPercentage}%`,
-                    background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)',
+                    background: 'linear-gradient(90deg, var(--primary) 0%, var(--success) 100%)',
                     borderRadius: 3,
                     transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                   }} />
@@ -1748,22 +1748,57 @@ export default function TenantPortal({
                 <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>
                   {lang === 'zh' ? '身份类型' : 'Identity Type'} <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {IDENTITY_OPTIONS.map(opt => (
-                    <div
-                      key={opt.id}
-                      onClick={() => setProfileIdentityType(opt.id)}
-                      style={{
-                        padding: '12px 16px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s ease',
-                        background: profileIdentityType === opt.id ? 'var(--primary-light)' : 'var(--glass-bg)',
-                        border: `1px solid ${profileIdentityType === opt.id ? 'var(--primary)' : 'var(--glass-border)'}`,
-                      }}
-                    >
-                      <span style={{ fontSize: '0.86rem', fontWeight: 600, color: profileIdentityType === opt.id ? 'var(--primary)' : 'var(--text-h)' }}>
-                        {lang === 'zh' ? opt.labelZh : opt.labelEn}
-                      </span>
-                    </div>
-                  ))}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 12,
+                  marginBottom: 16
+                }}>
+                  {IDENTITY_OPTIONS.map(opt => {
+                    const IconComponent = opt.icon;
+                    const isSelected = profileIdentityType === opt.id;
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => setProfileIdentityType(opt.id)}
+                        style={{
+                          padding: '16px 20px',
+                          borderRadius: 12,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: isSelected ? 'var(--primary-light)' : 'var(--glass-bg)',
+                          border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--glass-border)'}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          boxShadow: isSelected ? '0 8px 20px var(--primary-glow)' : 'none',
+                        }}
+                      >
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: isSelected ? 'var(--primary)' : 'var(--glass-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isSelected ? 'white' : 'var(--text-muted)',
+                          transition: 'all 0.2s ease',
+                        }}>
+                          <IconComponent size={18} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: '0.86rem', fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text-h)' }}>
+                            {lang === 'zh' ? opt.labelZh : opt.labelEn}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {isSelected ? (lang === 'zh' ? '已选择' : 'Selected') : (lang === 'zh' ? '点击选择' : 'Click to select')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {profileIdentityType === 'malaysian' && (
