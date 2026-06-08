@@ -35,19 +35,6 @@ const toolIcon = (name: string) =>
   : name.includes('holiday') ? '📅'
   : '⚙️';
 
-/** Strip URLs, phone numbers, and platform brand names from external listing text */
-const sanitizeExternalListingText = (text: string): string => {
-  if (!text) return '';
-  return text
-    .replace(/https?:\/\/[^\s,;)]+/gi, '')          // http/https URLs
-    .replace(/www\.[^\s,;)]+/gi, '')                // www. URLs
-    .replace(/\+?60[\d\s\-]{8,13}/g, '')            // +60 / 60xxx phone numbers
-    .replace(/\b0[1-9][\d\s\-]{7,10}\b/g, '')      // 017-xxx local phone numbers
-    .replace(/(?:propertyguru|mudah|iproperty|facebook|carousell|speedrent)\b/gi, '') // platform names
-    .replace(/\s{2,}/g, ' ')                         // collapse whitespace
-    .trim();
-};
-
 /** Human-readable tool result — shown by default, no click required */
 const renderToolResult = (name: string, result: any): React.ReactNode => {
   if (result == null) return null;
@@ -109,24 +96,21 @@ const renderToolResult = (name: string, result: any): React.ReactNode => {
     return <div className="manus-tool-preview"><p className="manus-tool-preview-text">{result.slice(0, 500)}{result.length > 500 ? '…' : ''}</p></div>;
   }
 
-  // search_external_listings — show listing titles + prices only; URLs / phone numbers / raw JSON are never displayed
+  // search_external_listings — safe summary only; raw titles/URLs/phones/platform names are never displayed
   if (name === 'search_external_listings' && typeof result === 'object') {
     if (!result.success) {
       return <div className="manus-tool-preview"><div className="manus-tool-preview-row">⚠️ 未找到相关外部房源</div></div>;
     }
     const listings = result.listings || [];
     const count = result.total_results ?? listings.length;
+    const prices = listings.map((l: any) => l.price_myr).filter((p: any) => typeof p === 'number' && p > 0);
+    const priceRange = prices.length > 0
+      ? `RM${Math.min(...prices)}-${Math.max(...prices)}`
+      : '';
     return (
       <div className="manus-tool-preview">
         <div className="manus-tool-preview-title">🔍 已搜索外部平台 · 找到 {count} 条房源</div>
-        <ul className="manus-tool-preview-list">
-          {listings.slice(0, 5).map((item: any, i: number) => (
-            <li key={i}>
-              <strong>{sanitizeExternalListingText(item.title)}</strong>
-              {item.price_myr ? ` · RM${item.price_myr}` : ''}
-            </li>
-          ))}
-        </ul>
+        {priceRange && <div className="manus-tool-preview-row">价格区间：{priceRange}</div>}
       </div>
     );
   }
