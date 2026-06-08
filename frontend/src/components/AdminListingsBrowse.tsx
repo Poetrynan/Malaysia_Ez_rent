@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, MapPin, Bed, Bath, DollarSign, Building2, X, ChevronRight,
   CheckCircle2, Video, Grid, List, User, Calendar, RefreshCw, Tag,
+  ShieldCheck, Waves, Dumbbell, ParkingCircle, Wifi, Shirt, BookOpen, Store,
+  Maximize,
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 import { useApp } from '@/lib/ThemeProvider';
@@ -16,15 +18,15 @@ import {
   getListingAgentLabel,
 } from '@/lib/listingDisplayUtils';
 
-const AMENITY_LABELS: Record<string, { zh: string; en: string }> = {
-  security: { zh: '24小时门卫', en: '24-hr Security' },
-  pool: { zh: '游泳池', en: 'Swimming Pool' },
-  gym: { zh: '健身房', en: 'Gymnasium' },
-  parking: { zh: '停车场', en: 'Parking' },
-  wifi: { zh: '公共 Wi-Fi', en: 'Common Wi-Fi' },
-  laundry: { zh: '洗衣房', en: 'Laundry' },
-  study: { zh: '自习室', en: 'Study Room' },
-  mart: { zh: '便利店', en: 'Mini Mart' },
+const AMENITY_LABELS: Record<string, { icon: React.ReactNode; zh: string; en: string }> = {
+  security: { icon: <ShieldCheck size={16} />, zh: '24小时门卫', en: '24-hr Security' },
+  pool: { icon: <Waves size={16} />, zh: '游泳池', en: 'Swimming Pool' },
+  gym: { icon: <Dumbbell size={16} />, zh: '健身房', en: 'Gymnasium' },
+  parking: { icon: <ParkingCircle size={16} />, zh: '停车场', en: 'Parking' },
+  wifi: { icon: <Wifi size={16} />, zh: '公共 Wi-Fi', en: 'Common Wi-Fi' },
+  laundry: { icon: <Shirt size={16} />, zh: '洗衣房', en: 'Laundry' },
+  study: { icon: <BookOpen size={16} />, zh: '自习室', en: 'Study Room' },
+  mart: { icon: <Store size={16} />, zh: '便利店', en: 'Mini Mart' },
 };
 
 export default function AdminListingsBrowse() {
@@ -327,6 +329,7 @@ export default function AdminListingsBrowse() {
                     { label: t('detailRent'), val: `RM ${selected.rent.toLocaleString()}/mo`, icon: <DollarSign size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                     { label: t('detailBedrooms'), val: `${selected.bedrooms || 1} ${t('bedroomsUnit')}`, icon: <Bed size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                     { label: t('detailBathrooms'), val: `${selected.bathrooms || 1} ${t('bathroomsUnit')}`, icon: <Bath size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                    { label: lang === 'zh' ? '房屋面积' : 'Property Size', val: selected.area ? `${selected.area} sqft` : '—', icon: <Maximize size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                     { label: t('detailCommunity'), val: selected.community?.name || '—', icon: <Building2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                     { label: t('detailStatus'), val: selected.status === 'available' ? t('available') : t('rented'), icon: <Tag size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                     selected.available_from ? {
@@ -364,8 +367,9 @@ export default function AdminListingsBrowse() {
                       const label = AMENITY_LABELS[key];
                       if (!label) return null;
                       return (
-                        <div key={key} style={{ fontSize: '0.875rem', color: 'var(--text-body)' }}>
-                          {lang === 'zh' ? label.zh : label.en}
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--text-body)' }}>
+                          <span style={{ color: 'var(--primary)', display: 'flex' }}>{label.icon}</span>
+                          <span>{lang === 'zh' ? label.zh : label.en}</span>
                         </div>
                       );
                     })}
@@ -471,6 +475,9 @@ function AdminListingCard({ unit, agentLabel, onSelect, t, lang }: {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Bed size={12} />{unit.bedrooms || 1}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Bath size={12} />{unit.bathrooms || 1}</span>
+            {unit.area ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Maximize size={12} />{unit.area} sqft</span>
+            ) : null}
           </span>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 2 }}>
             {t('viewDetail')} <ChevronRight size={12} />
@@ -521,7 +528,16 @@ function AdminListingRow({ unit, agentLabel, onSelect, t }: {
           <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>RM {unit.rent.toLocaleString()}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, borderTop: '1px solid var(--glass-border)', paddingTop: 8 }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{unit.room_type}</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>{unit.room_type}</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Bed size={12} />{unit.bedrooms || 1}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Bath size={12} />{unit.bathrooms || 1}</span>
+              {unit.area ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Maximize size={12} />{unit.area} sqft</span>
+              ) : null}
+            </span>
+          </div>
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)' }}>{t('viewDetail')} <ChevronRight size={13} /></span>
         </div>
       </div>

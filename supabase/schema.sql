@@ -79,6 +79,7 @@ CREATE TABLE public.units (
   media_urls ARRAY DEFAULT '{}'::text[],
   bedrooms integer DEFAULT 1,
   bathrooms integer DEFAULT 1,
+  area integer,
   video_url text,
   agent_id uuid,
   landlord_qr_code text,

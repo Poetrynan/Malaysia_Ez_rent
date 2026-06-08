@@ -1,7 +1,7 @@
 # 🏠 Malaysia Ez Rent — 开发进度总结
 
-> 最后更新：2026-06-07 (UTC+8)
-> 状态：**前端可跑 · 后端 Agent · Google OAuth + 邮箱密码 + OTP 验证码 · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重构（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询 · AdminListingsBrowse 管理员浏览独立化 · 租客身份验证三层统一（登录门禁 + 资料保存 + 租房意向 Modal） · AI 交互地图智能自动加载与渲染 (auto_load) · AI 欢迎语排版分行与 Bot 图标去重 · 租客端证件上传全局状态持久化缓存 (TenantDataContext) · 租客端 Tab 切换卡顿白屏闪烁优化 (isLoaded 智能 loading + 并行并发加载) · 租客端/中介管理员端全覆盖 Shimmer 磨砂玻璃微光骨架图 (Tenant/Admin Skeleton) · TenantIdentityGate 缓存无感通过完全消除 Tab 切换 Spinner 闪烁 · 租客工单加载数据库嵌套 select 关联 Join 优化配合 Promise.all 并行拉取效率提升 800ms**
+> 最后更新：2026-06-08 (UTC+8)
+> 状态：**前端可跑 · 后端 Agent · Google OAuth + 邮箱密码 + OTP 验证码 · 超级管理员 · Supabase Storage（压缩+删除同步）· 手机上传凭证（007）· Whole Unit 合租意向 RPC（014/015）· 租客已租房源隐藏”我要租”并置灰显示”已承租” · 意向操作状态全面重构为 Glassmorphic 临时 Toast · 所有 Toast 升级为高级磨砂玻璃微光动效 · 缴租银行/微信/支付宝 · 首月付中介/后续付房东 · 禁止 iProperty 外部搜房 · Vercel & Render 部署 · 房源列表卡片/列表模式切换 · 智能租客选择器 · 登录页多语言与深色模式 · AI智能选房与Embedding自动向量检索同步 · 报修中心独立一级Tab（含折叠指示器） · AI欢迎语多语言动态切换 · 隐藏技术栈提示横幅 · 中介个人主页与详情面板 · 头像文件压缩防暴涨(30KB) · 移除社交外链以限定内部闭环 · 多中介独立挂牌（不共享行）· 复制挂牌 · agent_id 补写 · 非负数字输入 · 租客端列表加载重试 · 编辑保存=覆盖同一条 · 微信图标UI修复与WA链接优化 · 租客自主终止租约 RPC (018) + 押金扣除警告 · 整组联保合租退租继租变更 (019) · 继租人原子替换与天数比例折算分摊 · 存续押金转让/退还/没收方案 · 租客端合租室友名单及提前退租联保警示警告 · 数据库加载并行联表优化（消除加载延迟） · 进度流延伸 with 呼吸光点 · 中介注册系统与审核工作流（022） · 个人信息扩展与证件上传（023） · 账户注销 Server Action · Profile 跨实例同步 · 房源门牌号彻底移除与工单仅展示个人房号（026） · AI Agent 智能化改造 · 数据看板图表升级 (Recharts) · 中介管理 UI 美化与浅色模式可见性修复 · MapAndCard 通勤地图直接渲染 · 手机凭证上传与AI终端控制台视觉重构 · 工单对话聊天气泡式排版与租客资料安全锁及完善进度条 · 中介免登录自主提交注册 & 登录后基于邮箱/UUID跨实例自动绑定与状态查询 · 彻底删除快捷登录安全隐患 · 合租人邮箱脱敏隐私保护 · 失效意向自愈与自动清理解锁 · Git忽略临时JS脚本并清理历史提交 · 中介账户注销 RLS 提权级联清理 & 离线中介前置审批在首注登录后自动投递消息触发器 · 租约生命周期管理（active/expired/terminated/completed） · unit_number 单向流转（合约→租客只读） · 自动过期机制 · 付款审核显示单元号 · 历史租约存档 · 房源列表手动刷新 · 证件/学生证上传横排布局 · Dashboard 社区分布”查看全部”跳转 · 租客门户重归（TenantPortal 独立渲染） · 历史租约删除功能 · AI 错误信息用户友好化 · Ensuite 房型支持 · 自动账单生成触发器 · 商业文档（售卖策略文件夹） · 收藏夹功能 · 租客评价系统（含资格限制） · 可入住日期字段 · 月收入趋势图改为折线图 · 数据库迁移编号修复（034-037） · 房源列表收藏筛选按钮 · 中介评分系统（租客评价中介 + 中介查看评分） · 038号迁移文件 · 收藏筛选刷新修复 · 中介评分显示（列表+详情+中介主页） · 历史租约卡片字段顺序修复 · Unit Number 显示修复 · Guest/Login UI 美化 · 登录后 Tab/租客端 UI 抛光 · 单元号井号移除 · OAuth 登录路由修复 · auth callback 双路径 · Guest 可逆滚动 reveal · 房源及证件图片/看房视频客户端全级次自动压缩 · 租客注销 7 天证据存留与收租财务记录解耦保留 · 门户隔离（租客/中介独立注册登录） · Google OAuth 死循环修复 · 浏览器记住密码/自动填充 · 删房源即时 UI · ListingsDataContext 房源列表缓存 · AdminShell 中介单实例 · Tab 切换性能优化 · ReviewSystem 批量查询 · AdminListingsBrowse 管理员浏览独立化 · 租客身份验证三层统一（登录门禁 + 资料保存 + 租房意向 Modal） · AI 交互地图智能自动加载与渲染 (auto_load) · AI 欢迎语排版分行与 Bot 图标去重 · 租客端证件上传全局状态持久化缓存 (TenantDataContext) · 租客端 Tab 切换卡顿白屏闪烁优化 (isLoaded 智能 loading + 并行并发加载) · 租客端/中介管理员端全覆盖 Shimmer 磨砂玻璃微光骨架图 (Tenant/Admin Skeleton) · TenantIdentityGate 缓存无感通过完全消除 Tab 切换 Spinner 闪烁 · 租客工单加载数据库嵌套 select 关联 Join 优化配合 Promise.all 并行拉取效率提升 800ms · 新增房源面积同步 · AI聊天Tab切换后台生成持久化与零卡顿**
 
 
 
@@ -2632,4 +2632,52 @@ Groq 默认 `max_completion_tokens=1024`，gpt-oss 推理 token 也计入，复�
 ### 文档同步
 
 `PROGRESS.md`（状态行更新：Magic Link → 邮箱密码 + OTP 验证码）
+
+---
+
+## 六十七、房源新增面积字段及全端同步更新 (2026-06-08)
+
+**目标：** 在中介端、租客端和游客端的房源信息展示中加入“房屋面积”指标，同步适配数据库字段、表单操作、卡片列表以及账单台账显示。
+
+### 改动
+
+| 文件 | 内容 |
+|------|------|
+| `supabase/migrations/047_add_unit_area.sql` | 新建迁移脚本：向 `units` 表中添加可选的 `area INTEGER` 字段 |
+| `supabase/schema.sql` | 在 `units` 表架构模型中同步写入 `area integer` 列定义 |
+| `newSQL.sql` | 在 `units` 表架构模型中同步写入 `area integer` 列定义 |
+| `frontend/src/lib/ListingsDataContext.tsx` | 在 `ListingsUnit` 前端接口中添加可选的 `area?: number` 属性 |
+| `frontend/src/lib/supabase.ts` | 1. 在 `DEFAULT_UNITS` 默认房源中配置了各种拟真面积尺寸<br>2. 优化 localStorage 初始化检测逻辑：若发现旧数据的 `area` 字段丢失，自动热重置并加载最新默认房源面积 |
+| `frontend/src/components/AdminPanel.tsx` | 1. 扩充中介内部 `Unit` 接口，包含 `area`；扩充 `unitForm` 状态<br>2. 在新增房源/编辑房源的表单中，将“Property Size (sqft)”和“Available From”以两列响应式排列<br>3. 适配编辑映射、保存上传逻辑，未填则以 `null` 写入数据库<br>4. 在已登记房源列表表格的 Specs 栏同步展示面积数据<br>5. 兼容 copy listing 操作中面积数据的继承复制 |
+| `frontend/src/components/PropertyListings.tsx` | 1. 引入 `Maximize` 尺寸图标<br>2. 在租客网格卡片模板和行列表模板中展示房屋面积大小<br>3. 在房源详情侧滑 Drawer 的基础指标规格中增加“Property Size (sqft)”展示栏 |
+| `frontend/src/components/AdminListingsBrowse.tsx` | 中介搜索浏览界面同步展示房屋面积大小和详情规格 |
+| `frontend/src/components/LeaseLedgerCard.tsx` | 在 `LeaseLedgerCardProps` 中支持 `area`，并在台账顶部的房源规格栏同步渲染面积 |
+| `frontend/src/components/TenantPortal.tsx` | 向 `LeaseLedgerCard` 组件透传 `unit?.area` 数据 |
+
+### 文档同步
+
+`docs/architecture.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/PROGRESS.md`
+
+---
+
+## 六十八、AI 聊天 Tab 切换后台持久化与性能优化 (2026-06-08)
+
+**目标：** 解决租客在使用 AI 助手生成答案过程中切换一级 Tab（侧边栏）会导致生成进程丢失、流意外终止的问题，并杜绝前后台切换引发的界面渲染开销，保障流畅的用户体验。
+
+### 已实施
+
+| 文件 | 内容 |
+|------|------|
+| `frontend/src/components/AIChat.tsx` | 1. 提取生成状态的订阅和流句柄到 `GlobalChatState` 单例中<br>2. 实现全局单例控制：在组件卸载（unmount）时保持 fetch 可读流和 AbortController 在后台静默运行<br>3. 组件挂载（mount）时，自动从全局单例获取激活流的状态进行订阅和进度重连，同步渲染最新的打字机效果<br>4. 后台静默执行生成的同时，在内存中动态将聊天数据序列化并追加存盘至 `localStorage` |
+| `frontend/src/lib/i18n.ts` | 提供翻译词条兼容 |
+
+### 性能及稳定性验证
+
+1. **零卡顿验证**：由于组件 unmount 后不会触发 DOM 树的重绘与回流，流在后台执行时无任何 CPU/GPU 渲染负担，完美避免了切换到其它页面时的卡顿。
+2. **连接稳定性**：退出 Tab 后流顺利读取至结束状态，并顺利在本地缓存持久化；再次切回时完美展示生成完成的结果。
+3. **类型及打包检测**：运行 `npx tsc --noEmit` 成功通过。
+
+### 文档同步
+
+`docs/ai-agent-ui-ux-flow.md`、`docs/architecture.md`、`docs/FUTURE_IMPROVEMENTS.md`、`docs/PROGRESS.md`
 

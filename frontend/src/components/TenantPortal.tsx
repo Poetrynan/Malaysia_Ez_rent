@@ -2804,6 +2804,7 @@ export default function TenantPortal({
             agent_id={unit?.agent_id || null}
             landlord_qr_code={unit?.landlord_qr_code || null}
             landlord_bank_info={unit?.landlord_bank_info || null}
+            area={unit?.area}
             onPaymentUpdated={() => setTick(t2 => t2 + 1)}
           />
 

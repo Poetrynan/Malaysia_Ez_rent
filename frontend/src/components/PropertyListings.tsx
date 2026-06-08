@@ -7,7 +7,7 @@ import {
   Bus, Wifi, ShieldCheck, ParkingCircle, Dumbbell, Waves, Star, Video,
   Phone, MessageCircle, Mail, ChevronDown, Shirt, BookOpen, Store,
   Grid, List, User, Calendar, Globe, MessageSquare, XCircle, AlertTriangle,
-  RefreshCw
+  RefreshCw, Maximize
 } from 'lucide-react';
 import { isMockDatabase } from '@/lib/supabase';
 
@@ -1216,6 +1216,7 @@ export default function PropertyListings({ guestMode = false }: { guestMode?: bo
                       { label: t('detailRent'), val: `RM ${selected.rent.toLocaleString()}/mo`, icon: <DollarSign size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                       { label: t('detailBedrooms'), val: `${selected.bedrooms || 1} ${t('bedroomsUnit')}`, icon: <Bed size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                       { label: t('detailBathrooms'), val: `${selected.bathrooms || 1} ${t('bathroomsUnit')}`, icon: <Bath size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
+                      { label: lang === 'zh' ? '房屋面积' : 'Property Size', val: selected.area ? `${selected.area} sqft` : '—', icon: <Maximize size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                       { label: t('detailCommunity'), val: selected.community?.name || '—', icon: <Building2 size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                       { label: t('detailStatus'), val: selected.status === 'available' ? t('available') : t('rented'), icon: <Tag size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} /> },
                       selected.available_from ? {
@@ -2622,6 +2623,12 @@ function PropertyCard({ unit, agentLabel, onSelect, t, userId, lang, onFavoriteT
               <Bath size={12} />
               <span>{unit.bathrooms || 1} {t('bathroomsUnit')}</span>
             </span>
+            {unit.area ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Maximize size={12} />
+                <span>{unit.area} sqft</span>
+              </span>
+            ) : null}
           </span>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 2 }}>
             {t('viewDetail')} <ChevronRight size={12} />
@@ -2711,6 +2718,12 @@ function PropertyRow({ unit, agentLabel, onSelect, t }: { unit: UnitWithCommunit
                 <Bath size={12} />
                 <span>{unit.bathrooms || 1} {t('bathroomsUnit')}</span>
               </span>
+              {unit.area ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Maximize size={12} />
+                  <span>{unit.area} sqft</span>
+                </span>
+              ) : null}
             </span>
           </div>
 

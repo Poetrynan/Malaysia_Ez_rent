@@ -15,6 +15,7 @@ export interface ListingsUnit {
   video_url?: string | null;
   bedrooms?: number;
   bathrooms?: number;
+  area?: number;
   agent_id?: string | null;
   available_from?: string | null;
 }

@@ -20,9 +20,9 @@ const DEFAULT_COMMUNITIES = [
 ];
 
 const DEFAULT_UNITS = [
-  { id: 'u1-uuid', community_id: 'c1-uuid', agent_id: 'admin-999', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.', bedrooms: 1, bathrooms: 1 },
-  { id: 'u2-uuid', community_id: 'c2-uuid', agent_id: 'admin-999', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.', bedrooms: 4, bathrooms: 3 },
-  { id: 'u3-uuid', community_id: 'c3-uuid', agent_id: 'admin-999', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.', bedrooms: 3, bathrooms: 2 }
+  { id: 'u1-uuid', community_id: 'c1-uuid', agent_id: 'admin-999', room_type: 'Studio', rent: 2500.00, status: 'available', description: 'Cozy Studio apartment right opposite Sunway Medical Centre. Walkable to Monash University via the canopy walk.', bedrooms: 1, bathrooms: 1, area: 450 },
+  { id: 'u2-uuid', community_id: 'c2-uuid', agent_id: 'admin-999', room_type: 'Master Room', rent: 1600.00, status: 'available', description: 'Spacious Master Room with private bathroom. Sharing with 3 other students. 3 mins walk to Sunway University.', bedrooms: 4, bathrooms: 3, area: 280 },
+  { id: 'u3-uuid', community_id: 'c3-uuid', agent_id: 'admin-999', room_type: 'Medium Room', rent: 1200.00, status: 'available', description: 'Beautiful loft-style medium room. Female only unit. 5 mins walk to Taylor\'s University Lakeside Campus.', bedrooms: 3, bathrooms: 2, area: 180 }
 ];
 
 const DEFAULT_LEASES = [
@@ -95,8 +95,8 @@ const getLocalData = (key: string, defaults: any) => {
       localStorage.setItem(key, JSON.stringify(defaults));
       return defaults;
     }
-    // Auto-upgrade for ez_units to have agent_id
-    if (key === 'ez_units' && Array.isArray(parsed) && parsed.length > 0 && !parsed[0].agent_id) {
+    // Auto-upgrade for ez_units to have agent_id and area
+    if (key === 'ez_units' && Array.isArray(parsed) && parsed.length > 0 && (!parsed[0].agent_id || !parsed[0].hasOwnProperty('area'))) {
       localStorage.setItem(key, JSON.stringify(defaults));
       return defaults;
     }

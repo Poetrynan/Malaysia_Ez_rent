@@ -202,27 +202,279 @@ const renderInline = (text: string): React.ReactNode => {
   return out;
 };
 
+interface GlobalChatState {
+  messages: Message[];
+  isGenerating: boolean;
+  elapsed: number;
+  currentSessionId: string;
+  abortController: AbortController | null;
+  timerInterval: NodeJS.Timeout | null;
+  listeners: Set<() => void>;
+  subscribe: (listener: () => void) => () => void;
+  notify: () => void;
+  startGeneration: (query: string, userId: string, authToken: string, apiUrl: string, lang: string) => Promise<void>;
+  stopGeneration: () => void;
+}
+
+let globalChatState: GlobalChatState | null = null;
+
+function getGlobalChatState(initialSessionId: string): GlobalChatState {
+  if (globalChatState) return globalChatState;
+
+  // Attempt to load current messages on initial load
+  let initialMsgs: Message[] = [];
+  let savedSessionId = initialSessionId;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('ez_current_messages');
+      if (saved) initialMsgs = JSON.parse(saved);
+      const savedId = localStorage.getItem('ez_current_session_id');
+      if (savedId) savedSessionId = savedId;
+    } catch {}
+  }
+
+  globalChatState = {
+    messages: initialMsgs,
+    isGenerating: false,
+    elapsed: 0,
+    currentSessionId: savedSessionId,
+    abortController: null,
+    timerInterval: null,
+    listeners: new Set(),
+
+    subscribe(listener) {
+      this.listeners.add(listener);
+      return () => {
+        this.listeners.delete(listener);
+      };
+    },
+
+    notify() {
+      this.listeners.forEach(l => l());
+      // Save current messages to localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          if (this.messages.length > 0) {
+            localStorage.setItem('ez_current_messages', JSON.stringify(this.messages));
+          } else {
+            localStorage.removeItem('ez_current_messages');
+          }
+          localStorage.setItem('ez_current_session_id', this.currentSessionId);
+        } catch {}
+      }
+    },
+
+    stopGeneration() {
+      if (this.abortController) {
+        this.abortController.abort();
+        this.abortController = null;
+      }
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+      if (this.isGenerating) {
+        this.isGenerating = false;
+        this.elapsed = 0;
+        
+        // Append (stopped) text if generation stopped mid-way
+        const aid = this.messages.length > 0 ? this.messages[this.messages.length - 1].id : '';
+        if (aid) {
+          this.messages = this.messages.map(m =>
+            m.id === aid ? { ...m, content: m.content || '（已停止）', contentStarted: true } : m
+          );
+        }
+        this.notify();
+      }
+    },
+
+    async startGeneration(query, userId, authToken, apiUrl, lang) {
+      this.stopGeneration();
+
+      this.isGenerating = true;
+      this.elapsed = 0;
+      const startTime = Date.now();
+      this.timerInterval = setInterval(() => {
+        if (globalChatState) {
+          globalChatState.elapsed = Math.floor((Date.now() - startTime) / 1000);
+          globalChatState.notify();
+        }
+      }, 1000);
+
+      const controller = new AbortController();
+      this.abortController = controller;
+
+      const uid = `msg-u-${Date.now()}`;
+      const aid = `msg-a-${Date.now()}`;
+      
+      this.messages = [
+        ...this.messages,
+        { id: uid, role: 'user', content: query, thoughts: [], tools: [], uiComponents: [], contentStarted: false },
+        { id: aid, role: 'assistant', content: '', thoughts: [], tools: [], uiComponents: [], contentStarted: false }
+      ];
+      this.notify();
+
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+        const res = await fetch(`${apiUrl}/api/chat`, {
+          method: 'POST',
+          headers,
+          signal: controller.signal,
+          body: JSON.stringify({
+            query,
+            user_id: userId,
+            history: this.messages.slice(0, -2).map(m => ({ role: m.role, content: m.content || m.thoughts.join(' ') }))
+          })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.body) throw new Error('no body');
+
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
+
+        const processBuf = (remaining: boolean) => {
+          const lines = buf.split('\n');
+          buf = remaining ? (lines.pop() || '') : '';
+          for (const l of lines) {
+            if (l.startsWith('data: ')) {
+              try {
+                const ev = JSON.parse(l.slice(6));
+                this.messages = this.messages.map(m => {
+                  if (m.id !== aid) return m;
+                  const thoughts = [...m.thoughts];
+                  const tools = [...m.tools];
+                  let content = m.content;
+                  let contentStarted = m.contentStarted;
+                  const uiComponents = [...m.uiComponents];
+
+                  if (ev.type === 'thinking') {
+                    const label = ev.step || ev.label || '思考中...';
+                    thoughts.push({ label, content: ev.content });
+                  } else if (ev.type === 'tool_call') {
+                    tools.push({ id: `tc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, name: ev.tool_name, args: ev.args, status: 'running' });
+                  } else if (ev.type === 'tool_result') {
+                    const last = tools[tools.length - 1];
+                    if (last) { last.status = 'done'; last.result = ev.result; }
+                  } else if (ev.type === 'text') {
+                    content += ev.delta;
+                    contentStarted = true;
+                  } else if (ev.type === 'ui_component') {
+                    uiComponents.push({ component: ev.component, props: ev.props });
+                  }
+
+                  return { ...m, thoughts, tools, content, contentStarted, uiComponents };
+                });
+                this.notify();
+              } catch {}
+            }
+          }
+        };
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            buf += dec.decode(value, { stream: true });
+            processBuf(true);
+          }
+        }
+        if (buf.trim()) processBuf(false);
+
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          // Handled or component-triggered abort
+        } else {
+          const detail = err?.message || String(err);
+          let errorMsg = '⚠️ AI 助手暂时无法响应，请稍后再试。';
+          if (detail.includes('429') || detail.includes('quota')) errorMsg = '🙏 抱歉，AI 助手今日请求已达上限，请稍后再试。';
+          else if (detail.includes('503')) errorMsg = '⏳ AI 助手当前繁忙，请稍等几秒后重试。';
+          
+          this.messages = this.messages.map(m =>
+            m.id === aid ? { ...m, content: errorMsg, contentStarted: true } : m
+          );
+          this.notify();
+        }
+      } finally {
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+        }
+        this.isGenerating = false;
+        this.elapsed = 0;
+        this.notify();
+
+        // Save to chat history
+        if (typeof window !== 'undefined') {
+          try {
+            const savedHistory = localStorage.getItem('ez_chat_history');
+            const history = savedHistory ? JSON.parse(savedHistory) : [];
+            const firstUserMsg = this.messages.find(m => m.role === 'user');
+            const title = firstUserMsg ? firstUserMsg.content.slice(0, 40) : '新对话';
+            const session = {
+              id: this.currentSessionId,
+              title,
+              date: new Date().toLocaleDateString('zh-CN'),
+              messages: this.messages.map(m => ({ ...m })),
+            };
+            const updated = [session, ...history.filter((h: any) => h.id !== session.id)].slice(0, 20);
+            localStorage.setItem('ez_chat_history', JSON.stringify(updated));
+          } catch {}
+        }
+      }
+    }
+  };
+
+  return globalChatState;
+}
+
 /* ── Component ── */
 export default function AIChat() {
   const { t, lang } = useApp();
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Get/create global chat state
+  const chatState = getGlobalChatState(`session-${Date.now()}`);
+
+  const [messages, setMessages] = useState<Message[]>(chatState.messages);
+  const [isGenerating, setIsGenerating] = useState(chatState.isGenerating);
+  const [elapsed, setElapsed] = useState(chatState.elapsed);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [expandedThoughts, setExpandedThoughts] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ id: string; title: string; date: string; messages: Message[] }[]>([]);
-  const currentSessionId = useRef<string>(`session-${Date.now()}`);
   const [userId, setUserId] = useState<string>(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('ez_tenant_id') || 'tenant-123';
     return 'tenant-123';
   });
 
+  // Subscribe to global chat state changes
+  useEffect(() => {
+    setMessages(chatState.messages);
+    setIsGenerating(chatState.isGenerating);
+    setElapsed(chatState.elapsed);
+
+    const unsubscribe = chatState.subscribe(() => {
+      setMessages(chatState.messages);
+      setIsGenerating(chatState.isGenerating);
+      setElapsed(chatState.elapsed);
+      
+      // Also sync history if it changes in localStorage
+      try {
+        const saved = localStorage.getItem('ez_chat_history');
+        if (saved) setChatHistory(JSON.parse(saved));
+      } catch {}
+    });
+
+    return unsubscribe;
+  }, [chatState]);
+
+  // Load backend status and user on mount
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
     fetch(`${apiUrl}/`).then(r => r.json()).then(d => { if (d.status === 'online') setBackendStatus('online'); }).catch(() => {});
@@ -238,45 +490,26 @@ export default function AIChat() {
     resolveUser();
   }, []);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    // Scroll so the input area is roughly in the lower-center of the viewport
     setTimeout(() => {
       const el = messagesEndRef.current;
       if (el) {
         const rect = el.getBoundingClientRect();
         const viewportH = window.innerHeight;
-        // If already visible in lower half, don't scroll
         if (rect.top > viewportH * 0.55) return;
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
   }, [messages]);
 
-  // Load chat history from localStorage
+  // Load initial chat history from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ez_chat_history');
       if (saved) setChatHistory(JSON.parse(saved));
     } catch {}
   }, []);
-
-  // Save to history when session ends or messages update
-  const saveToHistory = () => {
-    if (messages.length < 2) return;
-    const firstUserMsg = messages.find(m => m.role === 'user');
-    const title = firstUserMsg ? firstUserMsg.content.slice(0, 40) : '新对话';
-    const session = {
-      id: currentSessionId.current,
-      title,
-      date: new Date().toLocaleDateString('zh-CN'),
-      messages: messages.map(m => ({ ...m })),
-    };
-    setChatHistory(prev => {
-      const updated = [session, ...prev.filter(h => h.id !== session.id)].slice(0, 20);
-      localStorage.setItem('ez_chat_history', JSON.stringify(updated));
-      return updated;
-    });
-  };
 
   const deleteHistory = (id: string) => {
     setChatHistory(prev => {
@@ -287,14 +520,35 @@ export default function AIChat() {
   };
 
   const loadHistory = (session: typeof chatHistory[0]) => {
-    setMessages(session.messages);
+    chatState.messages = session.messages;
+    chatState.currentSessionId = session.id;
+    chatState.notify();
     setHistoryOpen(false);
   };
 
   const newChat = () => {
-    saveToHistory();
-    setMessages([]);
-    currentSessionId.current = `session-${Date.now()}`;
+    // Trigger save to history first if there are messages
+    if (chatState.messages.length >= 2) {
+      try {
+        const savedHistory = localStorage.getItem('ez_chat_history');
+        const history = savedHistory ? JSON.parse(savedHistory) : [];
+        const firstUserMsg = chatState.messages.find(m => m.role === 'user');
+        const title = firstUserMsg ? firstUserMsg.content.slice(0, 40) : '新对话';
+        const session = {
+          id: chatState.currentSessionId,
+          title,
+          date: new Date().toLocaleDateString('zh-CN'),
+          messages: chatState.messages.map(m => ({ ...m })),
+        };
+        const updated = [session, ...history.filter((h: any) => h.id !== session.id)].slice(0, 20);
+        localStorage.setItem('ez_chat_history', JSON.stringify(updated));
+        setChatHistory(updated);
+      } catch {}
+    }
+
+    chatState.messages = [];
+    chatState.currentSessionId = `session-${Date.now()}`;
+    chatState.notify();
     setHistoryOpen(false);
   };
 
@@ -304,127 +558,31 @@ export default function AIChat() {
     return next;
   });
 
-  /* ── SSE Event Handler ── */
-  const updateMsg = (id: string, ev: any) => {
-    setMessages(prev => prev.map(m => {
-      if (m.id !== id) return m;
-      const thoughts = [...m.thoughts];
-      const tools = [...m.tools];
-      let content = m.content;
-      let contentStarted = m.contentStarted;
-      const uiComponents = [...m.uiComponents];
-
-      if (ev.type === 'thinking') {
-        // Support both formats: {step: "label", content: "..."} or {label: "...", content: "..."}
-        const label = ev.step || ev.label || '思考中...';
-        thoughts.push({ label, content: ev.content });
-      } else if (ev.type === 'tool_call') {
-        tools.push({ id: `tc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, name: ev.tool_name, args: ev.args, status: 'running' });
-      } else if (ev.type === 'tool_result') {
-        const last = tools[tools.length - 1];
-        if (last) { last.status = 'done'; last.result = ev.result; }
-      } else if (ev.type === 'text') {
-        content += ev.delta;
-        contentStarted = true;
-      } else if (ev.type === 'ui_component') {
-        uiComponents.push({ component: ev.component, props: ev.props });
-      }
-
-      return { ...m, thoughts, tools, content, contentStarted, uiComponents };
-    }));
-  };
-
-  /* ── Stop Generation ── */
   const handleStop = () => {
-    abortRef.current?.abort();
-    if (timerRef.current) clearInterval(timerRef.current);
-    setIsGenerating(false);
-    setElapsed(0);
-    saveToHistory();
+    chatState.stopGeneration();
   };
 
-  /* ── Send Message ── */
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    // If currently generating, stop instead
-    if (isGenerating) { handleStop(); return; }
+    if (isGenerating) {
+      chatState.stopGeneration();
+      return;
+    }
     if (!query.trim()) return;
     const userText = query;
     setQuery('');
-    setIsGenerating(true);
-    setElapsed(0);
 
-    // Start elapsed timer
-    const startTime = Date.now();
-    timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
-
-    // Create abort controller
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const uid = `msg-u-${Date.now()}`;
-    const aid = `msg-a-${Date.now()}`;
-    setMessages(prev => [...prev,
-      { id: uid, role: 'user', content: userText, thoughts: [], tools: [], uiComponents: [], contentStarted: false },
-      { id: aid, role: 'assistant', content: '', thoughts: [], tools: [], uiComponents: [], contentStarted: false }
-    ]);
+    let authToken = '';
+    try {
+      const { supabase, isMockDatabase } = await import('@/lib/supabase');
+      if (!isMockDatabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        authToken = session?.access_token || '';
+      }
+    } catch {}
 
     const apiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://127.0.0.1:8000';
-    try {
-      let authToken = '';
-      try {
-        const { supabase, isMockDatabase } = await import('@/lib/supabase');
-        if (!isMockDatabase) { const { data: { session } } = await supabase.auth.getSession(); authToken = session?.access_token || ''; }
-      } catch {}
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-
-      const res = await fetch(`${apiUrl}/api/chat`, {
-        method: 'POST', headers, signal: controller.signal,
-        body: JSON.stringify({ query: userText, user_id: userId, history: messages.map(m => ({ role: m.role, content: m.content || m.thoughts.join(' ') })) })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      if (!res.body) throw new Error('no body');
-
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      const processBuf = (remaining: boolean) => {
-        const lines = buf.split('\n');
-        buf = remaining ? (lines.pop() || '') : '';
-        for (const l of lines) {
-          if (l.startsWith('data: ')) {
-            try { updateMsg(aid, JSON.parse(l.slice(6))); } catch {}
-          }
-        }
-      };
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        if (value) {
-          buf += dec.decode(value, { stream: true });
-          processBuf(true);
-        }
-      }
-      // Flush remaining buffer after stream ends
-      if (buf.trim()) processBuf(false);
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        // User stopped — keep what was already generated
-        setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: m.content || '（已停止）', contentStarted: true } : m));
-      } else {
-        const detail = err?.message || String(err);
-        let errorMsg = '⚠️ AI 助手暂时无法响应，请稍后再试。';
-        if (detail.includes('429') || detail.includes('quota')) errorMsg = '🙏 抱歉，AI 助手今日请求已达上限，请稍后再试。';
-        else if (detail.includes('503')) errorMsg = '⏳ AI 助手当前繁忙，请稍等几秒后重试。';
-        setMessages(prev => prev.map(m => m.id === aid ? { ...m, content: errorMsg, contentStarted: true } : m));
-      }
-    } finally {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setIsGenerating(false);
-      setElapsed(0);
-      saveToHistory();
-    }
+    chatState.startGeneration(userText, userId, authToken, apiUrl, lang);
   };
 
   /* ── Render ── */
@@ -442,7 +600,29 @@ export default function AIChat() {
           <button className="manus-history-btn" onClick={() => setHistoryOpen(true)}>
             <Clock size={14} /> 历史
           </button>
-          <button className="manus-history-btn" onClick={() => { if (messages.length > 0 && confirm('清空当前对话？')) { setMessages([]); saveToHistory(); } }}>
+          <button className="manus-history-btn" onClick={() => {
+            if (messages.length > 0 && confirm('清空当前对话？')) {
+              if (chatState.messages.length >= 2) {
+                try {
+                  const savedHistory = localStorage.getItem('ez_chat_history');
+                  const history = savedHistory ? JSON.parse(savedHistory) : [];
+                  const firstUserMsg = chatState.messages.find(m => m.role === 'user');
+                  const title = firstUserMsg ? firstUserMsg.content.slice(0, 40) : '新对话';
+                  const session = {
+                    id: chatState.currentSessionId,
+                    title,
+                    date: new Date().toLocaleDateString('zh-CN'),
+                    messages: chatState.messages.map(m => ({ ...m })),
+                  };
+                  const updated = [session, ...history.filter((h: any) => h.id !== session.id)].slice(0, 20);
+                  localStorage.setItem('ez_chat_history', JSON.stringify(updated));
+                  setChatHistory(updated);
+                } catch {}
+              }
+              chatState.messages = [];
+              chatState.notify();
+            }
+          }}>
             <Trash2 size={14} /> 清空
           </button>
         </div>

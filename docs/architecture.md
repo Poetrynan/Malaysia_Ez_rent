@@ -339,9 +339,11 @@ Run in order in Supabase SQL Editor when bootstrapping a new environment:
 24. `migrations/023_user_profile_extended.sql`
 25. `migrations/024_maintenance_conversation.sql`
 26. `migrations/025_fix_missing_public_users.sql`
+27. `migrations/047_add_unit_area.sql`
 
 Notes:
 
+- `047_add_unit_area.sql` adds the `area` column to the `units` table to store the property size size in square feet (sqft).
 - `007_mobile_upload.sql` is required for anonymous mobile evidence upload.
 - `008_whole_unit_room_type.sql` fixes `units_room_type_check` violation for `Whole Unit`.
 - `009_unit_video_url.sql` adds `units.video_url` for walkthrough videos in Storage.
@@ -1294,3 +1296,24 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 | Any auth flow with `next=/` | Middleware always sends `/` to `/guest` | **Never** use `next=/` in `redirectTo` |
 
 Full checklist: `docs/FUTURE_IMPROVEMENTS.md` →「已知问题与潜在风险」.
+
+## 21) Property Size (Area) Field (2026-06-08)
+
+To support complete property information display, an optional **Property Size (sqft)** field is added across all platforms:
+- **Database**: `units.area` (INTEGER) column allows NULL values. Added via migration `047_add_unit_area.sql`.
+- **Agent Portal (AdminPanel)**:
+  - Form field **Property Size (sqft)** and **Available From** are placed side-by-side in a responsive two-column layout.
+  - Initialized, reset, edit-mapped, and duplicated correctly on unit save and copy-unit operations.
+  - Displayed in the Admin Listings table specs column.
+- **Tenant & Guest Portals (PropertyListings)**:
+  - Displayed using the `Maximize` icon from `lucide-react` in the listings cards and lists.
+  - Displayed in the Unit Detail drawer under property specifications.
+- **My Lease (LeaseLedgerCard)**:
+  - Displayed next to the unit room type on the active lease ledger card header.
+
+## 22) AI Chat State Background Persistence (2026-06-08)
+
+To resolve page lag and avoid losing active conversation state when users switch between sidebar tabs:
+- **GlobalChatState**: A singleton state store managed outside the React component lifecycle.
+- **Asynchronous Execution**: The chat message stream and response generation continue running in the background when the `AIChat` component unmounts. Results are safely appended and synchronized to `localStorage` without rendering overhead.
+- **State Synchronization**: Re-entering the AI assistant tab dynamically re-subscribes to `GlobalChatState`, instantly restoring the conversation history and active generation stream.

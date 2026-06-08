@@ -28,12 +28,13 @@ interface LeaseLedgerCardProps {
   agent_id?: string | null;
   landlord_qr_code?: string | null;
   landlord_bank_info?: string | null;
+  area?: number | null;
 }
 
 export default function LeaseLedgerCard({
   community_name, room_type, start_date, end_date,
   monthly_rent, payments = [], onPaymentUpdated, agent_id,
-  landlord_qr_code, landlord_bank_info
+  landlord_qr_code, landlord_bank_info, area
 }: LeaseLedgerCardProps) {
   const { t, lang } = useApp();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -169,7 +170,7 @@ export default function LeaseLedgerCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-h)' }}>
-            {community_name}{room_type ? ` · ${room_type}` : ''}
+            {community_name}{room_type ? ` · ${room_type}` : ''}{area ? ` · ${area} sqft` : ''}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
             {start_date} → {end_date} &nbsp;·&nbsp;

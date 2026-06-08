@@ -847,6 +847,19 @@ setMessages(prev => [...prev,
 
 ---
 
+### Bug 13：AI tab 切换后，生成进程丢失或造成前台卡顿（2026-06-08 修复）
+
+**现象：** AI 正在作答/思考时，用户切换到别的 tab（例如房源列表、中介个人资料），再切回 AI 助手时，正在运行的问题和 AI 的回答进程消失了。如果保留在后台又担心前台重绘导致卡顿。
+
+**根因：** 原本的聊天流 state 以及 AbortController 是绑定在 `AIChat` 组件生命周期内的。切换 tab 时组件 unmount，React 状态销毁，生成连接被自动中断。
+
+**修复：**
+- 引入了 `GlobalChatState` 单例管理器，将 active 的 SSE ReadableStream、AbortController、以及状态变量移出 React 周期，托管在全局。
+- 当组件 unmount 时，后台流继续在 JS 内存中运行，并将结果写到 `localStorage` 中。因为组件已卸载，所以没有 DOM 重绘和渲染开销，别的页面毫无卡顿感。
+- 用户切回 AI tab 时，组件订阅全局 state，立即同步后台的最新生成进程。
+
+---
+
 ## 十二、文件清单
 
 | 文件 | 职责 |
