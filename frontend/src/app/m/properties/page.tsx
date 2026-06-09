@@ -9,7 +9,7 @@ import { Building2, Bed, Bath, Maximize, MapPin, Edit3, Trash2, Plus, Search } f
 export default function MobileProperties() {
   const { lang } = useApp();
   const router = useRouter();
-  const { units, communities, isLoaded } = useAdminDataLoader();
+  const { units, communities, isLoaded, setUnits } = useAdminDataLoader();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'available' | 'rented'>('all');
 
@@ -34,19 +34,29 @@ export default function MobileProperties() {
   const handleDelete = async (unitId: string) => {
     if (!confirm(lang === 'zh' ? '确定删除这个房源吗？' : 'Delete this listing?')) return;
     try {
+      // Optimistic UI update
+      setUnits(prev => prev.filter(u => u.id !== unitId));
       const { supabase, isMockDatabase } = await import('@/lib/supabase');
       if (isMockDatabase) {
         const existing = JSON.parse(localStorage.getItem('ez_units') || '[]');
         localStorage.setItem('ez_units', JSON.stringify(existing.filter((u: any) => u.id !== unitId)));
-        window.location.reload();
       } else {
         const { createClient } = await import('@/utils/supabase/client');
         const client = createClient();
         await client.from('units').delete().eq('id', unitId);
-        window.location.reload();
       }
     } catch (e) {
       console.error('Delete failed:', e);
+      // Revert optimistic update on failure by re-fetching
+      const { supabase, isMockDatabase } = await import('@/lib/supabase');
+      if (isMockDatabase) {
+        setUnits(JSON.parse(localStorage.getItem('ez_units') || '[]'));
+      } else {
+        const { createClient } = await import('@/utils/supabase/client');
+        const client = createClient();
+        const { data } = await client.from('units').select('*, communities(*)');
+        if (data) setUnits(data);
+      }
     }
   };
 

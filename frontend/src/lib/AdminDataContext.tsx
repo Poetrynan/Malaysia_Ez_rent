@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface AdminDataContextType {
   communities: any[];
@@ -51,36 +51,24 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     setReviewsLoaded(false);
   }, []);
 
+  const value = useMemo(() => ({
+    communities, setCommunities,
+    units, setUnits,
+    leases, setLeases,
+    interests, setInterests,
+    allUsers, setAllUsers,
+    adminIds, setAdminIds,
+    adminList, setAdminList,
+    agentRegistrations, setAgentRegistrations,
+    feedbacks, setFeedbacks,
+    reviews, setReviews,
+    reviewsLoaded, setReviewsLoaded,
+    isLoaded, setIsLoaded,
+    clearCache,
+  }), [communities, units, leases, interests, allUsers, adminIds, adminList, agentRegistrations, feedbacks, reviews, reviewsLoaded, isLoaded, clearCache]);
+
   return (
-    <AdminDataContext.Provider
-      value={{
-        communities,
-        setCommunities,
-        units,
-        setUnits,
-        leases,
-        setLeases,
-        interests,
-        setInterests,
-        allUsers,
-        setAllUsers,
-        adminIds,
-        setAdminIds,
-        adminList,
-        setAdminList,
-        agentRegistrations,
-        setAgentRegistrations,
-        feedbacks,
-        setFeedbacks,
-        reviews,
-        setReviews,
-        reviewsLoaded,
-        setReviewsLoaded,
-        isLoaded,
-        setIsLoaded,
-        clearCache,
-      }}
-    >
+    <AdminDataContext.Provider value={value}>
       {children}
     </AdminDataContext.Provider>
   );

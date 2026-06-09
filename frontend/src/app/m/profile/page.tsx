@@ -39,8 +39,17 @@ export default function MobileProfile() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Load profile
+  // Load profile (with sessionStorage cache to avoid re-fetch on tab switch)
   useEffect(() => {
+    const cached = sessionStorage.getItem('m_profile_cache');
+    if (cached) {
+      try {
+        setProfile(prev => ({ ...prev, ...JSON.parse(cached) }));
+        setLoading(false);
+        return;
+      } catch {}
+    }
+
     const loadProfile = async () => {
       try {
         const { supabase, isMockDatabase } = await import('@/lib/supabase');
@@ -48,14 +57,11 @@ export default function MobileProfile() {
           const stored = JSON.parse(localStorage.getItem('ez_admin_profile') || 'null');
           if (stored) {
             setProfile(prev => ({ ...prev, ...stored }));
+            sessionStorage.setItem('m_profile_cache', JSON.stringify(stored));
           } else {
-            setProfile(prev => ({
-              ...prev,
-              display_name: 'Nick Chan',
-              phone: '+6012-345 6789',
-              email: 'admin@ezrent.my',
-              agency_name: 'VIVAHOMES REALTY SDN. BHD',
-            }));
+            const fallback = { display_name: 'Nick Chan', phone: '+6012-345 6789', email: 'admin@ezrent.my', agency_name: 'VIVAHOMES REALTY SDN. BHD' };
+            setProfile(prev => ({ ...prev, ...fallback }));
+            sessionStorage.setItem('m_profile_cache', JSON.stringify(fallback));
           }
         } else {
           const { createClient } = await import('@/utils/supabase/client');
@@ -64,11 +70,9 @@ export default function MobileProfile() {
           if (user) {
             const { data } = await client.from('admin_users').select('*').eq('id', user.id).maybeSingle();
             if (data) {
-              setProfile(prev => ({
-                ...prev,
-                ...data,
-                email: user.email || data.email || '',
-              }));
+              const profileData = { ...data, email: user.email || data.email || '' };
+              setProfile(prev => ({ ...prev, ...profileData }));
+              sessionStorage.setItem('m_profile_cache', JSON.stringify(profileData));
             } else {
               setProfile(prev => ({ ...prev, email: user.email || '' }));
             }
@@ -154,6 +158,7 @@ export default function MobileProfile() {
       }
 
       setProfile(prev => ({ ...prev, ...profileData, avatar_url: avatarUrl }));
+      sessionStorage.setItem('m_profile_cache', JSON.stringify({ ...profile, ...profileData, avatar_url: avatarUrl }));
       setAvatarPreview(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

@@ -368,8 +368,23 @@ export default function MobileUpload() {
         }
       }
 
-      // Refresh data
-      setIsLoaded(false);
+      // Refresh communities + units in context (without clearing isLoaded)
+      try {
+        const { supabase, isMockDatabase } = await import('@/lib/supabase');
+        if (isMockDatabase) {
+          setCommunities(JSON.parse(localStorage.getItem('ez_communities') || '[]'));
+          setUnits(JSON.parse(localStorage.getItem('ez_units') || '[]'));
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const client = createClient();
+          const [commRes, unitRes] = await Promise.all([
+            client.from('communities').select('*'),
+            client.from('units').select('*, communities(*)'),
+          ]);
+          if (commRes.data) setCommunities(commRes.data);
+          if (unitRes.data) setUnits(unitRes.data);
+        }
+      } catch {}
       setSaved(true);
       setTimeout(() => router.push('/m/properties'), 1500);
     } catch (err: any) {
