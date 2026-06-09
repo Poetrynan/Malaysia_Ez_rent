@@ -2814,3 +2814,19 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 
 ### 恢复方式
 - 项目上线绑定真实域名（例如 `ezrent-my.com`）并在 Resend 验证 DNS 成功后，将前端 `handleSendOtp` 重新改为 fetch 请求 `/api/send-verification` 即可。
+
+---
+
+## 七十二、密码找回与重置（Forgot / Reset Password）安全工作流实现（2026-06-09）
+
+**目标**：解决 Magic Link 登录废除后，没有设置过密码且无法进行 Google 快捷登录的存量老用户无法登入的问题，并打通全平台统一的密码自助手册与修改闭环。
+
+### 已实施
+
+| 类别 | 内容 | 文件 |
+|------|------|------|
+| **重置入口与邮箱递送** | 在 `/login` 登录表单上追加「忘记密码？」磨砂玻璃弹窗，调用 `supabase.auth.resetPasswordForEmail()` 将含有重置令牌（Token）的重置邮件发送到用户指定邮箱。 | `frontend/src/app/login/page.tsx` |
+| **独立重置密码页** | 新建了 `/reset-password` 路由页面。该页面在安全模式下读取 URL 中的凭证，通过 `supabase.auth.updateUser()` 更新账户的新密码，并支持对输入强度的基本正则拦截与校验。重设成功后，系统会读取 `user_metadata.role` 将用户自动重定向到其特定端（租客列表或中介面板）。 | `frontend/src/app/reset-password/page.tsx` |
+| **中间件与安全白名单放行** | 在 `middleware.ts` 与 `auth/callback/route.ts` 中针对 `/reset-password` 重定向流进行了安全放行，防范由于缺少初始 session cookie 或身份资料不完善导致的强制路由回拨与认证死循环。 | `frontend/src/middleware.ts`, `frontend/src/app/auth/callback/route.ts` |
+| **Mock 离线重置支持** | 为本地/离线开发环境（Mock mode）提供了一套在 `localStorage` 条件下模拟的密码更新仿真流程，保证在断网与无 Supabase 连接下开发一致性。 | `frontend/src/lib/supabase.ts` |
+

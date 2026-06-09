@@ -1,196 +1,80 @@
-# SaaS 运营模式
+# 🚀 Malaysia Ez Rent — SaaS 运营模式详解
+
+> 面向独立房产中介（REN）的高效、轻量、高粘性 SaaS 服务订阅体系
+>
+> 最后更新：2026-06-09
+
+---
 
 ## 什么是 SaaS？
 
 **Software as a Service（软件即服务）**
-- 用户按月/年付费使用软件
-- 不需要自己部署和维护
-- 持续更新，用户自动享受新功能
-
-## 您的系统适合做 SaaS 吗？
-
-### ✅ 适合的原因
-
-| 特点 | 说明 |
-|------|------|
-| 多租户架构 | 中介数据隔离（agent_id） |
-| 已有权限系统 | 三种角色权限完善 |
-| 云端部署 | Vercel + Render，自动扩展 |
-| 持续付费场景 | 中介每月都需要管理房源 |
-
-### ⚠️ 需要改进的地方
-
-| 问题 | 解决方案 |
-|------|---------|
-| 数据库单实例 | 不同公司需要数据隔离 |
-| 计费系统 | 需要接入支付网关 |
-| 用户管理 | 需要后台管理订阅 |
+- **订阅收费**：中介按月/年付费使用平台工具，而非一次性买断。
+- **免部署运维**：中介直接在线注册使用，无需服务器配置与代码维护，平台自动升级迭代。
+- **降本提效**：以极低的订阅成本代替昂贵的定制系统开发，帮助独立中介快速跑通数字化租房业务。
 
 ---
 
-## SaaS 架构设计
+## 🎯 目标定位：面向个人中介（To-Individual-Agent）
 
-### 方案 A：共享数据库（推荐起步）
+马来西亚的房产经纪人（REN）多挂靠在各大中介行，但实际的获客渠道、租约管理、客户催租对账工作均由中介个人独立完成。因此，我们的 SaaS 方案**直接针对个人中介设计**，而非企业级（B2B 公司）软件采购。
+
+中介注册时填写其挂靠的公司（如 IQI Realty），以此作为其在租客端展示专业背书的标签，但底层的数据资产、计费和账号主体均完全独立，归中介个人所有。
+
+---
+
+## 🛠️ SaaS 多租户数据隔离架构
+
+平台在数据库层面（Supabase PostgreSQL）通过 `agent_id` 区分每个经纪人的独立资产，不需要为每个中介公司建立独立的数据库实例。
 
 ```
-Supabase 项目
+Supabase 数据库（共享实例）
     │
-    ├── 所有中介的数据
-    │   ├── agent_id = 'agent_001'（公司A）
-    │   ├── agent_id = 'agent_002'（公司B）
-    │   └── agent_id = 'agent_003'（公司C）
+    ├── 所有中介的业务数据（units, leases, payment_records 表）
+    │   ├── 记录行由 `agent_id` 字段归属中介个人
+    │   ├── 中介 A 只能操作 `agent_id = 'agent_A'` 的数据
+    │   └── 中介 B 只能操作 `agent_id = 'agent_B'` 的数据
     │
-    └── 通过 RLS 隔离
+    └── 依靠 PostgreSQL Row Level Security (RLS) 策略实现安全隔离
 ```
 
-**优点：**
-- 部署简单，成本低
-- 易于维护和更新
+### 🔒 Row Level Security (RLS) 隔离逻辑示例
 
-**缺点：**
-- 数据混在一起（但已隔离）
-- 一个公司数据泄露可能影响其他公司
-
-**适合：** 初创阶段，用户量 < 1000
-
----
-
-### 方案 B：独立数据库（成熟期）
-
-```
-Supabase 项目 A（公司A）
-Supabase 项目 B（公司B）
-Supabase 项目 C（公司C）
-    │
-    └── 共享同一套代码
-```
-
-**优点：**
-- 完全数据隔离
-- 安全性高
-
-**缺点：**
-- 运维复杂
-- 成本高（每个项目单独付费）
-
-**适合：** 企业客户，数据安全要求高
-
----
-
-## SaaS 核心功能清单
-
-### 必须实现
-
-| 功能 | 优先级 | 说明 |
-|------|--------|------|
-| 订阅管理 | P0 | 中介付费、续费、取消 |
-| 使用量统计 | P0 | 房源数量、API调用 |
-| 多租户隔离 | P0 | 不同公司数据隔离 |
-| 计费系统 | P0 | 自动生成账单 |
-| 支付网关 | P0 | Stripe / PayPal / 支付宝 |
-
-### 建议实现
-
-| 功能 | 优先级 | 说明 |
-|------|--------|------|
-| 白标定制 | P1 | 公司Logo、域名 |
-| API接口 | P1 | 供第三方系统对接 |
-| 数据导出 | P1 | 中介可导出自己的数据 |
-| 客服系统 | P2 | 工单、在线客服 |
-
----
-
-## SaaS 定价策略
-
-### 基础版（免费）
-- 3个房源
-- 基础功能
-- 邮件支持
-
-### 专业版（RM 199/月）
-- 20个房源
-- 数据分析
-- 优先客服
-- API接口
-
-### 企业版（RM 599/月）
-- 无限房源
-- 白标定制
-- 专属客服
-- SLA保障
-
-### 年付优惠
-- 专业版年付：RM 1,990（省 RM 398）
-- 企业版年付：RM 5,990（省 RM 1,198）
-
----
-
-## 技术实现
-
-### 订阅状态管理
+在数据库底层配置 RLS 策略，确保越权请求被数据库引擎直接拦截：
 
 ```sql
--- 在 admin_users 表添加字段
-ALTER TABLE admin_users ADD COLUMN subscription_tier VARCHAR(20) DEFAULT 'free';
-ALTER TABLE admin_units ADD COLUMN subscription_expires_at TIMESTAMPTZ;
-```
-
-### 使用量限制
-
-```sql
--- 检查房源数量限制
-CREATE OR REPLACE FUNCTION check_unit_limit()
-RETURNS TRIGGER AS $$
-DECLARE
-    tier VARCHAR(20);
-    current_count INTEGER;
-    max_count INTEGER;
-BEGIN
-    SELECT subscription_tier INTO tier
-    FROM admin_users WHERE id = NEW.agent_id;
-
-    max_count := CASE tier
-        WHEN 'free' THEN 3
-        WHEN 'pro' THEN 20
-        WHEN 'enterprise' THEN 999999
-    END;
-
-    SELECT COUNT(*) INTO current_count
-    FROM units WHERE agent_id = NEW.agent_id;
-
-    IF current_count >= max_count THEN
-        RAISE EXCEPTION '房源数量已达上限，请升级套餐';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### 自动过期处理
-
-```sql
--- 每天检查订阅是否过期
-CREATE OR REPLACE FUNCTION check_expired_subscriptions()
-RETURNS void AS $$
-BEGIN
-    UPDATE admin_users
-    SET subscription_tier = 'free'
-    WHERE subscription_expires_at < NOW()
-    AND subscription_tier != 'free';
-END;
-$$ LANGUAGE plpgsql;
+-- 确保普通中介只能操作属于自己的房源数据
+CREATE POLICY "Agent can manage own units" ON units
+  FOR ALL
+  TO authenticated
+  USING (agent_id = auth.uid())
+  WITH CHECK (agent_id = auth.uid());
 ```
 
 ---
 
-## 运营指标（KPI）
+## 💰 个人中介 SaaS 订阅定价策略
 
-| 指标 | 目标 | 说明 |
-|------|------|------|
-| MRR | RM 50,000+ | 月度经常性收入 |
-| 客户留存率 | > 85% | 中介续约率 |
-| ARPU | RM 300+ | 每付费用户平均收入 |
-| 客户获取成本 | < RM 500 | CAC |
-| 客户生命周期价值 | > RM 3,600 | LTV |
-| LTV/CAC | > 7 | 投资回报比 |
+### 1. 订阅套餐
+
+| 套餐 | 月费 | 年费（8折） | 房源发布限制 | 核心特权与功能 |
+|------|------|-----------|------------|--------------|
+| **🆓 体验版** | RM 0 | RM 0 | 限制发布 **3 套**活跃房源 | 基本房源发布与租约录入、租客匿名凭证上传、基础账目对账功能。 |
+| **🌟 专业版** | RM 99 | RM 948 | 限制发布 **30 套**活跃房源 | 房源 AI 精准导流、开通报修工单中心、收租账目 Recharts 可视化看板、一键对账。 |
+| **💎 无限版** | RM 299 | RM 2,870 | **无限制**房源发布 | 优先 AI 搜索推荐、数据报表一键导出、专属在线客服支持。 |
+
+### 2. 增值服务（按量计费）
+- **自动催账通知**：RM 0.15 / 条（通过系统接口调用 WhatsApp/SMS 自动发送催缴提醒）
+- **AI 对话精准置顶**：RM 50 / 月/房源（在 AI 助手搜索推荐中获得最高展示权重）
+- **房源一键 Bump（刷新）**：RM 2.00 / 次（使房源回到普通列表首位）
+
+---
+
+## 📈 SaaS 核心运营指标（KPI）
+
+作为面向个人中介的 SaaS 平台，我们的核心经营指标包括：
+
+1. **MRR（月度经常性收入）**：付费中介订阅费总和 + 交易及增值服务分成。
+2. **NDR（净金额留存率）**：中介续订专业版/无限版比例。由于合同和收租账单绑定，中介流失率预计极低。
+3. **ARPU（每用户平均收入）**：每个活跃中介带来的综合订阅加增值服务消耗。
+4. **LTV/CAC（生命周期价值/获取成本比）**：由于留学生租房需求旺盛，中介续期长，该比率预计可达 6 以上。

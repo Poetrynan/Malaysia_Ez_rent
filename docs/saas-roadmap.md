@@ -1,8 +1,8 @@
-# 🚀 Malaysia Ez Rent — SaaS 发展路线图
+# 🚀 Malaysia Ez Rent — 个人中介 SaaS 发展路线图
 
-> 从单一业务全栈应用到多租户 SaaS 平台的演进方案
+> 面向独立房产经纪人（Real Estate Negotiators - REN）的 SaaS 订阅与赋能演进方案
 >
-> 最后更新：2026-05-30
+> 最后更新：2026-06-09
 
 ---
 
@@ -10,354 +10,155 @@
 
 | 维度 | 现状 |
 |------|------|
-| 架构 | 单一业务（一个租房平台服务一家公司） |
-| 数据隔离 | 靠 `agent_id` 字段区分中介，所有数据在同一张表 |
-| 计费 | 无，免费使用 |
-| 入驻 | 手动添加管理员，无自助注册 |
-| 部署 | Vercel (前端) + Render (后端) + Supabase (数据库) |
+| **商业模式** | 个人中介注册，填写所属公司（如 IQI, Propnex 等），目前免费使用 |
+| **数据隔离** | 数据库底层已实现 `agent_id` 字段级物理隔离，中介只能管理属于自己的房源和租约 |
+| **计费** | 暂无，全功能免费 |
+| **注册** | 支持自主提交 REN 证件申请，超级管理员在后台一键审批 |
+| **部署** | Vercel (前端) + Render (后端) + Supabase (数据库) |
 
 ---
 
-## 🎯 SaaS 目标状态
+## 🎯 SaaS 目标状态（To-Individual-Agent）
+
+在马来西亚，房产中介（REN）大多是独立经纪人，自负盈亏并支付自己的广告和工具费用。本平台的 SaaS 路线应当**直接面向中介个人**（To-Individual-Agent）销售效率工具，而不是售卖给企业（B2B 公司），其架构设计如下：
 
 ```
 ┌─────────────────────────────────────────────────┐
 │              Platform Admin (超级平台管理员)       │
-│  管理所有租户 · 审批入驻 · 查看全局数据 · 计费管理    │
+│  管理所有中介 · 审批注册 · 查看全局数据 · 计费管理    │
 ├─────────────────────────────────────────────────┤
-│  Tenant A (租赁公司 A)        Tenant B (公司 B)    │
-│  ├── 自己的房源、中介、租约       ├── 完全独立的数据    │
-│  ├── 自己的 Logo、品牌          ├── 自己的品牌         │
-│  ├── 自己的订阅套餐             ├── 不同的套餐等级      │
-│  └── 看不到 B 的任何数据        └── 看不到 A 的数据    │
+│  Agent A (中介 A)             Agent B (中介 B)     │
+│  ├── 独立管理的房源与合租意向    ├── 完全独立的数据数据  │
+│  ├── 独立管理的租约与收租对账    ├── 个人专属名片与联系方式│
+│  ├── 个人订阅套餐（Stripe）      ├── 不同的套餐与限额等级│
+│  └── 看不到 B 的任何租约与隐私    └── 看不到 A 的任何数据 │
 └─────────────────────────────────────────────────┘
 ```
+
+中介在注册时填写自己的挂靠公司（如 IQI Realty），但**付费主体和账户主体是中介个人**。
 
 ---
 
 ## 🗺️ 分阶段路线图
 
-### Phase 1：多租户数据隔离（2-3 周）
+### Phase 1：个人订阅与用量门控系统（2-3 周）
 
-> 核心目标：每家公司的数据完全隔离，互不可见
+> 核心目标：接入在线支付，对中介账号实施订阅套餐分级与房源数量限制
 
-#### 1.1 新增 `tenants` 表
+#### 1.1 扩展 `admin_users` 表
+直接在中介表（`admin_users`）中追加订阅字段，无需新建复杂的 `tenants`（公司）表：
 
 ```sql
-CREATE TABLE tenants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(200) NOT NULL,           -- 公司名称
-  slug VARCHAR(100) UNIQUE NOT NULL,     -- URL 友好标识 (如 "abc-realty")
-  logo_url TEXT,                          -- 公司 Logo
-  contact_email VARCHAR(200),
-  contact_phone VARCHAR(50),
-  status VARCHAR(20) DEFAULT 'active',   -- active / suspended / cancelled
-  plan VARCHAR(20) DEFAULT 'free',       -- free / standard / premium
-  max_units INT DEFAULT 5,               -- 套餐限制
-  max_agents INT DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+ALTER TABLE admin_users ADD COLUMN subscription_tier VARCHAR(20) DEFAULT 'free'; -- free / pro / unlimited
+ALTER TABLE admin_users ADD COLUMN subscription_expires_at TIMESTAMPTZ;
+ALTER TABLE admin_users ADD COLUMN stripe_customer_id VARCHAR(100);
 ```
 
-#### 1.2 所有业务表加 `tenant_id`
-
-需要修改的表（共 ~12 张）：
-
-| 表名 | 改动 |
-|------|------|
-| `admin_users` | 加 `tenant_id UUID REFERENCES tenants(id)` |
-| `units` | 加 `tenant_id`（从 `agent_id` → `admin_users.tenant_id` 推导） |
-| `leases` | 加 `tenant_id`（从 `unit_id` → `units.tenant_id` 推导） |
-| `payment_records` | 加 `tenant_id`（从 `lease_id` → `leases.tenant_id` 推导） |
-| `tenant_interests` | 加 `tenant_id` |
-| `maintenance_requests` | 加 `tenant_id` |
-| `communities` | 加 `tenant_id` |
-| `feedback` | 加 `tenant_id` |
-| `agent_registrations` | 加 `tenant_id`（审批后关联） |
-| `users` | 加 `tenant_id`（学生注册时关联） |
-
-#### 1.3 RLS 策略改造
+#### 1.2 创建 `usage_records` 表
+按月统计每个中介的 AI 请求和存储等用量：
 
 ```sql
--- 之前：所有登录用户看到所有数据
-CREATE POLICY "Authenticated can view" ON units
-  FOR SELECT USING (auth.role() = 'authenticated');
-
--- 之后：只看到自己租户的数据
-CREATE POLICY "Tenant isolation" ON units
-  FOR SELECT USING (
-    tenant_id = (auth.jwt()->>'tenant_id')::UUID
-  );
-```
-
-每个表都需要：`DROP POLICY` → `CREATE POLICY`（带 tenant_id 过滤）
-
-#### 1.4 数据迁移
-
-```sql
--- 1. 创建默认租户
-INSERT INTO tenants (id, name, slug) VALUES
-  ('默认租户 UUID', 'Malaysia Ez Rent', 'ezrent');
-
--- 2. 将现有数据关联到默认租户
-UPDATE admin_users SET tenant_id = '默认租户 UUID' WHERE tenant_id IS NULL;
-UPDATE units SET tenant_id = '默认租户 UUID' WHERE tenant_id IS NULL;
--- ... 所有表同理
-```
-
-#### 1.5 后端适配
-
-- `config.py`：从 JWT 中提取 `tenant_id`
-- `tools.py`：`search_internal_db` 加 `tenant_id` 过滤
-- `agent.py`：`check_my_own_rental_status` 加 `tenant_id` 过滤
-- 所有 RPC 函数：加 `p_tenant_id` 参数
-
-#### 1.6 前端适配
-
-- `AdminPanel.tsx`：加载数据时自动带 `tenant_id` 过滤
-- `PropertyListings.tsx`：房源列表只显示当前租户的房源
-- `page.tsx`：登录时从 JWT 读取 `tenant_id`，注入到全局 Context
-
-#### ⚠️ 风险与注意事项
-
-- 历史数据迁移必须在低峰期执行
-- RLS 策略变更需要在 Supabase Dashboard 逐表测试
-- Mock 模式下的 `supabase.ts` 也需要适配 `tenant_id` 逻辑
-- 迁移脚本编号：`027_multi_tenant.sql`
-
----
-
-### Phase 2：订阅计费系统（2 周）
-
-> 核心目标：按套餐收费，限制功能和用量
-
-#### 2.1 套餐设计
-
-| 套餐 | 价格 | 房源数 | 中介数 | AI 功能 | 地图 | 报修 |
-|------|------|--------|--------|---------|------|------|
-| 🆓 Free | RM 0/月 | 5 | 1 | ✅ 基础 | ❌ | ❌ |
-| 🌟 Standard | RM 99/月 | 50 | 5 | ✅ 完整 | ✅ | ✅ |
-| 💎 Premium | RM 299/月 | 无限 | 无限 | ✅ 完整 | ✅ | ✅ + API |
-
-#### 2.2 新增表
-
-```sql
--- 订阅记录
-CREATE TABLE subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id),
-  plan VARCHAR(20) NOT NULL,             -- free / standard / premium
-  status VARCHAR(20) DEFAULT 'active',   -- active / past_due / cancelled
-  stripe_subscription_id VARCHAR(200),   -- Stripe 订阅 ID
-  current_period_start TIMESTAMPTZ,
-  current_period_end TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 用量统计（按月）
 CREATE TABLE usage_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id),
-  month DATE NOT NULL,                   -- 2026-05-01
-  units_count INT DEFAULT 0,
-  agents_count INT DEFAULT 0,
-  ai_requests INT DEFAULT 0,
-  storage_bytes BIGINT DEFAULT 0,
-  UNIQUE(tenant_id, month)
+  agent_id UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+  month DATE NOT NULL,                   -- 例如 2026-06-01
+  ai_requests_count INT DEFAULT 0,
+  whatsapp_sent_count INT DEFAULT 0,
+  UNIQUE(agent_id, month)
 );
 ```
 
-#### 2.3 支付集成
-
-**推荐方案：Stripe（国际通用）+ FPX（马来西亚本地银行转账）**
-
-```
-用户点击 "升级套餐"
-  → 前端调用后端创建 Stripe Checkout Session
-  → 跳转 Stripe 支付页（支持信用卡 / FPX / GrabPay）
-  → 支付成功 → Stripe Webhook → 后端更新 subscription.status
-  → 前端刷新，解锁功能
-```
-
-#### 2.4 功能门控中间件
-
-```python
-# backend/app/middleware.py
-def check_plan_limits(request: Request):
-    """检查当前租户的套餐是否允许该操作"""
-    tenant_id = get_tenant_from_jwt(request)
-    subscription = get_subscription(tenant_id)
-
-    if subscription.plan == 'free':
-        unit_count = count_units(tenant_id)
-        if unit_count >= 5:
-            raise HTTPException(403, "Free plan limited to 5 units. Upgrade to Standard.")
-```
-
-前端也需要门控：
-
-```tsx
-// 前端功能门控示例
-const { plan } = useTenant();
-const canUseMap = plan === 'standard' || plan === 'premium';
-
-{canUseMap ? <MapAndCard /> : <UpgradePrompt feature="地图通勤" />}
-```
-
-#### 2.5 需要新增的文件
-
-| 文件 | 说明 |
-|------|------|
-| `backend/app/billing.py` | Stripe 集成、Webhook 处理、用量统计 |
-| `backend/app/middleware.py` | 套餐门控中间件 |
-| `frontend/src/components/UpgradePrompt.tsx` | 升级引导组件 |
-| `frontend/src/app/pricing/page.tsx` | 套餐定价页 |
-| `supabase/migrations/028_subscriptions.sql` | 订阅表 + 用量表 |
-
----
-
-### Phase 3：自助入驻 + 白标（2 周）
-
-> 核心目标：公司自己注册、配置、使用，无需人工介入
-
-#### 3.1 公开注册流程
-
-```
-公司访问 platform.malaysia-ez-rent.com
-  → 点击 "免费注册"
-  → 填写：公司名称、联系人、电话、邮箱、营业执照上传
-  → 选择套餐（Free / Standard / Premium）
-  → 支付（如果是付费套餐）
-  → 自动创建：
-      ├── tenant 记录
-      ├── admin 用户（super_admin 角色）
-      └── subscription 记录
-  → 跳转到自己的后台，开始使用
-```
-
-#### 3.2 白标支持
-
-每个租户可以自定义：
-
-| 配置项 | 说明 |
-|--------|------|
-| Logo | 上传公司 Logo，替换默认品牌 |
-| 主题色 | 自定义主色调（CSS 变量） |
-| 公司名称 | 登录页、侧边栏显示租户自己的名字 |
-| 域名（高级） | `abc-rent.malaysia-ez-rent.com` 或自定义域名 |
+#### 1.3 数据库触发器限额控制
+在数据库层通过触发器硬性限制免费中介的房源发布上限：
 
 ```sql
--- tenants 表扩展
-ALTER TABLE tenants ADD COLUMN brand_color VARCHAR(7) DEFAULT '#10B981';
-ALTER TABLE tenants ADD COLUMN custom_domain VARCHAR(200);
-ALTER TABLE tenants ADD COLUMN welcome_message TEXT;
+CREATE OR REPLACE FUNCTION check_agent_unit_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+    tier VARCHAR(20);
+    current_count INTEGER;
+    max_count INTEGER;
+BEGIN
+    SELECT subscription_tier INTO tier FROM admin_users WHERE id = NEW.agent_id;
+    
+    max_count := CASE tier
+        WHEN 'free' THEN 3        -- 免费版限 3 套
+        WHEN 'pro' THEN 30       -- 专业版限 30 套
+        WHEN 'unlimited' THEN 999999 -- 无限版
+        ELSE 3
+    END;
+    
+    SELECT COUNT(*) INTO current_count FROM units WHERE agent_id = NEW.agent_id;
+    
+    IF current_count >= max_count AND TG_OP = 'INSERT' THEN
+        RAISE EXCEPTION '您的当前套餐房源数量已达上限（%套），请升级您的套餐。', max_count;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_check_unit_limit
+BEFORE INSERT ON units
+FOR EACH ROW EXECUTE FUNCTION check_agent_unit_limit();
 ```
 
-#### 3.3 平台管理后台
-
-新增超级平台管理员角色（不在任何 tenant 内）：
-
-```
-Platform Admin Dashboard
-  ├── 租户管理：查看/暂停/删除租户
-  ├── 订阅管理：查看所有订阅、手动调整
-  ├── 用量监控：全局 API 调用、存储使用
-  ├── 审批入驻：审核新注册的租户
-  └── 全局设置：默认套餐、公告、维护模式
-```
-
-#### 3.4 首次登录引导
-
-新租户首次登录时的 setup wizard：
-
-```
-Step 1: 上传公司 Logo
-Step 2: 填写公司信息（地址、联系方式）
-Step 3: 添加第一个中介账号
-Step 4: 录入第一套房源
-Step 5: 完成！开始使用
-```
+#### 1.4 Stripe 支付与本地付款集成
+集成 **Stripe Checkout**，支持信用卡以及马来西亚本地主流的 **FPX（网银转账）** 与 GrabPay，打通自动扣款和订阅状态回调（Webhook）。
 
 ---
 
-### Phase 4：持续迭代
+### Phase 2：自动化入驻与微信/WhatsApp 增值通知（2 周）
 
-| 功能 | 优先级 | 说明 |
-|------|--------|------|
-| 📊 数据分析面板 | P1 | 房源浏览量、转化率、收入统计 |
-| 🔌 开放 API | P2 | 第三方系统接入（ERP、CRM） |
-| 🌍 多语言扩展 | P2 | 马来语、日语、韩语 |
-| 📱 移动端 App | P3 | React Native / Flutter |
-| 🤖 AI 高级功能 | P2 | 智能定价建议、市场分析 |
-| 🔔 通知系统 | P1 | 邮件、SMS、WhatsApp 通知 |
-| 📄 电子合同 | P2 | 在线签署租约合同 |
+> 核心目标：实现中介注册到审批的自动化，引入增值服务收费项（催租通知）
 
----
+#### 2.1 增值账单催收通知
+中介的一大痛点是“每个月手动催租”。平台可集成 **WhatsApp Business API** 或短信网关，提供“一键 WhatsApp 催租”或“系统自动发短信催账”服务。
+- 计费方式：按条收费（例如每条 WhatsApp 提醒扣除 RM 0.10，在中介账户中预存金额）。
 
-## 💰 商业模式建议
-
-### 收入来源
-
-| 来源 | 说明 |
-|------|------|
-| 📦 订阅费 | 月付/年付套餐 |
-| 💳 交易抽成 | 每笔成功缴租收取 1-2% 手续费 |
-| 📢 广告位 | 首页推荐位、搜索置顶 |
-| 🔌 API 费用 | 按调用量收费（第三方接入） |
-
-### 定价参考（马来西亚市场）
-
-| 套餐 | 月付 | 年付（8折） | 目标客户 |
-|------|------|-----------|---------|
-| Free | RM 0 | RM 0 | 个人房东、试用 |
-| Standard | RM 99 | RM 948 | 小型中介（5-20 套房） |
-| Premium | RM 299 | RM 2,870 | 中型中介（20+ 套房） |
-| Enterprise | 定制 | 定制 | 大型租赁公司 |
+#### 2.2 REN 号自动化核验
+目前中介注册需要超管手动审核 REN 证件。未来可接入马来西亚估价师、评估师、地产代理及物业管理人局（LPPEH）的公开接口或数据源，实现中介执照号（REN）的秒级自动验证，缩短入驻审核流。
 
 ---
 
-## ⚠️ 关键决策点
+### Phase 3：房源 AI 精准推荐与推广置顶（2 周）
 
-在动手之前，先确认以下问题：
+> 核心目标：不卖“广告位”，而卖“精准获客”
 
-| 问题 | 为什么重要 |
-|------|-----------|
-| **有没有真实客户愿意付费？** | 没有付费意愿就没有 SaaS 的基础 |
-| **目标客户是谁？** | 个人房东 vs 小型中介 vs 大型公司，架构差异很大 |
-| **Phase 1 做不做？** | 多租户改造是半个重写，投入产出比要算清楚 |
-| **用 Stripe 还是本地支付？** | 马来西亚 FPX 银行转账普及率高，Stripe FPX 支持良好 |
-| **要不要保留 Mock 模式？** | SaaS 产品 Mock 模式意义不大，可以移除 |
+#### 3.1 AI 对话精准导流
+- 当学生问 AI 助手：“我想在 USM 附近找一间 RM 800 的房间”时，AI 助手基于向量相似度召回小区，并在推荐房源时，**优先展示付费中介发布的房源**。
+- 计费方式：按推荐点击次数扣费（如每次有效导流扣除 RM 1.00），或提供付费中介专享的“AI 精选推荐”特权。
 
----
-
-## 📋 执行清单
-
-### Phase 1 启动前
-
-- [ ] 确认有付费客户意向
-- [ ] 设计 tenants 表结构
-- [ ] 列出所有需要加 `tenant_id` 的表
-- [ ] 编写数据迁移脚本（历史数据归入默认租户）
-- [ ] 改造 RLS 策略（逐表测试）
-- [ ] 适配 Mock 模式
-- [ ] 全流程回归测试
-
-### Phase 2 启动前
-
-- [ ] 注册 Stripe 账号（或选择其他支付）
-- [ ] 设计套餐定价
-- [ ] 实现 Webhook 处理
-- [ ] 前端门控组件
-- [ ] 用量统计逻辑
-
-### Phase 3 启动前
-
-- [ ] 设计公开注册页
-- [ ] 实现自动创建 tenant + admin
-- [ ] 白标配置存储
-- [ ] 平台管理后台
+#### 3.2 房源置顶与刷新
+允许中介在列表里一键刷新（Bump）房源使其靠前，参考 iProperty 逻辑但价格更亲民。
 
 ---
 
-*Malaysia Ez Rent — 从工具到平台 🇲🇾*
+## 💰 个人中介定价模型建议
+
+中介为**生产力效率工具**和**精准客户流量**付费，性价比需远超自建系统和传统的 iProperty 纯广告消耗。
+
+| 套餐 | 月付 | 年付（8折） | 适用客户 | 核心限制与权益 |
+|------|------|-----------|---------|--------------|
+| **🆓 体验版 (Free)** | RM 0 | RM 0 | 新人中介、试用 | 限制最多发布 **3 套**活跃房源；基础 AI 找房展示；无自动催租功能。 |
+| **🌟 专业版 (Pro)** | RM 99 | RM 948 | 独立执业经纪人（主干） | 限制最多发布 **30 套**活跃房源；完整 AI 助手导流；开通报修工单中心；享受收租账目看板。 |
+| **💎 无限版 (Unlimited)** | RM 299 | RM 2,870 | 高产中介、包楼盘团队 | **无限制**房源发布；优先 AI 对话推荐；享用数据导出；支持优先客服。 |
+
+### 🚀 增值服务（按量计费）
+- **自动 WhatsApp 账单催收**：RM 0.15 / 条
+- **AI 对话置顶引流**：RM 50 / 月/房源
+- **房源一键刷新（Bump）**：RM 2.00 / 次
+- **AI 租房合同解读助手 (计费 API)**：按次收费（如 RM 10/次），基于大模型自动解析英文合同中的关键条款（转租、押金退还、违约处罚等）并翻译给国际租客。
+
+
+---
+
+## ⚠️ 关键商业决策反思
+
+1. **为什么不需要公司（B2B）版本？**
+   - 马来西亚大部分地产中介是以独立 Negotiator 形式挂靠在 IQI、PropNex、Hartamas 等大机构下。中介的获客预算和跟单完全由中介个人掌控，销售工具应直接卖给中介个人（ToC 裂变/To-Individual），避免冗长的企业采购审批。
+2. **中介如何展示所属公司？**
+   - 中介在 `/profile` 或注册时填写的公司名称（例如 `IQI Realty`）会直接渲染在房源详情页的中介名片上，展示其专业合规性，但底层数据与该公司其他中介完全隔离，保护中介私域客户和房源资产。
+3. **竞争防守壁垒是什么？**
+   - 传统平台（如 iProperty）只管前端展示，数据随买随走。
+   - Malaysia Ez Rent 把**租约、自动催租台账、报修对话和历史收租水流水乳交融地锁定在系统里**，中介一旦有 10 个活跃租客在用，其数据迁移成本和客户流失代价将呈指数级上升，产生极高的用户粘性。

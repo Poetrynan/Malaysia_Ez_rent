@@ -381,11 +381,9 @@ Tenant and agent are **separate account systems**. Role is stored in Supabase Au
 - `/register/agent` — REN + password + email verification (account created, no access until approved)
 - `/register/complete-profile` — legacy standalone flow (kept for compatibility; default redirect is now `/profile`)
 
-**Legacy migration (manual SQL, one-time):**
-- Backfill `user_metadata.role = 'student'` for old tenants without role
-- Super admins: set `role = 'agent'`, create password, insert `agent_profiles` (approved)
+**Implemented:** Forgot-password / reset-password flow supporting both Supabase and Mock modes. Legacy Magic Link users without passwords or Google access can trigger a reset email from the login page, verify via link, set a new password on `/reset-password`, and log in securely.
 
-**Pending:** Forgot-password / reset-password flow for legacy Magic Link users who have no password and no Google — see `docs/FUTURE_IMPROVEMENTS.md` →「待完成功能 #1」.
+**Email Verification Bypass:** During registration on `/register/tenant` and `/register/agent`, the Resend OTP email verification is temporarily bypassed in development/deployment builds to simplify onboarding and testing.
 
 ### Middleware & guards
 
@@ -704,7 +702,7 @@ User: "从公司到um要多久"
 - **Agent tab**: email/password only (no Google); link to `/register/agent`.
 - **Post-login redirect**: Google uses `redirectTo` → `/auth/callback?next=/listings`.
 - In-app browser detection (WeChat/QQ/Feishu) shows warning to open in external browser.
-- **Removed**: Magic Link login (replaced by email+password; legacy users need forgot-password — pending).
+- **Removed**: Magic Link login (replaced by email+password; legacy users can use the implemented Forgot Password / Reset Password flow).
 
 ### Tenant Registration (`register/tenant/page.tsx`)
 
@@ -1289,7 +1287,7 @@ Unlike the old SPA where all components stayed mounted, with routing components 
 | Super admin / legacy agent locked out | Portal isolation removed Google for agents; no password; missing `agent_profiles` | **Manually fixed**: SQL backfill `role=agent`, set password, insert `agent_profiles` |
 | Old tenants missing `user_metadata.role` | Migration did not auto-backfill | **Manually fixed**: SQL batch `role=student` for non-admin emails |
 | Old tenants with `role` but no `identity_type` bypassed doc upload | Middleware only checked `role`; profile docs were optional (023) | **Fixed** (2026-06-06): unified gate → `/profile`; save requires identity + documents |
-| Legacy Magic Link users cannot log in | Login page removed Magic Link; only password + Google | **Pending**: forgot-password / reset-password — see `FUTURE_IMPROVEMENTS.md` §待完成功能 #1 |
+| Legacy Magic Link users cannot log in | Login page removed Magic Link; only password + Google | **Fixed** (2026-06-09): Forgot Password / Reset Password flow implemented supporting both Supabase and Mock modes |
 | Magic Link / Google first login → `auth_failed` or double login | PKCE/cookie timing; `AuthContext` race | **Fixed**: callback dual-path + `onAuthStateChange`; verify Supabase Site URL matches deployment domain |
 | Logged-in user lands on `/guest` | OAuth used `next=/` → middleware `/` → `/guest` | **Fixed**: login page uses `next=/listings` |
 | `/listings` flash then Guest | `role=null` while `AuthContext` loading | **Fixed**: `loading=true` until session resolves |
@@ -1391,5 +1389,20 @@ General-purpose agents (like Manus) show tool results to build trust. This proje
 | File | Change |
 |------|--------|
 | `frontend/src/components/AIChat.tsx` | `sanitizeExternalListingText()`, `search_external_listings` preview, raw JSON panel removal, `expandedTools`/`toggleTool` cleanup |
+
+## 27) Google Maps Iframe Remounting & USM Semantic Search Quality Fixes (2026-06-09)
+
+To resolve visual coordinate syncing issues across multiple map cards and fix the low USM (Universiti Sains Malaysia) semantic similarity search results:
+- **Iframe Key Remounting**: Modified `MapAndCard.tsx` to include `key={mapUrl}` on the `<iframe>` element. This forces React to unmount the old map frame and mount a new one upon coordinate shifts, fully bypassing browser-level iframe caches.
+- **University Name Embedding Enrichment**: Updated the vector text construction logic in `tools.py`, `import_knowledge_base.py`, and `import_master_database.py` to include `university_name`. Re-computed and re-synchronized embeddings for all 153 communities, raising USM search cosine similarity scores past `0.6` (safely exceeding the `0.5` threshold) and avoiding UTM/UKM fallback overrides.
+- **Commute Name-Matching Logic**: Refactored the `calculate_commute` response processing in `agent.py` to match the database community names against both the geocoded street-address string and the raw input `origin_address` from LLM arguments, ensuring clean data merges.
+
+## 28) Forgot Password / Reset Password Flow (2026-06-09)
+
+To ensure Magic Link migration compatibility and account recovery:
+- **Reset Password Page**: Implemented a standalone `/reset-password` route page that validates password constraints and updates credentials via `supabase.auth.updateUser()`, redirecting users conditionally based on role.
+- **Login Recovery Popup**: Integrated a forgot-password modal into `/login` to trigger recovery emails via `supabase.auth.resetPasswordForEmail()`.
+- **Security & Dev Bypass**: Bypasses Resend OTP email verification temporarily during registration to simplify deployment testing, and added middleware/callback routes to safely handle the recovery token redirection.
+
 
 
