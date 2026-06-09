@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAdminDataLoader } from '@/lib/useAdminDataLoader';
 import { useApp } from '@/lib/ThemeProvider';
-import { MessageSquare, Send, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, Send, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, FileText, XCircle, Eye } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, { zh: string; en: string }> = {
   aircon: { zh: '空调', en: 'Aircon' },
@@ -27,6 +27,62 @@ export default function MobileFeedback() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [sending, setSending] = useState<string | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [selectedEvidence, setSelectedEvidence] = useState<any | null>(null);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [showPendingPayments, setShowPendingPayments] = useState(true);
+
+  // Load pending payment evidence
+  useEffect(() => {
+    if (!isLoaded) return;
+    const loadPending = async () => {
+      try {
+        const { isMockDatabase } = await import('@/lib/supabase');
+        if (isMockDatabase) {
+          const payments = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+          const pending = payments.filter((p: any) => p.status === 'pending_review' && p.evidence_url);
+          setPendingPayments(pending);
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const client = createClient();
+          const { data } = await client.from('payment_records')
+            .select('*, leases(tenant_id, unit_number, units(room_type, communities(name)))')
+            .eq('status', 'pending_review')
+            .not('evidence_url', 'is', null);
+          setPendingPayments(data || []);
+        }
+      } catch {}
+    };
+    loadPending();
+  }, [isLoaded]);
+
+  // Approve/reject payment evidence
+  const handleReview = async (paymentId: string, approve: boolean) => {
+    setReviewing(paymentId);
+    try {
+      const { isMockDatabase } = await import('@/lib/supabase');
+      if (isMockDatabase) {
+        const payments = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+        const idx = payments.findIndex((p: any) => p.id === paymentId);
+        if (idx >= 0) {
+          payments[idx].status = approve ? 'approved' : 'rejected';
+          payments[idx].paid = approve;
+        }
+        localStorage.setItem('ez_payments', JSON.stringify(payments));
+      } else {
+        const { createClient } = await import('@/utils/supabase/client');
+        const client = createClient();
+        await client.from('payment_records').update({
+          status: approve ? 'approved' : 'rejected',
+          paid: approve,
+        }).eq('id', paymentId);
+      }
+      setPendingPayments(prev => prev.filter(p => p.id !== paymentId));
+      setSelectedEvidence(null);
+    } catch (e) {
+      console.error('Review failed:', e);
+    } finally { setReviewing(null); }
+  };
 
   const filteredFeedbacks = useMemo(() => {
     return feedbacks
@@ -135,11 +191,119 @@ export default function MobileFeedback() {
           {lang === 'zh' ? '消息与反馈' : 'Messages & Feedback'}
         </h1>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-          {lang === 'zh'
-            ? `${feedbacks.filter((f: any) => f.status !== 'resolved').length} 条待处理`
-            : `${feedbacks.filter((f: any) => f.status !== 'resolved').length} open`}
+          {pendingPayments.length > 0
+            ? (lang === 'zh' ? `${pendingPayments.length} 条待审核凭证` : `${pendingPayments.length} pending reviews`)
+            : (lang === 'zh' ? `${feedbacks.filter((f: any) => f.status !== 'resolved').length} 条待处理` : `${feedbacks.filter((f: any) => f.status !== 'resolved').length} open`)}
         </p>
       </div>
+
+      {/* Pending Payment Reviews */}
+      {pendingPayments.length > 0 && (
+        <div style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--glass-border)', borderRadius: 16,
+          padding: '16px', marginBottom: 16,
+        }}>
+          <button onClick={() => setShowPendingPayments(!showPendingPayments)} style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginBottom: showPendingPayments ? 12 : 0,
+          }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={16} style={{ color: 'var(--warning)' }} />
+              {lang === 'zh' ? '待审核凭证' : 'Pending Reviews'}
+              <span style={{
+                background: 'var(--danger)', color: 'white', fontSize: '0.65rem', fontWeight: 700,
+                padding: '2px 7px', borderRadius: 20, lineHeight: 1,
+              }}>{pendingPayments.length}</span>
+            </div>
+            {showPendingPayments ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+          </button>
+
+          {showPendingPayments && pendingPayments.map(p => {
+            const lease = p.leases;
+            const unit = lease?.units;
+            const community = unit?.communities;
+            const month = new Date(p.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
+            return (
+              <div key={p.id} style={{
+                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 12,
+                padding: '12px', marginBottom: 8,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                      {community?.name || '—'} · {unit?.room_type || '—'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {month} {lease?.unit_number ? `· ${lease.unit_number}` : ''}
+                    </div>
+                  </div>
+                  <span style={{
+                    padding: '3px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 600,
+                    background: 'var(--warning-light)', color: 'var(--warning)',
+                  }}>{lang === 'zh' ? '待审核' : 'Pending'}</span>
+                </div>
+
+                {/* Evidence preview */}
+                <button onClick={() => setSelectedEvidence(p)} style={{
+                  width: '100%', padding: '8px', borderRadius: 10, cursor: 'pointer',
+                  background: 'var(--primary-light)', border: '1px solid var(--glass-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, marginBottom: 8,
+                }}>
+                  <Eye size={14} /> {lang === 'zh' ? '查看凭证' : 'View Evidence'}
+                </button>
+
+                {/* Approve / Reject */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => handleReview(p.id, true)} disabled={reviewing === p.id} style={{
+                    flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    background: 'var(--success)', color: 'white', fontSize: '0.78rem', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    opacity: reviewing === p.id ? 0.6 : 1,
+                  }}>
+                    <CheckCircle2 size={14} /> {lang === 'zh' ? '通过' : 'Approve'}
+                  </button>
+                  <button onClick={() => handleReview(p.id, false)} disabled={reviewing === p.id} style={{
+                    flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    background: 'var(--danger)', color: 'white', fontSize: '0.78rem', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    opacity: reviewing === p.id ? 0.6 : 1,
+                  }}>
+                    <XCircle size={14} /> {lang === 'zh' ? '驳回' : 'Reject'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Evidence Modal */}
+      {selectedEvidence && (
+        <div onClick={() => setSelectedEvidence(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--bg-surface-solid)', borderRadius: 20, width: '100%', maxWidth: 400,
+            padding: '20px', maxHeight: '80vh', overflow: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-h)', margin: 0 }}>
+                {lang === 'zh' ? '支付凭证' : 'Payment Evidence'}
+              </h3>
+              <button onClick={() => setSelectedEvidence(null)} style={{
+                width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--glass-border)',
+                background: 'var(--glass-bg)', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>×</button>
+            </div>
+            <img src={selectedEvidence.evidence_url} alt="Evidence" style={{
+              width: '100%', borderRadius: 12, border: '1px solid var(--glass-border)',
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, overflowX: 'auto' }}>
