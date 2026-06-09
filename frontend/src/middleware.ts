@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/mobile-upload-property/') ||
     pathname.startsWith('/mobile-upload-qr/') ||
     pathname.startsWith('/m/') ||
+    pathname.startsWith('/mt/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
@@ -127,9 +128,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(tenantHomeUrl);
     }
 
+    // Mobile tenants → redirect to mobile workstation /mt/*
+    if (isMobileUA(request) && !pathname.startsWith('/mt/') && !pathname.startsWith('/profile') && !pathname.startsWith('/m/')) {
+      const mobileTenantUrl = request.nextUrl.clone();
+      const tenantRouteMap: Record<string, string> = {
+        '/listings': '/mt/listings',
+        '/chat': '/mt/chat',
+        '/my-lease': '/mt/lease',
+        '/maintenance': '/mt/lease',
+        '/inbox': '/mt/profile',
+      };
+      const match = Object.keys(tenantRouteMap).find(r => pathname.startsWith(r));
+      mobileTenantUrl.pathname = match ? tenantRouteMap[match] : '/mt/listings';
+      return NextResponse.redirect(mobileTenantUrl);
+    }
+
     // Unified identity gate: missing identity_type → complete on /profile
     // DB is source of truth (legacy tenants may lack user_metadata.role).
-    if (!pathname.startsWith('/profile')) {
+    if (!pathname.startsWith('/profile') && !pathname.startsWith('/mt/profile')) {
       let identityType: string | null | undefined = user.user_metadata?.identity_type;
 
       if (supabase) {

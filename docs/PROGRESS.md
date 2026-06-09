@@ -2830,3 +2830,123 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 | **中间件与安全白名单放行** | 在 `middleware.ts` 与 `auth/callback/route.ts` 中针对 `/reset-password` 重定向流进行了安全放行，防范由于缺少初始 session cookie 或身份资料不完善导致的强制路由回拨与认证死循环。 | `frontend/src/middleware.ts`, `frontend/src/app/auth/callback/route.ts` |
 | **Mock 离线重置支持** | 为本地/离线开发环境（Mock mode）提供了一套在 `localStorage` 条件下模拟的密码更新仿真流程，保证在断网与无 Supabase 连接下开发一致性。 | `frontend/src/lib/supabase.ts` |
 
+
+## 五十一、手机端双角色轻量工作站 + PWA 支持（2026-06-09）
+
+**目标：** 为中介和租客分别提供手机专属轻量版工作台，自动识别设备并分流；支持 PWA 安装到桌面。
+
+### 1. 中介手机端 (`/m/*`)
+
+| 路由 | 文件 | 功能 |
+|------|------|------|
+| `/m/dashboard` | `app/m/dashboard/page.tsx` | KPI 卡片 + 快捷操作入口 |
+| `/m/properties` | `app/m/properties/page.tsx` | 房源列表（卡片式 + 搜索筛选 + 状态标签） |
+| `/m/upload` | `app/m/upload/page.tsx` | 房源上传（4步分步表单 + 图片/视频/QR码压缩） |
+| `/m/feedback` | `app/m/feedback/page.tsx` | 工单消息（展开回复 + 标记解决） |
+| `/m/profile` | `app/m/profile/page.tsx` | 个人资料（头像上传 + 退出登录） |
+
+**共享组件：** `MobileShell.tsx`（底部 Tab 导航，5 个 Tab）
+**布局：** `app/m/layout.tsx`（AuthProvider + AdminDataProvider + MobileShell）
+**数据加载：** `lib/useAdminDataLoader.ts`（复用 AdminPanel 的 Supabase/LocalStorage 双模式加载逻辑）
+
+### 2. 租客手机端 (`/mt/*`)
+
+| 路由 | 文件 | 功能 |
+|------|------|------|
+| `/mt/listings` | `app/mt/listings/page.tsx` | 房源浏览（网格/列表 + 搜索 + 筛选 + 收藏 + 详情抽屉） |
+| `/mt/chat` | `app/mt/chat/page.tsx` | AI 助手（SSE 流式 + 工具卡 + 快捷提示） |
+| `/mt/lease` | `app/mt/lease/page.tsx` | 租约管理（当前租约 + 历史 + 账单 + 维修工单） |
+| `/mt/profile` | `app/mt/profile/page.tsx` | 个人资料（**含完整身份验证流程** + 证件上传） |
+
+**共享组件：** `MobileTenantShell.tsx`（底部 Tab 导航，4 个 Tab）
+**布局：** `app/mt/layout.tsx`（AuthProvider + TenantDataProvider + ListingsDataProvider + PendingCountsProvider + 身份门禁）
+
+### 3. 身份验证流程（租客手机端）
+
+新用户登录后必须完成身份验证才能访问其他页面：
+
+1. `mt/layout.tsx` 中的 `MobileTenantGate` 检查 `profileIdentityType`
+2. 若为空 → 自动重定向到 `/mt/profile`
+3. `/mt/profile` 显示迎新横幅 + 身份类型三选一（马来西亚公民 / 国际留学生 / 其他国际人士）
+4. 按类型上传对应证件（IC 正反面 / 护照 + 学生证 / 护照 + 工作签证）
+5. 保存后 `setProfileIdentityType()` 更新缓存，解锁其他页面
+
+**证件压缩：** 使用 `REN_TAG_PRESET`（1200×800, JPEG 88%），上传至 Supabase Storage `tenant-docs/` 目录。
+
+### 4. 设备检测与自动分流（Middleware）
+
+`middleware.ts` 新增租客手机端分流逻辑：
+
+```typescript
+if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
+  // /listings → /mt/listings
+  // /chat → /mt/chat
+  // /my-lease → /mt/lease
+  // 其他 → /mt/listings
+}
+```
+
+- 中介手机端：`/admin/*` → `/m/*`（已有）
+- 租客手机端：`/listings` 等 → `/mt/*`（新增）
+- 桌面端完全不受影响
+
+### 5. PWA 支持
+
+| 文件 | 用途 |
+|------|------|
+| `public/manifest.json` | PWA 配置（App 名称、图标、启动页、全屏模式） |
+| `public/sw.js` | Service Worker（离线缓存 + 断网回退） |
+| `layout.tsx` | Meta 标签（theme-color、apple-mobile-web-app-capable）+ SW 注册 |
+
+- Safari 用户可"添加到主屏幕"，桌面图标直接打开
+- Android 用户体验接近原生 App
+- 离线时 Service Worker 提供缓存回退
+
+### 6. UI/UX 风格统一
+
+所有手机端页面严格复用桌面端 CSS 变量：
+- Glassmorphism 磨砂玻璃质感（`--glass-bg`、`--glass-border`、`backdrop-filter: blur(20px)`）
+- Teal 配色（`--primary: #0D9488`、`--gradient-primary`）
+- DM Sans 字体（`--font-body`）
+- 统一圆角（`--radius-sm: 10px`、`--radius-md: 14px`）
+- 统一阴影（`--glass-shadow`）
+
+### 7. 文件清单
+
+**新建文件（12个）：**
+
+| 文件 | 说明 |
+|------|------|
+| `components/MobileShell.tsx` | 中介底部 Tab 导航 |
+| `components/MobileTenantShell.tsx` | 租客底部 Tab 导航 |
+| `lib/useAdminDataLoader.ts` | 共享数据加载 hook |
+| `app/m/layout.tsx` | 中介手机端布局 |
+| `app/m/dashboard/page.tsx` | 中介仪表盘 |
+| `app/m/properties/page.tsx` | 中介房源列表 |
+| `app/m/upload/page.tsx` | 中介房源上传（分步表单） |
+| `app/m/feedback/page.tsx` | 中介工单消息 |
+| `app/m/profile/page.tsx` | 中介个人资料 |
+| `app/mt/layout.tsx` | 租客手机端布局 + 身份门禁 |
+| `app/mt/listings/page.tsx` | 租客房源浏览 |
+| `app/mt/chat/page.tsx` | 租客 AI 助手 |
+| `app/mt/lease/page.tsx` | 租客租约管理 |
+| `app/mt/profile/page.tsx` | 租客个人资料 + 身份验证 |
+| `public/manifest.json` | PWA 配置 |
+| `public/sw.js` | Service Worker |
+
+**修改文件（2个）：**
+
+| 文件 | 改动 |
+|------|------|
+| `middleware.ts` | 添加 `/mt/` 白名单 + 租客手机端分流 + `/mt/profile` 身份门禁放行 |
+| `layout.tsx` | PWA meta 标签 + Service Worker 注册 |
+
+### 8. 压缩策略
+
+| 用途 | 预设 | 最大尺寸 | 质量 |
+|------|------|---------|------|
+| 房源照片 | `UNIT_IMAGE_PRESET` | 1920×1920 | JPEG 88% |
+| 收款码 | `QR_IMAGE_PRESET` | 800×800 | JPEG 92% |
+| 证件照片 | `REN_TAG_PRESET` | 1200×800 | JPEG 88% |
+| 支付凭证 | `EVIDENCE_IMAGE_PRESET` | 1080×2400 | JPEG 80% |
+

@@ -53,8 +53,23 @@ Malaysia_Ez_rent/
 │   │   ├── register/agent/page.tsx     # Agent application (REN + password + email verification)
 │   │   ├── register/complete-profile/  # Legacy wizard (default identity completion → /profile)
 │   │   ├── auth/callback/route.ts      # OAuth code + legacy token_hash → session + redirect
+│   │   ├── m/                          # 中介手机端轻量工作站（自动 UA 分流）
+│   │   │   ├── layout.tsx              # AuthProvider + AdminDataProvider + MobileShell
+│   │   │   ├── dashboard/page.tsx      # KPI 卡片 + 快捷操作
+│   │   │   ├── properties/page.tsx     # 房源列表（卡片式 + 搜索筛选）
+│   │   │   ├── upload/page.tsx         # 房源上传（4步分步表单 + 压缩）
+│   │   │   ├── feedback/page.tsx       # 工单消息（展开回复）
+│   │   │   └── profile/page.tsx        # 个人资料 + 退出登录
+│   │   ├── mt/                         # 租客手机端轻量工作站（自动 UA 分流）
+│   │   │   ├── layout.tsx              # AuthProvider + 身份门禁 + MobileTenantShell
+│   │   │   ├── listings/page.tsx       # 房源浏览（网格/列表 + 筛选 + 收藏）
+│   │   │   ├── chat/page.tsx           # AI 助手（SSE 流式 + 工具卡）
+│   │   │   ├── lease/page.tsx          # 租约管理（账单 + 维修工单）
+│   │   │   └── profile/page.tsx        # 个人资料 + 身份验证（证件上传）
 │   │   └── mobile-upload/[id]/page.tsx # anonymous evidence upload
 │   ├── src/components/
+│   │   ├── MobileShell.tsx             # 中介手机端底部 Tab 导航
+│   │   ├── MobileTenantShell.tsx       # 租客手机端底部 Tab 导航
 │   │   ├── AppSidebar.tsx              # sidebar (useRouter navigation, usePathname active state)
 │   │   ├── AppTopbar.tsx               # topbar (theme/lang toggles, logout)
 │   │   ├── AdminShell.tsx              # 中介路由壳：pathname → activeTab，单实例 AdminPanel
@@ -73,6 +88,7 @@ Malaysia_Ez_rent/
 │   ├── src/lib/
 │   │   ├── AuthContext.tsx              # auth state provider (role, adminRole, logout, deleteAccount)
 │   │   ├── PendingCountsContext.tsx     # pending counts provider (badges sync across routes)
+│   │   ├── useAdminDataLoader.ts       # shared data loader hook for mobile agent workstation
 │   │   ├── ListingsDataContext.tsx      # 房源列表 SWR 内存缓存（租客/中介浏览共享）
 │   │   ├── TenantDataContext.tsx        # 租客门户跨 tab 数据（租约/报修/资料）
 │   │   ├── tenantIdentityUtils.ts       # 身份资料完整性检测（共享逻辑）
