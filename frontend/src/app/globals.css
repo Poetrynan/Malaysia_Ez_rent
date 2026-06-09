@@ -1108,8 +1108,18 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-send.stop-mode {
   background: #EF4444;
   animation: none !important;
+  transform: none !important;
+  transition: none !important;
 }
-.manus-send.stop-mode:hover { background: #DC2626; transform: scale(1.1); }
+.manus-send.stop-mode:hover {
+  background: #DC2626;
+  transform: none !important;
+  transition: none !important;
+}
+.manus-send.stop-mode:active {
+  transform: none !important;
+  transition: none !important;
+}
 
 /* Spinner */
 .tool-spinner {
