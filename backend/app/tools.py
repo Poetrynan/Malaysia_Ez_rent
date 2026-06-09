@@ -682,13 +682,13 @@ def sync_kb_embeddings() -> int:
         return 0
     try:
         rows = supabase_service_client.table("rental_knowledge_base")\
-            .select("id,community_name,description,property_type")\
+            .select("id,community_name,description,property_type,university_name")\
             .is_("embedding", "null").execute()
         if not rows.data:
             return 0
         count = 0
         for row in rows.data:
-            text = f"{row['community_name']} {row.get('property_type','')} {row.get('description','')}"
+            text = f"{row['community_name']} {row.get('property_type','')} {row.get('university_name','')} {row.get('description','')}"
             try:
                 vec = get_embedding(text)
                 supabase_service_client.table("rental_knowledge_base")\

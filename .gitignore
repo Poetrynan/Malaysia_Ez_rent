@@ -29,3 +29,14 @@ frontend/.env.local
 # History snapshots (local reference only)
 history/
 RAG/count.ps1
+
+# Temporary test/debug files
+backend/all_coords.txt
+db_description_utf8.txt
+transcript_ui_events.txt
+
+# Untracked scripts in backend/scripts/
+backend/scripts/*
+!backend/scripts/expand_knowledge_base.py
+!backend/scripts/import_knowledge_base.py
+!backend/scripts/import_master_database.py

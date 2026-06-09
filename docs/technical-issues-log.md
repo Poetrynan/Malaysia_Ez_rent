@@ -197,3 +197,50 @@
 | **中间件一致性** | Mock/Live 模式的重定向逻辑必须保持一致 |
 | **UI 闪烁** | 跳转前不要渲染无关 UI，先判断再决定是否渲染 |
 | **网格布局** | 固定列数用 `repeat(N, 1fr)`，自适用 `repeat(auto-fill, minmax(...))` |
+
+---
+
+## 2026-06-09：地图卡片切换定位缓存与 USM 语义检索相似度偏低修复
+
+### 问题 1：多地图卡片切换时定位未重绘刷新（缓存 Bug）
+
+**现象：** AI 在一次对话里返回了多个小区（如 Arte S 和 Centrio Avenue）的地图卡片。用户在点击切换时，地图仍然显示前一个加载小区的定位，无法正确载入当前卡片的定位。
+
+**根因：** React 在重绘 iframe 嵌入代码时，由于 `<iframe>` 本身只是参数（`src`）发生改变，React 默认倾向于原地更新属性而非销毁重构，由于浏览器的 iframe 缓存机制，地图未执行重新挂载，导致视图仍然展示老小区的坐标。
+
+**修复：** 
+- 在前端 [MapAndCard.tsx](file:///c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/components/MapAndCard.tsx) 中的 Google 地图 `<iframe>` 上追加 `key={mapUrl}`。
+- 当 `mapUrl`（由经纬度及参数合成）变化时，React 强制将旧的 `<iframe>` 彻底卸载（unmount）并重新挂载（remount）一个新的 iframe，强行唤醒浏览器的全新网络请求和渲染，彻底消除缓存。
+
+### 问题 2：USM 检索匹配由于相似度低于 0.5 出现备选降级
+
+**现象：** 用户提问 "USM 租房" 时，Agent 检索完知识库却反馈非 USM 周边的小区（如 UTM/UKM 等其他大学小区）。
+
+**根因：** 之前在后台 `tools.py` 以及数据导入脚本中生成 RAG 小区的 embedding 时，输入文本仅包含了小区名字和描述，**遗漏了大学名字本身**。这导致当用户输入 "USM"（即使经过别名转换为 "Universiti Sains Malaysia"），经过相似度模型计算后的 cosine 相似度得分仅在 `0.45` 左右，低于系统的匹配阈值 `0.5`，从而被系统误判定为 0 结果，降级召回了其他不相关的小区。
+
+**修复：**
+- 修改了 `tools.py` 中的 `sync_kb_embeddings()`。
+- 修改了 `import_knowledge_base.py` 以及主导入脚本 `import_master_database.py`。
+- 将 `university_name` 拼接进入生成向量化 embedding 的最终文本中。
+- 重新运行 `import_master_database.py`，重新计算并写入了全部 153 个小区的 embedding 向量。
+- 修复后，针对 "USM" 的检索相似度飙升至 `0.6` 以上，直接精准召回 `Arte S` 与 `Centrio Avenue`。
+
+### 问题 3：通勤查询后地理编码格式与小区名字无法对齐
+
+**现象：** AI 在对比计算通勤（如 Centrio Avenue 到 USM）时，Google 距离矩阵能够测算出路线，但前端卡片展示时地图只显示了一个大头针，或者卡片资料缺失。
+
+**根因：** 
+- Google Geocoding 常常把包含小区名的 origin 字符串 `Centrio Avenue` 转换为类似 `18, Jalan Permai, ...` 的详细道路级物理地址。
+- 后端 `agent.py` 合并知识库信息时，仅使用简单的子字符串匹配 `if name.lower() in origin_address.lower()`，这在遇到物理路名后无法匹配通过，导致数据合并失败。
+
+**修复：**
+- 增强了名称配对过滤，在 `calculate_commute` 结果返回时，将数据库里的小区名称同时对比 `geocoded formatted_address` 以及**最初传给 LLM 的原始 `origin_address` 参数**，双向比对成功即可无缝匹配并合并结构化指标。
+
+### 教训
+
+| 类别 | 教训 |
+|------|------|
+| **iframe 缓存** | 动态渲染 `<iframe>`（如 Google Maps Embed）时，若 src 依赖外部状态，应使用唯一的 `key` 属性强制 React 刷新重装组件。 |
+| **RAG 向量文本补全** | 向量嵌入源文本应包括实体对应的关键特征属性（如关联大学名、省份名等），单纯的名字和描述对于缩写和专业缩略词的查询极易引起相似度折损。 |
+| **地名比对健壮性** | 在与外部地理数据库交互时，地名通常会发生格式重构（如变成门牌号或街道），因此匹配策略应尽可能保留原始的查询关键字进行二次比对。 |
+

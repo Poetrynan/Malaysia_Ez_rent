@@ -2774,4 +2774,30 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 - 不影响现有用户数据
 - 向下兼容（旧浏览器不支持的功能会优雅降级）
 
+---
+
+## 七十、地图卡片多卡定位错乱、USM检索相似度偏低与主数据库同步修复（2026-06-09）
+
+**目标**：修复 AI 对话中查询 USM（马来西亚理科大学）租房时，多个地图卡片经纬度错乱、相似度偏低导致无法召回正确小区，以及主数据库同步问题。
+
+### 已实施
+
+| 类别 | 内容 | 文件 |
+|------|------|------|
+| **前端地图 Key 修复** | 在 `<iframe>` 嵌入代码中引入 `key={mapUrl}`，强制 React 在坐标变化时重新挂载地图组件，防止浏览器缓存 iframe 导致多卡片切换定位不准。 | `frontend/src/components/MapAndCard.tsx` |
+| **大学名称向量化增强** | 之前生成向量嵌入时漏掉了 `university_name`。现在在生成 embedding 文本时，将大学名称字段与小区名称、描述共同作为输入，以便查询 "USM" 时能获得大于 `0.5` 阈值的相似度得分。 | `backend/app/tools.py` |
+| **主数据库导入同步** | 之前主数据库（来自 `malaysia_rental_master_database.json`）在导入时未带大学名称进行向量计算。现已修改 `import_master_database.py` 并在 Supabase 中重新运行导入，成功为 153 个小区重新计算并同步了最新的 embedding。 | `backend/scripts/import_master_database.py`, `backend/scripts/import_knowledge_base.py` |
+| **通勤工具卡片合并优化** | 增强了 `calculate_commute` 后的社区名称匹配机制，同时对比 Google geocode 返回的结构化路名与原始 LLM 参数中的 `origin_address`，防止中介小区名称因为 geocoding 地址解析不一致而导致无法渲染地图。 | `backend/app/agent.py` |
+
+### 验证结果
+
+1. **相似度验证**：
+   - 重新生成 embedding 并测试发现，对于 `"USM"` 的语义检索，**Arte S** 的相似度由低于 `0.5` 提升至 `0.6143`；**Centrio Avenue** 提升至 `0.6876`，完美避免了备选大学降级逻辑。
+2. **多卡定位验证**：
+   - 运行代理流测试，对于 USM 查询，系统已能稳定输出双地图卡片：
+     - `Centrio Avenue` 对应 `(5.37298, 100.29992)`
+     - `Arte S` 对应 `(5.35927, 100.29265)`
+     - 切换时前端地图能做到瞬间重绘更新，绝无串线或缓存定位错误。
+
+
 

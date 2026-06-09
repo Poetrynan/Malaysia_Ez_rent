@@ -958,8 +958,10 @@ async def live_agent_stream(
                 if kb_community_info:
                     kb_name = (kb_community_info.get("community_name") or "").strip().lower()
                     origin_name = (commute_props.get("origin_name") or "").strip().lower()
-                    names_match = bool(kb_name) and bool(origin_name) and (
-                        kb_name == origin_name or kb_name in origin_name or origin_name in kb_name
+                    raw_origin = (tool_args.get("origin_address") or "").strip().lower()
+                    names_match = bool(kb_name) and (
+                        (bool(origin_name) and (kb_name == origin_name or kb_name in origin_name or origin_name in kb_name)) or
+                        (bool(raw_origin) and (kb_name == raw_origin or kb_name in raw_origin or raw_origin in kb_name))
                     )
                     if names_match:
                         commute_props.update({

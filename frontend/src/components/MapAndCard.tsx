@@ -376,6 +376,7 @@ export default function MapAndCard({
       <div className="map-placeholder" style={{ height: 260, position: 'relative', overflow: 'hidden' }}>
         {(isCommuteMode || roomMapLoaded) && mapUrl ? (
           <iframe
+            key={mapUrl}
             width="100%" height="100%"
             style={{ border: 0, display: 'block' }}
             loading="lazy" allowFullScreen
