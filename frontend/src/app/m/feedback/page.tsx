@@ -46,7 +46,7 @@ export default function MobileFeedback() {
           const { createClient } = await import('@/utils/supabase/client');
           const client = createClient();
           const { data } = await client.from('payment_records')
-            .select('*, leases(tenant_id, unit_number, monthly_rent, units(room_type, rent, communities(name)))')
+            .select('*, leases(tenant_id, unit_number, monthly_rent, units(room_type, rent, communities(name)), users(full_name))')
             .eq('status', 'pending_review')
             .not('evidence_url', 'is', null);
           setPendingPayments(data || []);
@@ -222,6 +222,7 @@ export default function MobileFeedback() {
             const lease = p.leases;
             const unit = lease?.units;
             const community = unit?.communities;
+            const tenant = lease?.users;
             const month = new Date(p.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
             return (
               <div key={p.id} style={{
@@ -232,6 +233,9 @@ export default function MobileFeedback() {
                   <div>
                     <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>
                       {community?.name || '—'} · {unit?.room_type || '—'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-body)', fontWeight: 600 }}>
+                      {tenant?.full_name || '—'}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       {month} · RM {lease?.monthly_rent || unit?.rent || '—'} {lease?.unit_number ? `· ${lease.unit_number}` : ''}
