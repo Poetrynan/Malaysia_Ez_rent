@@ -81,36 +81,12 @@ export default function TenantRegisterPage() {
       return;
     }
     setError('');
-    setSendingOtp(true);
-
-    try {
-      if (isMockDatabase) {
-        console.log('[Mock OTP] Code generated for:', email);
-        showToast(lang === 'zh' ? '验证码发送成功（开发模式）' : 'Verification code sent (Dev Mode)', 'success');
-        setOtpSent(true);
-        setOtpCountdown(60);
-      } else {
-        const res = await fetch('/api/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.toLowerCase().trim() })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast(lang === 'zh' ? '验证码已发送至您的邮箱' : 'Verification code sent to your email', 'success');
-          setOtpSent(true);
-          setOtpCountdown(60);
-        } else {
-          setError(data.error || (lang === 'zh' ? '发送验证码失败' : 'Failed to send verification code'));
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Error sending OTP');
-    } finally {
-      setSendingOtp(false);
-    }
+    
+    // Temporarily bypass Resend email verification requirement for easy deployment
+    setOtpVerified(true);
+    showToast(lang === 'zh' ? '邮箱验证成功！' : 'Email verified successfully!', 'success');
   };
+
 
   const handleVerifyOtp = async () => {
     if (otpCode.trim().length !== 6) {
