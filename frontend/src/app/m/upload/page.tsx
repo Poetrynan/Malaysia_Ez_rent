@@ -71,13 +71,24 @@ export default function MobileUpload() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  // Google Maps API ready state
+  const [gmapsReady, setGmapsReady] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.google?.maps?.places) { setGmapsReady(true); return; }
+    const interval = setInterval(() => {
+      if (window.google?.maps?.places) { setGmapsReady(true); clearInterval(interval); }
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
+
   // Google Places autocomplete for community name
   const handleCommunityInput = useCallback((val: string) => {
     setNewCommunityName(val);
     setCommunitySuggestions([]);
     if (!val.trim()) { setShowSuggestions(false); return; }
 
-    if (typeof window !== 'undefined' && window.google?.maps?.places) {
+    if (gmapsReady && window.google?.maps?.places) {
       const service = new window.google.maps.places.AutocompleteService();
       service.getPlacePredictions(
         { input: val, componentRestrictions: { country: 'my' }, types: ['establishment', 'geocode'] },
@@ -97,14 +108,14 @@ export default function MobileUpload() {
         }
       );
     }
-  }, []);
+  }, [gmapsReady]);
 
   const selectCommunitySuggestion = useCallback((s: any) => {
     setNewCommunityName(s.main_text);
     setShowSuggestions(false);
     setCommunitySuggestions([]);
 
-    if (s.place_id && typeof window !== 'undefined' && window.google?.maps?.places) {
+    if (s.place_id && gmapsReady && window.google?.maps?.places) {
       const dummyDiv = document.createElement('div');
       const placesService = new window.google.maps.places.PlacesService(dummyDiv);
       placesService.getDetails(
@@ -121,7 +132,7 @@ export default function MobileUpload() {
     } else {
       setNewCommunityAddress(s.secondary_text || '');
     }
-  }, []);
+  }, [gmapsReady]);
 
   // Load existing unit data if editing
   useEffect(() => {
