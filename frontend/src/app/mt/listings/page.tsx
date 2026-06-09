@@ -40,23 +40,16 @@ export default function MobileListingsPage() {
 
     const load = async () => {
       try {
-        if (isMockDatabase) {
-          const u = JSON.parse(localStorage.getItem('ez_units') || '[]').filter((x: any) => x.status === 'available');
-          const c = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-          setUnits(u); setCommunities(c);
-          sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
-        } else {
-          const { createClient } = await import('@/utils/supabase/client');
-          const client = createClient();
-          const [unitsRes, commRes] = await Promise.all([
-            client.from('units').select('*, communities(*)').eq('status', 'available').order('created_at', { ascending: false }),
-            client.from('communities').select('*'),
-          ]);
-          const u = unitsRes.data || [];
-          const c = commRes.data || [];
-          setUnits(u); setCommunities(c);
-          sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
-        }
+        // Use supabase client for both mock and live (mock auto-returns defaults)
+        const { supabase } = await import('@/lib/supabase');
+        const [unitsRes, commRes] = await Promise.all([
+          supabase.from('units').select('*, communities(*)').eq('status', 'available').order('created_at', { ascending: false }),
+          supabase.from('communities').select('*'),
+        ]);
+        const u = unitsRes.data || [];
+        const c = commRes.data || [];
+        setUnits(u); setCommunities(c);
+        sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
       } catch (e) { console.error('Load listings error:', e); }
       setLoading(false);
     };
