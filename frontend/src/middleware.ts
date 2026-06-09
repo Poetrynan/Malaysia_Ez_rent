@@ -133,7 +133,6 @@ export async function middleware(request: NextRequest) {
       const mobileTenantUrl = request.nextUrl.clone();
       const tenantRouteMap: Record<string, string> = {
         '/listings': '/mt/listings',
-        '/chat': '/mt/chat',
         '/my-lease': '/mt/lease',
         '/maintenance': '/mt/lease',
         '/inbox': '/mt/profile',

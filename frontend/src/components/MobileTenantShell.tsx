@@ -3,11 +3,10 @@
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/lib/ThemeProvider';
-import { Search, MessageSquare, FileText, User, Sun, Moon, Globe } from 'lucide-react';
+import { Search, FileText, User, Sun, Moon, Globe } from 'lucide-react';
 
 const tabs = [
   { path: '/mt/listings', icon: Search, labelZh: '找房', labelEn: 'Listings' },
-  { path: '/mt/chat', icon: MessageSquare, labelZh: 'AI 助手', labelEn: 'AI Chat' },
   { path: '/mt/lease', icon: FileText, labelZh: '租约', labelEn: 'Lease' },
   { path: '/mt/profile', icon: User, labelZh: '我的', labelEn: 'Profile' },
 ];
