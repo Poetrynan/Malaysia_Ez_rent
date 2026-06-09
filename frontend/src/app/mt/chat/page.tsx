@@ -23,6 +23,7 @@ const QUICK_PROMPTS = [
 
 export default function MobileChatPage() {
   const { role, userEmail } = useAuth();
+  const [userId] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('ez_tenant_id') || 'tenant-123' : 'tenant-123');
   const { lang, t } = useApp();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -52,7 +53,7 @@ export default function MobileChatPage() {
       const resp = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text.trim(), history }),
+        body: JSON.stringify({ query: text.trim(), user_id: userId || 'anonymous', history }),
         signal: controller.signal,
       });
 
