@@ -639,55 +639,25 @@
 - **三列响应式身份卡片网格**：将原横跨整屏的垂直列表身份卡片重构为 3 列并排网格，每个身份类型均搭载精美专业的 SVG 矢量图标（`CreditCard`、`GraduationCap`、`Globe`），在不同分辨率下完美自适应折行。
 - **进度条翡翠绿渐变**：当个人资料完善度达到 100% 时，进度条终点色彩从警告色平滑过渡为健康的翡翠绿（`var(--success)`），提升用户获得感。
 - **迎新 Onboarding 引导横幅**：针对未验证的新注册租客，在页面头部渲染一个毛玻璃渐变色的 `👋 欢迎来到 Malaysia Ez Rent！` Onboarding 横幅，突出强调强制要求“选择身份类型并上传对应证件才能使用房源浏览、租约等功能”的警示要求，指引明确且富有高级感。
-- **个人信息骨架屏同步重构**：重构 `TenantSkeleton` 的 `mode === 'profile'` 骨架，改用限制最大宽度 `800px` 且居中对齐的卡片容器，并精确放置标题、迎新横幅、进度条、四宫格输入项及三列身份选项卡的 Shimmer 块，彻底消除因骨架屏与真实表单布局结构和宽度差异导致的加载过渡跳跃与布局抖动。
+- **个人信息骨架屏同步重构**：重构 `TenantSkeleton` 的 `mode === 'profile'` 骨架，改用限制最大宽度 `800px` 且居中对齐的卡片容器，并精确放置标题、迎新横幅、进度条、四宫格输入项及三列身份选项卡的 Shimmer 块，彻底消除因骨架屏与真实表单布局结构 and 宽度差异导致的加载过渡跳跃与布局抖动。
+
+---
+
+### ✅ 49. 忘记密码 / 重置密码（Magic Link 老租客兼容）
+
+**完成时间**：2026-06-09
+
+**改动内容**：
+- **登录页入口**：在租客和中介登录表单上均添加了「忘记密码？」链接，并实现了一个磨砂玻璃重置弹窗 UI，用于提交用户的注册邮箱。
+- **重置邮件流程**：调用 `supabase.auth.resetPasswordForEmail()` 将重置链接发送至用户邮箱。
+- **独立重置页面**：新建了 `/reset-password` 路由页面，在校验密码长度、强度的同时，调用 `supabase.auth.updateUser()` 设置新密码，并在完成后自动根据角色（租客或中介）进行路由分流跳转。
+- **中间件与回调安全放行**：修改 `middleware.ts` 与 `auth/callback/route.ts` 放行重置密码路径，避免未登录/未完善资料的用户触发强制拦截与死循环。
+- **Mock 仿真流支持**：提供本地 Mock 模式下的仿真密码重置链路，一键生成重设凭证链接。
 
 ---
 
 ## 待完成功能
 
-### 🔲 1. 忘记密码 / 重置密码（Magic Link 老租客兼容）
-
-**优先级：** 高（门户隔离上线后的遗留兼容项）
-
-**背景：** 门户隔离改造后，登录页仅保留「邮箱+密码」和「Google」。当年只用 **Magic Link（邮箱链接）** 注册、且邮箱**不是 Google 账号**的老租客，既没有密码，也无法走 Google OAuth，**目前无法登录**。
-
-**受影响用户特征：**
-- 在 `auth.users` 中有账号，`provider` 为 `email`
-- `encrypted_password` 为空或未设置
-- 未绑定 Google 身份
-- `user_metadata.role` 可能已通过 SQL 回填为 `student`，但仍缺登录凭据
-
-**方案：**
-
-1. **登录页入口**
-   - 租客 tab 密码框下方添加「忘记密码？」链接
-   - 中介 tab 同步添加（中介也可能忘记注册时设的密码）
-
-2. **忘记密码流程**
-   - 用户输入注册邮箱 → 调用 `supabase.auth.resetPasswordForEmail(email, { redirectTo: '/auth/callback?next=/reset-password' })`
-   - Supabase 发送重置邮件（需在 Supabase Dashboard → Authentication → Email Templates 配置「Reset Password」模板）
-   - 用户点击邮件链接 → `/auth/callback` 换 session → 跳转 `/reset-password` 页
-
-3. **新建 `/reset-password` 页**
-   - 已登录（来自邮件链接）状态下，输入新密码 + 确认密码
-   - 调用 `supabase.auth.updateUser({ password })` 设置密码
-   - 成功后跳转 `/listings`（租客）或 `/admin/properties`（中介）
-
-4. **中间件白名单**
-   - `/reset-password` 加入 `middleware.ts` 与 `/register/*` 同级放行（需已登录 session，但允许无 `role` 的过渡态）
-
-5. **可选：登录页提示文案**
-   - 在租客登录区加一行小字：「曾用邮箱链接登录的老用户？请使用忘记密码设置新密码。」
-
-**涉及文件（预估）：**
-- `src/app/login/page.tsx` — 添加「忘记密码」链接与发起重置的轻量弹窗/子页
-- `src/app/reset-password/page.tsx` — 新建
-- `src/app/auth/callback/route.ts` — 确认 `next=/reset-password` 路径 cookie 传递正确（复用 #37 修复模式）
-- `src/middleware.ts` — 白名单
-
-**预期效果：** Magic Link 老租客通过邮件重置密码后，可用邮箱+密码正常登录，无需重新注册或绑定 Google。
-
-**临时变通（上线前）：** 开发者可在 Supabase Dashboard → Authentication → Users 中为单个用户手动设置密码，或发送 Admin 重置邮件。
 
 ---
 
