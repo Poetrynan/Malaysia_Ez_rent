@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { compressImageToDataUrl, compressImageFile, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import {
   Camera, ChevronLeft, ChevronRight, Check, X, Loader2,
-  Building2, ImageIcon, Video, Trash2, Upload
+  Building2, ImageIcon, Video, Trash2, Upload, MapPin
 } from 'lucide-react';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Ensuite', 'Whole Unit'];
@@ -38,6 +38,10 @@ export default function MobileUpload() {
   const [communityId, setCommunityId] = useState('');
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityAddress, setNewCommunityAddress] = useState('');
+  const [newCommunityLat, setNewCommunityLat] = useState('');
+  const [newCommunityLng, setNewCommunityLng] = useState('');
+  const [communitySuggestions, setCommunitySuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [roomType, setRoomType] = useState('Studio');
 
   // Step 2: Pricing & Capacity
@@ -64,6 +68,58 @@ export default function MobileUpload() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+
+  // Google Places autocomplete for community name
+  const handleCommunityInput = useCallback((val: string) => {
+    setNewCommunityName(val);
+    setCommunitySuggestions([]);
+    if (!val.trim()) { setShowSuggestions(false); return; }
+
+    if (typeof window !== 'undefined' && window.google?.maps?.places) {
+      const service = new window.google.maps.places.AutocompleteService();
+      service.getPlacePredictions(
+        { input: val, componentRestrictions: { country: 'my' }, types: ['establishment', 'geocode'] },
+        (predictions, status) => {
+          if (status === window.google!.maps.places.PlacesServiceStatus.OK && predictions?.length) {
+            setCommunitySuggestions(predictions.map(p => ({
+              description: p.description,
+              place_id: p.place_id,
+              main_text: p.structured_formatting.main_text,
+              secondary_text: p.structured_formatting.secondary_text,
+            })));
+            setShowSuggestions(true);
+          } else {
+            setCommunitySuggestions([]);
+            setShowSuggestions(false);
+          }
+        }
+      );
+    }
+  }, []);
+
+  const selectCommunitySuggestion = useCallback((s: any) => {
+    setNewCommunityName(s.main_text);
+    setShowSuggestions(false);
+    setCommunitySuggestions([]);
+
+    if (s.place_id && typeof window !== 'undefined' && window.google?.maps?.places) {
+      const dummyDiv = document.createElement('div');
+      const placesService = new window.google.maps.places.PlacesService(dummyDiv);
+      placesService.getDetails(
+        { placeId: s.place_id, fields: ['name', 'formatted_address', 'geometry'] },
+        (place, status) => {
+          if (status === window.google!.maps.places.PlacesServiceStatus.OK && place) {
+            setNewCommunityName(place.name || s.main_text);
+            setNewCommunityAddress(place.formatted_address || s.secondary_text || '');
+            setNewCommunityLat(String(place.geometry?.location?.lat() || ''));
+            setNewCommunityLng(String(place.geometry?.location?.lng() || ''));
+          }
+        }
+      );
+    } else {
+      setNewCommunityAddress(s.secondary_text || '');
+    }
+  }, []);
 
   // Load existing unit data if editing
   useEffect(() => {
@@ -176,12 +232,14 @@ export default function MobileUpload() {
       // Resolve community
       let resolvedCommunityId = communityId;
       if (!communityId && newCommunityName.trim()) {
+        const lat = newCommunityLat ? parseFloat(newCommunityLat) : 0;
+        const lng = newCommunityLng ? parseFloat(newCommunityLng) : 0;
         const newComm = {
           id: 'comm_' + Date.now(),
           name: newCommunityName.trim(),
           address: newCommunityAddress.trim(),
           amenities: [],
-          lat: 0, lng: 0,
+          lat, lng,
           created_at: new Date().toISOString(),
         };
         if (mock) {
@@ -195,6 +253,7 @@ export default function MobileUpload() {
             name: newComm.name,
             address: newComm.address,
             amenities: [],
+            lat, lng,
           }).select().single();
           if (data) newComm.id = data.id;
         }
@@ -483,22 +542,50 @@ export default function MobileUpload() {
             {/* Or create new community */}
             {!communityId && (
               <>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 16, position: 'relative' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
                     {lang === 'zh' ? '新社区名称 *' : 'New Community Name *'}
                   </label>
-                  <input
-                    type="text"
-                    value={newCommunityName}
-                    onChange={e => setNewCommunityName(e.target.value)}
-                    placeholder={lang === 'zh' ? '例如：Sunway Geo Residences' : 'e.g. Sunway Geo Residences'}
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-                      borderRadius: 10, padding: '10px 14px', fontSize: '0.85rem',
-                      color: 'var(--text-h)', fontFamily: 'var(--font-body)',
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }} />
+                    <input
+                      type="text"
+                      value={newCommunityName}
+                      onChange={e => handleCommunityInput(e.target.value)}
+                      onFocus={() => communitySuggestions.length > 0 && setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      placeholder={lang === 'zh' ? '输入小区名称，自动搜索...' : 'Type community name, auto-search...'}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                        borderRadius: 10, padding: '10px 14px 10px 34px', fontSize: '0.85rem',
+                        color: 'var(--text-h)', fontFamily: 'var(--font-body)',
+                      }}
+                    />
+                  </div>
+                  {/* Google Places suggestions dropdown */}
+                  {showSuggestions && communitySuggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                      background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)',
+                      borderRadius: 10, marginTop: 4, maxHeight: 200, overflowY: 'auto',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    }}>
+                      {communitySuggestions.map((s, i) => (
+                        <button key={i} onMouseDown={() => selectCommunitySuggestion(s)} style={{
+                          width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
+                          cursor: 'pointer', textAlign: 'left', borderBottom: i < communitySuggestions.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                          transition: 'background 0.15s',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-h)' }}>{s.main_text}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{s.secondary_text}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
@@ -508,7 +595,7 @@ export default function MobileUpload() {
                     type="text"
                     value={newCommunityAddress}
                     onChange={e => setNewCommunityAddress(e.target.value)}
-                    placeholder={lang === 'zh' ? '街道地址' : 'Street address'}
+                    placeholder={lang === 'zh' ? '选择小区后自动填入' : 'Auto-filled after selecting community'}
                     style={{
                       width: '100%', boxSizing: 'border-box',
                       background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
@@ -516,6 +603,11 @@ export default function MobileUpload() {
                       color: 'var(--text-h)', fontFamily: 'var(--font-body)',
                     }}
                   />
+                  {newCommunityLat && newCommunityLng && (
+                    <div style={{ fontSize: '0.68rem', color: 'var(--success)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MapPin size={10} /> {lang === 'zh' ? '已获取坐标' : 'Coordinates captured'}: {parseFloat(newCommunityLat).toFixed(4)}, {parseFloat(newCommunityLng).toFixed(4)}
+                    </div>
+                  )}
                 </div>
               </>
             )}
