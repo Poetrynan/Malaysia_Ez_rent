@@ -9,7 +9,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  tools?: { name: string; status: 'running' | 'done' | 'error' }[];
+  tools?: { name: string; status: 'running' | 'done' | 'error'; result?: any }[];
 }
 
 const QUICK_PROMPTS = [
@@ -80,16 +80,16 @@ export default function MobileChatPage() {
           try {
             const parsed = JSON.parse(data);
             if (parsed.type === 'text') {
-              finalText += parsed.content;
+              finalText += parsed.delta || '';
               setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: finalText } : m));
             } else if (parsed.type === 'tool_call') {
-              setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, tools: [...(m.tools || []), { name: parsed.name, status: 'running' }] } : m));
+              setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, tools: [...(m.tools || []), { name: parsed.tool_name, status: 'running' }] } : m));
             } else if (parsed.type === 'tool_result') {
               setMessages(prev => prev.map(m => {
                 if (m.id !== assistantMsg.id) return m;
                 const tools = [...(m.tools || [])];
                 const last = tools[tools.length - 1];
-                if (last) last.status = 'done';
+                if (last) { last.status = 'done'; last.result = parsed.result; }
                 return { ...m, tools };
               }));
             }
