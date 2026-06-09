@@ -28,6 +28,9 @@ export default function MobileLeasePage() {
   const [feedbackPhoto, setFeedbackPhoto] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
+  const [agentQrCode, setAgentQrCode] = useState<string | null>(null);
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
 
   const showToast = useCallback((type: 'success' | 'error', msg: string) => {
     setToast({ type, msg }); setTimeout(() => setToast(null), 3000);
@@ -103,6 +106,28 @@ export default function MobileLeasePage() {
     load();
   }, []);
 
+  // Load agent payment QR code
+  useEffect(() => {
+    if (!lease?.agent_id && !unit?.agent_id) return;
+    const agentId = lease?.agent_id || unit?.agent_id;
+    const loadQr = async () => {
+      try {
+        const { isMockDatabase } = await import('@/lib/supabase');
+        if (isMockDatabase) {
+          const admins = JSON.parse(localStorage.getItem('ez_admins') || '[]');
+          const admin = admins.find((a: any) => a.id === agentId);
+          if (admin?.payment_qr_code) setAgentQrCode(admin.payment_qr_code);
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const client = createClient();
+          const { data } = await client.from('admin_users').select('payment_qr_code').eq('id', agentId).maybeSingle();
+          if (data?.payment_qr_code) setAgentQrCode(data.payment_qr_code);
+        }
+      } catch {}
+    };
+    loadQr();
+  }, [lease?.agent_id, unit?.agent_id]);
+
   const handleFeedbackPhoto = useCallback(async (file: File) => {
     try {
       const dataUrl = await compressImageToDataUrl(file, EVIDENCE_IMAGE_PRESET);
@@ -145,6 +170,37 @@ export default function MobileLeasePage() {
       showToast('error', e.message || (lang === 'zh' ? '提交失败' : 'Submission failed'));
     } finally { setFeedbackSending(false); }
   }, [feedbackCategory, feedbackText, feedbackPhoto, lease, lang, showToast]);
+
+  // Evidence upload handler
+  const handleEvidenceUpload = useCallback(async (file: File) => {
+    if (!selectedPayment) return;
+    setEvidenceUploading(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file, EVIDENCE_IMAGE_PRESET);
+      const { isMockDatabase } = await import('@/lib/supabase');
+      if (isMockDatabase) {
+        const allP = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+        const idx = allP.findIndex((p: any) => p.id === selectedPayment.id);
+        if (idx >= 0) { allP[idx].evidence_url = dataUrl; allP[idx].status = 'pending_review'; }
+        localStorage.setItem('ez_payments', JSON.stringify(allP));
+        setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { ...p, evidence_url: dataUrl, status: 'pending_review' } : p));
+      } else {
+        const { createClient } = await import('@/utils/supabase/client');
+        const client = createClient();
+        const blob = await compressDataUrl(dataUrl, EVIDENCE_IMAGE_PRESET);
+        const { data: uploadData } = await client.storage.from('unit-media').upload(`evidence/${selectedPayment.id}.jpg`, blob, { contentType: 'image/jpeg', upsert: true });
+        if (uploadData) {
+          const publicUrl = client.storage.from('unit-media').getPublicUrl(uploadData.path).data.publicUrl;
+          await client.from('payment_records').update({ evidence_url: publicUrl, status: 'pending_review' }).eq('id', selectedPayment.id);
+          setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { ...p, evidence_url: publicUrl, status: 'pending_review' } : p));
+        }
+      }
+      setSelectedPayment(null);
+      showToast('success', lang === 'zh' ? '凭证已上传，等待审核' : 'Evidence uploaded, pending review');
+    } catch (e: any) {
+      showToast('error', e.message || (lang === 'zh' ? '上传失败' : 'Upload failed'));
+    } finally { setEvidenceUploading(false); }
+  }, [selectedPayment, lang, showToast]);
 
   if (loading) {
     return (
@@ -240,10 +296,11 @@ export default function MobileLeasePage() {
                     const month = new Date(p.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', year: '2-digit' });
                     const paid = p.paid || p.status === 'approved';
                     return (
-                      <div key={p.id} style={{
+                      <div key={p.id} onClick={() => setSelectedPayment(p)} style={{
                         background: paid ? 'var(--success-light)' : 'var(--danger-light)',
                         border: `1px solid ${paid ? 'var(--success)' : 'var(--danger)'}`,
                         borderRadius: 10, padding: '10px 8px', textAlign: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s',
                       }}>
                         <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>{month}</div>
                         {paid ? <CheckCircle2 size={18} style={{ color: 'var(--success)' }} /> : <XCircle size={18} style={{ color: 'var(--danger)' }} />}
@@ -253,6 +310,102 @@ export default function MobileLeasePage() {
                 </div>
               </div>
             )}
+
+            {/* Payment Modal */}
+            {selectedPayment && (() => {
+              const paid = selectedPayment.paid || selectedPayment.status === 'approved';
+              const month = new Date(selectedPayment.billing_month).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', year: 'numeric' });
+              const isFirstMonth = payments.indexOf(selectedPayment) === 0;
+              const qrToShow = isFirstMonth ? agentQrCode : (unit?.landlord_qr_code || null);
+              const bankInfo = unit?.landlord_bank_info || null;
+              return (
+                <div onClick={() => setSelectedPayment(null)} style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                }}>
+                  <div onClick={e => e.stopPropagation()} style={{
+                    background: 'var(--bg-surface-solid)', borderRadius: 20, width: '100%', maxWidth: 400,
+                    padding: '24px 20px', maxHeight: '85vh', overflow: 'auto',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-h)', margin: 0 }}>{month}</h3>
+                      <button onClick={() => setSelectedPayment(null)} style={{
+                        width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--glass-border)',
+                        background: 'var(--glass-bg)', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>×</button>
+                    </div>
+
+                    {paid ? (
+                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                        <CheckCircle2 size={40} style={{ color: 'var(--success)', marginBottom: 8 }} />
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--success)' }}>
+                          {lang === 'zh' ? '已缴费' : 'Paid'}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-body)', marginBottom: 16, lineHeight: 1.6 }}>
+                          {lang === 'zh'
+                            ? `请使用银行转账完成支付，然后上传转账截图。`
+                            : `Complete payment by bank transfer, then upload your screenshot.`}
+                        </div>
+
+                        {/* Payment QR */}
+                        {qrToShow ? (
+                          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                            <img src={qrToShow} alt="Payment QR" style={{ width: 160, height: 160, objectFit: 'contain', borderRadius: 12, border: '1px solid var(--glass-border)' }} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                              {isFirstMonth
+                                ? (lang === 'zh' ? '中介收款码' : 'Agent Payment QR')
+                                : (lang === 'zh' ? '房东收款码' : 'Landlord Payment QR')}
+                            </div>
+                          </div>
+                        ) : bankInfo ? (
+                          <div style={{
+                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 12,
+                            padding: '12px', marginBottom: 16, fontSize: '0.82rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap',
+                          }}>
+                            {bankInfo}
+                          </div>
+                        ) : (
+                          <div style={{
+                            background: 'var(--warning-light)', border: '1px solid var(--warning)', borderRadius: 12,
+                            padding: '12px', marginBottom: 16, fontSize: '0.78rem', color: 'var(--warning)',
+                          }}>
+                            {lang === 'zh' ? '⚠️ 房东暂未上传收款信息' : '⚠️ Landlord payment info not available'}
+                          </div>
+                        )}
+
+                        {/* Evidence upload */}
+                        <label style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          padding: '14px', borderRadius: 12, cursor: evidenceUploading ? 'not-allowed' : 'pointer',
+                          background: 'var(--gradient-primary)', color: 'white', fontWeight: 700, fontSize: '0.85rem',
+                          opacity: evidenceUploading ? 0.7 : 1, marginBottom: 8,
+                        }}>
+                          <Camera size={18} />
+                          {evidenceUploading
+                            ? (lang === 'zh' ? '上传中...' : 'Uploading...')
+                            : (lang === 'zh' ? '上传转账截图' : 'Upload Transfer Screenshot')}
+                          <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) handleEvidenceUpload(e.target.files[0]); }} style={{ display: 'none' }} disabled={evidenceUploading} />
+                        </label>
+
+                        {/* Existing evidence */}
+                        {selectedPayment.evidence_url && (
+                          <div style={{ textAlign: 'center', marginTop: 8 }}>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                              {lang === 'zh' ? '已上传的凭证' : 'Uploaded evidence'}
+                            </div>
+                            <img src={selectedPayment.evidence_url} alt="Evidence" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 10, border: '1px solid var(--glass-border)' }} />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Feedback */}
             <div style={{
