@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { TenantDataProvider, useTenantData } from '@/lib/TenantDataContext';
+import { useTenantDataLoader } from '@/lib/useTenantDataLoader';
 import { ListingsDataProvider } from '@/lib/ListingsDataContext';
 import { PendingCountsProvider } from '@/lib/PendingCountsContext';
 import { useApp } from '@/lib/ThemeProvider';
@@ -11,6 +12,7 @@ import MobileTenantShell from '@/components/MobileTenantShell';
 
 function MobileTenantGate({ children }: { children: React.ReactNode }) {
   const { role, loading: authLoading } = useAuth();
+  useTenantDataLoader(); // Pre-load tenant profile data into context
   const { profileIdentityType, profileLoaded } = useTenantData();
   const { lang } = useApp();
   const router = useRouter();

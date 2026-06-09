@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useTenantData } from '@/lib/TenantDataContext';
 import { useApp } from '@/lib/ThemeProvider';
-import { supabase as sb, isMockDatabase } from '@/lib/supabase';
+import { isMockDatabase } from '@/lib/supabase';
 import { compressImageToDataUrl, compressDataUrl, REN_TAG_PRESET } from '@/utils/compressImage';
 import {
   User, CreditCard, GraduationCap, Globe, Camera, CheckCircle2,
@@ -43,76 +43,25 @@ export default function MobileProfilePage() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // Sync from TenantDataContext (populated by useTenantDataLoader in layout)
   useEffect(() => {
-    // Check sessionStorage cache first
-    const cached = sessionStorage.getItem('mt_profile_cache');
-    if (cached) {
-      try {
-        const d = JSON.parse(cached);
-        setName(d.name || ''); setPhone(d.phone || ''); setSchool(d.school || '');
-        setCompany(d.company || ''); setIdentityType(d.identityType || ctx.profileIdentityType || null);
-        setIcNumber(d.icNumber || ''); setPassportNumber(d.passportNumber || '');
-        setIcFrontUrl(d.icFrontUrl || null); setIcBackUrl(d.icBackUrl || null);
-        setPassportPhotoUrl(d.passportPhotoUrl || null); setStudentCardUrl(d.studentCardUrl || null);
-        setWorkPermitUrl(d.workPermitUrl || null);
-        setLoaded(true); return;
-      } catch {}
-    }
-
-    const load = async () => {
-      try {
-        if (isMockDatabase) {
-          const users = JSON.parse(localStorage.getItem('ez_users') || '[]');
-          const me = users.find((u: any) => u.id === localStorage.getItem('ez_tenant_id'));
-          if (me) {
-            setName(me.full_name || '');
-            setPhone(me.phone || '');
-            setSchool(me.school || '');
-            setCompany(me.company || '');
-            setIdentityType(me.identity_type || ctx.profileIdentityType || null);
-            setIcNumber(me.local_id_number || '');
-            setPassportNumber(me.passport_number || '');
-            setIcFrontUrl(me.ic_photo_front_url || null);
-            setIcBackUrl(me.ic_photo_back_url || null);
-            setPassportPhotoUrl(me.passport_photo_url || null);
-            setStudentCardUrl(me.student_card_url || null);
-            setWorkPermitUrl(me.work_permit_photo_url || null);
-          }
-        } else {
-          const { createClient } = await import('@/utils/supabase/client');
-          const client = createClient();
-          const { data: { user } } = await client.auth.getUser();
-          if (user) {
-            setName(user.user_metadata?.full_name || '');
-            const { data: dbUser } = await client.from('users').select('*').eq('id', user.id).maybeSingle();
-            if (dbUser) {
-              setPhone(dbUser.phone || '');
-              setSchool(dbUser.school || '');
-              setCompany(dbUser.company || '');
-              setIdentityType(dbUser.identity_type || user.user_metadata?.identity_type || null);
-              setIcNumber(dbUser.local_id_number || '');
-              setPassportNumber(dbUser.passport_number || '');
-              setIcFrontUrl(dbUser.ic_photo_front_url || null);
-              setIcBackUrl(dbUser.ic_photo_back_url || null);
-              setPassportPhotoUrl(dbUser.passport_photo_url || null);
-              setStudentCardUrl(dbUser.student_card_url || null);
-              setWorkPermitUrl(dbUser.work_permit_photo_url || null);
-            }
-          }
-        }
-      } catch (e) { console.error('Load profile error:', e); }
-      // Only cache if we actually loaded some data
-      if (name || phone || identityType) {
-        sessionStorage.setItem('mt_profile_cache', JSON.stringify({
-          name, phone, school, company, identityType, icNumber, passportNumber,
-          icFrontUrl, icBackUrl, passportPhotoUrl, studentCardUrl, workPermitUrl,
-        }));
-      }
-      setLoaded(true);
-    };
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.profileIdentityType]);
+    if (!ctx.profileLoaded) return; // Wait for context to load
+    setName(ctx.profileName || '');
+    setPhone(ctx.profilePhone || '');
+    setSchool(ctx.profileSchool || '');
+    setCompany(ctx.profileCompany || '');
+    setIdentityType(ctx.profileIdentityType || null);
+    setIcNumber(ctx.profileLocalId || '');
+    setPassportNumber(ctx.profilePassport || '');
+    setIcFrontUrl(ctx.icFrontUrl || null);
+    setIcBackUrl(ctx.icBackUrl || null);
+    setPassportPhotoUrl(ctx.passportPhotoUrl || null);
+    setStudentCardUrl(ctx.profileStudentCardUrl || null);
+    setWorkPermitUrl(ctx.workPermitUrl || null);
+    setLoaded(true);
+  }, [ctx.profileLoaded, ctx.profileName, ctx.profilePhone, ctx.profileSchool, ctx.profileCompany,
+      ctx.profileIdentityType, ctx.profileLocalId, ctx.profilePassport,
+      ctx.icFrontUrl, ctx.icBackUrl, ctx.passportPhotoUrl, ctx.profileStudentCardUrl, ctx.workPermitUrl]);
 
   const handleImageUpload = useCallback(async (file: File, setter: (url: string) => void) => {
     try {
@@ -182,7 +131,19 @@ export default function MobileProfilePage() {
         });
 
         await client.auth.updateUser({ data: { identity_type: identityType, full_name: name } });
+        // Sync context
+        ctx.setProfileName(name);
+        ctx.setProfilePhone(phone);
+        ctx.setProfileSchool(school);
+        ctx.setProfileCompany(company);
         ctx.setProfileIdentityType(identityType as any);
+        ctx.setProfileLocalId(identityType === 'malaysian' ? icNumber : '');
+        ctx.setProfilePassport(identityType !== 'malaysian' ? passportNumber : '');
+        ctx.setIcFrontUrl(icFront);
+        ctx.setIcBackUrl(icBack);
+        ctx.setPassportPhotoUrl(passport);
+        ctx.setProfileStudentCardUrl(studentCard);
+        ctx.setWorkPermitUrl(workPermit);
         showToast('success', lang === 'zh' ? '保存成功' : 'Saved successfully');
       }
     } catch (e: any) {
