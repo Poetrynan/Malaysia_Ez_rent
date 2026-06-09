@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { compressImageToDataUrl, compressImageFile, UNIT_IMAGE_PRESET, QR_IMAGE_PRESET } from '@/utils/compressImage';
 import {
   Camera, ChevronLeft, ChevronRight, Check, X, Loader2,
-  Building2, ImageIcon, Video, Trash2, Upload, MapPin
+  Building2, ImageIcon, Video, Trash2, Upload, MapPin, QrCode
 } from 'lucide-react';
 
 const ROOM_TYPES = ['Studio', 'Master Room', 'Medium Room', 'Small Room', 'Ensuite', 'Whole Unit'];
@@ -62,6 +62,8 @@ export default function MobileUpload() {
   const [description, setDescription] = useState('');
   const [landlordBankInfo, setLandlordBankInfo] = useState('');
   const [landlordQrCode, setLandlordQrCode] = useState<string | null>(null);
+  const [paymentQrCode, setPaymentQrCode] = useState<string | null>(null);
+  const [paymentQrLoaded, setPaymentQrLoaded] = useState(false);
   const [amenities, setAmenities] = useState<string[]>([]);
 
   // Save state
@@ -142,6 +144,65 @@ export default function MobileUpload() {
       }
     }
   }, [editId, isLoaded, units]);
+
+  // Load agent's payment QR code
+  useEffect(() => {
+    if (paymentQrLoaded) return;
+    const loadQR = async () => {
+      try {
+        const { isMockDatabase } = await import('@/lib/supabase');
+        if (isMockDatabase) {
+          const stored = JSON.parse(localStorage.getItem('ez_admin_profile') || '{}');
+          if (stored.payment_qr_code) setPaymentQrCode(stored.payment_qr_code);
+        } else {
+          const { createClient } = await import('@/utils/supabase/client');
+          const client = createClient();
+          const { data: { user } } = await client.auth.getUser();
+          if (user) {
+            const { data } = await client.from('admin_users').select('payment_qr_code').eq('id', user.id).maybeSingle();
+            if (data?.payment_qr_code) setPaymentQrCode(data.payment_qr_code);
+          }
+        }
+      } catch {}
+      setPaymentQrLoaded(true);
+    };
+    loadQR();
+  }, [paymentQrLoaded]);
+
+  // Agent QR code handler
+  const handleAgentQrSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(file, QR_IMAGE_PRESET);
+      setPaymentQrCode(dataUrl);
+      // Save to admin_users immediately
+      const { isMockDatabase } = await import('@/lib/supabase');
+      if (isMockDatabase) {
+        const stored = JSON.parse(localStorage.getItem('ez_admin_profile') || '{}');
+        stored.payment_qr_code = dataUrl;
+        localStorage.setItem('ez_admin_profile', JSON.stringify(stored));
+      } else {
+        const { createClient } = await import('@/utils/supabase/client');
+        const client = createClient();
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          if (dataUrl.startsWith('data:')) {
+            const { compressDataUrl } = await import('@/utils/compressImage');
+            const blob = await compressDataUrl(dataUrl, QR_IMAGE_PRESET);
+            const { data: uploadData } = await client.storage.from('unit-media').upload(`qr/${user.id}.jpg`, blob, { contentType: 'image/jpeg', upsert: true });
+            if (uploadData) {
+              const publicUrl = client.storage.from('unit-media').getPublicUrl(uploadData.path).data.publicUrl;
+              await client.from('admin_users').update({ payment_qr_code: publicUrl }).eq('id', user.id);
+              setPaymentQrCode(publicUrl);
+            }
+          }
+        }
+      }
+    } catch {
+      setError(lang === 'zh' ? 'QR码上传失败' : 'QR upload failed');
+    }
+  }, [lang]);
 
   // Image compression handler
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -887,6 +948,38 @@ export default function MobileUpload() {
                   resize: 'vertical',
                 }}
               />
+            </div>
+
+            {/* Agent payment QR code */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                {lang === 'zh' ? '我的收款QR码 (首月租金)' : 'My Payment QR (First Month)'}
+              </label>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                {lang === 'zh' ? '租客首月付款时会显示此二维码' : 'Shown to tenant for first month payment'}
+              </div>
+              {paymentQrCode ? (
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <img src={paymentQrCode} alt="Agent QR" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--glass-border)' }} />
+                  <label style={{
+                    position: 'absolute', bottom: 4, right: 4, padding: '3px 8px', borderRadius: 6,
+                    background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.65rem', cursor: 'pointer',
+                  }}>
+                    {lang === 'zh' ? '更换' : 'Change'}
+                    <input type="file" accept="image/*" onChange={handleAgentQrSelect} style={{ display: 'none' }} />
+                  </label>
+                </div>
+              ) : (
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  width: 120, height: 120, borderRadius: 10, cursor: 'pointer',
+                  border: '2px dashed var(--primary-glow)', background: 'var(--primary-light)',
+                }}>
+                  <Camera size={20} style={{ color: 'var(--primary)', marginBottom: 4 }} />
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{lang === 'zh' ? '上传' : 'Upload'}</span>
+                  <input type="file" accept="image/*" onChange={handleAgentQrSelect} style={{ display: 'none' }} />
+                </label>
+              )}
             </div>
 
             {/* Landlord bank info */}

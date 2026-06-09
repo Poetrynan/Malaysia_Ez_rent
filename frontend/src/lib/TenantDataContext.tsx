@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 export type IdentityType = 'malaysian' | 'international_student' | 'international_other';
 
@@ -107,66 +107,44 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     setWorkPermitUrl(null);
   }, []);
 
+  const value = useMemo(() => ({
+    interest, setInterest,
+    interestUnit, setInterestUnit,
+    interestCommunity, setInterestCommunity,
+    lease, setLease,
+    leaseHistory, setLeaseHistory,
+    roommates, setRoommates,
+    payments, setPayments,
+    unit, setUnit,
+    community, setCommunity,
+    myFeedbacks, setMyFeedbacks,
+    feedbackUnreadCount, setFeedbackUnreadCount,
+    profileName, setProfileName,
+    profilePhone, setProfilePhone,
+    profileUnit, setProfileUnit,
+    profilePassport, setProfilePassport,
+    profileSchool, setProfileSchool,
+    profileCompany, setProfileCompany,
+    profileLocalId, setProfileLocalId,
+    profileDocUrl, setProfileDocUrl,
+    profileStudentCardUrl, setProfileStudentCardUrl,
+    profileIdentityType, setProfileIdentityType,
+    icFrontUrl, setIcFrontUrl,
+    icBackUrl, setIcBackUrl,
+    passportPhotoUrl, setPassportPhotoUrl,
+    workPermitUrl, setWorkPermitUrl,
+    isLoaded, setIsLoaded,
+    profileLoaded, setProfileLoaded,
+    clearCache,
+  }), [
+    interest, interestUnit, interestCommunity, lease, leaseHistory, roommates, payments, unit, community,
+    myFeedbacks, feedbackUnreadCount, profileName, profilePhone, profileUnit, profilePassport, profileSchool,
+    profileCompany, profileLocalId, profileDocUrl, profileStudentCardUrl, profileIdentityType,
+    icFrontUrl, icBackUrl, passportPhotoUrl, workPermitUrl, isLoaded, profileLoaded, clearCache,
+  ]);
+
   return (
-    <TenantDataContext.Provider
-      value={{
-        interest,
-        setInterest,
-        interestUnit,
-        setInterestUnit,
-        interestCommunity,
-        setInterestCommunity,
-        lease,
-        setLease,
-        leaseHistory,
-        setLeaseHistory,
-        roommates,
-        setRoommates,
-        payments,
-        setPayments,
-        unit,
-        setUnit,
-        community,
-        setCommunity,
-        myFeedbacks,
-        setMyFeedbacks,
-        feedbackUnreadCount,
-        setFeedbackUnreadCount,
-        profileName,
-        setProfileName,
-        profilePhone,
-        setProfilePhone,
-        profileUnit,
-        setProfileUnit,
-        profilePassport,
-        setProfilePassport,
-        profileSchool,
-        setProfileSchool,
-        profileCompany,
-        setProfileCompany,
-        profileLocalId,
-        setProfileLocalId,
-        profileDocUrl,
-        setProfileDocUrl,
-        profileStudentCardUrl,
-        setProfileStudentCardUrl,
-        profileIdentityType,
-        setProfileIdentityType,
-        icFrontUrl,
-        setIcFrontUrl,
-        icBackUrl,
-        setIcBackUrl,
-        passportPhotoUrl,
-        setPassportPhotoUrl,
-        workPermitUrl,
-        setWorkPermitUrl,
-        isLoaded,
-        setIsLoaded,
-        profileLoaded,
-        setProfileLoaded,
-        clearCache,
-      }}
-    >
+    <TenantDataContext.Provider value={value}>
       {children}
     </TenantDataContext.Provider>
   );

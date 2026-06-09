@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, MessageSquare, FileText, User } from 'lucide-react';
+import { useApp } from '@/lib/ThemeProvider';
+import { Search, MessageSquare, FileText, User, Sun, Moon, Globe } from 'lucide-react';
 
 const tabs = [
   { path: '/mt/listings', icon: Search, labelZh: '找房', labelEn: 'Listings' },
@@ -14,6 +15,7 @@ const tabs = [
 export default function MobileTenantShell({ children, lang }: { children: React.ReactNode; lang: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { setLang, theme, toggleTheme } = useApp();
 
   return (
     <div style={{
@@ -24,6 +26,28 @@ export default function MobileTenantShell({ children, lang }: { children: React.
       display: 'flex',
       flexDirection: 'column',
     }}>
+      {/* Top bar: language + theme */}
+      <div style={{
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+        padding: '8px 16px', gap: 8,
+        background: 'var(--bg-surface)', borderBottom: '1px solid var(--glass-border)',
+      }}>
+        <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} style={{
+          display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 20,
+          border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+          cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-body)',
+        }}>
+          <Globe size={13} /> {lang === 'zh' ? 'EN' : '中文'}
+        </button>
+        <button onClick={toggleTheme} style={{
+          display: 'flex', alignItems: 'center', padding: '5px 8px', borderRadius: 20,
+          border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+          cursor: 'pointer', color: 'var(--text-body)',
+        }}>
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
+      </div>
+
       {/* Content area */}
       <div style={{
         flex: 1,

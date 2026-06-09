@@ -34,6 +34,17 @@ export default function MobileLeasePage() {
   }, []);
 
   useEffect(() => {
+    // Check sessionStorage cache first
+    const cached = sessionStorage.getItem('mt_lease_cache');
+    if (cached) {
+      try {
+        const d = JSON.parse(cached);
+        setLease(d.lease || null); setUnit(d.unit || null); setCommunity(d.community || null);
+        setPayments(d.payments || []); setHistory(d.history || []);
+        setLoading(false); return;
+      } catch {}
+    }
+
     const load = async () => {
       try {
         if (isMockDatabase) {
@@ -41,16 +52,21 @@ export default function MobileLeasePage() {
           const leases = JSON.parse(localStorage.getItem('ez_leases') || '[]');
           const myLease = leases.find((l: any) => l.tenant_id === myId && l.status === 'active');
           setLease(myLease || null);
+          let u: any = null, c: any = null, p: any[] = [];
           if (myLease) {
             const units = JSON.parse(localStorage.getItem('ez_units') || '[]');
             const comms = JSON.parse(localStorage.getItem('ez_communities') || '[]');
-            const u = units.find((u: any) => u.id === myLease.unit_id);
-            setUnit(u || null);
-            if (u) setCommunity(comms.find((c: any) => c.id === u.community_id) || null);
-            const payments = JSON.parse(localStorage.getItem('ez_payments') || '[]');
-            setPayments(payments.filter((p: any) => p.lease_id === myLease.id).sort((a: any, b: any) => a.billing_month.localeCompare(b.billing_month)));
+            u = units.find((x: any) => x.id === myLease.unit_id) || null;
+            setUnit(u);
+            c = u ? comms.find((x: any) => x.id === u.community_id) || null : null;
+            setCommunity(c);
+            const allP = JSON.parse(localStorage.getItem('ez_payments') || '[]');
+            p = allP.filter((x: any) => x.lease_id === myLease.id).sort((a: any, b: any) => a.billing_month.localeCompare(b.billing_month));
+            setPayments(p);
           }
-          setHistory(leases.filter((l: any) => l.tenant_id === myId && l.status !== 'active'));
+          const hist = leases.filter((l: any) => l.tenant_id === myId && l.status !== 'active');
+          setHistory(hist);
+          sessionStorage.setItem('mt_lease_cache', JSON.stringify({ lease: myLease || null, unit: u, community: c, payments: p, history: hist }));
         } else {
           const { createClient } = await import('@/utils/supabase/client');
           const client = createClient();
@@ -65,14 +81,21 @@ export default function MobileLeasePage() {
 
           const activeLease = leases?.find(l => l.status === 'active');
           setLease(activeLease || null);
+          let p: any[] = [];
           if (activeLease?.units) {
             setUnit(activeLease.units);
             setCommunity(activeLease.units.communities);
-            const { data: p } = await client.from('payment_records')
+            const { data: pData } = await client.from('payment_records')
               .select('*').eq('lease_id', activeLease.id).order('billing_month');
-            setPayments(p || []);
+            p = pData || [];
+            setPayments(p);
           }
-          setHistory(leases?.filter(l => l.status !== 'active') || []);
+          const hist = leases?.filter(l => l.status !== 'active') || [];
+          setHistory(hist);
+          sessionStorage.setItem('mt_lease_cache', JSON.stringify({
+            lease: activeLease || null, unit: activeLease?.units || null,
+            community: activeLease?.units?.communities || null, payments: p, history: hist,
+          }));
         }
       } catch (e) { console.error('Load lease error:', e); }
       setLoading(false);

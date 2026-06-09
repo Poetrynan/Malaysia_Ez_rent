@@ -29,11 +29,22 @@ export default function MobileListingsPage() {
   const perPage = 8;
 
   useEffect(() => {
+    // Check sessionStorage cache first
+    const cached = sessionStorage.getItem('mt_listings_cache');
+    if (cached) {
+      try {
+        const { units: cu, communities: cc } = JSON.parse(cached);
+        if (cu?.length) { setUnits(cu); setCommunities(cc || []); setLoading(false); return; }
+      } catch {}
+    }
+
     const load = async () => {
       try {
         if (isMockDatabase) {
-          setUnits(JSON.parse(localStorage.getItem('ez_units') || '[]').filter((u: any) => u.status === 'available'));
-          setCommunities(JSON.parse(localStorage.getItem('ez_communities') || '[]'));
+          const u = JSON.parse(localStorage.getItem('ez_units') || '[]').filter((x: any) => x.status === 'available');
+          const c = JSON.parse(localStorage.getItem('ez_communities') || '[]');
+          setUnits(u); setCommunities(c);
+          sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
         } else {
           const { createClient } = await import('@/utils/supabase/client');
           const client = createClient();
@@ -41,8 +52,10 @@ export default function MobileListingsPage() {
             client.from('units').select('*, communities(*)').eq('status', 'available').order('created_at', { ascending: false }),
             client.from('communities').select('*'),
           ]);
-          setUnits(unitsRes.data || []);
-          setCommunities(commRes.data || []);
+          const u = unitsRes.data || [];
+          const c = commRes.data || [];
+          setUnits(u); setCommunities(c);
+          sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
         }
       } catch (e) { console.error('Load listings error:', e); }
       setLoading(false);

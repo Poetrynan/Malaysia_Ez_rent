@@ -44,6 +44,21 @@ export default function MobileProfilePage() {
   }, []);
 
   useEffect(() => {
+    // Check sessionStorage cache first
+    const cached = sessionStorage.getItem('mt_profile_cache');
+    if (cached) {
+      try {
+        const d = JSON.parse(cached);
+        setName(d.name || ''); setPhone(d.phone || ''); setSchool(d.school || '');
+        setCompany(d.company || ''); setIdentityType(d.identityType || ctx.profileIdentityType || null);
+        setIcNumber(d.icNumber || ''); setPassportNumber(d.passportNumber || '');
+        setIcFrontUrl(d.icFrontUrl || null); setIcBackUrl(d.icBackUrl || null);
+        setPassportPhotoUrl(d.passportPhotoUrl || null); setStudentCardUrl(d.studentCardUrl || null);
+        setWorkPermitUrl(d.workPermitUrl || null);
+        setLoaded(true); return;
+      } catch {}
+    }
+
     const load = async () => {
       try {
         if (isMockDatabase) {
@@ -86,9 +101,14 @@ export default function MobileProfilePage() {
           }
         }
       } catch (e) { console.error('Load profile error:', e); }
+      sessionStorage.setItem('mt_profile_cache', JSON.stringify({
+        name, phone, school, company, identityType, icNumber, passportNumber,
+        icFrontUrl, icBackUrl, passportPhotoUrl, studentCardUrl, workPermitUrl,
+      }));
       setLoaded(true);
     };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.profileIdentityType]);
 
   const handleImageUpload = useCallback(async (file: File, setter: (url: string) => void) => {
