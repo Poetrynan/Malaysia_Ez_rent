@@ -1107,6 +1107,7 @@ h1,h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); }
 .manus-send:active { transform: scale(0.95); }
 .manus-send.stop-mode {
   background: #EF4444;
+  animation: none !important;
 }
 .manus-send.stop-mode:hover { background: #DC2626; transform: scale(1.1); }
 

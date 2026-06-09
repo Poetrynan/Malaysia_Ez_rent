@@ -818,7 +818,12 @@ export default function AIChat() {
           className="manus-input"
           rows={1}
         />
-        <button type="submit" className={`manus-send ${isGenerating ? 'stop-mode' : ''}`} aria-label={isGenerating ? 'Stop' : 'Send'}>
+        <button 
+          type="submit" 
+          className={`manus-send ${isGenerating ? 'stop-mode' : ''}`} 
+          style={isGenerating ? { animation: 'none' } : {}}
+          aria-label={isGenerating ? 'Stop' : 'Send'}
+        >
           {isGenerating ? <StopCircle size={18} /> : <Send size={16} />}
         </button>
       </form>
