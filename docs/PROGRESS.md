@@ -2841,11 +2841,11 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 |------|------|------|
 | `/m/dashboard` | `app/m/dashboard/page.tsx` | KPI 卡片 + 快捷操作入口 |
 | `/m/properties` | `app/m/properties/page.tsx` | 房源列表（卡片式 + 搜索筛选 + 状态标签） |
-| `/m/upload` | `app/m/upload/page.tsx` | 房源上传（4步分步表单 + 图片/视频/QR码压缩） |
-| `/m/feedback` | `app/m/feedback/page.tsx` | 工单消息（展开回复 + 标记解决） |
+| `/m/upload` | `app/m/upload/page.tsx` | 房源上传（4步分步表单 + 图片/视频/QR码压缩 + **中介收款码上传** + **Google Places 自动联想**） |
+| `/m/feedback` | `app/m/feedback/page.tsx` | 工单消息 + **支付凭证审核**（查看凭证 → 通过/驳回） |
 | `/m/profile` | `app/m/profile/page.tsx` | 个人资料（头像上传 + 退出登录） |
 
-**共享组件：** `MobileShell.tsx`（底部 Tab 导航，5 个 Tab）
+**共享组件：** `MobileShell.tsx`（顶部语言/主题切换 + **电脑端提示横幅** + 底部 Tab 导航，5 个 Tab）
 **布局：** `app/m/layout.tsx`（AuthProvider + AdminDataProvider + MobileShell）
 **数据加载：** `lib/useAdminDataLoader.ts`（复用 AdminPanel 的 Supabase/LocalStorage 双模式加载逻辑）
 
@@ -2853,13 +2853,14 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 
 | 路由 | 文件 | 功能 |
 |------|------|------|
-| `/mt/listings` | `app/mt/listings/page.tsx` | 房源浏览（网格/列表 + 搜索 + 筛选 + 收藏 + 详情抽屉） |
-| `/mt/chat` | `app/mt/chat/page.tsx` | AI 助手（SSE 流式 + 工具卡 + 快捷提示） |
-| `/mt/lease` | `app/mt/lease/page.tsx` | 租约管理（当前租约 + 历史 + 账单 + 维修工单） |
-| `/mt/profile` | `app/mt/profile/page.tsx` | 个人资料（**含完整身份验证流程** + 证件上传） |
+| `/mt/listings` | `app/mt/listings/page.tsx` | 房源浏览（网格/列表 + 搜索 + 筛选 + 收藏 + 详情抽屉）**使用 ListingsDataContext 共享缓存** |
+| `/mt/lease` | `app/mt/lease/page.tsx` | 租约管理（当前租约 + 历史 + **账单点击上传凭证** + 维修工单） |
+| `/mt/profile` | `app/mt/profile/page.tsx` | 个人资料（**含完整身份验证流程** + 证件上传）**从 TenantDataContext 读取** |
 
-**共享组件：** `MobileTenantShell.tsx`（底部 Tab 导航，4 个 Tab）
-**布局：** `app/mt/layout.tsx`（AuthProvider + TenantDataProvider + ListingsDataProvider + PendingCountsProvider + 身份门禁）
+> 注：AI 聊天功能已从租客手机端移除（手机端不适合复杂 AI 交互，桌面端仍可用）。
+
+**共享组件：** `MobileTenantShell.tsx`（顶部语言/主题切换 + **电脑端提示横幅** + 底部 Tab 导航，3 个 Tab）
+**布局：** `app/mt/layout.tsx`（AuthProvider + TenantDataProvider + ListingsDataProvider + PendingCountsProvider + **useTenantDataLoader** + 身份门禁）
 
 ### 3. 身份验证流程（租客手机端）
 
@@ -2880,8 +2881,9 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
 ```typescript
 if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
   // /listings → /mt/listings
-  // /chat → /mt/chat
   // /my-lease → /mt/lease
+  // /maintenance → /mt/lease
+  // /inbox → /mt/profile
   // 其他 → /mt/listings
 }
 ```
@@ -2910,38 +2912,78 @@ if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
 - DM Sans 字体（`--font-body`）
 - 统一圆角（`--radius-sm: 10px`、`--radius-md: 14px`）
 - 统一阴影（`--glass-shadow`）
+- 语言/主题切换按钮（两个 Shell 顶部）
+- 电脑端提示横幅（`💡 完整功能请使用电脑端访问`）
 
-### 7. 文件清单
+### 7. 支付凭证完整流程
 
-**新建文件（12个）：**
+```
+租客手机端 /mt/lease → 点击未缴费账单 → 弹出支付弹窗
+    ├── 首月：显示中介收款 QR 码
+    ├── 后续月：显示房东 QR 码 / 银行信息
+    └── 上传转账截图 → 压缩 → Storage evidence/{paymentId}.jpg → status = pending_review
+
+中介手机端 /m/feedback → 顶部「待审核凭证」区域
+    ├── 查看凭证（全屏大图）
+    ├── 通过 → status = approved, paid = true
+    └── 驳回 → status = rejected, paid = false
+```
+
+中介审核卡片显示：小区名 · 房型 / 租客姓名 / 月份 · RM 租金 · 单元号
+
+### 8. Tab 切换性能优化
+
+| 问题 | 修复方式 |
+|------|---------|
+| AdminDataContext 级联重渲染 | 添加 `useMemo` 包裹 provider value |
+| TenantDataContext 级联重渲染 | 添加 `useMemo` 包裹 provider value |
+| 中介 Profile 每次切 Tab 重新请求 | sessionStorage 缓存 |
+| 租客 Listings 每次切 Tab 重新请求 | 使用 `ListingsDataContext` 共享缓存 |
+| 租客 Profile 每次切 Tab 重新请求 | 使用 `useTenantDataLoader` + TenantDataContext |
+| 租客 Lease 每次切 Tab 重新请求 | sessionStorage 缓存 |
+| Upload 保存后清全量缓存 | 改为定向刷新 communities + units |
+| Properties 删除后整页刷新 | 改为乐观更新 + 失败回滚 |
+
+### 9. Google Places 自动联想（中介上传页）
+
+中介手机端上传房源时，新建小区支持 Google Places 自动联想：
+- 输入小区名称 → 联想下拉列表（限马来西亚）
+- 选择后自动填入地址 + GPS 坐标
+- 坐标保存到 `communities` 表
+
+### 10. 文件清单
+
+**新建文件：**
 
 | 文件 | 说明 |
 |------|------|
-| `components/MobileShell.tsx` | 中介底部 Tab 导航 |
-| `components/MobileTenantShell.tsx` | 租客底部 Tab 导航 |
-| `lib/useAdminDataLoader.ts` | 共享数据加载 hook |
+| `components/MobileShell.tsx` | 中介底部 Tab 导航 + 语言/主题切换 + 电脑端提示 |
+| `components/MobileTenantShell.tsx` | 租客底部 Tab 导航 + 语言/主题切换 + 电脑端提示 |
+| `lib/useAdminDataLoader.ts` | 共享数据加载 hook（中介） |
+| `lib/useTenantDataLoader.ts` | 共享数据加载 hook（租客） |
 | `app/m/layout.tsx` | 中介手机端布局 |
 | `app/m/dashboard/page.tsx` | 中介仪表盘 |
 | `app/m/properties/page.tsx` | 中介房源列表 |
-| `app/m/upload/page.tsx` | 中介房源上传（分步表单） |
-| `app/m/feedback/page.tsx` | 中介工单消息 |
+| `app/m/upload/page.tsx` | 中介房源上传（分步表单 + Google Places + 中介收款码） |
+| `app/m/feedback/page.tsx` | 中介工单消息 + 支付凭证审核 |
 | `app/m/profile/page.tsx` | 中介个人资料 |
-| `app/mt/layout.tsx` | 租客手机端布局 + 身份门禁 |
-| `app/mt/listings/page.tsx` | 租客房源浏览 |
-| `app/mt/chat/page.tsx` | 租客 AI 助手 |
-| `app/mt/lease/page.tsx` | 租客租约管理 |
-| `app/mt/profile/page.tsx` | 租客个人资料 + 身份验证 |
+| `app/mt/layout.tsx` | 租客手机端布局 + 身份门禁 + useTenantDataLoader |
+| `app/mt/listings/page.tsx` | 租客房源浏览（ListingsDataContext 缓存） |
+| `app/mt/lease/page.tsx` | 租客租约管理 + 账单支付弹窗 + 凭证上传 |
+| `app/mt/profile/page.tsx` | 租客个人资料 + 身份验证（TenantDataContext） |
 | `public/manifest.json` | PWA 配置 |
 | `public/sw.js` | Service Worker |
 
-**修改文件（2个）：**
+**修改文件：**
 
 | 文件 | 改动 |
 |------|------|
 | `middleware.ts` | 添加 `/mt/` 白名单 + 租客手机端分流 + `/mt/profile` 身份门禁放行 |
 | `layout.tsx` | PWA meta 标签 + Service Worker 注册 |
+| `lib/AdminDataContext.tsx` | 添加 `useMemo` 防止级联重渲染 |
+| `lib/TenantDataContext.tsx` | 添加 `useMemo` 防止级联重渲染 |
 
-### 8. 压缩策略
+### 11. 压缩策略
 
 | 用途 | 预设 | 最大尺寸 | 质量 |
 |------|------|---------|------|
