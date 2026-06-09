@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useApp } from '@/lib/ThemeProvider';
-import { supabase as sb, isMockDatabase } from '@/lib/supabase';
+import { useListingsData } from '@/lib/ListingsDataContext';
 import { useRouter } from 'next/navigation';
 import { Search, MapPin, Bed, Bath, Maximize, Heart, ChevronLeft, ChevronRight, Grid3X3, List, Filter, X } from 'lucide-react';
 
@@ -15,9 +15,8 @@ export default function MobileListingsPage() {
   const { lang } = useApp();
   const router = useRouter();
 
-  const [units, setUnits] = useState<any[]>([]);
-  const [communities, setCommunities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { units: allUnits, isListingsLoaded, loadListings, listingsError } = useListingsData();
+  const [loading, setLoading] = useState(!isListingsLoaded);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState('');
@@ -28,47 +27,30 @@ export default function MobileListingsPage() {
   const [detailUnit, setDetailUnit] = useState<any | null>(null);
   const perPage = 8;
 
+  // Load listings via shared context (cached across tab switches)
   useEffect(() => {
-    // Check sessionStorage cache first
-    const cached = sessionStorage.getItem('mt_listings_cache');
-    if (cached) {
-      try {
-        const { units: cu, communities: cc } = JSON.parse(cached);
-        if (cu?.length) { setUnits(cu); setCommunities(cc || []); setLoading(false); return; }
-      } catch {}
-    }
-
-    const load = async () => {
-      try {
-        // Use supabase client for both mock and live (mock auto-returns defaults)
-        const { supabase } = await import('@/lib/supabase');
-        const [unitsRes, commRes] = await Promise.all([
-          supabase.from('units').select('*, communities(*)').eq('status', 'available').order('created_at', { ascending: false }),
-          supabase.from('communities').select('*'),
-        ]);
-        const u = unitsRes.data || [];
-        const c = commRes.data || [];
-        setUnits(u); setCommunities(c);
-        sessionStorage.setItem('mt_listings_cache', JSON.stringify({ units: u, communities: c }));
-      } catch (e) { console.error('Load listings error:', e); }
+    if (!isListingsLoaded) {
+      loadListings().finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    };
-    load();
-  }, []);
+    }
+  }, [isListingsLoaded, loadListings]);
+
+  // Filter to available only
+  const units = useMemo(() => allUnits.filter((u: any) => u.status === 'available'), [allUnits]);
 
   const filtered = useMemo(() => {
     let result = units;
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(u => {
-        const comm = u.communities || communities.find(c => c.id === u.community_id);
-        return (comm?.name || '').toLowerCase().includes(q) || (u.description || '').toLowerCase().includes(q);
-      });
+      result = result.filter(u =>
+        (u.community?.name || '').toLowerCase().includes(q) || (u.description || '').toLowerCase().includes(q)
+      );
     }
     if (typeFilter.length) result = result.filter(u => typeFilter.includes(u.room_type));
     if (maxPrice) result = result.filter(u => u.rent <= Number(maxPrice));
     return result;
-  }, [units, communities, search, typeFilter, maxPrice]);
+  }, [units, search, typeFilter, maxPrice]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -156,7 +138,7 @@ export default function MobileListingsPage() {
       {viewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
           {paged.map(u => {
-            const comm = u.communities || communities.find(c => c.id === u.community_id);
+            const comm = u.community;
             const img = u.media_urls?.[0] || `https://picsum.photos/seed/${u.id}/300/200`;
             return (
               <div key={u.id} onClick={() => setDetailUnit(u)} style={{
@@ -197,7 +179,7 @@ export default function MobileListingsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           {paged.map(u => {
-            const comm = u.communities || communities.find(c => c.id === u.community_id);
+            const comm = u.community;
             const img = u.media_urls?.[0] || `https://picsum.photos/seed/${u.id}/300/200`;
             return (
               <div key={u.id} onClick={() => setDetailUnit(u)} style={{

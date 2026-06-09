@@ -101,10 +101,13 @@ export default function MobileProfilePage() {
           }
         }
       } catch (e) { console.error('Load profile error:', e); }
-      sessionStorage.setItem('mt_profile_cache', JSON.stringify({
-        name, phone, school, company, identityType, icNumber, passportNumber,
-        icFrontUrl, icBackUrl, passportPhotoUrl, studentCardUrl, workPermitUrl,
-      }));
+      // Only cache if we actually loaded some data
+      if (name || phone || identityType) {
+        sessionStorage.setItem('mt_profile_cache', JSON.stringify({
+          name, phone, school, company, identityType, icNumber, passportNumber,
+          icFrontUrl, icBackUrl, passportPhotoUrl, studentCardUrl, workPermitUrl,
+        }));
+      }
       setLoaded(true);
     };
     load();
