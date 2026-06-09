@@ -34,6 +34,13 @@ export default function LoginPage() {
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [roleView, setRoleView] = useState<'choose' | 'student' | 'agent'>('choose');
 
+  // Forgot password states
+  const [forgotPasswordModal, setForgotPasswordModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotErrorMsg, setForgotErrorMsg] = useState<string | null>(null);
+  const [forgotSuccessMsg, setForgotSuccessMsg] = useState<string | null>(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   React.useEffect(() => { document.title = `${lang === 'zh' ? '登录' : 'Login'} | Malaysia Ez Rent`; }, [lang]);
 
   React.useEffect(() => {
@@ -70,6 +77,43 @@ export default function LoginPage() {
       localStorage.setItem('ez_remember_credentials', JSON.stringify({ email: email.trim(), password: password.trim() }));
     } else {
       localStorage.removeItem('ez_remember_credentials');
+    }
+  };
+
+  const handleSendResetEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      setForgotErrorMsg(lang === 'zh' ? '请输入有效的邮箱地址' : 'Please enter a valid email address');
+      return;
+    }
+    setForgotErrorMsg(null);
+    setForgotSuccessMsg(null);
+    setForgotLoading(true);
+
+    if (isMockDatabase) {
+      setForgotLoading(false);
+      setForgotSuccessMsg(
+        lang === 'zh' 
+          ? '重置邮件已生成（开发模式）。请点击下方模拟链接进行重置：' 
+          : 'Reset link generated (Dev Mode). Please click the simulation link below:'
+      );
+      return;
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+
+    setForgotLoading(false);
+    if (error) {
+      setForgotErrorMsg(error.message);
+    } else {
+      setForgotSuccessMsg(
+        lang === 'zh' 
+          ? '重置密码邮件已发送，请检查您的邮箱收件箱。' 
+          : 'Password reset email sent. Please check your inbox.'
+      );
     }
   };
 
@@ -501,14 +545,22 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Remember Me */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 14, userSelect: 'none' as const }}>
-                <input type="checkbox" id="student-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
-                  {lang === 'zh' ? '记住密码' : 'Remember me'}
+              {/* Remember Me & Forgot Password */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' as const }}>
+                  <input type="checkbox" id="student-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
+                    {lang === 'zh' ? '记住密码' : 'Remember me'}
+                  </span>
+                </label>
+                <span onClick={() => { setForgotPasswordModal(true); setForgotEmail(email); setForgotErrorMsg(null); setForgotSuccessMsg(null); }} style={{ fontSize: '0.78rem', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
+                  onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                  {lang === 'zh' ? '忘记密码？' : 'Forgot password?'}
                 </span>
-              </label>
+              </div>
+
 
               {errorMsg && (
                 <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
@@ -578,14 +630,22 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Remember Me */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 14, userSelect: 'none' as const }}>
-                <input type="checkbox" id="agent-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
-                  {lang === 'zh' ? '记住密码' : 'Remember me'}
+              {/* Remember Me & Forgot Password */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' as const }}>
+                  <input type="checkbox" id="agent-remember" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-body)', fontWeight: 500 }}>
+                    {lang === 'zh' ? '记住密码' : 'Remember me'}
+                  </span>
+                </label>
+                <span onClick={() => { setForgotPasswordModal(true); setForgotEmail(email); setForgotErrorMsg(null); setForgotSuccessMsg(null); }} style={{ fontSize: '0.78rem', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
+                  onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                  {lang === 'zh' ? '忘记密码？' : 'Forgot password?'}
                 </span>
-              </label>
+              </div>
+
 
               {errorMsg && (
                 <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
@@ -666,10 +726,71 @@ export default function LoginPage() {
         </div>
       )}
 
+      {/* ── FORGOT PASSWORD MODAL ── */}
+      {forgotPasswordModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 20 }}
+          onClick={() => { if (!forgotLoading) setForgotPasswordModal(false); }}>
+          <div style={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--glass-border)', borderRadius: 16, padding: '32px 28px', maxWidth: 400, width: '100%', boxShadow: 'var(--glass-shadow)', position: 'relative' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-h)', marginBottom: 6 }}>
+                {lang === 'zh' ? '重置密码' : 'Reset Password'}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '请输入您的注册邮箱，我们将向您发送重置密码的邮件链接。' : 'Enter your registered email and we\'ll send you a password reset link.'}
+              </div>
+            </div>
+
+            <form onSubmit={handleSendResetEmail} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label htmlFor="forgot-email" style={labelStyle}>{lang === 'zh' ? '邮箱地址' : 'Email address'}</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input id="forgot-email" type="forgot-email" required placeholder="name@email.com" value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)} style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-glow)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--glass-border)'; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+              </div>
+
+              {forgotErrorMsg && (
+                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', padding: '8px 10px', borderRadius: 8, background: 'var(--danger-light)', border: '1px solid var(--danger)' }}>
+                  {forgotErrorMsg}
+                </div>
+              )}
+
+              {forgotSuccessMsg && (
+                <div style={{ color: 'var(--success)', fontSize: '0.78rem', padding: '10px 12px', borderRadius: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid var(--success)', lineHeight: 1.4 }}>
+                  <div>{forgotSuccessMsg}</div>
+                  {isMockDatabase && (
+                    <a href={`/reset-password?mock=true&email=${encodeURIComponent(forgotEmail.trim().toLowerCase())}&role=${roleView === 'agent' ? 'agent' : 'student'}`}
+                      style={{ display: 'inline-block', marginTop: 10, padding: '6px 12px', background: 'var(--primary)', color: 'white', textDecoration: 'none', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}
+                      onClick={() => setForgotPasswordModal(false)}>
+                      {lang === 'zh' ? '点击模拟重置' : 'Click to Simulate Reset'}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button type="button" disabled={forgotLoading} onClick={() => setForgotPasswordModal(false)} style={{ ...secondaryBtnStyle, flex: 1, padding: '10px' }}>
+                  {lang === 'zh' ? '取消' : 'Cancel'}
+                </button>
+                <button type="submit" disabled={forgotLoading || !!forgotSuccessMsg} style={{ ...primaryBtnStyle, flex: 2, padding: '10px', opacity: (forgotLoading || !!forgotSuccessMsg) ? 0.6 : 1 }}>
+                  {forgotLoading ? <Spinner /> : (lang === 'zh' ? '发送邮件' : 'Send Link')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── LEGAL CONTENT MODAL ── */}
       {legalModal && (
         <LegalContent type={legalModal} onClose={() => setLegalModal(null)} />
       )}
+
     </div>
   );
 }

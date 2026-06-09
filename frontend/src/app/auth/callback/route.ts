@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     const identityType = dbUser?.identity_type || user?.user_metadata?.identity_type;
 
-    if (!identityType) {
+    if (!identityType && next !== '/reset-password') {
       // Must carry freshly-set auth cookies onto redirect — otherwise session is
       // dropped and profile completion bounces back to /login (Google login loop).
       const profileResponse = NextResponse.redirect(`${origin}/profile`);
