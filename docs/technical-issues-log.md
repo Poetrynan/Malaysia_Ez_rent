@@ -244,3 +244,20 @@
 | **RAG 向量文本补全** | 向量嵌入源文本应包括实体对应的关键特征属性（如关联大学名、省份名等），单纯的名字和描述对于缩写和专业缩略词的查询极易引起相似度折损。 |
 | **地名比对健壮性** | 在与外部地理数据库交互时，地名通常会发生格式重构（如变成门牌号或街道），因此匹配策略应尽可能保留原始的查询关键字进行二次比对。 |
 
+---
+
+## 2026-06-09：临时绕过前端邮箱验证（OTP）以简化部署测试
+
+### 问题
+- 系统引入了通过 Resend 邮件发送 API 校验注册邮箱验证码（OTP）的流程。
+- 在线上测试或无自定义域名部署阶段（如使用 Vercel 的默认子域名 `*.vercel.app`），Resend 不支持绑定此类型的共享域名做 DNS 验证发信。如果使用 `onboarding@resend.dev` 限制极大（仅能发送给注册者自己的邮箱），导致真实租客和中介无法注册成功。
+
+### 修复
+- 暂时在前端代码 [Tenant 注册页面](file:///c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/register/tenant/page.tsx) 和 [Agent 注册页面](file:///c:/Users/Administrator/Desktop/Malaysia_Ez_rent/frontend/src/app/register/agent/page.tsx) 里的 `handleSendOtp` 绕过 API 发信流程。
+- 用户输入有效邮箱并点击“发送验证码”后，前端立即将 `otpVerified` 设为 `true` 并弹出验证成功的反馈，使流程直接放行至注册的下一步。
+- 后续的 Supabase 创建账号、上传文件及资料注册等核心逻辑完全保留且不受影响。
+- 服务端的发送邮件接口和 API 逻辑均完整保留。
+
+### 恢复方式
+- 一旦购买并绑定了自定义域名并在 Resend 完成 DNS 验证，只需修改这两个前端文件，把 `handleSendOtp` 还原为原先的 fetch 接口请求即可。
+

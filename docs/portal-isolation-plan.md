@@ -817,6 +817,12 @@ created_at TIMESTAMPTZ
 | `RESEND_API_KEY` | Resend API Key |
 | `RESEND_FROM_EMAIL` | 发件人邮箱（如 `noreply@ezrent.my`） |
 
+> [!WARNING]
+> **2026-06-09 临时测试绕过说明**：
+> 由于未绑定自定义域名的开发测试阶段（使用 `vercel.app` 临时二级域名）无法通过 Resend 验证发信，为了不阻碍线上部署和公开测试，我们暂时在前端注册流程中**绕过了邮箱验证码（OTP）的发信与比对校验**。
+> - 在 `/register/tenant` 与 `/register/agent` 中，输入邮箱并点击“发送验证码”后将直接触发验证成功（自动置为 `otpVerified = true`），不再发送实际邮件。
+> - 若之后绑定了自定义域名并配好 Resend，只需把前端页面中的 `handleSendOtp` 还原为请求 API 接口即可。
+
 ### 5.5 修改文件详情
 
 #### `src/lib/AuthContext.tsx`
