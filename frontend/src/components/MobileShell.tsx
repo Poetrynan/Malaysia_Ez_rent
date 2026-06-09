@@ -49,6 +49,15 @@ export default function MobileShell({ children, lang }: { children: React.ReactN
         </button>
       </div>
 
+      {/* Desktop tip banner */}
+      <div style={{
+        padding: '8px 16px', textAlign: 'center',
+        background: 'var(--primary-light)', borderBottom: '1px solid var(--glass-border)',
+        fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 500,
+      }}>
+        💡 {lang === 'zh' ? '完整功能请使用电脑端访问' : 'Full features available on desktop'}
+      </div>
+
       {/* Content area */}
       <div style={{
         flex: 1,

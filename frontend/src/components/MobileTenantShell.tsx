@@ -47,6 +47,15 @@ export default function MobileTenantShell({ children, lang }: { children: React.
         </button>
       </div>
 
+      {/* Desktop tip banner */}
+      <div style={{
+        padding: '8px 16px', textAlign: 'center',
+        background: 'var(--primary-light)', borderBottom: '1px solid var(--glass-border)',
+        fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 500,
+      }}>
+        💡 {lang === 'zh' ? '完整功能（AI助手等）请使用电脑端访问' : 'Full features (AI assistant etc.) available on desktop'}
+      </div>
+
       {/* Content area */}
       <div style={{
         flex: 1,
