@@ -46,7 +46,7 @@ export default function MobileFeedback() {
           const { createClient } = await import('@/utils/supabase/client');
           const client = createClient();
           const { data } = await client.from('payment_records')
-            .select('*, leases(tenant_id, unit_number, units(room_type, communities(name)))')
+            .select('*, leases(tenant_id, unit_number, monthly_rent, units(room_type, rent, communities(name)))')
             .eq('status', 'pending_review')
             .not('evidence_url', 'is', null);
           setPendingPayments(data || []);
@@ -234,7 +234,7 @@ export default function MobileFeedback() {
                       {community?.name || '—'} · {unit?.room_type || '—'}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      {month} {lease?.unit_number ? `· ${lease.unit_number}` : ''}
+                      {month} · RM {lease?.monthly_rent || unit?.rent || '—'} {lease?.unit_number ? `· ${lease.unit_number}` : ''}
                     </div>
                   </div>
                   <span style={{
