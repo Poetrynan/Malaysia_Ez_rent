@@ -1,0 +1,27 @@
+{
+  "name": "Malaysia Ez Rent - Agent Workstation",
+  "short_name": "EzRent Agent",
+  "description": "AI-powered rental management for agents",
+  "start_url": "/m/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0D9488",
+  "background_color": "#F4F7F6",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "zh",
+  "dir": "ltr"
+}

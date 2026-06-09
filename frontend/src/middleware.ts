@@ -5,6 +5,12 @@ const isMockMode =
   process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-supabase') ||
   process.env.NEXT_PUBLIC_SUPABASE_URL === '';
 
+/** Detect mobile devices via User-Agent */
+function isMobileUA(request: NextRequest): boolean {
+  const ua = request.headers.get('user-agent') || '';
+  return /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -25,6 +31,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/mobile-upload/') ||
     pathname.startsWith('/mobile-upload-property/') ||
     pathname.startsWith('/mobile-upload-qr/') ||
+    pathname.startsWith('/m/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
@@ -87,10 +94,30 @@ export async function middleware(request: NextRequest) {
 
   // Strict role isolation redirect
   if (role === 'agent') {
-    if (!pathname.startsWith('/admin/')) {
-      const adminHomeUrl = request.nextUrl.clone();
-      adminHomeUrl.pathname = '/admin/dashboard';
-      return NextResponse.redirect(adminHomeUrl);
+    // Mobile agents → redirect to mobile workstation
+    if (isMobileUA(request)) {
+      if (pathname.startsWith('/admin/')) {
+        const mobileUrl = request.nextUrl.clone();
+        // Map /admin/xxx to /m/xxx, fallback to /m/dashboard
+        const subPath = pathname.replace('/admin/', '');
+        const mobileRoutes = ['dashboard', 'properties', 'upload', 'feedback', 'profile'];
+        const target = mobileRoutes.find(r => subPath.startsWith(r)) || 'dashboard';
+        mobileUrl.pathname = `/m/${target}`;
+        return NextResponse.redirect(mobileUrl);
+      }
+      // Mobile agent on non-admin, non-mobile path → send to /m/dashboard
+      if (!pathname.startsWith('/m/')) {
+        const mobileUrl = request.nextUrl.clone();
+        mobileUrl.pathname = '/m/dashboard';
+        return NextResponse.redirect(mobileUrl);
+      }
+    } else {
+      // Desktop agents → stay on /admin/*
+      if (!pathname.startsWith('/admin/')) {
+        const adminHomeUrl = request.nextUrl.clone();
+        adminHomeUrl.pathname = '/admin/dashboard';
+        return NextResponse.redirect(adminHomeUrl);
+      }
     }
   } else {
     // Tenant (role === 'student' or legacy accounts without role yet)
