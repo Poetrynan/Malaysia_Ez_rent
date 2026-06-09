@@ -2799,5 +2799,18 @@ SSE 事件（tool_result）→ 发送完整 JSON 到前端
      - `Arte S` 对应 `(5.35927, 100.29265)`
      - 切换时前端地图能做到瞬间重绘更新，绝无串线或缓存定位错误。
 
+---
 
+## 七十一、注册流程邮箱验证码前端临时放行配置（2026-06-09）
 
+**目标**：绕过未绑定自定义域名的开发测试阶段下 Resend 邮箱发信的限制，确保在 Vercel 临时二级域名（如 `malaysia-ez-rent.vercel.app`）线上测试时，用户与中介均能成功注册账号。
+
+### 已实施
+
+| 类别 | 内容 | 文件 |
+|------|------|------|
+| **前端放行** | 修改注册流程发送验证码（OTP）逻辑，点击“发送验证码”时前端直接自动将 `otpVerified` 设为 `true` 并提示成功，从而跳过实际 API 邮件投递与校验环节，免除 Resend 域名 DNS 绑定依赖。 | `frontend/src/app/register/tenant/page.tsx`, `frontend/src/app/register/agent/page.tsx` |
+| **文档同步** | 在绝对隔离实施方案与技术日志中同步记录此项临时绕过机制及未来的恢复方式。 | `docs/portal-isolation-plan.md`, `docs/technical-issues-log.md` |
+
+### 恢复方式
+- 项目上线绑定真实域名（例如 `ezrent-my.com`）并在 Resend 验证 DNS 成功后，将前端 `handleSendOtp` 重新改为 fetch 请求 `/api/send-verification` 即可。
