@@ -170,17 +170,19 @@ export default function MobileProfilePage() {
       {/* Toast */}
       {toast && (
         <div style={{
-          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
-          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10,
-          background: toast.type === 'success' ? 'rgba(16,185,129,0.08)' : 'var(--danger-light)',
-          border: `1px solid ${toast.type === 'success' ? 'rgba(16,185,129,0.2)' : 'var(--danger)'}`,
+          position: 'fixed', top: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
+          background: toast.type === 'success' ? 'rgba(16,185,129,0.95)' : 'rgba(220,38,38,0.95)',
+          border: 'none',
           backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          animation: 'slideDown 0.3s ease-out',
         }}>
-          {toast.type === 'success' ? <CheckCircle2 size={15} style={{ color: 'var(--success)' }} /> : <AlertCircle size={15} style={{ color: 'var(--danger)' }} />}
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: toast.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>{toast.msg}</span>
+          {toast.type === 'success' ? <CheckCircle2 size={16} style={{ color: 'white' }} /> : <AlertCircle size={16} style={{ color: 'white' }} />}
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{toast.msg}</span>
         </div>
       )}
+      <style>{`@keyframes slideDown { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }`}</style>
 
       {/* Title */}
       <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>
