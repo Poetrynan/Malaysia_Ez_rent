@@ -31,6 +31,11 @@ export default function MobileFeedback() {
   const [selectedEvidence, setSelectedEvidence] = useState<any | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [showPendingPayments, setShowPendingPayments] = useState(true);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const showToast = useCallback((type: 'success' | 'error', msg: string) => {
+    setToast({ type, msg }); setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Load pending payment evidence
   useEffect(() => {
@@ -79,8 +84,12 @@ export default function MobileFeedback() {
       }
       setPendingPayments(prev => prev.filter(p => p.id !== paymentId));
       setSelectedEvidence(null);
+      showToast('success', approve
+        ? (lang === 'zh' ? '已通过审核' : 'Approved')
+        : (lang === 'zh' ? '已驳回' : 'Rejected'));
     } catch (e) {
       console.error('Review failed:', e);
+      showToast('error', lang === 'zh' ? '操作失败' : 'Action failed');
     } finally { setReviewing(null); }
   };
 
@@ -182,6 +191,21 @@ export default function MobileFeedback() {
 
   return (
     <div>
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
+          background: toast.type === 'success' ? 'rgba(16,185,129,0.95)' : 'rgba(220,38,38,0.95)',
+          border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          animation: 'slideDown 0.3s ease-out',
+        }}>
+          {toast.type === 'success' ? <CheckCircle2 size={16} style={{ color: 'white' }} /> : <AlertCircle size={16} style={{ color: 'white' }} />}
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{toast.msg}</span>
+        </div>
+      )}
+      <style>{`@keyframes slideDown { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }`}</style>
+
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{
