@@ -2931,7 +2931,21 @@ if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
 
 中介审核卡片显示：小区名 · 房型 / 租客姓名 / 月份 · RM 租金 · 单元号
 
-### 8. Tab 切换性能优化
+### 8. 手机端 Toast 通知
+
+所有手机端操作反馈统一使用 Toast 通知：
+
+| 位置 | 触发 | 显示 |
+|------|------|------|
+| 租客 `/mt/lease` | 上传凭证 | ✅ 凭证已上传，等待审核 |
+| 租客 `/mt/lease` | 提交工单 | ✅ 工单已提交 |
+| 租客 `/mt/profile` | 保存资料 | ✅ 保存成功 |
+| 中介 `/m/feedback` | 审核通过 | ✅ 已通过审核 |
+| 中介 `/m/feedback` | 审核驳回 | ✅ 已驳回 |
+
+**样式：** `position: fixed; top: 70px`（在顶部横幅下方），实心背景（绿/红，opacity 0.95），白色文字 + 图标，下滑入场动画，3 秒自动消失。
+
+### 9. Tab 切换性能优化
 
 | 问题 | 修复方式 |
 |------|---------|
@@ -2944,14 +2958,14 @@ if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
 | Upload 保存后清全量缓存 | 改为定向刷新 communities + units |
 | Properties 删除后整页刷新 | 改为乐观更新 + 失败回滚 |
 
-### 9. Google Places 自动联想（中介上传页）
+### 10. Google Places 自动联想（中介上传页）
 
 中介手机端上传房源时，新建小区支持 Google Places 自动联想：
 - 输入小区名称 → 联想下拉列表（限马来西亚）
 - 选择后自动填入地址 + GPS 坐标
 - 坐标保存到 `communities` 表
 
-### 10. 文件清单
+### 11. 文件清单
 
 **新建文件：**
 
@@ -2983,7 +2997,7 @@ if (isMobileUA(request) && role !== 'agent' && !pathname.startsWith('/mt/')) {
 | `lib/AdminDataContext.tsx` | 添加 `useMemo` 防止级联重渲染 |
 | `lib/TenantDataContext.tsx` | 添加 `useMemo` 防止级联重渲染 |
 
-### 11. 压缩策略
+### 12. 压缩策略
 
 | 用途 | 预设 | 最大尺寸 | 质量 |
 |------|------|---------|------|
