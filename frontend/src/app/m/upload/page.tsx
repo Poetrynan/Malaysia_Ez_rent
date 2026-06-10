@@ -399,7 +399,7 @@ export default function MobileUpload() {
         }
       }
 
-      // Build unit payload
+      // Build unit payload (amenities belongs to communities, not units)
       const unitPayload: any = {
         community_id: resolvedCommunityId,
         room_type: roomType,
@@ -412,7 +412,6 @@ export default function MobileUpload() {
         description: description.trim(),
         landlord_bank_info: landlordBankInfo.trim(),
         media_urls: mediaUrls,
-        amenities,
         status: editId ? undefined : 'available', // Don't overwrite status on edit
       };
 
