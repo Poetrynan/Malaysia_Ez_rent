@@ -908,9 +908,23 @@ export default function MobileUpload() {
           <div>
             {/* Amenities */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
-                {lang === 'zh' ? '设施配套' : 'Amenities'}
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {lang === 'zh' ? '设施配套' : 'Amenities'}
+                </label>
+                <button
+                  onClick={() => setAmenities(prev => prev.length === AMENITIES_LIST.length ? [] : [...AMENITIES_LIST])}
+                  style={{
+                    padding: '4px 10px', borderRadius: 20, border: '1px solid var(--glass-border)',
+                    background: 'var(--glass-bg)', cursor: 'pointer', fontSize: '0.7rem',
+                    fontWeight: 600, color: 'var(--primary)',
+                  }}
+                >
+                  {amenities.length === AMENITIES_LIST.length
+                    ? (lang === 'zh' ? '取消全选' : 'Deselect All')
+                    : (lang === 'zh' ? '一键全选' : 'Select All')}
+                </button>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {AMENITIES_LIST.map(a => {
                   const active = amenities.includes(a);
