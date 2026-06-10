@@ -500,37 +500,14 @@ export default function MobileUpload() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{
-            fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)',
-            marginBottom: 0, letterSpacing: '-0.025em', fontFamily: 'var(--font-display)',
-          }}>
-            {editId
-              ? (lang === 'zh' ? '编辑房源' : 'Edit Listing')
-              : (lang === 'zh' ? '上传房源' : 'Upload Listing')}
-          </h1>
-          {editId && (
-            <button
-              onClick={() => {
-                router.push('/m/upload');
-                setCommunityId(''); setNewCommunityName(''); setNewCommunityAddress('');
-                setNewCommunityLat(''); setNewCommunityLng('');
-                setRoomType('Studio'); setRent(''); setBedrooms('1'); setBathrooms('1');
-                setArea(''); setMaxOccupants('1'); setAvailableFrom('');
-                setMediaImages([]); setMediaVideo(null);
-                setDescription(''); setLandlordBankInfo(''); setLandlordQrCode(null);
-                setAmenities([]); setStep(1);
-              }}
-              style={{
-                padding: '6px 14px', borderRadius: 20, border: '1px solid var(--glass-border)',
-                background: 'var(--glass-bg)', cursor: 'pointer', fontSize: '0.75rem',
-                fontWeight: 600, color: 'var(--text-muted)',
-              }}
-            >
-              {lang === 'zh' ? '取消编辑' : 'Cancel Edit'}
-            </button>
-          )}
-        </div>
+        <h1 style={{
+          fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)',
+          marginBottom: 4, letterSpacing: '-0.025em', fontFamily: 'var(--font-display)',
+        }}>
+          {editId
+            ? (lang === 'zh' ? '编辑房源' : 'Edit Listing')
+            : (lang === 'zh' ? '上传房源' : 'Upload Listing')}
+        </h1>
       </div>
 
       {/* Step indicator */}
@@ -1148,6 +1125,21 @@ export default function MobileUpload() {
           </button>
         )}
       </div>
+
+      {/* Cancel edit button */}
+      {editId && (
+        <button
+          onClick={() => router.push('/m/properties')}
+          style={{
+            width: '100%', padding: '10px', marginTop: 8, borderRadius: 10,
+            border: '1px solid var(--glass-border)', background: 'transparent',
+            cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+            color: 'var(--text-muted)', fontFamily: 'var(--font-body)',
+          }}
+        >
+          {lang === 'zh' ? '取消编辑，返回房源列表' : 'Cancel Edit, Back to Listings'}
+        </button>
+      )}
 
       {/* Footer */}
       <div style={{
