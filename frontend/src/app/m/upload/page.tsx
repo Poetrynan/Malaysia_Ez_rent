@@ -432,11 +432,13 @@ export default function MobileUpload() {
         const { createClient } = await import('@/utils/supabase/client');
         const client = createClient();
         if (editId) {
-          await client.from('units').update(unitPayload).eq('id', editId);
+          const { error: updateErr } = await client.from('units').update(unitPayload).eq('id', editId);
+          if (updateErr) throw new Error(updateErr.message);
         } else {
           const { data: { user } } = await client.auth.getUser();
           unitPayload.agent_id = user?.id || null;
-          await client.from('units').insert(unitPayload);
+          const { error: insertErr } = await client.from('units').insert(unitPayload);
+          if (insertErr) throw new Error(insertErr.message);
         }
       }
 
