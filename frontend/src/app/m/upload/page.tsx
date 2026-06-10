@@ -500,14 +500,37 @@ export default function MobileUpload() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{
-          fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)',
-          marginBottom: 4, letterSpacing: '-0.025em', fontFamily: 'var(--font-display)',
-        }}>
-          {editId
-            ? (lang === 'zh' ? '编辑房源' : 'Edit Listing')
-            : (lang === 'zh' ? '上传房源' : 'Upload Listing')}
-        </h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{
+            fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-h)',
+            marginBottom: 0, letterSpacing: '-0.025em', fontFamily: 'var(--font-display)',
+          }}>
+            {editId
+              ? (lang === 'zh' ? '编辑房源' : 'Edit Listing')
+              : (lang === 'zh' ? '上传房源' : 'Upload Listing')}
+          </h1>
+          {editId && (
+            <button
+              onClick={() => {
+                router.push('/m/upload');
+                setCommunityId(''); setNewCommunityName(''); setNewCommunityAddress('');
+                setNewCommunityLat(''); setNewCommunityLng('');
+                setRoomType('Studio'); setRent(''); setBedrooms('1'); setBathrooms('1');
+                setArea(''); setMaxOccupants('1'); setAvailableFrom('');
+                setMediaImages([]); setMediaVideo(null);
+                setDescription(''); setLandlordBankInfo(''); setLandlordQrCode(null);
+                setAmenities([]); setStep(1);
+              }}
+              style={{
+                padding: '6px 14px', borderRadius: 20, border: '1px solid var(--glass-border)',
+                background: 'var(--glass-bg)', cursor: 'pointer', fontSize: '0.75rem',
+                fontWeight: 600, color: 'var(--text-muted)',
+              }}
+            >
+              {lang === 'zh' ? '取消编辑' : 'Cancel Edit'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Step indicator */}
