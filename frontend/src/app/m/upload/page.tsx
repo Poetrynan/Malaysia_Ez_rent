@@ -855,7 +855,6 @@ export default function MobileUpload() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     multiple
                     onChange={handleImageSelect}
                     style={{ display: 'none' }}
